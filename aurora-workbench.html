@@ -1,0 +1,2698 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aurora 的工作台</title>
+<script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
+<style>
+/* ====== Reset & Base ====== */
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#F4F3EF;
+  --sidebar:#FBFAF7;
+  --card:#FFFFFF;
+  --text:#2C2A26;
+  --text-2:#8A8780;
+  --text-3:#B8B5AE;
+  --accent:#8B7355;
+  --accent-d:#7A6248;
+  --accent-bg:#F0EBE3;
+  --line:#E8E5DF;
+  --line-soft:#F0EEE9;
+  --input-bg:#F8F7F4;
+  --input-border:#DDD9D2;
+  --green:#6B9B6B;
+  --green-bg:#EDF5ED;
+  --amber:#B8924A;
+  --amber-bg:#F7F0E4;
+  --red:#B66B6B;
+  --red-bg:#F7EDED;
+  --blue:#6B8AAD;
+  --blue-bg:#EDF1F6;
+  --radius:10px;
+  --radius-sm:6px;
+  --mono:'SF Mono','Fira Code','Consolas','Monaco',monospace;
+}
+html,body{height:100%;}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC","Noto Sans SC","Microsoft YaHei",sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  font-size:14px;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+::-webkit-scrollbar{width:6px;height:6px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--text-3);border-radius:3px;}
+
+/* ====== Layout ====== */
+.app{display:flex;height:100vh;}
+.sidebar{
+  width:224px;
+  background:var(--sidebar);
+  border-right:1px solid var(--line);
+  display:flex;
+  flex-direction:column;
+  flex-shrink:0;
+  position:sticky;
+  top:0;
+  height:100vh;
+}
+.content{
+  flex:1;
+  overflow-y:auto;
+  padding:36px 44px 60px;
+}
+
+/* ====== Sidebar ====== */
+.brand{
+  padding:28px 24px 24px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+.brand-mark{
+  width:38px;height:38px;
+  border-radius:9px;
+  background:var(--accent);
+  color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:18px;
+  letter-spacing:-0.5px;
+}
+.brand-name{font-size:16px;font-weight:600;color:var(--text);}
+.brand-sub{font-size:11px;color:var(--text-3);letter-spacing:0.5px;}
+.nav-list{flex:1;padding:8px 12px;overflow-y:auto;}
+.nav-item{
+  display:flex;align-items:center;gap:12px;
+  padding:12px 14px;
+  border:none;background:transparent;
+  cursor:pointer;width:100%;text-align:left;
+  font-family:inherit;
+  color:var(--text-2);font-size:13.5px;
+  transition:all 0.2s;
+  border-radius:var(--radius-sm);
+  margin-bottom:2px;
+}
+.nav-item:hover{background:var(--input-bg);color:var(--text);}
+.nav-item.active{
+  background:var(--accent-bg);
+  color:var(--accent);
+  font-weight:500;
+}
+.nav-num{
+  font-size:11px;font-weight:600;
+  opacity:0.5;
+  font-variant-numeric:tabular-nums;
+  min-width:18px;
+}
+.nav-item.active .nav-num{opacity:1;}
+.sidebar-footer{
+  padding:16px 24px;
+  border-top:1px solid var(--line);
+  font-size:11px;
+  color:var(--text-3);
+}
+
+/* ====== Tab Sections ====== */
+.tab-section{display:none;max-width:880px;}
+.tab-section.active{display:block;animation:fadeIn 0.3s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+.section-header{margin-bottom:28px;}
+.section-title{font-size:22px;font-weight:600;color:var(--text);letter-spacing:-0.3px;}
+.section-desc{font-size:13px;color:var(--text-2);margin-top:4px;}
+
+/* ====== Card ====== */
+.card{
+  background:var(--card);
+  border-radius:var(--radius);
+  border:1px solid var(--line);
+  padding:24px;
+  margin-bottom:18px;
+}
+.card-title{
+  font-size:14px;font-weight:600;color:var(--text);
+  margin-bottom:16px;
+  display:flex;align-items:center;gap:8px;
+}
+.card-title .sub{font-size:12px;font-weight:400;color:var(--text-2);}
+
+/* ====== Form ====== */
+input[type="text"],input[type="number"],input[type="date"],input[type="time"],
+input[type="password"],textarea,select{
+  width:100%;
+  padding:9px 13px;
+  border:1px solid var(--input-border);
+  border-radius:var(--radius-sm);
+  background:var(--input-bg);
+  font-size:13.5px;
+  color:var(--text);
+  font-family:inherit;
+  transition:border-color 0.2s,box-shadow 0.2s;
+  outline:none;
+}
+input:focus,textarea:focus,select:focus{
+  border-color:var(--accent);
+  box-shadow:0 0 0 3px var(--accent-bg);
+}
+textarea{resize:vertical;min-height:72px;line-height:1.6;}
+select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%238A8780' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:32px;}
+.form-row{display:flex;gap:12px;margin-bottom:12px;align-items:flex-end;flex-wrap:wrap;}
+.form-row > *{flex:1;min-width:0;}
+.form-row .auto{flex:0 0 auto;}
+.form-group{margin-bottom:12px;}
+.form-label{font-size:12px;color:var(--text-2);margin-bottom:6px;display:block;font-weight:500;}
+.form-label .hint{font-weight:400;color:var(--text-3);}
+
+/* ====== Button ====== */
+.btn{
+  padding:8px 18px;
+  border:none;
+  border-radius:var(--radius-sm);
+  font-size:13px;
+  font-family:inherit;
+  cursor:pointer;
+  transition:all 0.2s;
+  white-space:nowrap;
+}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-primary:hover{background:var(--accent-d);}
+.btn-ghost{background:transparent;color:var(--text-2);border:1px solid var(--line);}
+.btn-ghost:hover{background:var(--input-bg);color:var(--text);}
+.btn-sm{padding:5px 12px;font-size:12px;}
+.btn-icon{
+  background:none;border:none;
+  color:var(--text-3);cursor:pointer;
+  font-size:15px;padding:4px 6px;
+  border-radius:4px;transition:all 0.2s;
+}
+.btn-icon:hover{color:var(--red);background:var(--red-bg);}
+.btn-icon.fav-on{color:var(--amber);}
+
+/* ====== Radio / Checkbox ====== */
+.radio-group{display:flex;gap:8px;flex-wrap:wrap;}
+.radio-item{
+  padding:8px 16px;
+  border:1px solid var(--input-border);
+  border-radius:var(--radius-sm);
+  background:var(--input-bg);
+  cursor:pointer;
+  font-size:13px;
+  color:var(--text-2);
+  transition:all 0.2s;
+  user-select:none;
+}
+.radio-item:hover{border-color:var(--accent);}
+.radio-item.checked{
+  background:var(--accent-bg);
+  border-color:var(--accent);
+  color:var(--accent);
+  font-weight:500;
+}
+
+/* ====== Chip ====== */
+.chip{
+  display:inline-block;
+  padding:2px 9px;
+  border-radius:10px;
+  font-size:11px;
+  font-weight:500;
+}
+.chip-green{background:var(--green-bg);color:var(--green);}
+.chip-amber{background:var(--amber-bg);color:var(--amber);}
+.chip-red{background:var(--red-bg);color:var(--red);}
+.chip-blue{background:var(--blue-bg);color:var(--blue);}
+.chip-gray{background:var(--input-bg);color:var(--text-2);}
+
+/* ====== Stats ====== */
+.stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+.stat-box{
+  text-align:center;
+  padding:20px 12px;
+  background:var(--input-bg);
+  border-radius:var(--radius-sm);
+}
+.stat-value{
+  font-size:30px;font-weight:700;
+  color:var(--accent);
+  font-variant-numeric:tabular-nums;
+  letter-spacing:-0.5px;
+}
+.stat-value.sm{font-size:22px;}
+.stat-value.green{color:var(--green);}
+.stat-value.amber{color:var(--amber);}
+.stat-value.red{color:var(--red);}
+.stat-label{font-size:12px;color:var(--text-2);margin-top:4px;}
+.stat-edit{
+  font-size:11px;color:var(--text-3);
+  cursor:pointer;text-decoration:underline;
+  margin-top:4px;
+}
+.stat-edit:hover{color:var(--accent);}
+
+/* ====== Grid ====== */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+@media(max-width:760px){.grid-2,.grid-3,.stats-grid{grid-template-columns:1fr;}}
+
+/* ====== Record List ====== */
+.record-item{
+  padding:14px 0;
+  border-bottom:1px solid var(--line-soft);
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:12px;
+}
+.record-item:last-child{border-bottom:none;}
+.record-main{flex:1;min-width:0;}
+.record-date{font-size:12px;color:var(--text-3);margin-bottom:2px;}
+.record-text{font-size:13.5px;color:var(--text);word-break:break-word;}
+.record-actions{display:flex;gap:4px;flex-shrink:0;}
+
+/* ====== Empty Hint ====== */
+.empty-hint{
+  text-align:center;
+  color:var(--text-3);
+  padding:28px 0;
+  font-size:13px;
+}
+
+/* ====== Toast ====== */
+.toast{
+  position:fixed;bottom:30px;left:50%;
+  transform:translateX(-50%) translateY(16px);
+  background:var(--text);color:#fff;
+  padding:9px 22px;
+  border-radius:8px;
+  font-size:13px;
+  opacity:0;
+  transition:all 0.3s;
+  z-index:9999;
+  pointer-events:none;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* ====== Tab1: Early Ed ====== */
+.hours-display{font-size:28px;font-weight:700;color:var(--accent);}
+
+/* ====== Tab2: Fitness ====== */
+.fasting-bar{
+  position:relative;
+  height:40px;
+  background:var(--input-bg);
+  border-radius:var(--radius-sm);
+  overflow:hidden;
+  margin:12px 0;
+}
+.fasting-eat{
+  position:absolute;
+  top:0;height:100%;
+  background:var(--green-bg);
+  border:1px solid var(--green);
+  border-radius:var(--radius-sm);
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;color:var(--green);font-weight:500;
+}
+.fasting-now{
+  position:absolute;
+  top:-4px;bottom:-4px;
+  width:2px;
+  background:var(--accent);
+  z-index:2;
+}
+.fasting-now::after{
+  content:'';
+  position:absolute;
+  top:-3px;left:-3px;
+  width:8px;height:8px;
+  border-radius:50%;
+  background:var(--accent);
+}
+.fasting-labels{
+  display:flex;justify-content:space-between;
+  font-size:10px;color:var(--text-3);
+  margin-top:2px;
+}
+.meal-photo{
+  width:60px;height:60px;
+  border-radius:var(--radius-sm);
+  object-fit:cover;
+  flex-shrink:0;
+  border:1px solid var(--line);
+}
+.recipe-card{
+  background:var(--input-bg);
+  border-radius:var(--radius-sm);
+  padding:16px;
+}
+.recipe-card .rname{font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px;}
+.recipe-card .rcal{font-size:13px;color:var(--accent);font-weight:500;margin-bottom:6px;}
+.recipe-card .ring{font-size:12.5px;color:var(--text-2);line-height:1.7;}
+.recipe-card .rdesc{font-size:12px;color:var(--text-3);margin-top:6px;}
+
+/* ====== Tab3: Words ====== */
+.word-card{
+  padding:14px 0;
+  border-bottom:1px solid var(--line-soft);
+}
+.word-card:last-child{border-bottom:none;}
+.word-en{font-size:17px;font-weight:700;color:var(--text);}
+.word-cn{font-size:13px;color:var(--text-2);margin-top:2px;}
+.word-ex{font-size:12.5px;color:var(--text-3);margin-top:4px;font-style:italic;}
+
+/* ====== Tab4: Market ====== */
+.disclaimer{
+  background:var(--amber-bg);
+  border:1px solid var(--amber);
+  border-radius:var(--radius-sm);
+  padding:10px 16px;
+  font-size:12px;
+  color:var(--amber);
+  margin-bottom:18px;
+}
+.news-card{
+  border:1px solid var(--line);
+  border-radius:var(--radius-sm);
+  padding:14px 16px;
+  margin-bottom:10px;
+  transition:border-color 0.2s;
+}
+.news-card:hover{border-color:var(--accent-bg);}
+.news-card.fav{border-color:var(--amber);background:var(--amber-bg);}
+.news-meta{display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;}
+.news-title{font-size:14px;font-weight:600;color:var(--text);}
+.news-summary{font-size:13px;color:var(--text-2);margin-top:4px;}
+.news-time{font-size:11px;color:var(--text-3);}
+.quick-links{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
+.quick-links a{
+  font-size:12px;
+  color:var(--blue);
+  text-decoration:none;
+  padding:4px 10px;
+  border:1px solid var(--blue-bg);
+  border-radius:var(--radius-sm);
+  transition:all 0.2s;
+}
+.quick-links a:hover{background:var(--blue-bg);}
+
+/* ====== Live News ====== */
+.news-refresh-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.news-loading{text-align:center;padding:36px 20px;color:var(--text-3);font-size:13px;}
+.news-loading .spinner{display:inline-block;width:18px;height:18px;border:2px solid var(--line);border-top-color:var(--blue);border-radius:50%;animation:spin 0.8s linear infinite;margin-right:8px;vertical-align:middle;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.news-source{font-size:11px;color:var(--text-3);padding:2px 6px;background:var(--input-bg);border-radius:3px;}
+.news-sentiment-bar{display:flex;gap:14px;align-items:center;padding:10px 14px;background:var(--input-bg);border-radius:var(--radius-sm);margin-bottom:14px;font-size:13px;}
+.news-sentiment-bar .sent-item{display:flex;align-items:center;gap:5px;}
+.news-sentiment-bar .sent-dot{width:8px;height:8px;border-radius:50%;display:inline-block;}
+.sent-dot.positive{background:#B66B6B;}
+.sent-dot.negative{background:#6B9B6B;}
+.sent-dot.neutral{background:#B8B5AE;}
+.news-card.clickable{cursor:default;transition:all 0.2s;}
+.news-card.clickable:hover{border-color:var(--blue);box-shadow:0 1px 8px rgba(0,0,0,0.04);}
+.news-card .news-headline{font-size:14px;font-weight:600;color:var(--text);line-height:1.5;cursor:pointer;}
+.news-card .news-headline:hover{color:var(--blue);}
+.news-card .news-detail{font-size:13px;color:var(--text-2);margin-top:8px;line-height:1.7;display:none;padding:10px 12px;background:var(--input-bg);border-radius:var(--radius-sm);}
+.news-card.expanded .news-detail{display:block;}
+.news-card .news-actions{display:flex;gap:10px;align-items:center;margin-top:8px;}
+.news-card .news-actions a{font-size:12px;color:var(--blue);text-decoration:none;}
+.news-card .news-actions a:hover{text-decoration:underline;}
+.news-card .expand-btn{font-size:12px;color:var(--text-3);cursor:pointer;background:none;border:none;padding:2px 4px;}
+.news-card .expand-btn:hover{color:var(--blue);}
+.manual-add-toggle{margin-top:14px;}
+.manual-add-toggle .toggle-btn{font-size:12px;color:var(--text-2);cursor:pointer;background:none;border:1px dashed var(--line);padding:6px 14px;border-radius:var(--radius-sm);transition:all 0.2s;}
+.manual-add-toggle .toggle-btn:hover{border-color:var(--blue);color:var(--blue);}
+.manual-add-form{display:none;margin-top:10px;padding:14px;border:1px dashed var(--line);border-radius:var(--radius-sm);}
+.manual-add-form.show{display:block;}
+
+/* ====== Tab5: Python ====== */
+.stepper{
+  display:flex;
+  align-items:flex-start;
+  overflow-x:auto;
+  padding:8px 0 16px;
+  gap:0;
+}
+.step-item{
+  display:flex;flex-direction:column;align-items:center;
+  cursor:pointer;flex-shrink:0;
+  min-width:80px;
+}
+.step-circle{
+  width:34px;height:34px;
+  border-radius:50%;
+  border:2px solid var(--line);
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:600;
+  color:var(--text-2);background:var(--card);
+  transition:all 0.2s;
+}
+.step-item.done .step-circle{
+  background:var(--accent);border-color:var(--accent);color:#fff;
+}
+.step-item.current .step-circle{
+  border-color:var(--accent);color:var(--accent);
+}
+.step-label{font-size:11px;color:var(--text-2);margin-top:6px;text-align:center;white-space:nowrap;}
+.step-connector{
+  flex:1;min-width:20px;
+  height:2px;
+  background:var(--line);
+  margin-top:16px;
+  margin:16px 4px 0;
+}
+.step-connector.done{background:var(--accent);}
+.code-editor{
+  background:#1e1e2e;
+  color:#cdd6f4;
+  font-family:var(--mono);
+  font-size:13px;
+  padding:14px;
+  border-radius:var(--radius-sm);
+  border:1px solid #313244;
+  min-height:160px;
+  resize:vertical;
+  width:100%;
+  outline:none;
+  tab-size:4;
+  line-height:1.6;
+}
+.code-output{
+  background:#181825;
+  color:#a6e3a1;
+  font-family:var(--mono);
+  font-size:12.5px;
+  padding:12px 14px;
+  border-radius:var(--radius-sm);
+  margin-top:8px;
+  min-height:36px;
+  white-space:pre-wrap;
+  word-break:break-word;
+  line-height:1.6;
+}
+.code-output .err{color:#f38ba8;}
+.code-output .info{color:#89b4fa;}
+
+/* ====== Tab6: Recipes ====== */
+.recipe-item{
+  border:1px solid var(--line);
+  border-radius:var(--radius-sm);
+  padding:16px;
+  margin-bottom:12px;
+  transition:border-color 0.2s;
+}
+.recipe-item:hover{border-color:var(--accent-bg);}
+.recipe-item.fav{border-color:var(--amber);}
+.recipe-item-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+.recipe-item-name{font-size:15px;font-weight:600;color:var(--text);}
+.recipe-item-meta{font-size:12px;color:var(--text-2);margin-top:4px;display:flex;gap:8px;flex-wrap:wrap;}
+.recipe-item-photo{
+  width:100%;max-height:200px;
+  object-fit:cover;
+  border-radius:var(--radius-sm);
+  margin-top:10px;
+}
+.ing-row{display:flex;gap:8px;margin-bottom:6px;align-items:center;}
+.ing-row input{flex:1;}
+.step-row{display:flex;gap:8px;margin-bottom:6px;align-items:flex-start;}
+.step-row .step-idx{
+  flex-shrink:0;
+  width:24px;height:24px;
+  border-radius:50%;
+  background:var(--accent-bg);
+  color:var(--accent);
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:600;
+  margin-top:7px;
+}
+.step-row textarea{flex:1;min-height:36px;padding:7px 11px;}
+
+/* ====== Tab7: Reading ====== */
+.book-item{
+  border:1px solid var(--line);
+  border-radius:var(--radius-sm);
+  padding:16px;
+  margin-bottom:12px;
+  transition:border-color 0.2s;
+}
+.book-item:hover{border-color:var(--accent-bg);}
+.book-item.fav{border-color:var(--amber);}
+.book-item-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+.book-item-title{font-size:15px;font-weight:600;color:var(--text);}
+.book-item-meta{font-size:12px;color:var(--text-2);margin-top:4px;}
+.stars{color:var(--amber);font-size:14px;letter-spacing:1px;}
+.stars .off{color:var(--line);}
+.star-input{font-size:20px;cursor:pointer;color:var(--line);letter-spacing:2px;transition:color 0.15s;}
+.star-input.on{color:var(--amber);}
+.expand-btn{
+  font-size:12px;color:var(--accent);cursor:pointer;
+  border:none;background:none;font-family:inherit;
+  padding:4px 0;
+}
+.expand-btn:hover{text-decoration:underline;}
+.book-detail{margin-top:12px;padding-top:12px;border-top:1px solid var(--line-soft);display:none;}
+.book-detail.open{display:block;}
+.detail-section{margin-bottom:12px;}
+.detail-label{font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:4px;}
+
+/* ====== Filter Bar ====== */
+.filter-bar{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center;}
+.filter-bar select{width:auto;min-width:100px;}
+.filter-bar .filter-label{font-size:12px;color:var(--text-2);}
+
+/* ====== Misc ====== */
+.divider{height:1px;background:var(--line);margin:16px 0;}
+.text-muted{color:var(--text-2);}
+.text-sm{font-size:12px;}
+.text-accent{color:var(--accent);}
+.mt-0{margin-top:0;}
+.mb-0{margin-bottom:0;}
+.flex{display:flex;}
+.items-center{align-items:center;}
+.gap-2{gap:8px;}
+.gap-3{gap:12px;}
+.justify-between{justify-content:space-between;}
+.hidden{display:none!important;}
+hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
+</style>
+</head>
+<body>
+<div class="app">
+<!-- ====== Sidebar ====== -->
+<aside class="sidebar">
+  <div class="brand">
+    <div class="brand-mark">A</div>
+    <div>
+      <div class="brand-name">Aurora</div>
+      <div class="brand-sub">私人工作台</div>
+    </div>
+  </div>
+  <nav class="nav-list">
+    <button class="nav-item active" data-tab="1" onclick="switchTab(1)"><span class="nav-num">01</span>宝宝早教 · 课时记录</button>
+    <button class="nav-item" data-tab="2" onclick="switchTab(2)"><span class="nav-num">02</span>轻氧塑身日记</button>
+    <button class="nav-item" data-tab="3" onclick="switchTab(3)"><span class="nav-num">03</span>每日英语单词</button>
+    <button class="nav-item" data-tab="4" onclick="switchTab(4)"><span class="nav-num">04</span>市场瞭望 · 投资资讯</button>
+    <button class="nav-item" data-tab="5" onclick="switchTab(5)"><span class="nav-num">05</span>代码研习室 · Python</button>
+    <button class="nav-item" data-tab="6" onclick="switchTab(6)"><span class="nav-num">06</span>食谱工坊 · 配方手记</button>
+    <button class="nav-item" data-tab="7" onclick="switchTab(7)"><span class="nav-num">07</span>阅思集 · 读书札记</button>
+  </nav>
+  <div class="sidebar-footer" id="footerDate"></div>
+</aside>
+
+<!-- ====== Content ====== -->
+<main class="content">
+
+<!-- ========== Tab 1: Early Education ========== -->
+<section id="tab1" class="tab-section active">
+  <div class="section-header">
+    <div class="section-title">宝宝早教 · 课时记录</div>
+    <div class="section-desc">记录每一次课堂互动与成长瞬间</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">新增课时记录</div>
+    <div class="form-row">
+      <div class="form-group" style="flex:0 0 180px;">
+        <label class="form-label">日期</label>
+        <input type="date" id="eeDate">
+      </div>
+      <div class="form-group" style="flex:0 0 200px;">
+        <label class="form-label">本次课时</label>
+        <div class="radio-group" id="eeHoursGroup">
+          <span class="radio-item checked" data-val="1" onclick="eeSelectHours(this)">1 课时</span>
+          <span class="radio-item" data-val="1.5" onclick="eeSelectHours(this)">1.5 课时</span>
+          <span class="radio-item" data-val="2" onclick="eeSelectHours(this)">2 课时</span>
+        </div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">课堂情况记录</label>
+      <textarea id="eeNotes" rows="3" placeholder="记录课堂互动、宝宝情绪、表现亮点..."></textarea>
+    </div>
+    <button class="btn btn-primary" onclick="addEarlyEdRecord()">保存记录</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">课时统计</div>
+    <div class="stats-grid">
+      <div class="stat-box">
+        <div class="stat-value" id="eeTotal">48</div>
+        <div class="stat-label">总购买课时</div>
+        <div class="stat-edit" onclick="eeEditTotal()">点击修改</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value" id="eeConsumed">0</div>
+        <div class="stat-label">累计已消耗</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value green" id="eeRemaining">48</div>
+        <div class="stat-label">剩余课时</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">历史记录</div>
+    <div id="eeRecords"></div>
+  </div>
+</section>
+
+<!-- ========== Tab 2: Fitness ========== -->
+<section id="tab2" class="tab-section">
+  <div class="section-header">
+    <div class="section-title">轻氧塑身日记</div>
+    <div class="section-desc">16+8 间歇断食 · 饮食记录 · 体重趋势 · 运动管理</div>
+  </div>
+
+  <!-- Recipe Recommendation -->
+  <div class="card">
+    <div class="card-title">今日健康食谱推荐 <span class="sub" id="recipeIdx"></span></div>
+    <div id="recipeBox"></div>
+    <div style="margin-top:12px;">
+      <button class="btn btn-ghost btn-sm" onclick="prevRecipe()">上一道</button>
+      <button class="btn btn-ghost btn-sm" style="margin-left:8px;" onclick="nextRecipe()">换一道推荐</button>
+    </div>
+  </div>
+
+  <!-- Fasting -->
+  <div class="card">
+    <div class="card-title">16+8 间歇断食</div>
+    <div class="form-row">
+      <div class="form-group" style="flex:0 0 140px;">
+        <label class="form-label">进食开始</label>
+        <input type="time" id="fastStart" onchange="saveFasting()">
+      </div>
+      <div class="form-group" style="flex:0 0 140px;">
+        <label class="form-label">进食结束</label>
+        <input type="time" id="fastEnd" onchange="saveFasting()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">当前状态</label>
+        <div id="fastStatus" style="font-size:14px;font-weight:500;padding:9px 0;"></div>
+      </div>
+    </div>
+    <div class="fasting-bar" id="fastingBar"></div>
+    <div class="fasting-labels"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div>
+  </div>
+
+  <div class="grid-2">
+    <!-- Meal Record -->
+    <div class="card">
+      <div class="card-title">餐食记录</div>
+      <div class="form-row">
+        <div class="form-group" style="flex:0 0 130px;">
+          <label class="form-label">日期</label>
+          <input type="date" id="fitDate">
+        </div>
+        <div class="form-group">
+          <label class="form-label">食物描述</label>
+          <input type="text" id="mealFood" placeholder="如：燕麦粥+鸡蛋">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">预估卡路里 (kcal)</label>
+          <input type="number" id="mealCal" placeholder="如：350" min="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">餐食照片</label>
+          <input type="file" id="mealPhoto" accept="image/*" style="font-size:12px;">
+        </div>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="addMeal()">添加餐食</button>
+      <div id="mealList" style="margin-top:14px;"></div>
+    </div>
+
+    <!-- Weight + Exercise -->
+    <div>
+      <div class="card">
+        <div class="card-title">体重打卡</div>
+        <div class="form-row">
+          <div class="form-group" style="flex:0 0 130px;">
+            <label class="form-label">日期</label>
+            <input type="date" id="weightDate">
+          </div>
+          <div class="form-group">
+            <label class="form-label">晨起体重 (kg)</label>
+            <input type="number" id="weightVal" step="0.1" placeholder="如：58.5">
+          </div>
+          <div class="auto"><button class="btn btn-primary btn-sm" onclick="addWeight()">记录</button></div>
+        </div>
+        <div id="weightChart"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">运动记录</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">运动类型</label>
+            <select id="exType">
+              <option value="">选择类型</option>
+              <option>快走</option><option>慢跑</option><option>瑜伽</option>
+              <option>游泳</option><option>骑行</option><option>力量训练</option>
+              <option>跳绳</option><option>HIIT</option><option>其他</option>
+            </select>
+          </div>
+          <div class="form-group" style="flex:0 0 90px;">
+            <label class="form-label">时长(分)</label>
+            <input type="number" id="exDur" min="0" placeholder="30">
+          </div>
+          <div class="form-group" style="flex:0 0 100px;">
+            <label class="form-label">消耗(kcal)</label>
+            <input type="number" id="exCal" min="0" placeholder="200">
+          </div>
+          <div class="auto"><button class="btn btn-primary btn-sm" onclick="addExercise()">添加</button></div>
+        </div>
+        <div id="exList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Daily Summary -->
+  <div class="card">
+    <div class="card-title">每日热量汇总 <span class="sub" id="sumDate"></span></div>
+    <div class="stats-grid">
+      <div class="stat-box">
+        <div class="stat-value amber" id="sumIntake">0</div>
+        <div class="stat-label">总摄入 (kcal)</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value green" id="sumBurn">0</div>
+        <div class="stat-label">总消耗 (kcal)</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value" id="sumNet">0</div>
+        <div class="stat-label">热量差额 (kcal)</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== Tab 3: English Words ========== -->
+<section id="tab3" class="tab-section">
+  <div class="section-header">
+    <div class="section-title">每日英语单词</div>
+    <div class="section-desc">每日 10 词 · 持续积累 · 温故知新</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">
+      今日单词 <span class="sub" id="wordDateLabel"></span>
+      <span style="margin-left:auto;">
+        <button class="btn btn-ghost btn-sm" onclick="prevDayWords()">前一天</button>
+        <button class="btn btn-ghost btn-sm" style="margin-left:6px;" onclick="nextDayWords()">后一天</button>
+        <button class="btn btn-ghost btn-sm" style="margin-left:6px;" onclick="goTodayWords()">今天</button>
+      </span>
+    </div>
+    <div id="wordList"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">学习便签</div>
+    <textarea id="wordNotes" rows="4" placeholder="记录记忆技巧、易错点、学习感悟..." oninput="saveWordNotes()"></textarea>
+    <div style="margin-top:12px;">
+      <label class="form-label">学习打卡</label>
+      <div class="radio-group" id="wordStatusGroup">
+        <span class="radio-item" data-val="studied" onclick="setWordStatus(this)">已学习</span>
+        <span class="radio-item" data-val="review" onclick="setWordStatus(this)">待复习</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">历史归档</div>
+    <div id="wordHistory"></div>
+  </div>
+</section>
+
+<!-- ========== Tab 4: Market ========== -->
+<section id="tab4" class="tab-section">
+  <div class="section-header">
+    <div class="section-title">市场瞭望 · 投资资讯</div>
+    <div class="section-desc">资讯整理与个人复盘</div>
+  </div>
+
+  <div class="disclaimer">
+    所有资讯仅用于信息整理与个人复盘，不构成任何投资建议。投资有风险，决策需谨慎。
+  </div>
+
+  <!-- Section 1: Live News -->
+  <div class="card">
+    <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+      <span>分区一 · 实时热点资讯</span>
+      <div class="news-refresh-bar" style="margin-bottom:0;">
+        <span class="text-sm text-muted" id="newsUpdateTime">未加载</span>
+        <button class="btn btn-sm" id="newsRefreshBtn" onclick="fetchNews(true)">刷新资讯</button>
+        <label class="text-sm" style="display:flex;align-items:center;gap:4px;cursor:pointer;">
+          <input type="checkbox" id="newsAutoRefresh" onchange="toggleAutoRefresh()" style="width:auto;"> 自动刷新
+        </label>
+      </div>
+    </div>
+    <div class="quick-links">
+      <a href="https://www.eastmoney.com/" target="_blank">东方财富</a>
+      <a href="https://www.10jqka.com.cn/" target="_blank">同花顺</a>
+      <a href="https://finance.sina.com.cn/" target="_blank">新浪财经</a>
+      <a href="https://www.sge.com.cn/" target="_blank">上海黄金交易所</a>
+      <a href="https://www.gold.org/" target="_blank">世界黄金协会</a>
+    </div>
+    <div id="newsSentimentBar" class="news-sentiment-bar" style="display:none;"></div>
+    <div class="filter-bar">
+      <span class="filter-label">筛选：</span>
+      <select id="newsFilterCat" onchange="renderNews()">
+        <option value="">全部分类</option>
+        <option value="astock">A股 / 基金</option>
+        <option value="gold">黄金市场</option>
+      </select>
+      <select id="newsFilterTag" onchange="renderNews()">
+        <option value="">全部标签</option>
+        <option value="positive">利好</option>
+        <option value="negative">利空</option>
+        <option value="neutral">中性</option>
+      </select>
+      <label class="filter-label" style="display:flex;align-items:center;gap:4px;cursor:pointer;">
+        <input type="checkbox" id="newsFavOnly" onchange="renderNews()" style="width:auto;"> 仅看收藏
+      </label>
+    </div>
+    <div id="newsList"><div class="news-loading"><span class="spinner"></span>正在获取实时资讯...</div></div>
+    <div class="manual-add-toggle">
+      <button class="toggle-btn" onclick="toggleManualAdd()">+ 手动补充资讯</button>
+      <div class="manual-add-form" id="manualAddForm">
+        <div class="form-row">
+          <div class="form-group" style="flex:0 0 130px;">
+            <label class="form-label">分类</label>
+            <select id="newsCat">
+              <option value="astock">A股 / 基金</option>
+              <option value="gold">黄金市场</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">标题</label>
+            <input type="text" id="newsTitle" placeholder="资讯标题">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">核心摘要</label>
+            <textarea id="newsSummary" rows="2" placeholder="一句话概括核心内容..."></textarea>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group" style="flex:0 0 130px;">
+            <label class="form-label">标签</label>
+            <select id="newsTag">
+              <option value="positive">利好</option>
+              <option value="negative">利空</option>
+              <option value="neutral">中性</option>
+            </select>
+          </div>
+          <div class="auto" style="padding-bottom:0;"><button class="btn btn-primary btn-sm" onclick="addNews()">添加</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 2: Tracking -->
+  <div class="card">
+    <div class="card-title">分区二 · 自选跟踪清单</div>
+    <div class="form-row">
+      <div class="form-group" style="flex:0 0 100px;">
+        <label class="form-label">类型</label>
+        <select id="trackType">
+          <option value="fund">基金</option>
+          <option value="gold">黄金</option>
+          <option value="stock">股票</option>
+          <option value="other">其他</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">名称</label>
+        <input type="text" id="trackName" placeholder="如：沪深300ETF">
+      </div>
+      <div class="form-group" style="flex:0 0 120px;">
+        <label class="form-label">代码</label>
+        <input type="text" id="trackCode" placeholder="如：510300">
+      </div>
+      <div class="form-group">
+        <label class="form-label">观测要点</label>
+        <input type="text" id="trackNote" placeholder="核心持仓赛道 / 关注逻辑">
+      </div>
+      <div class="auto"><button class="btn btn-primary btn-sm" onclick="addTracking()">添加</button></div>
+    </div>
+    <div id="trackList"></div>
+  </div>
+
+  <!-- Section 3: Sentiment -->
+  <div class="card">
+    <div class="card-title">分区三 · 市场情绪 & 逻辑复盘</div>
+    <div class="form-row">
+      <div class="form-group" style="flex:0 0 160px;">
+        <label class="form-label">日期</label>
+        <input type="date" id="sentDate" onchange="loadSentiment()">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">市场情绪</label>
+      <div class="radio-group" id="sentMoodGroup">
+        <span class="radio-item" data-val="bullish" onclick="selectMood(this)">多头偏强</span>
+        <span class="radio-item" data-val="neutral" onclick="selectMood(this)">震荡中性</span>
+        <span class="radio-item" data-val="bearish" onclick="selectMood(this)">空头偏弱</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">关键驱动因素</label>
+      <textarea id="sentDrivers" rows="2" placeholder="当下影响市场的核心事件..."></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">风险提示</label>
+      <textarea id="sentRisks" rows="2" placeholder="潜在风险点..."></textarea>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="saveSentiment()">保存复盘</button>
+  </div>
+
+  <!-- Section 4: Personal Notes -->
+  <div class="card">
+    <div class="card-title">分区四 · 个人思考笔记库</div>
+    <div class="form-row">
+      <div class="form-group" style="flex:0 0 160px;">
+        <label class="form-label">日期</label>
+        <input type="date" id="noteDate">
+      </div>
+      <div class="form-group" style="flex:0 0 140px;">
+        <label class="form-label">笔记类型</label>
+        <select id="noteType">
+          <option value="thought">资讯感悟</option>
+          <option value="plan">计划记录</option>
+          <option value="review">结果回溯</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <textarea id="noteContent" rows="3" placeholder="写下你的判断、布局思路或复盘..."></textarea>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="addNote()">保存笔记</button>
+    <div id="noteList" style="margin-top:16px;"></div>
+  </div>
+</section>
+
+<!-- ========== Tab 5: Python ========== -->
+<section id="tab5" class="tab-section">
+  <div class="section-header">
+    <div class="section-title">代码研习室 · Python 自学笔记</div>
+    <div class="section-desc">零基础循序渐进 · 学练记一体化</div>
+  </div>
+
+  <!-- Progress -->
+  <div class="card">
+    <div class="card-title">学习进度规划</div>
+    <div class="stepper" id="stepper"></div>
+    <div class="form-group">
+      <label class="form-label">阶段学习目标</label>
+      <textarea id="pyGoal" rows="2" placeholder="设定阶段性目标..." oninput="savePyGoal()"></textarea>
+    </div>
+  </div>
+
+  <!-- Daily Learning -->
+  <div class="card">
+    <div class="card-title">每日学习</div>
+    <div class="form-row">
+      <div class="form-group" style="flex:0 0 160px;">
+        <label class="form-label">日期</label>
+        <input type="date" id="pyDate" onchange="loadPyDaily()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">当日知识点</label>
+        <input type="text" id="pyPoints" placeholder="如：列表推导式、字典操作">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">知识点笔记</label>
+      <textarea id="pyNotes" rows="3" placeholder="记录语法、函数、概念理解..."></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">代码练习</label>
+      <textarea class="code-editor" id="pyCode" spellcheck="false" placeholder="# 在此编写 Python 代码&#10;print('Hello, Aurora!')"></textarea>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="btn btn-primary btn-sm" onclick="runPython()">运行代码</button>
+      <span class="text-sm text-muted" id="pyRunHint"></span>
+    </div>
+    <div class="code-output" id="pyOutput">点击「运行代码」查看输出结果</div>
+    <div style="margin-top:12px;">
+      <label class="form-label">学习打卡</label>
+      <div class="radio-group" id="pyStatusGroup">
+        <span class="radio-item" data-val="done" onclick="setPyStatus(this)">学习完成</span>
+        <span class="radio-item" data-val="review" onclick="setPyStatus(this)">待巩固</span>
+        <span class="radio-item" data-val="help" onclick="setPyStatus(this)">需要答疑</span>
+      </div>
+    </div>
+    <button class="btn btn-primary btn-sm" style="margin-top:12px;" onclick="savePyDaily()">保存今日学习</button>
+  </div>
+
+  <!-- Error Archive -->
+  <div class="card">
+    <div class="card-title">错题 & 踩坑归档</div>
+    <div class="form-row">
+      <div class="form-group" style="flex:0 0 140px;">
+        <label class="form-label">日期</label>
+        <input type="date" id="errDate">
+      </div>
+      <div class="form-group">
+        <label class="form-label">报错信息</label>
+        <input type="text" id="errMsg" placeholder="如：NameError: name 'x' is not defined">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">出错原因</label>
+      <input type="text" id="errCause" placeholder="变量未定义就使用">
+    </div>
+    <div class="form-group">
+      <label class="form-label">解决方案</label>
+      <input type="text" id="errSolution" placeholder="先赋值再使用">
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="addError()">归档</button>
+    <div id="errList" style="margin-top:14px;"></div>
+  </div>
+
+  <!-- Projects -->
+  <div class="card">
+    <div class="card-title">实战项目清单</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">项目名称</label>
+        <input type="text" id="projName" placeholder="如：命令行计算器">
+      </div>
+      <div class="form-group" style="flex:0 0 120px;">
+        <label class="form-label">进度</label>
+        <select id="projProgress">
+          <option value="planning">构思中</option>
+          <option value="ongoing">进行中</option>
+          <option value="done">已完成</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">实现思路</label>
+      <textarea id="projApproach" rows="2" placeholder="技术方案、模块拆分..."></textarea>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="addProject()">添加项目</button>
+    <div id="projList" style="margin-top:14px;"></div>
+  </div>
+</section>
+
+<!-- ========== Tab 6: Recipes ========== -->
+<section id="tab6" class="tab-section">
+  <div class="section-header">
+    <div class="section-title">食谱工坊 · 配方手记</div>
+    <div class="section-desc">烘焙面包 · 家常菜品 · 甜品配方收纳</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">新增配方</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">食谱名称</label>
+        <input type="text" id="rName" placeholder="如：北海道吐司">
+      </div>
+      <div class="form-group" style="flex:0 0 130px;">
+        <label class="form-label">分类</label>
+        <select id="rCategory">
+          <option value="bread">面包烘焙</option>
+          <option value="dish">家常菜</option>
+          <option value="dessert">甜品</option>
+        </select>
+      </div>
+      <div class="form-group" style="flex:0 0 100px;">
+        <label class="form-label">难度</label>
+        <select id="rDifficulty">
+          <option value="easy">简单</option>
+          <option value="medium">中等</option>
+          <option value="hard">复杂</option>
+        </select>
+      </div>
+      <div class="form-group" style="flex:0 0 100px;">
+        <label class="form-label">制作时长</label>
+        <input type="text" id="rDuration" placeholder="如：90分钟">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">成品照片</label>
+      <input type="file" id="rPhoto" accept="image/*" style="font-size:12px;">
+    </div>
+
+    <label class="form-label">原料清单</label>
+    <div id="ingList"></div>
+    <button class="btn btn-ghost btn-sm" onclick="addIngRow()" style="margin:6px 0 12px;">+ 添加原料</button>
+
+    <label class="form-label">制作步骤</label>
+    <div id="stepList"></div>
+    <button class="btn btn-ghost btn-sm" onclick="addStepRow()" style="margin:6px 0 12px;">+ 添加步骤</button>
+
+    <div class="form-group">
+      <label class="form-label">实操心得 & 调整记录</label>
+      <textarea id="rNotes" rows="3" placeholder="减糖、调整水量、烘烤温度改良、失败原因、口感评价..."></textarea>
+    </div>
+    <button class="btn btn-primary" onclick="addRecipe()">保存配方</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">配方归档</div>
+    <div class="filter-bar">
+      <span class="filter-label">筛选：</span>
+      <select id="recipeFilter" onchange="renderRecipes()">
+        <option value="">全部分类</option>
+        <option value="bread">面包烘焙</option>
+        <option value="dish">家常菜</option>
+        <option value="dessert">甜品</option>
+      </select>
+      <label class="filter-label" style="display:flex;align-items:center;gap:4px;cursor:pointer;">
+        <input type="checkbox" id="recipeFavOnly" onchange="renderRecipes()" style="width:auto;"> 仅看常用
+      </label>
+    </div>
+    <div id="recipeArchive"></div>
+  </div>
+</section>
+
+<!-- ========== Tab 7: Reading ========== -->
+<section id="tab7" class="tab-section">
+  <div class="section-header">
+    <div class="section-title">阅思集 · 传记读书札记</div>
+    <div class="section-desc">书籍传记 · 金句摘录 · 深度思考</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">新增读书笔记</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">书名</label>
+        <input type="text" id="bTitle" placeholder="如：史蒂夫·乔布斯传">
+      </div>
+      <div class="form-group">
+        <label class="form-label">作者</label>
+        <input type="text" id="bAuthor" placeholder="如：沃尔特·艾萨克森">
+      </div>
+      <div class="form-group" style="flex:0 0 140px;">
+        <label class="form-label">类型</label>
+        <select id="bType">
+          <option value="biography">名人传记</option>
+          <option value="business">商业书籍</option>
+          <option value="psychology">心理学</option>
+          <option value="other">其他</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group" style="flex:0 0 160px;">
+        <label class="form-label">开始阅读</label>
+        <input type="date" id="bStartDate">
+      </div>
+      <div class="form-group" style="flex:0 0 160px;">
+        <label class="form-label">读完日期</label>
+        <input type="date" id="bFinishDate">
+      </div>
+      <div class="form-group" style="flex:0 0 120px;">
+        <label class="form-label">阅读状态</label>
+        <select id="bStatus">
+          <option value="reading">在读</option>
+          <option value="paused">暂停阅读</option>
+          <option value="finished">已读完</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">个人评分</label>
+      <div id="bRating" style="display:flex;gap:4px;">
+        <span class="star-input" data-val="1" onclick="setRating(this)">&#9733;</span>
+        <span class="star-input" data-val="2" onclick="setRating(this)">&#9733;</span>
+        <span class="star-input" data-val="3" onclick="setRating(this)">&#9733;</span>
+        <span class="star-input" data-val="4" onclick="setRating(this)">&#9733;</span>
+        <span class="star-input" data-val="5" onclick="setRating(this)">&#9733;</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">金句摘录</label>
+      <textarea id="bQuotes" rows="3" placeholder="摘抄书中精华原文、人物关键观点..."></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">人物记录（传记专用）</label>
+      <textarea id="bCharacters" rows="3" placeholder="名人关键人生节点、重要抉择、思维模式、性格优缺点..."></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">个人思考感悟</label>
+      <textarea id="bThoughts" rows="3" placeholder="联系自身生活、投资、育儿、成长产生的想法..."></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">疑问留存</label>
+      <textarea id="bQuestions" rows="2" placeholder="阅读过程有待深入思考的问题..."></textarea>
+    </div>
+    <button class="btn btn-primary" onclick="addBook()">保存笔记</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">读书笔记归档</div>
+    <div class="filter-bar">
+      <span class="filter-label">筛选：</span>
+      <select id="bookFilter" onchange="renderBooks()">
+        <option value="">全部类型</option>
+        <option value="biography">名人传记</option>
+        <option value="business">商业书籍</option>
+        <option value="psychology">心理学</option>
+        <option value="other">其他</option>
+      </select>
+      <label class="filter-label" style="display:flex;align-items:center;gap:4px;cursor:pointer;">
+        <input type="checkbox" id="bookFavOnly" onchange="renderBooks()" style="width:auto;"> 仅看重点
+      </label>
+    </div>
+    <div id="bookArchive"></div>
+  </div>
+</section>
+
+</main>
+</div>
+
+<script>
+/* ============================================================
+   Aurora 工作台 · 核心逻辑
+   ============================================================ */
+
+/* ====== Global Utilities ====== */
+var DB = {};
+var DB_KEY = 'aurora_workbench_v2';
+var pyodide = null;
+var pyLoading = false;
+var currentWordOffset = 0;
+var selectedRating = 0;
+
+function today(){
+  var d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function escapeHtml(s){
+  if(!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function timeToMin(t){
+  if(!t) return 0;
+  var p = t.split(':');
+  return parseInt(p[0]) * 60 + parseInt(p[1] || 0);
+}
+function toast(msg){
+  var t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(function(){ t.classList.add('show'); }, 10);
+  setTimeout(function(){ t.classList.remove('show'); setTimeout(function(){ t.remove(); }, 300); }, 1800);
+}
+function compressImage(file, maxW, cb){
+  if(!file){ cb(''); return; }
+  var reader = new FileReader();
+  reader.onload = function(e){
+    var img = new Image();
+    img.onload = function(){
+      var canvas = document.createElement('canvas');
+      var w = img.width, h = img.height;
+      if(w > maxW){ h = h * maxW / w; w = maxW; }
+      canvas.width = w; canvas.height = h;
+      var ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      cb(canvas.toDataURL('image/jpeg', 0.7));
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+/* ====== Default DB ====== */
+var defaultDb = {
+  earlyEd: { totalHours: 48, records: [] },
+  fitness: {
+    fastStart: '08:00', fastEnd: '16:00',
+    meals: [], weights: [], exercises: [],
+    recipeIdx: 0
+  },
+  words: { dailyRecords: {} },
+  market: { news: [], tracking: [], sentiment: {}, notes: [], favNewsIds: [], newsLastUpdate: '' },
+  python: {
+    progress: { basics: false, functions: false, files: false, data: false, projects: false },
+    goal: '',
+    dailyRecords: {},
+    errors: [],
+    projects: []
+  },
+  recipes: { items: [] },
+  reading: { books: [] }
+};
+
+function loadDb(){
+  try {
+    var raw = localStorage.getItem(DB_KEY);
+    DB = raw ? JSON.parse(raw) : JSON.parse(JSON.stringify(defaultDb));
+    for(var k in defaultDb){
+      if(!(k in DB)) DB[k] = JSON.parse(JSON.stringify(defaultDb[k]));
+      if(typeof defaultDb[k] === 'object' && defaultDb[k] !== null){
+        for(var k2 in defaultDb[k]){
+          if(!(k2 in DB[k])) DB[k][k2] = JSON.parse(JSON.stringify(defaultDb[k][k2]));
+        }
+      }
+    }
+  } catch(e){
+    DB = JSON.parse(JSON.stringify(defaultDb));
+  }
+}
+function saveDb(){
+  localStorage.setItem(DB_KEY, JSON.stringify(DB));
+}
+
+/* ====== Tab Switching ====== */
+function switchTab(n){
+  document.querySelectorAll('.tab-section').forEach(function(s){ s.classList.remove('active'); });
+  document.querySelectorAll('.nav-item').forEach(function(s){ s.classList.remove('active'); });
+  document.getElementById('tab' + n).classList.add('active');
+  document.querySelector('.nav-item[data-tab="' + n + '"]').classList.add('active');
+  if(n === 1) renderEarlyEd();
+  if(n === 2) renderFitness();
+  if(n === 3) renderWords();
+  if(n === 4) renderMarket();
+  if(n === 5) renderPython();
+  if(n === 6) renderRecipes();
+  if(n === 7) renderBooks();
+}
+
+/* ============================================================
+   Tab 1: Early Education
+   ============================================================ */
+var eeSelectedHours = 1;
+
+function eeSelectHours(el){
+  document.querySelectorAll('#eeHoursGroup .radio-item').forEach(function(r){ r.classList.remove('checked'); });
+  el.classList.add('checked');
+  eeSelectedHours = parseFloat(el.dataset.val);
+}
+
+function addEarlyEdRecord(){
+  var date = document.getElementById('eeDate').value || today();
+  var notes = document.getElementById('eeNotes').value.trim();
+  if(!notes){ toast('请输入课堂情况'); return; }
+  DB.earlyEd.records.unshift({ date: date, hours: eeSelectedHours, notes: notes });
+  saveDb();
+  document.getElementById('eeNotes').value = '';
+  renderEarlyEd();
+  toast('记录已保存');
+}
+
+function deleteEarlyEdRecord(i){
+  DB.earlyEd.records.splice(i, 1);
+  saveDb();
+  renderEarlyEd();
+}
+
+function eeEditTotal(){
+  var v = prompt('请输入总购买课时：', DB.earlyEd.totalHours);
+  if(v !== null){
+    var n = parseFloat(v);
+    if(!isNaN(n) && n >= 0){
+      DB.earlyEd.totalHours = n;
+      saveDb();
+      renderEarlyEd();
+      toast('已更新总课时');
+    }
+  }
+}
+
+function renderEarlyEd(){
+  var total = DB.earlyEd.totalHours;
+  var consumed = 0;
+  DB.earlyEd.records.forEach(function(r){ consumed += r.hours; });
+  var remaining = total - consumed;
+  document.getElementById('eeTotal').textContent = total;
+  document.getElementById('eeConsumed').textContent = consumed;
+  var remEl = document.getElementById('eeRemaining');
+  remEl.textContent = remaining;
+  remEl.className = 'stat-value';
+  if(remaining <= 5) remEl.classList.add('red');
+  else if(remaining <= 10) remEl.classList.add('amber');
+  else remEl.classList.add('green');
+
+  var box = document.getElementById('eeRecords');
+  if(DB.earlyEd.records.length === 0){
+    box.innerHTML = '<div class="empty-hint">暂无记录，开始添加第一条吧</div>';
+    return;
+  }
+  box.innerHTML = DB.earlyEd.records.map(function(r, i){
+    return '<div class="record-item">' +
+      '<div class="record-main">' +
+        '<div class="record-date">' + r.date + ' · ' + r.hours + ' 课时</div>' +
+        '<div class="record-text">' + escapeHtml(r.notes) + '</div>' +
+      '</div>' +
+      '<div class="record-actions"><button class="btn-icon" onclick="deleteEarlyEdRecord(' + i + ')">&#10005;</button></div>' +
+    '</div>';
+  }).join('');
+}
+
+/* ============================================================
+   Tab 2: Fitness
+   ============================================================ */
+var HEALTHY_RECIPES = [
+  {name:'鸡胸肉牛油果沙拉',cal:320,ing:'鸡胸肉150g、牛油果半个、混合生菜100g、小番茄50g、橄榄油1勺',desc:'高蛋白低碳水，减脂期优选'},
+  {name:'藜麦蔬菜碗',cal:380,ing:'藜麦80g、西兰花100g、胡萝卜50g、鸡蛋1个、芝麻酱少许',desc:'营养均衡，饱腹感强'},
+  {name:'香煎三文鱼配芦笋',cal:350,ing:'三文鱼120g、芦笋150g、柠檬半个、黑胡椒、海盐',desc:'富含Omega-3，抗炎好选择'},
+  {name:'番茄鸡蛋燕麦粥',cal:280,ing:'燕麦50g、番茄1个、鸡蛋1个、葱花少许',desc:'高纤维早餐，暖胃低卡'},
+  {name:'蒜蓉虾仁西蓝花',cal:300,ing:'虾仁100g、西蓝花200g、蒜末、生抽少许',desc:'高蛋白低脂，简单快手'},
+  {name:'紫薯酸奶杯',cal:250,ing:'紫薯1个、无糖酸奶150g、坚果碎少许、蓝莓30g',desc:'抗氧化加益生菌，代餐佳选'},
+  {name:'杂粮饭团配味噌汤',cal:330,ing:'糙米饭100g、海苔、黄瓜条、味噌酱、豆腐50g',desc:'碳水控量，日式清淡风'}
+];
+
+function renderRecipe(){
+  var idx = DB.fitness.recipeIdx % HEALTHY_RECIPES.length;
+  var r = HEALTHY_RECIPES[idx];
+  document.getElementById('recipeIdx').textContent = '(' + (idx+1) + '/' + HEALTHY_RECIPES.length + ')';
+  document.getElementById('recipeBox').innerHTML =
+    '<div class="recipe-card">' +
+      '<div class="rname">' + r.name + '</div>' +
+      '<div class="rcal">' + r.cal + ' kcal</div>' +
+      '<div class="ring">' + escapeHtml(r.ing) + '</div>' +
+      '<div class="rdesc">' + r.desc + '</div>' +
+    '</div>';
+}
+function prevRecipe(){ DB.fitness.recipeIdx = (DB.fitness.recipeIdx - 1 + HEALTHY_RECIPES.length) % HEALTHY_RECIPES.length; saveDb(); renderRecipe(); }
+function nextRecipe(){ DB.fitness.recipeIdx = (DB.fitness.recipeIdx + 1) % HEALTHY_RECIPES.length; saveDb(); renderRecipe(); }
+
+function saveFasting(){
+  DB.fitness.fastStart = document.getElementById('fastStart').value;
+  DB.fitness.fastEnd = document.getElementById('fastEnd').value;
+  saveDb();
+  renderFastingBar();
+}
+
+function renderFastingBar(){
+  var start = DB.fitness.fastStart || '08:00';
+  var end = DB.fitness.fastEnd || '16:00';
+  var sMin = timeToMin(start);
+  var eMin = timeToMin(end);
+  var bar = document.getElementById('fastingBar');
+  var sPct = sMin / 1440 * 100;
+  var wPct = (eMin - sMin) / 1440 * 100;
+  if(eMin < sMin) wPct = (eMin + 1440 - sMin) / 1440 * 100;
+  bar.innerHTML =
+    '<div class="fasting-eat" style="left:' + sPct + '%;width:' + wPct + '%;">进食窗口</div>' +
+    '<div class="fasting-now" id="fastNow"></div>';
+  updateFastingNow();
+}
+function updateFastingNow(){
+  var now = new Date();
+  var nowMin = now.getHours() * 60 + now.getMinutes();
+  var pct = nowMin / 1440 * 100;
+  var el = document.getElementById('fastNow');
+  if(el) el.style.left = pct + '%';
+  var start = DB.fitness.fastStart || '08:00';
+  var end = DB.fitness.fastEnd || '16:00';
+  var sMin = timeToMin(start);
+  var eMin = timeToMin(end);
+  var isEating;
+  if(eMin > sMin) isEating = nowMin >= sMin && nowMin < eMin;
+  else isEating = nowMin >= sMin || nowMin < eMin;
+  var stEl = document.getElementById('fastStatus');
+  if(stEl){
+    if(isEating){
+      stEl.innerHTML = '<span style="color:var(--green);">进食时段</span> · 剩余 ' + formatRemaining(nowMin, eMin < sMin ? eMin + 1440 : eMin) + ' 结束进食';
+    } else {
+      stEl.innerHTML = '<span style="color:var(--accent);">禁食时段</span> · 剩余 ' + formatRemaining(nowMin, sMin) + ' 开始进食';
+    }
+  }
+}
+function formatRemaining(nowMin, targetMin){
+  var diff = targetMin - nowMin;
+  if(diff < 0) diff += 1440;
+  var h = Math.floor(diff / 60);
+  var m = diff % 60;
+  return h + '小时' + m + '分钟';
+}
+
+function addMeal(){
+  var date = document.getElementById('fitDate').value || today();
+  var food = document.getElementById('mealFood').value.trim();
+  var cal = parseInt(document.getElementById('mealCal').value) || 0;
+  if(!food){ toast('请输入食物描述'); return; }
+  var photoInput = document.getElementById('mealPhoto');
+  if(photoInput.files[0]){
+    compressImage(photoInput.files[0], 300, function(dataUrl){
+      DB.fitness.meals.push({ date: date, food: food, cal: cal, photo: dataUrl });
+      saveDb();
+      document.getElementById('mealFood').value = '';
+      document.getElementById('mealCal').value = '';
+      document.getElementById('mealPhoto').value = '';
+      renderMeals();
+      renderDailySummary();
+      toast('餐食已记录');
+    });
+  } else {
+    DB.fitness.meals.push({ date: date, food: food, cal: cal, photo: '' });
+    saveDb();
+    document.getElementById('mealFood').value = '';
+    document.getElementById('mealCal').value = '';
+    renderMeals();
+    renderDailySummary();
+    toast('餐食已记录');
+  }
+}
+function deleteMeal(i){ DB.fitness.meals.splice(i,1); saveDb(); renderMeals(); renderDailySummary(); }
+
+function renderMeals(){
+  var date = document.getElementById('fitDate').value || today();
+  var list = DB.fitness.meals.filter(function(m){ return m.date === date; });
+  var box = document.getElementById('mealList');
+  if(list.length === 0){ box.innerHTML = '<div class="empty-hint">今日暂无餐食记录</div>'; return; }
+  box.innerHTML = list.map(function(m, i){
+    var idx = DB.fitness.meals.indexOf(m);
+    return '<div class="record-item">' +
+      (m.photo ? '<img class="meal-photo" src="' + m.photo + '">' : '') +
+      '<div class="record-main">' +
+        '<div class="record-text">' + escapeHtml(m.food) + '</div>' +
+        '<div class="record-date">' + m.cal + ' kcal</div>' +
+      '</div>' +
+      '<div class="record-actions"><button class="btn-icon" onclick="deleteMeal(' + idx + ')">&#10005;</button></div>' +
+    '</div>';
+  }).join('');
+}
+
+function addWeight(){
+  var date = document.getElementById('weightDate').value || today();
+  var val = parseFloat(document.getElementById('weightVal').value);
+  if(isNaN(val)){ toast('请输入有效体重'); return; }
+  var existing = DB.fitness.weights.findIndex(function(w){ return w.date === date; });
+  if(existing >= 0) DB.fitness.weights[existing].weight = val;
+  else DB.fitness.weights.push({ date: date, weight: val });
+  DB.fitness.weights.sort(function(a,b){ return a.date.localeCompare(b.date); });
+  saveDb();
+  document.getElementById('weightVal').value = '';
+  renderWeightChart();
+  toast('体重已记录');
+}
+
+function renderWeightChart(){
+  var ws = DB.fitness.weights;
+  var box = document.getElementById('weightChart');
+  if(ws.length < 2){
+    box.innerHTML = '<div class="empty-hint">至少记录2次体重后显示趋势图（当前' + ws.length + '条）</div>';
+    return;
+  }
+  var minW = Math.min.apply(null, ws.map(function(w){ return w.weight; }));
+  var maxW = Math.max.apply(null, ws.map(function(w){ return w.weight; }));
+  var range = (maxW - minW) || 1;
+  var W = 540, H = 160, pad = 32;
+  var stepX = (W - pad*2) / (ws.length - 1);
+  var pts = ws.map(function(w, i){
+    var x = pad + i * stepX;
+    var y = H - pad - ((w.weight - minW) / range) * (H - pad*2);
+    return { x: x, y: y, w: w };
+  });
+  var pathD = pts.map(function(p, i){ return (i===0?'M':'L') + p.x.toFixed(1) + ',' + p.y.toFixed(1); }).join(' ');
+  var dots = pts.map(function(p){ return '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="3" fill="#8B7355"/>'; }).join('');
+  var labels = pts.map(function(p){ return '<text x="' + p.x.toFixed(1) + '" y="' + (p.y - 8).toFixed(1) + '" text-anchor="middle" font-size="10" fill="#8A8780">' + p.w.weight + '</text>'; }).join('');
+  var dates = pts.map(function(p, i){
+    if(ws.length > 8 && i % 2 !== 0) return '';
+    return '<text x="' + p.x.toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="9" fill="#B8B5AE">' + p.w.date.slice(5) + '</text>';
+  }).join('');
+  var latest = ws[ws.length - 1];
+  var first = ws[0];
+  var diff = (latest.weight - first.weight).toFixed(1);
+  var diffStr = diff > 0 ? '+' + diff : diff;
+  var diffColor = diff > 0 ? '#B66B6B' : '#6B9B6B';
+  box.innerHTML =
+    '<div style="text-align:right;font-size:12px;margin-bottom:8px;">变化趋势：<span style="color:' + diffColor + ';font-weight:600;">' + diffStr + ' kg</span></div>' +
+    '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;max-width:540px;">' +
+      '<path d="' + pathD + '" fill="none" stroke="#8B7355" stroke-width="2"/>' +
+      dots + labels + dates +
+    '</svg>';
+}
+
+function addExercise(){
+  var date = document.getElementById('fitDate').value || today();
+  var type = document.getElementById('exType').value;
+  var dur = parseInt(document.getElementById('exDur').value) || 0;
+  var cal = parseInt(document.getElementById('exCal').value) || 0;
+  if(!type){ toast('请选择运动类型'); return; }
+  DB.fitness.exercises.push({ date: date, type: type, dur: dur, cal: cal });
+  saveDb();
+  document.getElementById('exType').value = '';
+  document.getElementById('exDur').value = '';
+  document.getElementById('exCal').value = '';
+  renderExercises();
+  renderDailySummary();
+  toast('运动已记录');
+}
+function deleteExercise(i){ DB.fitness.exercises.splice(i,1); saveDb(); renderExercises(); renderDailySummary(); }
+
+function renderExercises(){
+  var date = document.getElementById('fitDate').value || today();
+  var list = DB.fitness.exercises.filter(function(e){ return e.date === date; });
+  var box = document.getElementById('exList');
+  if(list.length === 0){ box.innerHTML = '<div class="empty-hint">今日暂无运动记录</div>'; return; }
+  box.innerHTML = list.map(function(e){
+    var idx = DB.fitness.exercises.indexOf(e);
+    return '<div class="record-item">' +
+      '<div class="record-main">' +
+        '<div class="record-text">' + escapeHtml(e.type) + ' · ' + e.dur + '分钟</div>' +
+        '<div class="record-date">消耗 ' + e.cal + ' kcal</div>' +
+      '</div>' +
+      '<div class="record-actions"><button class="btn-icon" onclick="deleteExercise(' + idx + ')">&#10005;</button></div>' +
+    '</div>';
+  }).join('');
+}
+
+function renderDailySummary(){
+  var date = document.getElementById('fitDate').value || today();
+  document.getElementById('sumDate').textContent = date;
+  var intake = DB.fitness.meals.filter(function(m){ return m.date === date; }).reduce(function(s,m){ return s + m.cal; }, 0);
+  var burn = DB.fitness.exercises.filter(function(e){ return e.date === date; }).reduce(function(s,e){ return s + e.cal; }, 0);
+  var net = intake - burn;
+  document.getElementById('sumIntake').textContent = intake;
+  document.getElementById('sumBurn').textContent = burn;
+  var netEl = document.getElementById('sumNet');
+  netEl.textContent = (net >= 0 ? '+' : '') + net;
+  netEl.className = 'stat-value';
+  if(net > 500) netEl.classList.add('amber');
+  else if(net < 0) netEl.classList.add('green');
+}
+
+function renderFitness(){
+  document.getElementById('fastStart').value = DB.fitness.fastStart;
+  document.getElementById('fastEnd').value = DB.fitness.fastEnd;
+  renderRecipe();
+  renderFastingBar();
+  renderMeals();
+  renderWeightChart();
+  renderExercises();
+  renderDailySummary();
+}
+
+/* ============================================================
+   Tab 3: English Words
+   ============================================================ */
+var WORD_BANK = [
+  ["abandon","vt. 放弃；抛弃","He abandoned his old car and bought a new one."],
+  ["absolute","adj. 绝对的；完全的","I have absolute confidence in her ability."],
+  ["accommodate","v. 容纳；适应","The hotel can accommodate up to 500 guests."],
+  ["accurate","adj. 精确的","The clock keeps accurate time."],
+  ["achieve","v. 实现；达到","She achieved her goal of becoming a doctor."],
+  ["adapt","v. 适应","We must adapt to the changing environment."],
+  ["adequate","adj. 充足的","We need adequate food and water for the trip."],
+  ["adjust","v. 调整","Please adjust the volume of the radio."],
+  ["admire","v. 钦佩","I admire her courage and determination."],
+  ["admit","v. 承认","He admitted his mistake honestly."],
+  ["adopt","v. 采用；收养","The company adopted a new policy."],
+  ["advance","v. 进步；前进","Technology advances rapidly every year."],
+  ["advantage","n. 优势","Being bilingual is a great advantage."],
+  ["affect","v. 影响","The weather affects our mood."],
+  ["afford","v. 负担得起","I can't afford a new house right now."],
+  ["aggressive","adj. 有进取心的","He is an aggressive and successful salesman."],
+  ["allocate","v. 分配","We need to allocate resources wisely."],
+  ["alternative","n. 替代（的）","Is there an alternative solution to this problem?"],
+  ["analyze","v. 分析","Let's analyze the data carefully before deciding."],
+  ["anticipate","v. 预期","We anticipate a successful outcome."],
+  ["apparent","adj. 明显的","It was apparent that he was lying."],
+  ["appeal","v. 吸引；呼吁","The idea of working abroad appeals to me."],
+  ["apply","v. 申请；应用","She applied for the job online."],
+  ["approach","n. 方法","We need a new approach to solve this problem."],
+  ["appropriate","adj. 适当的","Wear appropriate clothes for the interview."],
+  ["approve","v. 批准；赞成","The manager approved the project plan."],
+  ["aspect","n. 方面","We considered every aspect of the issue."],
+  ["assess","v. 评估","We need to assess the risks before proceeding."],
+  ["assign","v. 分配；指派","The teacher assigned homework to the class."],
+  ["assist","v. 协助","Can you assist me with this task?"],
+  ["assume","v. 假设","I assume you're tired after the long trip."],
+  ["assure","v. 保证","I assure you everything will be fine."],
+  ["attach","v. 附加；附着","Please attach the document to the email."],
+  ["attain","v. 获得","He attained the highest score in the class."],
+  ["attribute","v. 归因于","She attributed her success to hard work."],
+  ["authentic","adj. 真实的","This is an authentic Italian restaurant."],
+  ["available","adj. 可用的","Are tickets still available for the show?"],
+  ["aware","adj. 意识到的","I was not aware of the problem until now."],
+  ["balance","n. 平衡","It's important to balance work and life."],
+  ["benefit","n. 利益；受益","Regular exercise benefits your health."],
+  ["capable","adj. 有能力的","She is capable of doing the job well."],
+  ["capacity","n. 容量；能力","The stadium has a capacity of 50,000."],
+  ["category","n. 类别","Books are sorted into different categories."],
+  ["challenge","n. 挑战","Learning a new language is a challenge."],
+  ["circumstance","n. 情况","Under no circumstances should you give up."],
+  ["collaborate","v. 合作","The two teams collaborated on the project."],
+  ["commit","v. 承诺；投入","She committed herself to helping others."],
+  ["compatible","adj. 兼容的","The software is compatible with all devices."],
+  ["compensate","v. 补偿","The company compensated for the delay."],
+  ["competent","adj. 胜任的","He is a competent and reliable leader."],
+  ["compete","v. 竞争","They compete for the championship each year."],
+  ["complex","adj. 复杂的","This is a complex problem requiring careful thought."],
+  ["component","n. 组成部分","Trust is a key component of teamwork."],
+  ["concept","n. 概念","The concept is simple but powerful."],
+  ["conclude","v. 得出结论","We concluded the meeting at 5 pm."],
+  ["confidence","n. 信心","She speaks with great confidence."],
+  ["confirm","v. 确认","Please confirm your reservation by email."],
+  ["consequence","n. 后果","Every action has consequences."],
+  ["consider","v. 考虑","Please consider my offer carefully."],
+  ["consistent","adj. 一致的","His performance is consistent and reliable."],
+  ["constraint","n. 约束","Time is a major constraint on this project."],
+  ["construct","v. 建造","They constructed a new bridge over the river."],
+  ["consume","v. 消耗","The car consumes a lot of fuel."],
+  ["contribute","v. 贡献","Everyone contributed to the team's success."],
+  ["convince","v. 说服","He convinced me to try one more time."],
+  ["coordinate","v. 协调","She coordinates the team's daily activities."],
+  ["correspond","v. 对应","The data corresponds to our expectations."],
+  ["create","v. 创造","We need to create a new plan from scratch."],
+  ["criteria","n. 标准","What are the selection criteria for this role?"],
+  ["crucial","adj. 关键的","Sleep is crucial for good health."],
+  ["dedicate","v. 致力于","He dedicated his life to scientific research."],
+  ["define","v. 定义","How do you define success in life?"],
+  ["deliberate","adj. 故意的","It was a deliberate and calculated decision."],
+  ["demonstrate","v. 证明；演示","She demonstrated her skills in the interview."],
+  ["derive","v. 源于","The word derives from Latin."],
+  ["design","n. 设计","The design is modern and elegant."],
+  ["detect","v. 发现","The sensor can detect even small movements."],
+  ["determine","v. 决定","Hard work often determines success."],
+  ["develop","v. 发展","We need to develop new skills continuously."],
+  ["devote","v. 致力于","She devotes her free time to reading."],
+  ["distinguish","v. 区分","It's hard to distinguish the twins apart."],
+  ["distribute","v. 分配","The books were distributed to all students."],
+  ["dominant","adj. 占主导的","English is the dominant language online."],
+  ["emphasize","v. 强调","The teacher emphasized the importance of practice."],
+  ["encourage","v. 鼓励","My parents always encourage me to do my best."],
+  ["enhance","v. 提升","Technology enhances our daily lives."],
+  ["ensure","v. 确保","Please ensure the door is locked."],
+  ["essential","adj. 必要的","Water is essential for all life."],
+  ["establish","v. 建立","The company was established in 1990."],
+  ["evaluate","v. 评估","We need to evaluate the results carefully."],
+  ["evident","adj. 明显的","It's evident that he works very hard."],
+  ["evolve","v. 进化；发展","Languages evolve over centuries."],
+  ["exceed","v. 超过","His performance exceeded all expectations."],
+  ["exchange","v. 交换","They exchanged gifts on Christmas."],
+  ["exhibit","v. 展示","The museum exhibits ancient artifacts."],
+  ["expand","v. 扩展","The company plans to expand overseas."],
+  ["experience","n. 经验","She has years of experience in marketing."],
+  ["explore","v. 探索","Let's explore the city this weekend."],
+  ["extend","v. 延伸","They extended the deadline by one week."],
+  ["facilitate","v. 促进","Technology facilitates communication globally."]
+];
+
+function getWordDate(){
+  var d = new Date();
+  var dayOfYear = Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 86400000);
+  return dayOfYear;
+}
+function getWordsForOffset(offset){
+  var base = getWordDate() + offset;
+  var startIdx = ((base * 10) % WORD_BANK.length + WORD_BANK.length) % WORD_BANK.length;
+  var words = [];
+  for(var i = 0; i < 10; i++){
+    words.push(WORD_BANK[(startIdx + i) % WORD_BANK.length]);
+  }
+  return words;
+}
+function getWordDateStr(offset){
+  var d = new Date();
+  d.setDate(d.getDate() + offset);
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+function renderWords(){
+  var dateStr = getWordDateStr(currentWordOffset);
+  document.getElementById('wordDateLabel').textContent = dateStr;
+  var words = getWordsForOffset(currentWordOffset);
+  document.getElementById('wordList').innerHTML = words.map(function(w, i){
+    return '<div class="word-card">' +
+      '<div class="word-en">' + (i+1) + '. ' + escapeHtml(w[0]) + '</div>' +
+      '<div class="word-cn">' + escapeHtml(w[1]) + '</div>' +
+      '<div class="word-ex">' + escapeHtml(w[2]) + '</div>' +
+    '</div>';
+  }).join('');
+  var rec = DB.words.dailyRecords[dateStr];
+  document.getElementById('wordNotes').value = (rec && rec.notes) || '';
+  document.querySelectorAll('#wordStatusGroup .radio-item').forEach(function(r){
+    r.classList.toggle('checked', rec && rec.status === r.dataset.val);
+  });
+  renderWordHistory();
+}
+function prevDayWords(){ currentWordOffset--; renderWords(); }
+function nextDayWords(){ currentWordOffset++; renderWords(); }
+function goTodayWords(){ currentWordOffset = 0; renderWords(); }
+
+function saveWordNotes(){
+  var dateStr = getWordDateStr(currentWordOffset);
+  if(!DB.words.dailyRecords[dateStr]) DB.words.dailyRecords[dateStr] = {};
+  DB.words.dailyRecords[dateStr].notes = document.getElementById('wordNotes').value;
+  saveDb();
+}
+function setWordStatus(el){
+  document.querySelectorAll('#wordStatusGroup .radio-item').forEach(function(r){ r.classList.remove('checked'); });
+  el.classList.add('checked');
+  var dateStr = getWordDateStr(currentWordOffset);
+  if(!DB.words.dailyRecords[dateStr]) DB.words.dailyRecords[dateStr] = {};
+  DB.words.dailyRecords[dateStr].status = el.dataset.val;
+  saveDb();
+  toast('打卡完成');
+}
+function renderWordHistory(){
+  var keys = Object.keys(DB.words.dailyRecords).sort().reverse();
+  var box = document.getElementById('wordHistory');
+  if(keys.length === 0){ box.innerHTML = '<div class="empty-hint">暂无历史记录</div>'; return; }
+  box.innerHTML = keys.slice(0, 20).map(function(k){
+    var rec = DB.words.dailyRecords[k];
+    var statusChip = rec.status === 'studied' ? '<span class="chip chip-green">已学习</span>' :
+                     rec.status === 'review' ? '<span class="chip chip-amber">待复习</span>' : '';
+    return '<div class="record-item">' +
+      '<div class="record-main">' +
+        '<div class="record-date">' + k + ' ' + statusChip + '</div>' +
+        '<div class="record-text">' + (rec.notes ? escapeHtml(rec.notes) : '<span class="text-muted">无笔记</span>') + '</div>' +
+      '</div>' +
+      '<div class="record-actions"><button class="btn btn-ghost btn-sm" onclick="jumpToWordDate(\'' + k + '\')">查看</button></div>' +
+    '</div>';
+  }).join('');
+}
+function jumpToWordDate(dateStr){
+  var target = new Date(dateStr);
+  var today = new Date();
+  currentWordOffset = Math.round((target - today) / 86400000);
+  renderWords();
+}
+
+/* ============================================================
+   Tab 4: Market
+   ============================================================ */
+var selectedMood = '';
+
+/* ====== Live News (Tab4 Section 1) ====== */
+var LIVE_NEWS = [];
+var DISPLAYED_NEWS = [];
+var newsRefreshTimer = null;
+var newsFetching = false;
+
+var BULLISH_KW = ['上涨','涨停','大涨','暴涨','飙升','增长','盈利','突破','利好','提升','增加','超预期','上调','回购','分红','反弹','走强','新高','买入','增持','强劲','回暖','复苏','刺激','扩张','获批','签约','合作','收购','并购','上线','发布','推出','降准','降息','减税','政策支持','订单','翻倍','放量','资金流入','净买入','主力净流入','创新高','超募'];
+var BEARISH_KW = ['下跌','跌停','大跌','暴跌','下挫','亏损','下滑','下降','利空','风险','警告','下调','减少','不及预期','违规','处罚','走弱','新低','卖出','减持','收紧','监管','约谈','熔断','暴雷','退市','破产','停牌','问询','破发','破净','缩量','疲软','承压','黑天鹅','爆仓','资金流出','净卖出','主力净流出','业绩变脸','减持公告','违规被查'];
+var GOLD_BULL_KW = ['避险','金价上涨','黄金走强','黄金新高','美联储降息','地缘紧张','通胀上升','黄金需求','增持黄金','央行购金','避险升温','金价创新高'];
+var GOLD_BEAR_KW = ['金价下跌','黄金走弱','美联储加息','美元走强','需求下降','减持黄金','金价回落','避险降温'];
+
+function analyzeSentiment(title, summary, cat){
+  var text = (title + ' ' + (summary || '')).toLowerCase();
+  var bull = 0, bear = 0;
+  BULLISH_KW.forEach(function(kw){ if(text.indexOf(kw.toLowerCase()) >= 0) bull++; });
+  BEARISH_KW.forEach(function(kw){ if(text.indexOf(kw.toLowerCase()) >= 0) bear++; });
+  if(cat === 'gold'){
+    GOLD_BULL_KW.forEach(function(kw){ if(text.indexOf(kw.toLowerCase()) >= 0) bull += 2; });
+    GOLD_BEAR_KW.forEach(function(kw){ if(text.indexOf(kw.toLowerCase()) >= 0) bear += 2; });
+  }
+  if(bull > bear && bull > 0) return 'positive';
+  if(bear > bull && bear > 0) return 'negative';
+  return 'neutral';
+}
+
+function fetchWithTimeout(url, ms){
+  return Promise.race([
+    fetch(url),
+    new Promise(function(_, reject){ setTimeout(function(){ reject(new Error('timeout')); }, ms); })
+  ]);
+}
+
+function fetchNews(manual){
+  if(newsFetching) return;
+  newsFetching = true;
+  var btn = document.getElementById('newsRefreshBtn');
+  if(btn) btn.textContent = '刷新中...';
+  if(manual || LIVE_NEWS.length === 0){
+    document.getElementById('newsList').innerHTML = '<div class="news-loading"><span class="spinner"></span>正在获取实时资讯...</div>';
+  }
+
+  var sources = [
+    { cat: 'astock', url: 'https://feed.mix.sina.com.cn/api/roll/get?pageid=153&lid=1686&num=25&page=1' },
+    { cat: 'gold', url: 'https://feed.mix.sina.com.cn/api/roll/get?pageid=153&lid=2516&num=25&page=1' }
+  ];
+  var proxies = [
+    function(u){ return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u); },
+    function(u){ return 'https://corsproxy.io/?' + encodeURIComponent(u); },
+    function(u){ return 'https://api.codetabs.com/v1/proxy/?quest=' + encodeURIComponent(u); }
+  ];
+
+  var results = [];
+  var done = 0;
+
+  sources.forEach(function(src){
+    function attempt(pIdx){
+      if(pIdx >= proxies.length){
+        done++;
+        if(done === sources.length) finishFetch(results);
+        return;
+      }
+      fetchWithTimeout(proxies[pIdx](src.url), 12000)
+        .then(function(r){ return r.json(); })
+        .then(function(data){
+          var items = (data && data.result && data.result.data) || [];
+          items.forEach(function(item){
+            var title = item.title || '';
+            if(!title) return;
+            var summary = (item.intro || '').replace(/<[^>]+>/g, '').trim();
+            var url = item.url || '';
+            var source = item.media_name || '新浪财经';
+            var ctime = String(item.ctime || '');
+            var ts = parseInt(ctime);
+            if(!isNaN(ts) && ts > 1000000000){
+              var d = new Date(ts * 1000);
+              ctime = (d.getMonth()+1) + '-' + d.getDate() + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+            }
+            var id = item.docid || (title + ctime);
+            results.push({
+              id: id, title: title, summary: summary, url: url,
+              source: source, ctime: ctime, cat: src.cat,
+              sentiment: analyzeSentiment(title, summary, src.cat)
+            });
+          });
+          done++;
+          if(done === sources.length) finishFetch(results);
+        })
+        .catch(function(e){
+          console.log('News proxy ' + pIdx + ' failed:', e);
+          attempt(pIdx + 1);
+        });
+    }
+    attempt(0);
+  });
+}
+
+function finishFetch(results){
+  newsFetching = false;
+  LIVE_NEWS = results.sort(function(a,b){
+    return (b.ctime || '').localeCompare(a.ctime || '');
+  });
+  var now = new Date();
+  var ts = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+  DB.market.newsLastUpdate = ts;
+  saveDb();
+  var updEl = document.getElementById('newsUpdateTime');
+  if(updEl) updEl.textContent = '最后更新 ' + ts;
+  var btn = document.getElementById('newsRefreshBtn');
+  if(btn) btn.textContent = '刷新资讯';
+  if(LIVE_NEWS.length === 0){
+    document.getElementById('newsList').innerHTML = '<div class="news-loading">暂无法获取实时资讯，请稍后点击「刷新资讯」重试</div>';
+    return;
+  }
+  renderNews();
+}
+
+function toggleAutoRefresh(){
+  var cb = document.getElementById('newsAutoRefresh');
+  if(cb.checked){
+    newsRefreshTimer = setInterval(function(){ fetchNews(false); }, 300000);
+    toast('已开启自动刷新（每5分钟）');
+  } else {
+    if(newsRefreshTimer){ clearInterval(newsRefreshTimer); newsRefreshTimer = null; }
+    toast('已关闭自动刷新');
+  }
+}
+
+function toggleManualAdd(){
+  document.getElementById('manualAddForm').classList.toggle('show');
+}
+
+function addNews(){
+  var cat = document.getElementById('newsCat').value;
+  var title = document.getElementById('newsTitle').value.trim();
+  var summary = document.getElementById('newsSummary').value.trim();
+  var tag = document.getElementById('newsTag').value;
+  if(!title){ toast('请输入标题'); return; }
+  DB.market.news.unshift({ cat: cat, title: title, summary: summary, tag: tag, time: today(), date: today(), fav: false });
+  saveDb();
+  document.getElementById('newsTitle').value = '';
+  document.getElementById('newsSummary').value = '';
+  document.getElementById('manualAddForm').classList.remove('show');
+  renderNews();
+  toast('资讯已补充');
+}
+function deleteNews(i){ DB.market.news.splice(i,1); saveDb(); renderNews(); }
+function toggleNewsFav(i){ DB.market.news[i].fav = !DB.market.news[i].fav; saveDb(); renderNews(); }
+
+function toggleLiveFav(idx){
+  var n = DISPLAYED_NEWS[idx];
+  if(!n || !n.isLive) return;
+  var idIdx = DB.market.favNewsIds.indexOf(n.id);
+  if(idIdx >= 0) DB.market.favNewsIds.splice(idIdx, 1);
+  else DB.market.favNewsIds.push(n.id);
+  saveDb();
+  renderNews();
+}
+
+function toggleNewsExpand(el){
+  var card = el.closest('.news-card');
+  if(!card) return;
+  card.classList.toggle('expanded');
+  var btn = card.querySelector('.expand-btn');
+  if(btn) btn.textContent = card.classList.contains('expanded') ? '收起' : '展开详情';
+}
+
+function renderNews(){
+  var filterCat = document.getElementById('newsFilterCat').value;
+  var filterTag = document.getElementById('newsFilterTag').value;
+  var favOnly = document.getElementById('newsFavOnly').checked;
+
+  var all = [];
+  LIVE_NEWS.forEach(function(n){
+    all.push({
+      id: n.id, cat: n.cat, title: n.title, summary: n.summary,
+      url: n.url, source: n.source, time: n.ctime,
+      tag: n.sentiment, fav: DB.market.favNewsIds.indexOf(n.id) >= 0,
+      isLive: true
+    });
+  });
+  DB.market.news.forEach(function(n, i){
+    all.push({
+      id: 'manual_' + i, cat: n.cat, title: n.title, summary: n.summary,
+      url: '', source: '手动补充', time: n.time || n.date,
+      tag: n.tag, fav: n.fav, isLive: false, manualIdx: i
+    });
+  });
+
+  DISPLAYED_NEWS = all.filter(function(n){
+    if(filterCat && n.cat !== filterCat) return false;
+    if(filterTag && n.tag !== filterTag) return false;
+    if(favOnly && !n.fav) return false;
+    return true;
+  });
+
+  var pos = all.filter(function(n){ return n.tag === 'positive'; }).length;
+  var neg = all.filter(function(n){ return n.tag === 'negative'; }).length;
+  var neu = all.filter(function(n){ return n.tag === 'neutral'; }).length;
+  var bar = document.getElementById('newsSentimentBar');
+  if(all.length > 0){
+    bar.style.display = 'flex';
+    bar.innerHTML =
+      '<span class="text-muted">今日情绪概览</span>' +
+      '<span class="sent-item"><span class="sent-dot positive"></span> 利好 ' + pos + '</span>' +
+      '<span class="sent-item"><span class="sent-dot negative"></span> 利空 ' + neg + '</span>' +
+      '<span class="sent-item"><span class="sent-dot neutral"></span> 中性 ' + neu + '</span>' +
+      '<span class="text-muted" style="margin-left:auto;">共 ' + all.length + ' 条</span>';
+  } else {
+    bar.style.display = 'none';
+  }
+
+  var box = document.getElementById('newsList');
+  if(DISPLAYED_NEWS.length === 0){
+    box.innerHTML = '<div class="news-loading">暂无符合条件的资讯</div>';
+    return;
+  }
+
+  var catLabel = { astock: 'A股/基金', gold: '黄金' };
+  var tagClass = { positive: 'chip-red', negative: 'chip-green', neutral: 'chip-gray' };
+  var tagLabel = { positive: '利好', negative: '利空', neutral: '中性' };
+
+  box.innerHTML = DISPLAYED_NEWS.map(function(n, idx){
+    var hasLong = n.summary && n.summary.length > 80;
+    var html = '<div class="news-card clickable' + (n.fav ? ' fav' : '') + '">';
+    html += '<div class="news-meta">';
+    html += '<span class="chip ' + tagClass[n.tag] + '">' + tagLabel[n.tag] + '</span>';
+    html += '<span class="chip chip-blue">' + catLabel[n.cat] + '</span>';
+    if(n.source) html += '<span class="news-source">' + escapeHtml(n.source) + '</span>';
+    html += '<span class="news-time">' + escapeHtml(n.time || '') + '</span>';
+    html += '<div style="margin-left:auto;display:flex;gap:4px;">';
+    if(n.isLive){
+      html += '<button class="btn-icon ' + (n.fav ? 'fav-on' : '') + '" onclick="event.stopPropagation();toggleLiveFav(' + idx + ')">&#9733;</button>';
+    } else {
+      html += '<button class="btn-icon ' + (n.fav ? 'fav-on' : '') + '" onclick="event.stopPropagation();toggleNewsFav(' + n.manualIdx + ')">&#9733;</button>';
+      html += '<button class="btn-icon" onclick="event.stopPropagation();deleteNews(' + n.manualIdx + ')">&#10005;</button>';
+    }
+    html += '</div></div>';
+    html += '<div class="news-headline" onclick="toggleNewsExpand(this)">' + escapeHtml(n.title) + '</div>';
+    if(n.summary){
+      var shortSum = hasLong ? n.summary.slice(0, 80) + '...' : n.summary;
+      html += '<div class="news-summary">' + escapeHtml(shortSum) + '</div>';
+      if(hasLong){
+        html += '<div class="news-detail">' + escapeHtml(n.summary) + '</div>';
+      }
+    }
+    html += '<div class="news-actions">';
+    if(n.url){
+      html += '<a href="' + n.url + '" target="_blank" onclick="event.stopPropagation()">查看原文 →</a>';
+    }
+    if(hasLong){
+      html += '<button class="expand-btn" onclick="event.stopPropagation();toggleNewsExpand(this)">展开详情</button>';
+    }
+    html += '</div>';
+    html += '</div>';
+    return html;
+  }).join('');
+}
+
+function addTracking(){
+  var type = document.getElementById('trackType').value;
+  var name = document.getElementById('trackName').value.trim();
+  var code = document.getElementById('trackCode').value.trim();
+  var note = document.getElementById('trackNote').value.trim();
+  if(!name){ toast('请输入名称'); return; }
+  DB.market.tracking.push({ type: type, name: name, code: code, note: note, date: today() });
+  saveDb();
+  document.getElementById('trackName').value = '';
+  document.getElementById('trackCode').value = '';
+  document.getElementById('trackNote').value = '';
+  renderTracking();
+  toast('已添加跟踪');
+}
+function deleteTracking(i){ DB.market.tracking.splice(i,1); saveDb(); renderTracking(); }
+
+function renderTracking(){
+  var box = document.getElementById('trackList');
+  if(DB.market.tracking.length === 0){ box.innerHTML = '<div class="empty-hint">暂无跟踪标的</div>'; return; }
+  var typeLabel = { fund: '基金', gold: '黄金', stock: '股票', other: '其他' };
+  var typeClass = { fund: 'chip-blue', gold: 'chip-amber', stock: 'chip-green', other: 'chip-gray' };
+  box.innerHTML = DB.market.tracking.map(function(t, i){
+    return '<div class="record-item">' +
+      '<div class="record-main">' +
+        '<div class="record-text">' +
+          '<span class="chip ' + typeClass[t.type] + '">' + typeLabel[t.type] + '</span> ' +
+          escapeHtml(t.name) + (t.code ? ' <span class="text-muted text-sm">(' + escapeHtml(t.code) + ')</span>' : '') +
+        '</div>' +
+        (t.note ? '<div class="record-date">' + escapeHtml(t.note) + '</div>' : '') +
+      '</div>' +
+      '<div class="record-actions"><button class="btn-icon" onclick="deleteTracking(' + i + ')">&#10005;</button></div>' +
+    '</div>';
+  }).join('');
+}
+
+function selectMood(el){
+  document.querySelectorAll('#sentMoodGroup .radio-item').forEach(function(r){ r.classList.remove('checked'); });
+  el.classList.add('checked');
+  selectedMood = el.dataset.val;
+}
+function loadSentiment(){
+  var date = document.getElementById('sentDate').value || today();
+  var rec = DB.market.sentiment[date];
+  selectedMood = (rec && rec.mood) || '';
+  document.querySelectorAll('#sentMoodGroup .radio-item').forEach(function(r){
+    r.classList.toggle('checked', rec && rec.mood === r.dataset.val);
+  });
+  document.getElementById('sentDrivers').value = (rec && rec.drivers) || '';
+  document.getElementById('sentRisks').value = (rec && rec.risks) || '';
+}
+function saveSentiment(){
+  var date = document.getElementById('sentDate').value || today();
+  DB.market.sentiment[date] = {
+    mood: selectedMood,
+    drivers: document.getElementById('sentDrivers').value,
+    risks: document.getElementById('sentRisks').value
+  };
+  saveDb();
+  toast('复盘已保存');
+}
+
+function addNote(){
+  var date = document.getElementById('noteDate').value || today();
+  var type = document.getElementById('noteType').value;
+  var content = document.getElementById('noteContent').value.trim();
+  if(!content){ toast('请输入笔记内容'); return; }
+  DB.market.notes.unshift({ date: date, type: type, content: content });
+  saveDb();
+  document.getElementById('noteContent').value = '';
+  renderNotes();
+  toast('笔记已保存');
+}
+function deleteNote(i){ DB.market.notes.splice(i,1); saveDb(); renderNotes(); }
+
+function renderNotes(){
+  var box = document.getElementById('noteList');
+  if(DB.market.notes.length === 0){ box.innerHTML = '<div class="empty-hint">暂无笔记</div>'; return; }
+  var typeLabel = { thought: '资讯感悟', plan: '计划记录', review: '结果回溯' };
+  var typeClass = { thought: 'chip-blue', plan: 'chip-green', review: 'chip-amber' };
+  box.innerHTML = DB.market.notes.map(function(n, i){
+    return '<div class="record-item">' +
+      '<div class="record-main">' +
+        '<div class="record-date">' + n.date + ' <span class="chip ' + typeClass[n.type] + '">' + typeLabel[n.type] + '</span></div>' +
+        '<div class="record-text">' + escapeHtml(n.content) + '</div>' +
+      '</div>' +
+      '<div class="record-actions"><button class="btn-icon" onclick="deleteNote(' + i + ')">&#10005;</button></div>' +
+    '</div>';
+  }).join('');
+}
+
+function renderMarket(){
+  renderTracking();
+  loadSentiment();
+  renderNotes();
+  var updEl = document.getElementById('newsUpdateTime');
+  if(updEl){
+    updEl.textContent = DB.market.newsLastUpdate ? ('最后更新 ' + DB.market.newsLastUpdate) : '未加载';
+  }
+  if(LIVE_NEWS.length > 0){
+    renderNews();
+  } else {
+    fetchNews(false);
+  }
+}
+
+/* ============================================================
+   Tab 5: Python
+   ============================================================ */
+var PY_STAGES = [
+  { key: 'basics', label: '基础语法' },
+  { key: 'functions', label: '函数与模块' },
+  { key: 'files', label: '文件处理' },
+  { key: 'data', label: '数据分析' },
+  { key: 'projects', label: '实战项目' }
+];
+
+function renderStepper(){
+  var html = '';
+  PY_STAGES.forEach(function(s, i){
+    var done = DB.python.progress[s.key];
+    var cls = done ? 'done' : '';
+    html += '<div class="step-item ' + cls + '" onclick="toggleProgress(\'' + s.key + '\')">';
+    html += '<div class="step-circle">' + (done ? '&#10003;' : (i+1)) + '</div>';
+    html += '<div class="step-label">' + s.label + '</div>';
+    html += '</div>';
+    if(i < PY_STAGES.length - 1){
+      html += '<div class="step-connector ' + (done ? 'done' : '') + '"></div>';
+    }
+  });
+  document.getElementById('stepper').innerHTML = html;
+}
+function toggleProgress(key){
+  DB.python.progress[key] = !DB.python.progress[key];
+  saveDb();
+  renderStepper();
+}
+function savePyGoal(){
+  DB.python.goal = document.getElementById('pyGoal').value;
+  saveDb();
+}
+
+function loadPyDaily(){
+  var date = document.getElementById('pyDate').value || today();
+  var rec = DB.python.dailyRecords[date];
+  if(rec){
+    document.getElementById('pyPoints').value = rec.points || '';
+    document.getElementById('pyNotes').value = rec.notes || '';
+    document.getElementById('pyCode').value = rec.code || '';
+    document.getElementById('pyOutput').textContent = rec.output || '点击「运行代码」查看输出结果';
+    document.querySelectorAll('#pyStatusGroup .radio-item').forEach(function(r){
+      r.classList.toggle('checked', rec.status === r.dataset.val);
+    });
+  } else {
+    document.getElementById('pyPoints').value = '';
+    document.getElementById('pyNotes').value = '';
+    document.getElementById('pyCode').value = "print('Hello, Aurora!')";
+    document.getElementById('pyOutput').textContent = '点击「运行代码」查看输出结果';
+    document.querySelectorAll('#pyStatusGroup .radio-item').forEach(function(r){ r.classList.remove('checked'); });
+  }
+}
+function setPyStatus(el){
+  document.querySelectorAll('#pyStatusGroup .radio-item').forEach(function(r){ r.classList.remove('checked'); });
+  el.classList.add('checked');
+}
+
+async function runPython(){
+  var code = document.getElementById('pyCode').value;
+  var outEl = document.getElementById('pyOutput');
+  var hintEl = document.getElementById('pyRunHint');
+  if(!code.trim()){ outEl.innerHTML = '<span class="err">请输入代码</span>'; return; }
+  if(typeof loadPyodide === 'undefined'){
+    outEl.innerHTML = '<span class="err">Python 运行环境加载失败，请检查网络连接后刷新页面重试。</span>';
+    return;
+  }
+  if(!pyodide){
+    if(pyLoading){
+      outEl.innerHTML = '<span class="info">环境加载中，请稍候...</span>';
+      return;
+    }
+    pyLoading = true;
+    hintEl.textContent = '首次加载约需10-20秒...';
+    outEl.innerHTML = '<span class="info">正在加载 Python 运行环境...</span>';
+    try {
+      pyodide = await loadPyodide();
+      pyLoading = false;
+      hintEl.textContent = '';
+    } catch(e) {
+      pyLoading = false;
+      hintEl.textContent = '';
+      outEl.innerHTML = '<span class="err">环境加载失败: ' + escapeHtml(e.message) + '</span>';
+      return;
+    }
+  }
+  outEl.innerHTML = '<span class="info">运行中...</span>';
+  try {
+    pyodide.runPython('import sys, io\n_stdout = io.StringIO()\n_stderr = io.StringIO()\n_old_out = sys.stdout\n_old_err = sys.stderr\nsys.stdout = _stdout\nsys.stderr = _stderr\n');
+    pyodide.runPython(code);
+    var stdout = pyodide.runPython('_stdout.getvalue()');
+    var stderr = pyodide.runPython('_stderr.getvalue()');
+    pyodide.runPython('sys.stdout = _old_out\nsys.stderr = _old_err\n');
+    var result = '';
+    if(stdout) result += stdout;
+    if(stderr) result += (stdout ? '\n' : '') + stderr;
+    outEl.innerHTML = escapeHtml(result || '(无输出)');
+    var date = document.getElementById('pyDate').value || today();
+    if(!DB.python.dailyRecords[date]) DB.python.dailyRecords[date] = {};
+    DB.python.dailyRecords[date].output = result || '(无输出)';
+    saveDb();
+  } catch(e) {
+    outEl.innerHTML = '<span class="err">' + escapeHtml(e.message) + '</span>';
+  }
+}
+
+function savePyDaily(){
+  var date = document.getElementById('pyDate').value || today();
+  var status = '';
+  document.querySelectorAll('#pyStatusGroup .radio-item').forEach(function(r){
+    if(r.classList.contains('checked')) status = r.dataset.val;
+  });
+  DB.python.dailyRecords[date] = {
+    points: document.getElementById('pyPoints').value,
+    notes: document.getElementById('pyNotes').value,
+    code: document.getElementById('pyCode').value,
+    output: document.getElementById('pyOutput').textContent,
+    status: status
+  };
+  saveDb();
+  toast('学习记录已保存');
+}
+
+function addError(){
+  var date = document.getElementById('errDate').value || today();
+  var msg = document.getElementById('errMsg').value.trim();
+  var cause = document.getElementById('errCause').value.trim();
+  var sol = document.getElementById('errSolution').value.trim();
+  if(!msg){ toast('请输入报错信息'); return; }
+  DB.python.errors.unshift({ date: date, msg: msg, cause: cause, sol: sol });
+  saveDb();
+  document.getElementById('errMsg').value = '';
+  document.getElementById('errCause').value = '';
+  document.getElementById('errSolution').value = '';
+  renderErrors();
+  toast('已归档');
+}
+function deleteError(i){ DB.python.errors.splice(i,1); saveDb(); renderErrors(); }
+
+function renderErrors(){
+  var box = document.getElementById('errList');
+  if(DB.python.errors.length === 0){ box.innerHTML = '<div class="empty-hint">暂无错题记录</div>'; return; }
+  box.innerHTML = DB.python.errors.map(function(e, i){
+    return '<div class="record-item">' +
+      '<div class="record-main">' +
+        '<div class="record-date">' + e.date + '</div>' +
+        '<div class="record-text" style="font-family:var(--mono);color:var(--red);">' + escapeHtml(e.msg) + '</div>' +
+        (e.cause ? '<div class="record-date" style="margin-top:4px;">原因：' + escapeHtml(e.cause) + '</div>' : '') +
+        (e.sol ? '<div class="record-date">解决：' + escapeHtml(e.sol) + '</div>' : '') +
+      '</div>' +
+      '<div class="record-actions"><button class="btn-icon" onclick="deleteError(' + i + ')">&#10005;</button></div>' +
+    '</div>';
+  }).join('');
+}
+
+function addProject(){
+  var name = document.getElementById('projName').value.trim();
+  var progress = document.getElementById('projProgress').value;
+  var approach = document.getElementById('projApproach').value.trim();
+  if(!name){ toast('请输入项目名称'); return; }
+  DB.python.projects.unshift({ name: name, progress: progress, approach: approach, date: today() });
+  saveDb();
+  document.getElementById('projName').value = '';
+  document.getElementById('projApproach').value = '';
+  renderProjects();
+  toast('项目已添加');
+}
+function deleteProject(i){ DB.python.projects.splice(i,1); saveDb(); renderProjects(); }
+
+function renderProjects(){
+  var box = document.getElementById('projList');
+  if(DB.python.projects.length === 0){ box.innerHTML = '<div class="empty-hint">暂无项目</div>'; return; }
+  var pLabel = { planning: '构思中', ongoing: '进行中', done: '已完成' };
+  var pClass = { planning: 'chip-gray', ongoing: 'chip-blue', done: 'chip-green' };
+  box.innerHTML = DB.python.projects.map(function(p, i){
+    return '<div class="record-item">' +
+      '<div class="record-main">' +
+        '<div class="record-text">' + escapeHtml(p.name) + ' <span class="chip ' + pClass[p.progress] + '">' + pLabel[p.progress] + '</span></div>' +
+        (p.approach ? '<div class="record-date" style="margin-top:4px;">' + escapeHtml(p.approach) + '</div>' : '') +
+      '</div>' +
+      '<div class="record-actions"><button class="btn-icon" onclick="deleteProject(' + i + ')">&#10005;</button></div>' +
+    '</div>';
+  }).join('');
+}
+
+function renderPython(){
+  renderStepper();
+  document.getElementById('pyGoal').value = DB.python.goal || '';
+  loadPyDaily();
+  renderErrors();
+  renderProjects();
+}
+
+/* ============================================================
+   Tab 6: Recipes
+   ============================================================ */
+var CATEGORY_LABEL = { bread: '面包烘焙', dish: '家常菜', dessert: '甜品' };
+var DIFFICULTY_LABEL = { easy: '简单', medium: '中等', hard: '复杂' };
+
+function addIngRow(){
+  var box = document.getElementById('ingList');
+  var row = document.createElement('div');
+  row.className = 'ing-row';
+  row.innerHTML = '<input type="text" placeholder="食材名称" class="ing-input-name">' +
+    '<input type="text" placeholder="用量（如 300g）" class="ing-input-amount" style="flex:0 0 140px;">' +
+    '<button class="btn-icon" onclick="this.parentElement.remove()">&#10005;</button>';
+  box.appendChild(row);
+}
+function addStepRow(){
+  var box = document.getElementById('stepList');
+  var rows = box.querySelectorAll('.step-row');
+  var row = document.createElement('div');
+  row.className = 'step-row';
+  row.innerHTML = '<div class="step-idx">' + (rows.length + 1) + '</div>' +
+    '<textarea placeholder="制作步骤、温度、时长等..." rows="1"></textarea>' +
+    '<button class="btn-icon" onclick="this.parentElement.remove();renumberSteps()">&#10005;</button>';
+  box.appendChild(row);
+}
+function renumberSteps(){
+  document.querySelectorAll('#stepList .step-row').forEach(function(r, i){
+    r.querySelector('.step-idx').textContent = i + 1;
+  });
+}
+
+function addRecipe(){
+  var name = document.getElementById('rName').value.trim();
+  if(!name){ toast('请输入食谱名称'); return; }
+  var category = document.getElementById('rCategory').value;
+  var difficulty = document.getElementById('rDifficulty').value;
+  var duration = document.getElementById('rDuration').value.trim();
+  var notes = document.getElementById('rNotes').value.trim();
+  var ingredients = [];
+  document.querySelectorAll('#ingList .ing-row').forEach(function(r){
+    var n = r.querySelector('.ing-input-name').value.trim();
+    var a = r.querySelector('.ing-input-amount').value.trim();
+    if(n) ingredients.push({ name: n, amount: a });
+  });
+  var steps = [];
+  document.querySelectorAll('#stepList .step-row textarea').forEach(function(t){
+    var v = t.value.trim();
+    if(v) steps.push(v);
+  });
+  var photoInput = document.getElementById('rPhoto');
+  if(photoInput.files[0]){
+    compressImage(photoInput.files[0], 500, function(dataUrl){
+      DB.recipes.items.unshift({ name: name, category: category, difficulty: difficulty, duration: duration, photo: dataUrl, ingredients: ingredients, steps: steps, notes: notes, fav: false, date: today() });
+      saveDb();
+      clearRecipeForm();
+      renderRecipes();
+      toast('配方已保存');
+    });
+  } else {
+    DB.recipes.items.unshift({ name: name, category: category, difficulty: difficulty, duration: duration, photo: '', ingredients: ingredients, steps: steps, notes: notes, fav: false, date: today() });
+    saveDb();
+    clearRecipeForm();
+    renderRecipes();
+    toast('配方已保存');
+  }
+}
+function clearRecipeForm(){
+  document.getElementById('rName').value = '';
+  document.getElementById('rDuration').value = '';
+  document.getElementById('rNotes').value = '';
+  document.getElementById('rPhoto').value = '';
+  document.getElementById('ingList').innerHTML = '';
+  document.getElementById('stepList').innerHTML = '';
+  addIngRow();
+  addStepRow();
+}
+function deleteRecipe(i){ DB.recipes.items.splice(i,1); saveDb(); renderRecipes(); }
+function toggleRecipeFav(i){ DB.recipes.items[i].fav = !DB.recipes.items[i].fav; saveDb(); renderRecipes(); }
+
+function renderRecipes(){
+  var filter = document.getElementById('recipeFilter').value;
+  var favOnly = document.getElementById('recipeFavOnly').checked;
+  var list = DB.recipes.items.filter(function(r){
+    if(filter && r.category !== filter) return false;
+    if(favOnly && !r.fav) return false;
+    return true;
+  });
+  var box = document.getElementById('recipeArchive');
+  if(list.length === 0){ box.innerHTML = '<div class="empty-hint">暂无配方，开始记录第一份吧</div>'; return; }
+  box.innerHTML = list.map(function(r){
+    var idx = DB.recipes.items.indexOf(r);
+    var html = '<div class="recipe-item' + (r.fav ? ' fav' : '') + '">';
+    html += '<div class="recipe-item-head">';
+    html += '<div><div class="recipe-item-name">' + escapeHtml(r.name) + '</div>';
+    html += '<div class="recipe-item-meta">';
+    html += '<span class="chip chip-gray">' + CATEGORY_LABEL[r.category] + '</span>';
+    html += '<span class="chip chip-blue">' + DIFFICULTY_LABEL[r.difficulty] + '</span>';
+    if(r.duration) html += '<span>' + escapeHtml(r.duration) + '</span>';
+    html += '</div></div>';
+    html += '<div class="record-actions">';
+    html += '<button class="btn-icon ' + (r.fav ? 'fav-on' : '') + '" onclick="toggleRecipeFav(' + idx + ')">&#9733;</button>';
+    html += '<button class="btn-icon" onclick="deleteRecipe(' + idx + ')">&#10005;</button>';
+    html += '</div></div>';
+    if(r.photo) html += '<img class="recipe-item-photo" src="' + r.photo + '">';
+    if(r.ingredients.length > 0){
+      html += '<div style="margin-top:10px;font-size:12px;color:var(--text-2);">原料：</div>';
+      html += '<div style="font-size:13px;margin-top:2px;">' + r.ingredients.map(function(ing){ return escapeHtml(ing.name) + (ing.amount ? ' <span class="text-muted">' + escapeHtml(ing.amount) + '</span>' : ''); }).join('、') + '</div>';
+    }
+    if(r.steps.length > 0){
+      html += '<div style="margin-top:10px;font-size:12px;color:var(--text-2);">步骤：</div>';
+      html += '<ol style="font-size:13px;margin-top:2px;padding-left:20px;line-height:1.8;">' + r.steps.map(function(s){ return '<li>' + escapeHtml(s) + '</li>'; }).join('') + '</ol>';
+    }
+    if(r.notes){
+      html += '<div style="margin-top:10px;font-size:12px;color:var(--text-2);">心得：</div>';
+      html += '<div style="font-size:13px;margin-top:2px;color:var(--text);">' + escapeHtml(r.notes) + '</div>';
+    }
+    html += '</div>';
+    return html;
+  }).join('');
+}
+
+/* ============================================================
+   Tab 7: Reading
+   ============================================================ */
+var TYPE_LABEL = { biography: '名人传记', business: '商业书籍', psychology: '心理学', other: '其他' };
+var STATUS_LABEL = { reading: '在读', paused: '暂停', finished: '已读完' };
+var STATUS_CLASS = { reading: 'chip-green', paused: 'chip-amber', finished: 'chip-gray' };
+
+function setRating(el){
+  var val = parseInt(el.dataset.val);
+  selectedRating = val;
+  document.querySelectorAll('#bRating .star-input').forEach(function(s){
+    s.classList.toggle('on', parseInt(s.dataset.val) <= val);
+  });
+}
+
+function addBook(){
+  var title = document.getElementById('bTitle').value.trim();
+  var author = document.getElementById('bAuthor').value.trim();
+  if(!title){ toast('请输入书名'); return; }
+  var type = document.getElementById('bType').value;
+  var startDate = document.getElementById('bStartDate').value;
+  var finishDate = document.getElementById('bFinishDate').value;
+  var status = document.getElementById('bStatus').value;
+  var quotes = document.getElementById('bQuotes').value.trim();
+  var characters = document.getElementById('bCharacters').value.trim();
+  var thoughts = document.getElementById('bThoughts').value.trim();
+  var questions = document.getElementById('bQuestions').value.trim();
+  DB.reading.books.unshift({
+    title: title, author: author, type: type,
+    startDate: startDate, finishDate: finishDate, status: status,
+    rating: selectedRating,
+    quotes: quotes, characters: characters, thoughts: thoughts, questions: questions,
+    fav: false, date: today()
+  });
+  saveDb();
+  clearBookForm();
+  renderBooks();
+  toast('读书笔记已保存');
+}
+function clearBookForm(){
+  document.getElementById('bTitle').value = '';
+  document.getElementById('bAuthor').value = '';
+  document.getElementById('bStartDate').value = '';
+  document.getElementById('bFinishDate').value = '';
+  document.getElementById('bQuotes').value = '';
+  document.getElementById('bCharacters').value = '';
+  document.getElementById('bThoughts').value = '';
+  document.getElementById('bQuestions').value = '';
+  selectedRating = 0;
+  document.querySelectorAll('#bRating .star-input').forEach(function(s){ s.classList.remove('on'); });
+}
+function deleteBook(i){ DB.reading.books.splice(i,1); saveDb(); renderBooks(); }
+function toggleBookFav(i){ DB.reading.books[i].fav = !DB.reading.books[i].fav; saveDb(); renderBooks(); }
+
+function renderBooks(){
+  var filter = document.getElementById('bookFilter').value;
+  var favOnly = document.getElementById('bookFavOnly').checked;
+  var list = DB.reading.books.filter(function(b){
+    if(filter && b.type !== filter) return false;
+    if(favOnly && !b.fav) return false;
+    return true;
+  });
+  var box = document.getElementById('bookArchive');
+  if(list.length === 0){ box.innerHTML = '<div class="empty-hint">暂无读书笔记，开始记录第一本吧</div>'; return; }
+  box.innerHTML = list.map(function(b){
+    var idx = DB.reading.books.indexOf(b);
+    var stars = '';
+    for(var i = 1; i <= 5; i++){
+      stars += i <= b.rating ? '&#9733;' : '<span class="off">&#9733;</span>';
+    }
+    var html = '<div class="book-item' + (b.fav ? ' fav' : '') + '">';
+    html += '<div class="book-item-head">';
+    html += '<div>';
+    html += '<div class="book-item-title">' + escapeHtml(b.title) + '</div>';
+    html += '<div class="book-item-meta">';
+    if(b.author) html += escapeHtml(b.author) + ' · ';
+    html += '<span class="chip chip-gray">' + TYPE_LABEL[b.type] + '</span> ';
+    html += '<span class="chip ' + STATUS_CLASS[b.status] + '">' + STATUS_LABEL[b.status] + '</span>';
+    if(b.rating > 0) html += ' <span class="stars">' + stars + '</span>';
+    html += '</div></div>';
+    html += '<div class="record-actions">';
+    html += '<button class="btn-icon ' + (b.fav ? 'fav-on' : '') + '" onclick="toggleBookFav(' + idx + ')">&#9733;</button>';
+    html += '<button class="btn-icon" onclick="deleteBook(' + idx + ')">&#10005;</button>';
+    html += '</div></div>';
+    var hasDetail = b.quotes || b.characters || b.thoughts || b.questions;
+    if(hasDetail){
+      html += '<button class="expand-btn" onclick="this.nextElementSibling.classList.toggle(\'open\')">展开/收起详情</button>';
+      html += '<div class="book-detail">';
+      if(b.quotes){
+        html += '<div class="detail-section"><div class="detail-label">金句摘录</div><div style="font-size:13px;line-height:1.7;">' + escapeHtml(b.quotes).replace(/\n/g, '<br>') + '</div></div>';
+      }
+      if(b.characters){
+        html += '<div class="detail-section"><div class="detail-label">人物记录</div><div style="font-size:13px;line-height:1.7;">' + escapeHtml(b.characters).replace(/\n/g, '<br>') + '</div></div>';
+      }
+      if(b.thoughts){
+        html += '<div class="detail-section"><div class="detail-label">个人思考</div><div style="font-size:13px;line-height:1.7;">' + escapeHtml(b.thoughts).replace(/\n/g, '<br>') + '</div></div>';
+      }
+      if(b.questions){
+        html += '<div class="detail-section"><div class="detail-label">疑问留存</div><div style="font-size:13px;line-height:1.7;">' + escapeHtml(b.questions).replace(/\n/g, '<br>') + '</div></div>';
+      }
+      html += '</div>';
+    }
+    html += '</div>';
+    return html;
+  }).join('');
+}
+
+/* ============================================================
+   Init
+   ============================================================ */
+function init(){
+  loadDb();
+  // Set default dates
+  var todayStr = today();
+  var dateIds = ['eeDate','fitDate','weightDate','noteDate','sentDate','pyDate','errDate','bStartDate','bFinishDate'];
+  dateIds.forEach(function(id){
+    var el = document.getElementById(id);
+    if(el && !el.value) el.value = todayStr;
+  });
+  // Footer date
+  var now = new Date();
+  var weekdays = ['日','一','二','三','四','五','六'];
+  document.getElementById('footerDate').textContent =
+    now.getFullYear() + '年' + (now.getMonth()+1) + '月' + now.getDate() + '日 周' + weekdays[now.getDay()];
+  // Init Tab1
+  renderEarlyEd();
+  // Init recipe form
+  addIngRow();
+  addStepRow();
+  // Start fasting timer
+  setInterval(updateFastingNow, 60000);
+}
+
+window.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
