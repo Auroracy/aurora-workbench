@@ -383,6 +383,79 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 }
 .edit-form .form-row{margin-bottom:0.6em;gap:0.5em;}
 
+/* ====== AI Meal Analysis ====== */
+.ai-settings{
+  background:var(--input-bg);
+  border:1px solid var(--line);
+  border-radius:var(--radius-sm);
+  margin-bottom:14px;
+  overflow:hidden;
+}
+.ai-settings-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0.7em 0.9em;cursor:pointer;user-select:none;
+  font-size:clamp(12px,1vw,13px);color:var(--text-2);font-weight:500;
+}
+.ai-settings-header:hover{color:var(--text);}
+.ai-settings-body{
+  padding:0 0.9em 0.8em;
+  display:none;
+}
+.ai-settings.open .ai-settings-body{display:block;}
+.ai-settings-body input{
+  font-size:clamp(12px,1vw,13px);
+}
+.ai-help{
+  font-size:clamp(11px,0.9vw,12px);
+  color:var(--text-3);
+  margin-top:0.4em;
+  line-height:1.5;
+}
+.ai-help a{color:var(--accent);text-decoration:underline;}
+.ai-badge{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:clamp(10px,0.8vw,11px);
+  color:var(--accent);
+  background:var(--accent-bg);
+  padding:2px 8px;
+  border-radius:10px;
+  font-weight:500;
+}
+.meal-photo-wrap{
+  position:relative;
+  display:inline-block;
+}
+.meal-photo-preview{
+  width:80px;height:80px;
+  border-radius:var(--radius-sm);
+  object-fit:cover;
+  border:1px solid var(--line);
+  vertical-align:middle;
+}
+.ai-loading{
+  display:none;
+  align-items:center;gap:8px;
+  font-size:clamp(12px,1vw,13px);
+  color:var(--accent);
+  margin-top:0.5em;
+}
+.ai-loading.show{display:flex;}
+.ai-spinner{
+  width:14px;height:14px;
+  border:2px solid var(--accent-bg);
+  border-top-color:var(--accent);
+  border-radius:50%;
+  animation:ai-spin 0.7s linear infinite;
+}
+@keyframes ai-spin{from{transform:rotate(0);}to{transform:rotate(360deg);}}
+.ai-result-hint{
+  font-size:clamp(11px,0.9vw,12px);
+  color:var(--text-3);
+  margin-top:0.3em;
+  display:none;
+}
+.ai-result-hint.show{display:block;}
+
 /* ====== Pull-to-Refresh ====== */
 .pull-refresh{
   position:fixed;top:0;left:0;right:0;
@@ -889,7 +962,25 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
   <div class="grid-2">
     <!-- Meal Record -->
     <div class="card">
-      <div class="card-title">餐食记录</div>
+      <div class="card-title">餐食记录 <span class="ai-badge">AI 识图</span></div>
+
+      <!-- AI Settings (collapsible) -->
+      <div class="ai-settings" id="aiSettings">
+        <div class="ai-settings-header" onclick="toggleAiSettings()">
+          <span>⚙ AI 分析设置</span>
+          <span id="aiSettingsStatus" style="font-size:11px;color:var(--text-3);">点击配置</span>
+        </div>
+        <div class="ai-settings-body">
+          <label class="form-label">Gemini API Key（免费）</label>
+          <input type="password" id="geminiKey" placeholder="粘贴你的 Gemini API Key" onblur="saveGeminiKey()">
+          <div class="ai-help">
+            1. 打开 <a href="https://aistudio.google.com/apikey" target="_blank">Google AI Studio</a> 免费获取密钥<br>
+            2. 粘贴到上方输入框，点击空白处即自动保存<br>
+            3. 之后上传餐食照片将自动识别食物并填写描述+卡路里
+          </div>
+        </div>
+      </div>
+
       <div class="form-row">
         <div class="form-group auto">
           <label class="form-label">日期</label>
@@ -907,7 +998,12 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
         </div>
         <div class="form-group">
           <label class="form-label">餐食照片</label>
-          <input type="file" id="mealPhoto" accept="image/*" style="font-size:12px;">
+          <input type="file" id="mealPhoto" accept="image/*" onchange="onMealPhotoSelected(this)" style="font-size:12px;">
+          <div class="ai-loading" id="aiLoading">
+            <div class="ai-spinner"></div>
+            <span id="aiLoadingText">AI 识别中...</span>
+          </div>
+          <div class="ai-result-hint" id="aiResultHint"></div>
         </div>
       </div>
       <button class="btn btn-primary btn-sm" onclick="addMeal()">添加餐食</button>
@@ -1984,6 +2080,170 @@ function formatRemaining(nowMin, targetMin){
   return h + '小时' + m + '分钟';
 }
 
+/* ============================================================
+   AI Meal Photo Analysis (Gemini Vision)
+   ============================================================ */
+function getGeminiKey(){
+  return localStorage.getItem('aurora_gemini_key') || '';
+}
+function saveGeminiKey(){
+  var key = document.getElementById('geminiKey').value.trim();
+  localStorage.setItem('aurora_gemini_key', key);
+  updateAiSettingsStatus();
+  toast(key ? 'AI 密钥已保存' : 'AI 密钥已清除');
+}
+function toggleAiSettings(){
+  document.getElementById('aiSettings').classList.toggle('open');
+}
+function updateAiSettingsStatus(){
+  var key = getGeminiKey();
+  var el = document.getElementById('aiSettingsStatus');
+  if(el) el.textContent = key ? '\u2713 已配置' : '点击配置';
+}
+
+var GEMINI_MODELS = ['gemini-2.0-flash','gemini-1.5-flash'];
+
+function onMealPhotoSelected(input){
+  if(!input.files || !input.files[0]) return;
+  var file = input.files[0];
+  var key = getGeminiKey();
+  if(!key){
+    toast('请先在 AI 设置中配置 Gemini 密钥');
+    document.getElementById('aiSettings').classList.add('open');
+    return;
+  }
+  var loading = document.getElementById('aiLoading');
+  var loadingText = document.getElementById('aiLoadingText');
+  var resultHint = document.getElementById('aiResultHint');
+  loading.classList.add('show');
+  loadingText.textContent = 'AI 识别中...';
+  resultHint.classList.remove('show');
+  resultHint.style.color = 'var(--text-3)';
+
+  /* Compress to 800px for analysis (bigger than 300px storage version) */
+  compressImage(file, 800, function(dataUrl){
+    if(!dataUrl){
+      loading.classList.remove('show');
+      toast('图片处理失败，请重试');
+      return;
+    }
+    var base64 = dataUrl.split(',')[1];
+    analyzeMealPhoto(base64, key, function(err, result){
+      loading.classList.remove('show');
+      if(err){
+        resultHint.textContent = '\u26a0 ' + err;
+        resultHint.style.color = '#c0392b';
+        resultHint.classList.add('show');
+        toast('AI 分析失败，请手动填写');
+        return;
+      }
+      if(result.food_name){
+        document.getElementById('mealFood').value = result.food_name;
+      }
+      if(result.calories){
+        document.getElementById('mealCal').value = result.calories;
+      }
+      resultHint.textContent = '\u2713 AI 已识别：' + (result.food_name || '') + ' \u00b7 ' + (result.calories || '?') + ' kcal';
+      resultHint.style.color = 'var(--accent)';
+      resultHint.classList.add('show');
+      toast('AI 识别完成，请确认后保存');
+    });
+  });
+}
+
+function analyzeMealPhoto(base64, key, cb){
+  var promptText = '请分析这张食物照片，识别食物种类并估算总卡路里。' +
+    '返回纯JSON（不要markdown标记、不要代码块）：' +
+    '{"food_name":"食物中文名称，多种用+号连接","calories":卡路里整数数值}' +
+    '\n要求：食物名称用中文；卡路里为整数kcal；' +
+    '如无法识别返回{"food_name":"","calories":0}';
+
+  var reqBody = JSON.stringify({
+    contents: [{ parts: [
+      { text: promptText },
+      { inline_data: { mime_type: 'image/jpeg', data: base64 } }
+    ]}],
+    generationConfig: { response_mime_type: 'application/json' }
+  });
+
+  var modelIdx = 0;
+  function tryModel(){
+    if(modelIdx >= GEMINI_MODELS.length){ cb('所有模型均不可用'); return; }
+    var model = GEMINI_MODELS[modelIdx];
+    var url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + key;
+
+    Promise.race([
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: reqBody
+      }),
+      new Promise(function(_, reject){ setTimeout(function(){ reject(new Error('请求超时（20s）')); }, 20000); })
+    ]).then(function(res){
+      if(res.status === 404){
+        modelIdx++;
+        tryModel();
+        return;
+      }
+      if(res.status === 400){
+        return res.json().then(function(d){
+          throw new Error('密钥无效或请求格式错误');
+        });
+      }
+      if(!res.ok){
+        throw new Error('API 返回 ' + res.status);
+      }
+      return res.json();
+    }).then(function(data){
+      if(!data || !data.candidates || !data.candidates[0]){
+        throw new Error('AI 未返回结果');
+      }
+      var text = data.candidates[0].content.parts[0].text;
+      var result;
+      try {
+        result = JSON.parse(text);
+      } catch(e){
+        var m = text.match(/\{[\s\S]*\}/);
+        if(m){ result = JSON.parse(m[0]); }
+        else { throw new Error('无法解析 AI 结果'); }
+      }
+      if(!result.food_name && !result.calories){
+        cb('AI 未能识别食物');
+        return;
+      }
+      cb(null, result);
+    }).catch(function(err){
+      cb(err.message || '网络错误');
+    });
+  }
+  tryModel();
+}
+
+/* Local food calorie DB for quick reference (fallback) */
+var FOOD_DB = {
+  '米饭一碗':200,'面条':280,'馒头':220,'包子':250,'饺子10个':300,
+  '燕麦粥':150,'白粥':90,'豆浆':80,'牛奶':150,'鸡蛋':70,'水煮蛋':70,
+  '煎蛋':90,'面包两片':200,'三明治':300,'红烧肉':450,'糖醋排骨':420,
+  '宫保鸡丁':350,'麻婆豆腐':280,'番茄炒蛋':200,'青椒肉丝':250,
+  '鱼香肉丝':300,'回锅肉':400,'清蒸鱼':200,'红烧鱼':280,'烤鸭':350,
+  '白切鸡':220,'牛排':400,'汉堡':550,'薯条':300,'披萨一块':280,
+  '沙拉':150,'寿司':200,'拉面':350,'咖喱饭':400,'炒饭':350,'炒面':350,
+  '凉皮':200,'肉夹馍':300,'煎饼':250,'油条':200,'烧饼':220,'米粉':250,
+  '馄饨':250,'小笼包5个':280,'锅贴':250,'蛋糕':350,'冰淇淋':200,
+  '苹果':80,'香蕉':90,'橙子':70,'西瓜':80,'葡萄':70,'酸奶':100,
+  '坚果一把':150,'紫薯':130,'玉米':110,'红薯':130,'土豆丝':150,
+  '西兰花':80,'炒青菜':100,'凉拌黄瓜':60,'番茄蛋汤':80,'紫菜蛋花汤':60
+};
+function searchFoodCal(name){
+  name = name.trim();
+  if(FOOD_DB[name]) return FOOD_DB[name];
+  var keys = Object.keys(FOOD_DB);
+  for(var i=0;i<keys.length;i++){
+    if(keys[i].indexOf(name) >= 0 || name.indexOf(keys[i]) >= 0) return FOOD_DB[keys[i]];
+  }
+  return 0;
+}
+
 function addMeal(){
   var date = document.getElementById('fitDate').value || today();
   var food = document.getElementById('mealFood').value.trim();
@@ -2134,6 +2394,9 @@ function renderDailySummary(){
 function renderFitness(){
   document.getElementById('fastStart').value = DB.fitness.fastStart;
   document.getElementById('fastEnd').value = DB.fitness.fastEnd;
+  var keyInput = document.getElementById('geminiKey');
+  if(keyInput) keyInput.value = getGeminiKey();
+  updateAiSettingsStatus();
   renderRecipe();
   renderFastingBar();
   renderMeals();
