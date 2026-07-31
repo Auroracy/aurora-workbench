@@ -178,6 +178,11 @@ body{
   .mobile-menu-btn:hover{background:var(--input-bg);}
   .mobile-brand{font-size:15px;font-weight:600;color:var(--text);}
   .content{padding:20px 16px 48px;}
+  /* Fixed-width form groups become full-width on mobile */
+  .form-row > [style*="flex:0 0"]{flex:1 1 100%!important;}
+  .form-row{flex-direction:column;align-items:stretch;gap:0;}
+  .form-row .form-group{margin-bottom:12px;}
+  .input,input,textarea,select{font-size:16px!important;} /* prevent iOS zoom */
 }
 @media(min-width:769px) and (max-width:1024px){
   .content{padding:32px 28px 52px;}
@@ -238,7 +243,7 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 .form-row{display:flex;gap:clamp(8px,1vw,12px);margin-bottom:12px;align-items:flex-end;flex-wrap:wrap;}
 .form-row > *{flex:1;min-width:0;}
 .form-row .auto{flex:0 0 auto;}
-.form-group{margin-bottom:12px;}
+.form-group{margin-bottom:clamp(10px,0.8vw,12px);}
 .form-label{font-size:clamp(11px,0.95vw,12px);color:var(--text-2);margin-bottom:6px;display:block;font-weight:500;}
 .form-label .hint{font-weight:400;color:var(--text-3);}
 
@@ -733,6 +738,17 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
           <span class="radio-item" data-val="1.5" onclick="eeSelectHours(this)">1.5 课时</span>
           <span class="radio-item" data-val="2" onclick="eeSelectHours(this)">2 课时</span>
         </div>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group" style="flex:2;">
+        <label class="form-label">课程 <span class="hint">— 按 Level 分组，选中后自动填入1.5课时</span></label>
+        <select id="eeCourse" onchange="eeSelectCourse(this.value)">
+          <option value="">— 请选择课程 —</option>
+        </select>
+      </div>
+      <div class="form-group" style="flex:0 0 auto;align-self:flex-end;">
+        <button class="btn btn-ghost" onclick="eeAddCustomCourse()">+ 自定义课程</button>
       </div>
     </div>
     <div class="form-group">
@@ -1434,7 +1450,7 @@ function compressImage(file, maxW, cb){
 
 /* ====== Default DB ====== */
 var defaultDb = {
-  earlyEd: { totalHours: 48, records: [] },
+  earlyEd: { totalHours: 48, records: [], customCourses: [] },
   fitness: {
     fastStart: '08:00', fastEnd: '16:00',
     meals: [], weights: [], exercises: [],
@@ -1505,7 +1521,17 @@ function closeMobileSidebar(){
 /* ============================================================
    Tab 1: Early Education
    ============================================================ */
+var EE_LEVELS = [
+  { level: 1, stage: '启蒙', age: 'Born 6~12M', courses: ['乐高搭建', '启蒙音乐', '创意百科', '运动感统', '悦芽音乐'] },
+  { level: 2, stage: '探索', age: '13~18M', courses: ['乐高搭建', '启蒙音乐', '创意百科', '运动感统', '悦芽音乐'] },
+  { level: 3, stage: '探索', age: '19~24M', courses: ['乐高搭建', '启蒙音乐', '大树思维', '创意百科', '运动感统', '奇妙音乐'] },
+  { level: 4, stage: '发展与综合', age: '25~30M', courses: ['乐高搭建', '启蒙英语', '大树思维', '创意百科', '运动感统', '奇妙音乐'] },
+  { level: 5, stage: '发展与综合', age: '31~36M', courses: ['乐高搭建', '启蒙英语', '大树思维', '创意百科', '运动感统', '奇妙音乐'] },
+  { level: 6, stage: '发展与综合', age: '37~48M', courses: ['启蒙英语', '大树思维', '创意百科', '奇妙音乐'] },
+  { level: 7, stage: '发展与综合', age: '49~60M', courses: ['启蒙英语', '大树思维', '创意百科', '奇妙音乐'] }
+];
 var eeSelectedHours = 1;
+var eeSelectedCourse = '';
 
 function eeSelectHours(el){
   document.querySelectorAll('#eeHoursGroup .radio-item').forEach(function(r){ r.classList.remove('checked'); });
@@ -1513,13 +1539,79 @@ function eeSelectHours(el){
   eeSelectedHours = parseFloat(el.dataset.val);
 }
 
+function eeRenderCourseDropdown(){
+  var sel = document.getElementById('eeCourse');
+  if(!sel) return;
+  var html = '<option value="">— 请选择课程 —</option>';
+  EE_LEVELS.forEach(function(l){
+    html += '<optgroup label="Level ' + l.level + ' · ' + l.stage + ' · ' + l.age + '">';
+    l.courses.forEach(function(c){
+      html += '<option value="' + c + '">' + c + '</option>';
+    });
+    html += '</optgroup>';
+  });
+  if(DB.earlyEd.customCourses && DB.earlyEd.customCourses.length > 0){
+    html += '<optgroup label="自定义课程">';
+    DB.earlyEd.customCourses.forEach(function(c, i){
+      html += '<option value="__custom_' + i + '">' + c + '</option>';
+    });
+    html += '</optgroup>';
+  }
+  sel.innerHTML = html;
+  if(eeSelectedCourse){
+    sel.value = eeSelectedCourse;
+  }
+}
+
+function eeSelectCourse(val){
+  eeSelectedCourse = val;
+  if(val && !val.startsWith('__custom_')){
+    eeSelectedHours = 1.5;
+    document.querySelectorAll('#eeHoursGroup .radio-item').forEach(function(r){
+      r.classList.remove('checked');
+      if(parseFloat(r.dataset.val) === 1.5) r.classList.add('checked');
+    });
+  }
+}
+
+function eeAddCustomCourse(){
+  var name = prompt('请输入自定义课程名称：');
+  if(!name) return;
+  name = name.trim();
+  if(!name) return;
+  if(!DB.earlyEd.customCourses) DB.earlyEd.customCourses = [];
+  if(DB.earlyEd.customCourses.indexOf(name) !== -1){
+    toast('课程已存在');
+    return;
+  }
+  DB.earlyEd.customCourses.push(name);
+  saveDb();
+  eeRenderCourseDropdown();
+  var sel = document.getElementById('eeCourse');
+  sel.value = '__custom_' + (DB.earlyEd.customCourses.length - 1);
+  eeSelectedCourse = sel.value;
+  toast('已添加：' + name);
+}
+
 function addEarlyEdRecord(){
   var date = document.getElementById('eeDate').value || today();
   var notes = document.getElementById('eeNotes').value.trim();
-  if(!notes){ toast('请输入课堂情况'); return; }
-  DB.earlyEd.records.unshift({ date: date, hours: eeSelectedHours, notes: notes });
+  var course = document.getElementById('eeCourse').value;
+  if(!notes && !course){ toast('请输入课程或课堂情况'); return; }
+  var courseLabel = '';
+  if(course){
+    if(course.startsWith('__custom_')){
+      var idx = parseInt(course.replace('__custom_', ''), 10);
+      courseLabel = DB.earlyEd.customCourses[idx] || '';
+    } else {
+      courseLabel = course;
+    }
+  }
+  DB.earlyEd.records.unshift({ date: date, hours: eeSelectedHours, notes: notes, course: courseLabel });
   saveDb();
   document.getElementById('eeNotes').value = '';
+  document.getElementById('eeCourse').value = '';
+  eeSelectedCourse = '';
   renderEarlyEd();
   toast('记录已保存');
 }
@@ -1544,6 +1636,7 @@ function eeEditTotal(){
 }
 
 function renderEarlyEd(){
+  eeRenderCourseDropdown();
   var total = DB.earlyEd.totalHours;
   var consumed = 0;
   DB.earlyEd.records.forEach(function(r){ consumed += r.hours; });
@@ -1563,10 +1656,15 @@ function renderEarlyEd(){
     return;
   }
   box.innerHTML = DB.earlyEd.records.map(function(r, i){
+    var courseHtml = r.course ? '<span class="chip chip-amber">' + escapeHtml(r.course) + '</span>' : '';
     return '<div class="record-item">' +
       '<div class="record-main">' +
-        '<div class="record-date">' + r.date + ' · ' + r.hours + ' 课时</div>' +
-        '<div class="record-text">' + escapeHtml(r.notes) + '</div>' +
+        '<div class="record-date"><span style="display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap;">' +
+          '<span>' + r.date + '</span>' +
+          '<span class="chip chip-gray">' + r.hours + ' 课时</span>' +
+          courseHtml +
+        '</span></div>' +
+        '<div class="record-text">' + escapeHtml(r.notes || '') + '</div>' +
       '</div>' +
       '<div class="record-actions"><button class="btn-icon" onclick="deleteEarlyEdRecord(' + i + ')">&#10005;</button></div>' +
     '</div>';
