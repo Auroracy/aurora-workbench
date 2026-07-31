@@ -115,6 +115,73 @@ body{
   font-size:11px;
   color:var(--text-3);
 }
+.sidebar-toggle{
+  position:absolute;top:18px;right:-12px;
+  width:24px;height:24px;border-radius:50%;
+  background:var(--card);border:1px solid var(--line);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;z-index:10;color:var(--text-3);
+  transition:all 0.2s;
+}
+.sidebar-toggle:hover{background:var(--accent);color:#fff;border-color:var(--accent);}
+.sidebar-toggle svg{width:14px;height:14px;transition:transform 0.3s;}
+.sidebar.collapsed .sidebar-toggle svg{transform:rotate(180deg);}
+
+/* Nav Icon */
+.nav-icon{width:18px;height:18px;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+.nav-icon svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+.nav-text{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+/* Collapsed sidebar */
+.sidebar.collapsed{width:64px;}
+.sidebar.collapsed .brand-name,.sidebar.collapsed .brand-sub,
+.sidebar.collapsed .nav-text,.sidebar.collapsed .sidebar-footer,
+.sidebar.collapsed .nav-num{display:none;}
+.sidebar.collapsed .brand{justify-content:center;padding:28px 0 24px;}
+.sidebar.collapsed .nav-item{justify-content:center;padding:14px 0;gap:0;}
+.sidebar.collapsed .nav-icon{margin:0;}
+.sidebar{transition:width 0.28s cubic-bezier(0.4,0,0.2,1);}
+
+/* Mobile */
+.mobile-header{display:none;}
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.25);z-index:99;}
+.sidebar-overlay.show{display:block;}
+
+@media(max-width:768px){
+  .app{flex-direction:column;}
+  .sidebar{
+    position:fixed;left:0;top:0;z-index:100;
+    transform:translateX(-100%);
+    transition:transform 0.3s cubic-bezier(0.4,0,0.2,1);
+    box-shadow:2px 0 16px rgba(0,0,0,0.08);
+  }
+  .sidebar.mobile-open{transform:translateX(0);}
+  .sidebar.collapsed{width:224px;}
+  .sidebar.collapsed .brand-name,.sidebar.collapsed .brand-sub,
+  .sidebar.collapsed .nav-text,.sidebar.collapsed .sidebar-footer,
+  .sidebar.collapsed .nav-num{display:block;}
+  .sidebar.collapsed .brand{justify-content:flex-start;padding:28px 24px 24px;}
+  .sidebar.collapsed .nav-item{justify-content:flex-start;padding:12px 14px;gap:12px;}
+  .sidebar.collapsed .nav-icon{margin:0;}
+  .sidebar-toggle{display:none;}
+  .mobile-header{
+    display:flex;align-items:center;gap:12px;
+    padding:10px 16px;background:var(--sidebar);
+    border-bottom:1px solid var(--line);
+    position:sticky;top:0;z-index:50;
+  }
+  .mobile-menu-btn{
+    width:36px;height:36px;border:none;background:transparent;
+    cursor:pointer;display:flex;align-items:center;justify-content:center;
+    color:var(--text);border-radius:var(--radius-sm);
+  }
+  .mobile-menu-btn:hover{background:var(--input-bg);}
+  .mobile-brand{font-size:15px;font-weight:600;color:var(--text);}
+  .content{padding:20px 16px 48px;}
+}
+@media(min-width:769px) and (max-width:1024px){
+  .content{padding:32px 28px 52px;}
+}
 
 /* ====== Tab Sections ====== */
 .tab-section{display:none;max-width:880px;}
@@ -580,8 +647,16 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
 </head>
 <body>
 <div class="app">
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeMobileSidebar()"></div>
+<!-- ====== Mobile Header ====== -->
+<div class="mobile-header">
+  <button class="mobile-menu-btn" onclick="openMobileSidebar()">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <span class="mobile-brand">Aurora 工作台</span>
+</div>
 <!-- ====== Sidebar ====== -->
-<aside class="sidebar">
+<aside class="sidebar" id="sidebar">
   <div class="brand">
     <div class="brand-mark">A</div>
     <div>
@@ -589,14 +664,38 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
       <div class="brand-sub">私人工作台</div>
     </div>
   </div>
+  <button class="sidebar-toggle" onclick="toggleSidebar()" title="收起/展开">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+  </button>
   <nav class="nav-list">
-    <button class="nav-item active" data-tab="1" onclick="switchTab(1)"><span class="nav-num">01</span>宝宝早教 · 课时记录</button>
-    <button class="nav-item" data-tab="2" onclick="switchTab(2)"><span class="nav-num">02</span>轻氧塑身日记</button>
-    <button class="nav-item" data-tab="3" onclick="switchTab(3)"><span class="nav-num">03</span>每日英语单词</button>
-    <button class="nav-item" data-tab="4" onclick="switchTab(4)"><span class="nav-num">04</span>市场瞭望 · 投资资讯</button>
-    <button class="nav-item" data-tab="5" onclick="switchTab(5)"><span class="nav-num">05</span>代码研习室 · Python</button>
-    <button class="nav-item" data-tab="6" onclick="switchTab(6)"><span class="nav-num">06</span>食谱工坊 · 配方手记</button>
-    <button class="nav-item" data-tab="7" onclick="switchTab(7)"><span class="nav-num">07</span>阅思集 · 读书札记</button>
+    <button class="nav-item active" data-tab="1" onclick="switchTab(1)">
+      <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M20 12v10H4V12M2 7h20v5H2zM12 22V7M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg></span>
+      <span class="nav-num">01</span><span class="nav-text">宝宝早教 · 课时记录</span>
+    </button>
+    <button class="nav-item" data-tab="2" onclick="switchTab(2)">
+      <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></span>
+      <span class="nav-num">02</span><span class="nav-text">轻氧塑身日记</span>
+    </button>
+    <button class="nav-item" data-tab="3" onclick="switchTab(3)">
+      <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span>
+      <span class="nav-num">03</span><span class="nav-text">每日英语单词</span>
+    </button>
+    <button class="nav-item" data-tab="4" onclick="switchTab(4)">
+      <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M23 6l-9.5 9.5-5-5L1 18"/><path d="M17 6h6v6"/></svg></span>
+      <span class="nav-num">04</span><span class="nav-text">市场瞭望 · 投资资讯</span>
+    </button>
+    <button class="nav-item" data-tab="5" onclick="switchTab(5)">
+      <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/></svg></span>
+      <span class="nav-num">05</span><span class="nav-text">代码研习室 · Python</span>
+    </button>
+    <button class="nav-item" data-tab="6" onclick="switchTab(6)">
+      <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z"/><line x1="6" y1="17" x2="18" y2="17"/></svg></span>
+      <span class="nav-num">06</span><span class="nav-text">食谱工坊 · 配方手记</span>
+    </button>
+    <button class="nav-item" data-tab="7" onclick="switchTab(7)">
+      <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></span>
+      <span class="nav-num">07</span><span class="nav-text">阅思集 · 读书札记</span>
+    </button>
   </nav>
   <div class="sidebar-footer" id="footerDate"></div>
 </aside>
@@ -1378,6 +1477,20 @@ function switchTab(n){
   if(n === 5) renderPython();
   if(n === 6) renderRecipes();
   if(n === 7) renderBooks();
+  closeMobileSidebar();
+}
+
+/* ====== Sidebar Toggle ====== */
+function toggleSidebar(){
+  document.getElementById('sidebar').classList.toggle('collapsed');
+}
+function openMobileSidebar(){
+  document.getElementById('sidebar').classList.add('mobile-open');
+  document.getElementById('sidebarOverlay').classList.add('show');
+}
+function closeMobileSidebar(){
+  document.getElementById('sidebar').classList.remove('mobile-open');
+  document.getElementById('sidebarOverlay').classList.remove('show');
 }
 
 /* ============================================================
