@@ -383,6 +383,35 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 }
 .edit-form .form-row{margin-bottom:0.6em;gap:0.5em;}
 
+/* ====== Pull-to-Refresh ====== */
+.pull-refresh{
+  position:fixed;top:0;left:0;right:0;
+  height:0;overflow:visible;z-index:200;
+  display:flex;justify-content:center;align-items:flex-start;
+  pointer-events:none;
+}
+.pull-refresh-inner{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:8px 18px;border-radius:0 0 14px 14px;
+  background:var(--sidebar);color:var(--text-2);
+  font-size:13px;font-weight:500;
+  transform:translateY(-100%);
+  transition:transform 0.28s cubic-bezier(0.4,0,0.2,1), opacity 0.2s;
+  box-shadow:0 2px 10px rgba(0,0,0,0.06);
+  opacity:0;
+}
+.pull-refresh.active .pull-refresh-inner{transform:translateY(0);opacity:1;}
+.pull-refresh.refreshing .pull-refresh-inner{transform:translateY(0);opacity:1;}
+.pull-icon{
+  font-size:16px;line-height:1;width:16px;height:16px;
+  display:inline-flex;align-items:center;justify-content:center;
+  transition:transform 0.2s;
+}
+.pull-refresh.ready .pull-icon{transform:rotate(180deg);}
+.pull-refresh.refreshing .pull-icon{animation:pull-spin 0.8s linear infinite;}
+.pull-refresh.refreshing .pull-icon{transform:none;}
+@keyframes pull-spin{from{transform:rotate(0);}to{transform:rotate(360deg);}}
+
 /* ====== Empty Hint ====== */
 .empty-hint{
   text-align:center;
@@ -690,6 +719,12 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
 </style>
 </head>
 <body>
+<div class="pull-refresh" id="pullRefresh">
+  <div class="pull-refresh-inner">
+    <span class="pull-icon" id="pullIcon">&#8675;</span>
+    <span class="pull-text" id="pullText">下拉刷新</span>
+  </div>
+</div>
 <div class="app">
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeMobileSidebar()"></div>
 <!-- ====== Mobile Header ====== -->
@@ -1522,7 +1557,9 @@ function saveDb(){
 }
 
 /* ====== Tab Switching ====== */
+var currentTabNum = 1;
 function switchTab(n){
+  currentTabNum = n;
   document.querySelectorAll('.tab-section').forEach(function(s){ s.classList.remove('active'); });
   document.querySelectorAll('.nav-item').forEach(function(s){ s.classList.remove('active'); });
   document.getElementById('tab' + n).classList.add('active');
@@ -1536,6 +1573,90 @@ function switchTab(n){
   if(n === 7) renderBooks();
   closeMobileSidebar();
 }
+
+/* ====== Pull-to-Refresh ====== */
+(function(){
+  var pullEl = document.getElementById('pullRefresh');
+  var pullText = document.getElementById('pullText');
+  if(!pullEl) return;
+  var state = { startY: 0, active: false, dist: 0, refreshing: false };
+
+  function atTop(){ return window.scrollY <= 0 || document.documentElement.scrollTop <= 0; }
+
+  document.addEventListener('touchstart', function(e){
+    if(state.refreshing) return;
+    if(!atTop()) return;
+    if(e.touches.length !== 1) return;
+    state.startY = e.touches[0].clientY;
+    state.active = true;
+    state.dist = 0;
+  }, { passive: true });
+
+  document.addEventListener('touchmove', function(e){
+    if(!state.active || state.refreshing) return;
+    var y = e.touches[0].clientY;
+    var delta = y - state.startY;
+    if(delta <= 0){
+      pullEl.classList.remove('active', 'ready');
+      pullEl.style.height = '0';
+      state.dist = 0;
+      return;
+    }
+    // Resistance: diminishing returns as user pulls further
+    var dist = Math.min(90, delta * 0.5);
+    state.dist = dist;
+    pullEl.classList.add('active');
+    pullEl.style.height = dist + 'px';
+    if(dist >= 60){
+      pullEl.classList.add('ready');
+      pullText.textContent = '释放刷新';
+    } else {
+      pullEl.classList.remove('ready');
+      pullText.textContent = '下拉刷新';
+    }
+  }, { passive: true });
+
+  document.addEventListener('touchend', function(e){
+    if(!state.active || state.refreshing) return;
+    state.active = false;
+    var dist = state.dist;
+    state.dist = 0;
+    if(dist >= 60){
+      // Trigger refresh
+      state.refreshing = true;
+      pullEl.classList.add('refreshing');
+      pullEl.classList.remove('ready');
+      pullEl.style.height = '52px';
+      pullText.textContent = '刷新中...';
+      doPullRefresh();
+    } else {
+      pullEl.classList.remove('active', 'ready');
+      pullEl.style.height = '0';
+      pullText.textContent = '下拉刷新';
+    }
+  }, { passive: true });
+
+  function doPullRefresh(){
+    var n = currentTabNum;
+    var isAsync = (n === 4);
+    try {
+      if(n === 1) renderEarlyEd();
+      else if(n === 2) renderFitness();
+      else if(n === 3) renderWords();
+      else if(n === 4) fetchNews(true);
+      else if(n === 5) renderPython();
+      else if(n === 6) renderRecipes();
+      else if(n === 7) renderBooks();
+    } catch(err){ console.error('Refresh error:', err); }
+    // Hide indicator. For Tab4 (async fetch), wait longer so user sees "刷新中..."
+    setTimeout(function(){
+      pullEl.classList.remove('active', 'refreshing', 'ready');
+      pullEl.style.height = '0';
+      pullText.textContent = '下拉刷新';
+      state.refreshing = false;
+    }, isAsync ? 2000 : 700);
+  }
+})();
 
 /* ====== Sidebar Toggle ====== */
 function toggleSidebar(){
