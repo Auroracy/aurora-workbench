@@ -178,10 +178,10 @@ body{
   .mobile-menu-btn:hover{background:var(--input-bg);}
   .mobile-brand{font-size:15px;font-weight:600;color:var(--text);}
   .content{padding:20px 16px 48px;}
-  /* Fixed-width form groups become full-width on mobile */
-  .form-row > [style*="flex:0 0"]{flex:1 1 100%!important;}
-  .form-row{flex-direction:column;align-items:stretch;gap:0;}
-  .form-row .form-group{margin-bottom:12px;}
+  /* Form layout on mobile: full width, stacked */
+  .form-row{flex-direction:column;align-items:stretch;gap:0;width:100%!important;}
+  .form-row > *{width:100%!important;flex:0 1 auto!important;min-width:0;max-width:100%;}
+  .form-row .form-group{margin-bottom:0.8em;}
   .input,input,textarea,select{font-size:16px!important;} /* prevent iOS zoom */
 }
 @media(min-width:769px) and (max-width:1024px){
@@ -241,8 +241,9 @@ input:focus,textarea:focus,select:focus{
 textarea{resize:vertical;min-height:4.5em;line-height:1.6;}
 select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%238A8780' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 0.85em center;padding-right:2.2em;}
 .form-row{display:flex;gap:clamp(8px,1vw,12px);margin-bottom:0.8em;align-items:flex-end;flex-wrap:wrap;}
-.form-row > *{flex:1;min-width:0;}
+.form-row > *{flex:1 1 0%;min-width:0;}
 .form-row .auto{flex:0 0 auto;}
+.form-row > .auto{align-self:flex-end;}
 .form-group{margin-bottom:clamp(10px,0.8vw,14px);}
 .form-label{font-size:clamp(11px,1vw,13px);color:var(--text-2);margin-bottom:0.4em;display:block;font-weight:500;}
 .form-label .hint{font-weight:400;color:var(--text-3);}
@@ -727,11 +728,11 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
   <div class="card">
     <div class="card-title">新增课时记录</div>
     <div class="form-row">
-      <div class="form-group" style="flex:0 0 180px;">
+      <div class="form-group">
         <label class="form-label">日期</label>
         <input type="date" id="eeDate">
       </div>
-      <div class="form-group" style="flex:0 0 200px;">
+      <div class="form-group">
         <label class="form-label">本次课时</label>
         <div class="radio-group" id="eeHoursGroup">
           <span class="radio-item checked" data-val="1" onclick="eeSelectHours(this)">1 课时</span>
@@ -741,13 +742,13 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
       </div>
     </div>
     <div class="form-row">
-      <div class="form-group" style="flex:2;">
+      <div class="form-group" style="flex:1;">
         <label class="form-label">课程 <span class="hint">— 选中后自动填入1.5课时</span></label>
         <select id="eeCourse" onchange="eeSelectCourse(this.value)">
           <option value="">— 请选择课程 —</option>
         </select>
       </div>
-      <div class="form-group" style="flex:0 0 auto;align-self:flex-end;">
+      <div class="form-group auto" style="align-self:flex-end;">
         <button class="btn btn-ghost" onclick="eeAddCustomCourse()">+ 自定义课程</button>
       </div>
     </div>
@@ -804,11 +805,11 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
   <div class="card">
     <div class="card-title">16+8 间歇断食</div>
     <div class="form-row">
-      <div class="form-group" style="flex:0 0 140px;">
+      <div class="form-group auto">
         <label class="form-label">进食开始</label>
         <input type="time" id="fastStart" onchange="saveFasting()">
       </div>
-      <div class="form-group" style="flex:0 0 140px;">
+      <div class="form-group auto">
         <label class="form-label">进食结束</label>
         <input type="time" id="fastEnd" onchange="saveFasting()">
       </div>
@@ -826,7 +827,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     <div class="card">
       <div class="card-title">餐食记录</div>
       <div class="form-row">
-        <div class="form-group" style="flex:0 0 130px;">
+        <div class="form-group auto">
           <label class="form-label">日期</label>
           <input type="date" id="fitDate">
         </div>
@@ -854,7 +855,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
       <div class="card">
         <div class="card-title">体重打卡</div>
         <div class="form-row">
-          <div class="form-group" style="flex:0 0 130px;">
+          <div class="form-group auto">
             <label class="form-label">日期</label>
             <input type="date" id="weightDate">
           </div>
@@ -862,7 +863,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
             <label class="form-label">晨起体重 (kg)</label>
             <input type="number" id="weightVal" step="0.1" placeholder="如：58.5">
           </div>
-          <div class="auto"><button class="btn btn-primary btn-sm" onclick="addWeight()">记录</button></div>
+          <div class="auto" style="align-self:flex-end;"><button class="btn btn-primary btn-sm" onclick="addWeight()">记录</button></div>
         </div>
         <div id="weightChart"></div>
       </div>
@@ -879,15 +880,15 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
               <option>跳绳</option><option>HIIT</option><option>其他</option>
             </select>
           </div>
-          <div class="form-group" style="flex:0 0 90px;">
+          <div class="form-group auto">
             <label class="form-label">时长(分)</label>
             <input type="number" id="exDur" min="0" placeholder="30">
           </div>
-          <div class="form-group" style="flex:0 0 100px;">
+          <div class="form-group auto">
             <label class="form-label">消耗(kcal)</label>
             <input type="number" id="exCal" min="0" placeholder="200">
           </div>
-          <div class="auto"><button class="btn btn-primary btn-sm" onclick="addExercise()">添加</button></div>
+          <div class="auto" style="align-self:flex-end;"><button class="btn btn-primary btn-sm" onclick="addExercise()">添加</button></div>
         </div>
         <div id="exList"></div>
       </div>
@@ -1004,7 +1005,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
       <button class="toggle-btn" onclick="toggleManualAdd()">+ 手动补充资讯</button>
       <div class="manual-add-form" id="manualAddForm">
         <div class="form-row">
-          <div class="form-group" style="flex:0 0 130px;">
+          <div class="form-group auto">
             <label class="form-label">分类</label>
             <select id="newsCat">
               <option value="astock">A股 / 基金</option>
@@ -1023,7 +1024,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
           </div>
         </div>
         <div class="form-row">
-          <div class="form-group" style="flex:0 0 130px;">
+          <div class="form-group auto">
             <label class="form-label">标签</label>
             <select id="newsTag">
               <option value="positive">利好</option>
@@ -1031,7 +1032,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
               <option value="neutral">中性</option>
             </select>
           </div>
-          <div class="auto" style="padding-bottom:0;"><button class="btn btn-primary btn-sm" onclick="addNews()">添加</button></div>
+          <div class="auto" style="padding-bottom:0;align-self:flex-end;"><button class="btn btn-primary btn-sm" onclick="addNews()">添加</button></div>
         </div>
       </div>
     </div>
@@ -1041,7 +1042,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
   <div class="card">
     <div class="card-title">分区二 · 自选跟踪清单</div>
     <div class="form-row">
-      <div class="form-group" style="flex:0 0 100px;">
+      <div class="form-group auto">
         <label class="form-label">类型</label>
         <select id="trackType">
           <option value="fund">基金</option>
@@ -1054,7 +1055,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
         <label class="form-label">名称</label>
         <input type="text" id="trackName" placeholder="如：沪深300ETF">
       </div>
-      <div class="form-group" style="flex:0 0 120px;">
+      <div class="form-group auto">
         <label class="form-label">代码</label>
         <input type="text" id="trackCode" placeholder="如：510300">
       </div>
@@ -1062,7 +1063,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
         <label class="form-label">观测要点</label>
         <input type="text" id="trackNote" placeholder="核心持仓赛道 / 关注逻辑">
       </div>
-      <div class="auto"><button class="btn btn-primary btn-sm" onclick="addTracking()">添加</button></div>
+      <div class="auto" style="align-self:flex-end;"><button class="btn btn-primary btn-sm" onclick="addTracking()">添加</button></div>
     </div>
     <div id="trackList"></div>
   </div>
@@ -1071,7 +1072,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
   <div class="card">
     <div class="card-title">分区三 · 市场情绪 & 逻辑复盘</div>
     <div class="form-row">
-      <div class="form-group" style="flex:0 0 160px;">
+      <div class="form-group auto">
         <label class="form-label">日期</label>
         <input type="date" id="sentDate" onchange="loadSentiment()">
       </div>
@@ -1099,11 +1100,11 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
   <div class="card">
     <div class="card-title">分区四 · 个人思考笔记库</div>
     <div class="form-row">
-      <div class="form-group" style="flex:0 0 160px;">
+      <div class="form-group auto">
         <label class="form-label">日期</label>
         <input type="date" id="noteDate">
       </div>
-      <div class="form-group" style="flex:0 0 140px;">
+      <div class="form-group auto">
         <label class="form-label">笔记类型</label>
         <select id="noteType">
           <option value="thought">资讯感悟</option>
@@ -1141,7 +1142,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
   <div class="card">
     <div class="card-title">每日学习</div>
     <div class="form-row">
-      <div class="form-group" style="flex:0 0 160px;">
+      <div class="form-group auto">
         <label class="form-label">日期</label>
         <input type="date" id="pyDate" onchange="loadPyDaily()">
       </div>
@@ -1178,7 +1179,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
   <div class="card">
     <div class="card-title">错题 & 踩坑归档</div>
     <div class="form-row">
-      <div class="form-group" style="flex:0 0 140px;">
+      <div class="form-group auto">
         <label class="form-label">日期</label>
         <input type="date" id="errDate">
       </div>
@@ -1207,7 +1208,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
         <label class="form-label">项目名称</label>
         <input type="text" id="projName" placeholder="如：命令行计算器">
       </div>
-      <div class="form-group" style="flex:0 0 120px;">
+      <div class="form-group auto">
         <label class="form-label">进度</label>
         <select id="projProgress">
           <option value="planning">构思中</option>
@@ -1239,7 +1240,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
         <label class="form-label">食谱名称</label>
         <input type="text" id="rName" placeholder="如：北海道吐司">
       </div>
-      <div class="form-group" style="flex:0 0 130px;">
+      <div class="form-group auto">
         <label class="form-label">分类</label>
         <select id="rCategory">
           <option value="bread">面包烘焙</option>
@@ -1247,7 +1248,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
           <option value="dessert">甜品</option>
         </select>
       </div>
-      <div class="form-group" style="flex:0 0 100px;">
+      <div class="form-group auto">
         <label class="form-label">难度</label>
         <select id="rDifficulty">
           <option value="easy">简单</option>
@@ -1255,14 +1256,16 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
           <option value="hard">复杂</option>
         </select>
       </div>
-      <div class="form-group" style="flex:0 0 100px;">
+    </div>
+    <div class="form-row">
+      <div class="form-group auto">
         <label class="form-label">制作时长</label>
         <input type="text" id="rDuration" placeholder="如：90分钟">
       </div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">成品照片</label>
-      <input type="file" id="rPhoto" accept="image/*" style="font-size:12px;">
+      <div class="form-group">
+        <label class="form-label">成品照片</label>
+        <input type="file" id="rPhoto" accept="image/*" style="font-size:12px;">
+      </div>
     </div>
 
     <label class="form-label">原料清单</label>
@@ -1316,7 +1319,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
         <label class="form-label">作者</label>
         <input type="text" id="bAuthor" placeholder="如：沃尔特·艾萨克森">
       </div>
-      <div class="form-group" style="flex:0 0 140px;">
+      <div class="form-group auto">
         <label class="form-label">类型</label>
         <select id="bType">
           <option value="biography">名人传记</option>
@@ -1327,15 +1330,15 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
       </div>
     </div>
     <div class="form-row">
-      <div class="form-group" style="flex:0 0 160px;">
+      <div class="form-group auto">
         <label class="form-label">开始阅读</label>
         <input type="date" id="bStartDate">
       </div>
-      <div class="form-group" style="flex:0 0 160px;">
+      <div class="form-group auto">
         <label class="form-label">读完日期</label>
         <input type="date" id="bFinishDate">
       </div>
-      <div class="form-group" style="flex:0 0 120px;">
+      <div class="form-group auto">
         <label class="form-label">阅读状态</label>
         <select id="bStatus">
           <option value="reading">在读</option>
