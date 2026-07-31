@@ -218,17 +218,17 @@ body{
   margin-bottom:16px;
   display:flex;align-items:center;gap:8px;
 }
-.card-title .sub{font-size:12px;font-weight:400;color:var(--text-2);}
+.card-title .sub{font-size:clamp(11px,1vw,12.5px);font-weight:400;color:var(--text-2);}
 
 /* ====== Form ====== */
 input[type="text"],input[type="number"],input[type="date"],input[type="time"],
 input[type="password"],textarea,select{
   width:100%;
-  padding:clamp(7px,0.7vw,9px) clamp(10px,1vw,13px);
+  padding:0.5em 0.85em;
   border:1px solid var(--input-border);
   border-radius:var(--radius-sm);
   background:var(--input-bg);
-  font-size:clamp(12.5px,1.05vw,13.5px);
+  font-size:clamp(13px,1.15vw,15px);
   color:var(--text);
   font-family:inherit;
   transition:border-color 0.2s,box-shadow 0.2s;
@@ -238,21 +238,21 @@ input:focus,textarea:focus,select:focus{
   border-color:var(--accent);
   box-shadow:0 0 0 3px var(--accent-bg);
 }
-textarea{resize:vertical;min-height:72px;line-height:1.6;}
-select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%238A8780' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:32px;}
-.form-row{display:flex;gap:clamp(8px,1vw,12px);margin-bottom:12px;align-items:flex-end;flex-wrap:wrap;}
+textarea{resize:vertical;min-height:4.5em;line-height:1.6;}
+select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%238A8780' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 0.85em center;padding-right:2.2em;}
+.form-row{display:flex;gap:clamp(8px,1vw,12px);margin-bottom:0.8em;align-items:flex-end;flex-wrap:wrap;}
 .form-row > *{flex:1;min-width:0;}
 .form-row .auto{flex:0 0 auto;}
-.form-group{margin-bottom:clamp(10px,0.8vw,12px);}
-.form-label{font-size:clamp(11px,0.95vw,12px);color:var(--text-2);margin-bottom:6px;display:block;font-weight:500;}
+.form-group{margin-bottom:clamp(10px,0.8vw,14px);}
+.form-label{font-size:clamp(11px,1vw,13px);color:var(--text-2);margin-bottom:0.4em;display:block;font-weight:500;}
 .form-label .hint{font-weight:400;color:var(--text-3);}
 
 /* ====== Button ====== */
 .btn{
-  padding:clamp(6px,0.7vw,8px) clamp(14px,1.5vw,18px);
+  padding:0.5em 1.1em;
   border:none;
   border-radius:var(--radius-sm);
-  font-size:clamp(12px,1vw,13px);
+  font-size:clamp(12px,1.1vw,14px);
   font-family:inherit;
   cursor:pointer;
   transition:all 0.2s;
@@ -262,25 +262,25 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 .btn-primary:hover{background:var(--accent-d);}
 .btn-ghost{background:transparent;color:var(--text-2);border:1px solid var(--line);}
 .btn-ghost:hover{background:var(--input-bg);color:var(--text);}
-.btn-sm{padding:clamp(4px,0.5vw,5px) clamp(10px,1vw,12px);font-size:clamp(11px,0.9vw,12px);}
+.btn-sm{padding:0.35em 0.85em;font-size:clamp(11px,1vw,12.5px);}
 .btn-icon{
   background:none;border:none;
   color:var(--text-3);cursor:pointer;
-  font-size:15px;padding:4px 6px;
+  font-size:clamp(14px,1.2vw,16px);padding:0.3em 0.4em;
   border-radius:4px;transition:all 0.2s;
 }
 .btn-icon:hover{color:var(--red);background:var(--red-bg);}
 .btn-icon.fav-on{color:var(--amber);}
 
 /* ====== Radio / Checkbox ====== */
-.radio-group{display:flex;gap:8px;flex-wrap:wrap;}
+.radio-group{display:flex;gap:0.5em;flex-wrap:wrap;}
 .radio-item{
-  padding:clamp(7px,0.7vw,8px) clamp(13px,1.2vw,16px);
+  padding:0.5em 1em;
   border:1px solid var(--input-border);
   border-radius:var(--radius-sm);
   background:var(--input-bg);
   cursor:pointer;
-  font-size:clamp(12px,1vw,13px);
+  font-size:clamp(12px,1.1vw,14px);
   color:var(--text-2);
   transition:all 0.2s;
   user-select:none;
@@ -595,20 +595,20 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
   border-radius:var(--radius-sm);
   margin-top:10px;
 }
-.ing-row{display:flex;gap:8px;margin-bottom:6px;align-items:center;}
+.ing-row{display:flex;gap:0.5em;margin-bottom:0.4em;align-items:center;}
 .ing-row input{flex:1;}
-.step-row{display:flex;gap:8px;margin-bottom:6px;align-items:flex-start;}
+.step-row{display:flex;gap:0.5em;margin-bottom:0.4em;align-items:flex-start;}
 .step-row .step-idx{
   flex-shrink:0;
-  width:24px;height:24px;
+  width:1.6em;height:1.6em;
   border-radius:50%;
   background:var(--accent-bg);
   color:var(--accent);
   display:flex;align-items:center;justify-content:center;
-  font-size:12px;font-weight:600;
-  margin-top:7px;
+  font-size:0.8em;font-weight:600;
+  margin-top:0.45em;
 }
-.step-row textarea{flex:1;min-height:36px;padding:7px 11px;}
+.step-row textarea{flex:1;min-height:2.4em;padding:0.45em 0.7em;}
 
 /* ====== Tab7: Reading ====== */
 .book-item{
@@ -625,23 +625,23 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 .book-item-meta{font-size:clamp(11px,0.95vw,12px);color:var(--text-2);margin-top:4px;}
 .stars{color:var(--amber);font-size:clamp(13px,1.1vw,14px);letter-spacing:1px;}
 .stars .off{color:var(--line);}
-.star-input{font-size:20px;cursor:pointer;color:var(--line);letter-spacing:2px;transition:color 0.15s;}
+.star-input{font-size:clamp(18px,1.6vw,22px);cursor:pointer;color:var(--line);letter-spacing:0.1em;transition:color 0.15s;}
 .star-input.on{color:var(--amber);}
 .expand-btn{
-  font-size:12px;color:var(--accent);cursor:pointer;
+  font-size:clamp(11px,1vw,12.5px);color:var(--accent);cursor:pointer;
   border:none;background:none;font-family:inherit;
-  padding:4px 0;
+  padding:0.3em 0;
 }
 .expand-btn:hover{text-decoration:underline;}
 .book-detail{margin-top:12px;padding-top:12px;border-top:1px solid var(--line-soft);display:none;}
 .book-detail.open{display:block;}
 .detail-section{margin-bottom:12px;}
-.detail-label{font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:4px;}
+.detail-label{font-size:clamp(11px,1vw,12.5px);font-weight:600;color:var(--text-2);margin-bottom:0.3em;}
 
 /* ====== Filter Bar ====== */
-.filter-bar{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center;}
-.filter-bar select{width:auto;min-width:100px;}
-.filter-bar .filter-label{font-size:12px;color:var(--text-2);}
+.filter-bar{display:flex;gap:0.5em;margin-bottom:0.9em;flex-wrap:wrap;align-items:center;}
+.filter-bar select{width:auto;min-width:7em;}
+.filter-bar .filter-label{font-size:clamp(11px,1vw,12.5px);color:var(--text-2);}
 
 /* ====== Misc ====== */
 .divider{height:1px;background:var(--line);margin:16px 0;}
@@ -742,7 +742,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     </div>
     <div class="form-row">
       <div class="form-group" style="flex:2;">
-        <label class="form-label">课程 <span class="hint">— 按 Level 分组，选中后自动填入1.5课时</span></label>
+        <label class="form-label">课程 <span class="hint">— 选中后自动填入1.5课时</span></label>
         <select id="eeCourse" onchange="eeSelectCourse(this.value)">
           <option value="">— 请选择课程 —</option>
         </select>
@@ -1521,15 +1521,7 @@ function closeMobileSidebar(){
 /* ============================================================
    Tab 1: Early Education
    ============================================================ */
-var EE_LEVELS = [
-  { level: 1, stage: '启蒙', age: 'Born 6~12M', courses: ['乐高搭建', '启蒙音乐', '创意百科', '运动感统', '悦芽音乐'] },
-  { level: 2, stage: '探索', age: '13~18M', courses: ['乐高搭建', '启蒙音乐', '创意百科', '运动感统', '悦芽音乐'] },
-  { level: 3, stage: '探索', age: '19~24M', courses: ['乐高搭建', '启蒙音乐', '大树思维', '创意百科', '运动感统', '奇妙音乐'] },
-  { level: 4, stage: '发展与综合', age: '25~30M', courses: ['乐高搭建', '启蒙英语', '大树思维', '创意百科', '运动感统', '奇妙音乐'] },
-  { level: 5, stage: '发展与综合', age: '31~36M', courses: ['乐高搭建', '启蒙英语', '大树思维', '创意百科', '运动感统', '奇妙音乐'] },
-  { level: 6, stage: '发展与综合', age: '37~48M', courses: ['启蒙英语', '大树思维', '创意百科', '奇妙音乐'] },
-  { level: 7, stage: '发展与综合', age: '49~60M', courses: ['启蒙英语', '大树思维', '创意百科', '奇妙音乐'] }
-];
+var EE_COURSES = ['乐高搭建', '启蒙音乐', '创意百科', '运动感统', '悦芽音乐', '大树思维', '奇妙音乐', '启蒙英语'];
 var eeSelectedHours = 1;
 var eeSelectedCourse = '';
 
@@ -1543,19 +1535,13 @@ function eeRenderCourseDropdown(){
   var sel = document.getElementById('eeCourse');
   if(!sel) return;
   var html = '<option value="">— 请选择课程 —</option>';
-  EE_LEVELS.forEach(function(l){
-    html += '<optgroup label="Level ' + l.level + ' · ' + l.stage + ' · ' + l.age + '">';
-    l.courses.forEach(function(c){
-      html += '<option value="' + c + '">' + c + '</option>';
-    });
-    html += '</optgroup>';
+  EE_COURSES.forEach(function(c){
+    html += '<option value="' + c + '">' + c + '</option>';
   });
   if(DB.earlyEd.customCourses && DB.earlyEd.customCourses.length > 0){
-    html += '<optgroup label="自定义课程">';
     DB.earlyEd.customCourses.forEach(function(c, i){
       html += '<option value="__custom_' + i + '">' + c + '</option>';
     });
-    html += '</optgroup>';
   }
   sel.innerHTML = html;
   if(eeSelectedCourse){
