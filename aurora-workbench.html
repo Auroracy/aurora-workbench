@@ -508,6 +508,53 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 }
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 
+/* ====== Cloud Sync ====== */
+.cloud-btn{
+  display:flex;align-items:center;gap:6px;
+  padding:6px 10px;margin-top:8px;width:100%;
+  border:1px solid var(--line);border-radius:var(--radius-sm);
+  background:transparent;cursor:pointer;
+  font-size:11px;color:var(--text-3);font-family:inherit;
+  transition:all 0.2s;justify-content:center;
+}
+.cloud-btn:hover{background:var(--input-bg);color:var(--text);}
+.cloud-btn.synced{color:var(--green);border-color:var(--green-bg);}
+.cloud-btn.syncing{color:var(--amber);border-color:var(--amber-bg);}
+.cloud-btn svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+.cloud-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:1000;
+  display:none;align-items:center;justify-content:center;padding:16px;
+}
+.cloud-overlay.show{display:flex;}
+.cloud-modal{
+  background:var(--card);border-radius:var(--radius);
+  width:min(520px,92vw);max-height:88vh;overflow-y:auto;
+  box-shadow:0 12px 48px rgba(0,0,0,0.15);
+}
+.cloud-modal-header{padding:20px 24px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;}
+.cloud-modal-title{font-size:16px;font-weight:600;color:var(--text);}
+.cloud-modal-close{cursor:pointer;color:var(--text-3);font-size:22px;border:none;background:transparent;line-height:1;padding:0;}
+.cloud-modal-close:hover{color:var(--text);}
+.cloud-modal-body{padding:20px 24px;}
+.cloud-modal-body .form-label{margin-bottom:4px;}
+.cloud-modal-body input{font-size:13px;margin-bottom:12px;}
+.cloud-step{display:flex;gap:10px;margin-bottom:14px;padding:12px;background:var(--input-bg);border-radius:var(--radius-sm);}
+.cloud-step-num{width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0;}
+.cloud-step-text{font-size:12px;color:var(--text-2);line-height:1.6;}
+.cloud-step-text a{color:var(--accent);text-decoration:underline;}
+.cloud-actions{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;}
+.cloud-actions button{padding:8px 14px;border-radius:var(--radius-sm);border:1px solid var(--line);background:var(--card);cursor:pointer;font-family:inherit;font-size:13px;color:var(--text);transition:all 0.2s;display:flex;align-items:center;gap:5px;}
+.cloud-actions button:hover{background:var(--input-bg);}
+.cloud-actions button.primary{background:var(--accent);color:#fff;border-color:var(--accent);}
+.cloud-actions button.primary:hover{background:var(--accent-d);}
+.cloud-actions button:disabled{opacity:0.5;cursor:not-allowed;}
+.cloud-status{font-size:12px;color:var(--text-3);margin-top:14px;padding:10px;background:var(--input-bg);border-radius:var(--radius-sm);line-height:1.7;}
+.cloud-auto-row{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:12px;color:var(--text-2);cursor:pointer;user-select:none;}
+.cloud-toggle{position:relative;width:34px;height:18px;background:var(--line);border-radius:9px;transition:background 0.2s;flex-shrink:0;}
+.cloud-toggle.on{background:var(--green);}
+.cloud-toggle::after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;transition:transform 0.2s;}
+.cloud-toggle.on::after{transform:translateX(16px);}
+
 /* ====== Tab1: Early Ed ====== */
 .hours-display{font-size:clamp(22px,2.8vw,28px);font-weight:700;color:var(--accent);}
 
@@ -849,7 +896,13 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
       <span class="nav-num">07</span><span class="nav-text">阅思集 · 读书札记</span>
     </button>
   </nav>
-  <div class="sidebar-footer" id="footerDate"></div>
+  <div class="sidebar-footer" id="footerDate">
+    <div id="footerDateText"></div>
+    <button class="cloud-btn" onclick="openCloudModal()" id="cloudBtn">
+      <svg viewBox="0 0 24 24"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+      <span id="cloudBtnText">☁ 云同步</span>
+    </button>
+  </div>
 </aside>
 
 <!-- ====== Content ====== -->
@@ -1650,6 +1703,7 @@ function loadDb(){
 }
 function saveDb(){
   localStorage.setItem(DB_KEY, JSON.stringify(DB));
+  scheduleAutoSync();
 }
 
 /* ====== Tab Switching ====== */
@@ -3384,6 +3438,245 @@ function renderBooks(){
 }
 
 /* ============================================================
+   Cloud Sync (GitHub Gist) + Backup
+   ============================================================ */
+var CLOUD_KEY = 'aurora_cloud_config';
+var CORS_PROXY = 'https://corsproxy.io/?';
+var cloudSyncTimer = null;
+var cloudSyncing = false;
+
+/* Smart fetch with proxy fallback */
+async function cloudFetch(url, options){
+  var cfg = getCloudConfig();
+  if(cfg.useProxy){
+    // 优先用代理；失败再试直连
+    try { return await fetch(CORS_PROXY + encodeURIComponent(url), options); }
+    catch(e){ try { return await fetch(url, options); } catch(e2){ throw e; } }
+  } else {
+    // 优先直连；失败自动切代理
+    try { return await fetch(url, options); }
+    catch(e){
+      cfg.useProxy = true;
+      localStorage.setItem(CLOUD_KEY, JSON.stringify(cfg));
+      var toggle = document.getElementById('cloudProxyToggle');
+      if(toggle) toggle.classList.add('on');
+      updateCloudStatus();
+      toast('网络直连受限，已自动切换代理');
+      return await fetch(CORS_PROXY + encodeURIComponent(url), options);
+    }
+  }
+}
+
+function getCloudConfig(){
+  try { return JSON.parse(localStorage.getItem(CLOUD_KEY) || '{}'); }
+  catch(e){ return {}; }
+}
+function saveCloudConfig(){
+  var cfg = getCloudConfig();
+  cfg.token = document.getElementById('cloudToken').value.trim();
+  cfg.gistId = document.getElementById('cloudGistId').value.trim();
+  localStorage.setItem(CLOUD_KEY, JSON.stringify(cfg));
+  updateCloudStatus();
+  updateCloudBtn();
+}
+function toggleCloudAuto(){
+  var cfg = getCloudConfig();
+  cfg.autoSync = !cfg.autoSync;
+  localStorage.setItem(CLOUD_KEY, JSON.stringify(cfg));
+  var el = document.getElementById('cloudAutoToggle');
+  if(el) el.classList.toggle('on', !!cfg.autoSync);
+}
+function toggleCloudProxy(){
+  var cfg = getCloudConfig();
+  cfg.useProxy = !cfg.useProxy;
+  localStorage.setItem(CLOUD_KEY, JSON.stringify(cfg));
+  var el = document.getElementById('cloudProxyToggle');
+  if(el) el.classList.toggle('on', !!cfg.useProxy);
+  toast(cfg.useProxy ? '已启用网络代理' : '已关闭代理，尝试直连');
+}
+function updateCloudBtn(){
+  var cfg = getCloudConfig();
+  var btn = document.getElementById('cloudBtn');
+  var txt = document.getElementById('cloudBtnText');
+  if(!btn) return;
+  if(cloudSyncing){
+    btn.className = 'cloud-btn syncing';
+    if(txt) txt.textContent = '同步中…';
+  } else if(cfg.token && cfg.gistId){
+    btn.className = 'cloud-btn synced';
+    if(txt) txt.textContent = '☁ 已同步';
+  } else {
+    btn.className = 'cloud-btn';
+    if(txt) txt.textContent = '☁ 云同步';
+  }
+}
+function updateCloudStatus(){
+  var cfg = getCloudConfig();
+  var el = document.getElementById('cloudStatus');
+  if(!el) return;
+  var parts = [];
+  parts.push(cfg.token ? '✓ Token 已配置' : '✗ 未配置 Token');
+  parts.push(cfg.gistId ? '✓ Gist ID: ' + cfg.gistId.substring(0,10) + '...' : '○ 未关联 Gist（首次上传自动创建）');
+  parts.push(cfg.autoSync ? '✓ 自动同步已开启' : '○ 自动同步已关闭');
+  parts.push(cfg.useProxy ? '✓ 网络代理已开启' : '○ 网络代理未开启（直连失败将自动启用）');
+  if(cfg.lastSync){
+    var d = new Date(cfg.lastSync);
+    parts.push('⏱ 上次同步: ' + d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0') + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'));
+  }
+  el.innerHTML = parts.join('<br>');
+}
+function openCloudModal(){
+  var cfg = getCloudConfig();
+  document.getElementById('cloudToken').value = cfg.token || '';
+  document.getElementById('cloudGistId').value = cfg.gistId || '';
+  var toggle = document.getElementById('cloudAutoToggle');
+  if(toggle) toggle.classList.toggle('on', !!cfg.autoSync);
+  var ptoggle = document.getElementById('cloudProxyToggle');
+  if(ptoggle) ptoggle.classList.toggle('on', !!cfg.useProxy);
+  updateCloudStatus();
+  document.getElementById('cloudOverlay').classList.add('show');
+}
+function closeCloudModal(){
+  document.getElementById('cloudOverlay').classList.remove('show');
+}
+async function cloudPush(){
+  var cfg = getCloudConfig();
+  if(!cfg.token){ toast('请先填写 GitHub Token'); return; }
+  if(cloudSyncing) return;
+  cloudSyncing = true;
+  updateCloudBtn();
+  document.getElementById('cloudPushBtn').disabled = true;
+  try {
+    var data = JSON.stringify(DB);
+    var url = 'https://api.github.com/gists';
+    var method = 'POST';
+    var body = JSON.stringify({
+      description: 'Aurora Workbench Data Backup',
+      public: false,
+      files: { 'aurora-workbench-backup.json': { content: data } }
+    });
+    if(cfg.gistId){
+      url = 'https://api.github.com/gists/' + cfg.gistId;
+      method = 'PATCH';
+    }
+    var resp = await cloudFetch(url, {
+      method: method,
+      headers: { 'Authorization': 'Bearer ' + cfg.token, 'Accept': 'application/vnd.github+json' },
+      body: body
+    });
+    if(!resp.ok){
+      var err = await resp.json().catch(function(){ return {}; });
+      throw new Error(err.message || ('HTTP ' + resp.status));
+    }
+    var result = await resp.json();
+    if(!cfg.gistId && result.id){
+      cfg.gistId = result.id;
+      localStorage.setItem(CLOUD_KEY, JSON.stringify(cfg));
+      document.getElementById('cloudGistId').value = cfg.gistId;
+    }
+    cfg.lastSync = new Date().toISOString();
+    localStorage.setItem(CLOUD_KEY, JSON.stringify(cfg));
+    updateCloudStatus();
+    updateCloudBtn();
+    toast('✓ 已上传到云端');
+  } catch(e){
+    toast('✗ 同步失败: ' + e.message);
+  } finally {
+    cloudSyncing = false;
+    updateCloudBtn();
+    document.getElementById('cloudPushBtn').disabled = false;
+  }
+}
+async function cloudPull(){
+  var cfg = getCloudConfig();
+  if(!cfg.token || !cfg.gistId){ toast('请先配置 Token 和 Gist ID'); return; }
+  if(cloudSyncing) return;
+  if(!confirm('从云端恢复将覆盖本地当前数据，确定继续吗？')) return;
+  cloudSyncing = true;
+  updateCloudBtn();
+  document.getElementById('cloudPullBtn').disabled = true;
+  try {
+    var resp = await cloudFetch('https://api.github.com/gists/' + cfg.gistId, {
+      headers: { 'Authorization': 'Bearer ' + cfg.token, 'Accept': 'application/vnd.github+json' }
+    });
+    if(!resp.ok) throw new Error('HTTP ' + resp.status);
+    var result = await resp.json();
+    var file = result.files['aurora-workbench-backup.json'];
+    if(!file) throw new Error('云端未找到备份数据');
+    var remoteDb = JSON.parse(file.content);
+    DB = remoteDb;
+    for(var k in defaultDb){
+      if(!(k in DB)) DB[k] = JSON.parse(JSON.stringify(defaultDb[k]));
+      if(typeof defaultDb[k] === 'object' && defaultDb[k] !== null){
+        for(var k2 in defaultDb[k]){
+          if(!(k2 in DB[k])) DB[k][k2] = JSON.parse(JSON.stringify(defaultDb[k][k2]));
+        }
+      }
+    }
+    saveDb();
+    cfg.lastSync = new Date().toISOString();
+    localStorage.setItem(CLOUD_KEY, JSON.stringify(cfg));
+    updateCloudStatus();
+    updateCloudBtn();
+    switchTab(currentTabNum);
+    toast('✓ 已从云端恢复');
+  } catch(e){
+    toast('✗ 恢复失败: ' + e.message);
+  } finally {
+    cloudSyncing = false;
+    updateCloudBtn();
+    document.getElementById('cloudPullBtn').disabled = false;
+  }
+}
+function scheduleAutoSync(){
+  var cfg = getCloudConfig();
+  if(!cfg.autoSync || !cfg.token || !cfg.gistId) return;
+  if(cloudSyncTimer) clearTimeout(cloudSyncTimer);
+  cloudSyncTimer = setTimeout(function(){ cloudPush(); }, 3000);
+}
+function exportBackup(){
+  var data = JSON.stringify(DB, null, 2);
+  var blob = new Blob([data], { type: 'application/json' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'aurora-workbench-backup-' + today() + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('✓ 备份已导出');
+}
+function importBackup(){
+  var input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = function(e){
+    var file = e.target.files[0];
+    if(!file) return;
+    var reader = new FileReader();
+    reader.onload = function(ev){
+      try {
+        var imported = JSON.parse(ev.target.result);
+        if(!confirm('导入将覆盖当前数据，确定继续吗？')) return;
+        DB = imported;
+        for(var k in defaultDb){
+          if(!(k in DB)) DB[k] = JSON.parse(JSON.stringify(defaultDb[k]));
+          if(typeof defaultDb[k] === 'object' && defaultDb[k] !== null){
+            for(var k2 in defaultDb[k]){
+              if(!(k2 in DB[k])) DB[k][k2] = JSON.parse(JSON.stringify(defaultDb[k][k2]));
+            }
+          }
+        }
+        saveDb();
+        switchTab(currentTabNum);
+        toast('✓ 备份已导入');
+      } catch(err){ toast('✗ 文件格式错误'); }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+/* ============================================================
    Init
    ============================================================ */
 function init(){
@@ -3398,8 +3691,10 @@ function init(){
   // Footer date
   var now = new Date();
   var weekdays = ['日','一','二','三','四','五','六'];
-  document.getElementById('footerDate').textContent =
+  document.getElementById('footerDateText').textContent =
     now.getFullYear() + '年' + (now.getMonth()+1) + '月' + now.getDate() + '日 周' + weekdays[now.getDay()];
+  // Init cloud sync button
+  updateCloudBtn();
   // Init Tab1
   renderEarlyEd();
   // Init recipe form
@@ -3411,5 +3706,46 @@ function init(){
 
 window.addEventListener('DOMContentLoaded', init);
 </script>
+
+<!-- ====== Cloud Sync Modal ====== -->
+<div class="cloud-overlay" id="cloudOverlay" onclick="if(event.target===this)closeCloudModal()">
+  <div class="cloud-modal">
+    <div class="cloud-modal-header">
+      <div class="cloud-modal-title">☁ 云同步 · 数据永久保存</div>
+      <button class="cloud-modal-close" onclick="closeCloudModal()">&times;</button>
+    </div>
+    <div class="cloud-modal-body">
+      <div class="cloud-step">
+        <div class="cloud-step-num">1</div>
+        <div class="cloud-step-text">
+          打开 <a href="https://github.com/settings/tokens/new?scopes=gist&description=Aurora-Workbench-Sync" target="_blank">GitHub Token 生成页</a>，勾选 <b>gist</b> 权限，生成免费 Token
+        </div>
+      </div>
+      <div class="cloud-step">
+        <div class="cloud-step-num">2</div>
+        <div class="cloud-step-text">粘贴 Token 到下方，点击「上传到云端」自动创建 Gist 存储。之后可开启自动同步，每次保存自动上传。</div>
+      </div>
+      <label class="form-label">GitHub Token</label>
+      <input type="password" id="cloudToken" placeholder="ghp_xxxxxxxxxxxx" onblur="saveCloudConfig()">
+      <label class="form-label">Gist ID（首次留空，自动创建）</label>
+      <input type="text" id="cloudGistId" placeholder="粘贴已有 Gist ID 或留空" onblur="saveCloudConfig()">
+      <div class="cloud-auto-row" onclick="toggleCloudAuto()">
+        <div class="cloud-toggle" id="cloudAutoToggle"></div>
+        <span>自动同步（每次保存后 3 秒自动上传）</span>
+      </div>
+      <div class="cloud-auto-row" onclick="toggleCloudProxy()">
+        <div class="cloud-toggle" id="cloudProxyToggle"></div>
+        <span>使用网络代理（直连失败时自动启用，可手动切换）</span>
+      </div>
+      <div class="cloud-actions">
+        <button class="primary" onclick="cloudPush()" id="cloudPushBtn">⬆ 上传到云端</button>
+        <button onclick="cloudPull()" id="cloudPullBtn">⬇ 从云端恢复</button>
+        <button onclick="exportBackup()">💾 导出备份</button>
+        <button onclick="importBackup()">📥 导入备份</button>
+      </div>
+      <div class="cloud-status" id="cloudStatus">未配置</div>
+    </div>
+  </div>
+</div>
 </body>
 </html>
