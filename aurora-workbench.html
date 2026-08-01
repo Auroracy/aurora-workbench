@@ -3597,6 +3597,56 @@ async function cloudPush(){
     document.getElementById('cloudPushBtn').disabled = false;
   }
 }
+async function testCloudToken(){
+  var cfg = getCloudConfig();
+  var token = (document.getElementById('cloudToken').value || cfg.token || '').trim();
+  if(!token){ toast('请先填入 Token'); return; }
+  if(!token.startsWith('ghp_') && !token.startsWith('github_pat_')){
+    toast('⚠ Token 格式不对（应以 ghp_ 或 github_pat_ 开头）');
+  }
+  // Save input first so we test what's actually typed
+  cfg.token = token;
+  localStorage.setItem(CLOUD_KEY, JSON.stringify(cfg));
+  var btn = document.getElementById('cloudTestBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ 测试中...';
+  try {
+    var resp = await cloudFetch('https://api.github.com/user', { method: 'GET' });
+    var status = resp.status;
+    var data;
+    try { data = await resp.json(); } catch(e){ data = {}; }
+    if(status === 200){
+      btn.textContent = '✓ Token 有效';
+      toast('✓ Token 有效！登录身份: ' + (data.login || '未知'));
+      // Show scopes for debugging
+      var scopes = resp.headers.get('X-OAuth-Scopes') || '';
+      var gistScope = scopes.includes('gist');
+      updateCloudStatus();
+      var hint = document.getElementById('cloudTestHint');
+      if(!hint){
+        hint = document.createElement('div');
+        hint.id = 'cloudTestHint';
+        hint.style.cssText = 'margin-top:8px;padding:8px 10px;background:var(--input-bg);border-radius:6px;font-size:11px;color:var(--text-2);line-height:1.6;';
+        btn.parentNode.parentNode.insertBefore(hint, btn.parentNode.nextSibling);
+      }
+      hint.innerHTML = '✓ 身份验证通过<br>账号: <b>' + (data.login || '-') + '</b><br>权限范围: ' + (scopes || '(空)') + '<br>gist 权限: ' + (gistScope ? '<b style="color:var(--green)">✓ 有</b>' : '<b style="color:var(--red)">✗ 无（请重新生成 Token 并勾选 gist）</b>');
+    } else if(status === 401){
+      btn.textContent = '✗ Token 无效';
+      toast('✗ Token 无效或已过期');
+    } else {
+      btn.textContent = '✗ HTTP ' + status;
+      toast('✗ 异常: HTTP ' + status);
+    }
+  } catch(e){
+    btn.textContent = '✗ 网络错误';
+    toast('✗ 网络错误: ' + e.message);
+  } finally {
+    setTimeout(function(){
+      btn.disabled = false;
+      btn.textContent = '🔍 测试 Token';
+    }, 3000);
+  }
+}
 async function cloudPull(){
   var cfg = getCloudConfig();
   if(!cfg.token || !cfg.gistId){ toast('请先配置 Token 和 Gist ID'); return; }
@@ -3752,6 +3802,7 @@ window.addEventListener('DOMContentLoaded', init);
         <button onclick="cloudPull()" id="cloudPullBtn">⬇ 从云端恢复</button>
         <button onclick="exportBackup()">💾 导出备份</button>
         <button onclick="importBackup()">📥 导入备份</button>
+        <button onclick="testCloudToken()" id="cloudTestBtn" style="background:var(--input-bg);">🔍 测试 Token</button>
       </div>
       <div class="cloud-status" id="cloudStatus">未配置</div>
     </div>
