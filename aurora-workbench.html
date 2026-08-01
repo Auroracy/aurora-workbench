@@ -2322,7 +2322,23 @@ function updateAiSettingsStatus(){
 }
 
 var GEMINI_MODELS = ['gemini-2.0-flash','gemini-1.5-flash'];
-var QWEN_MODELS = ['qwen-vl-max-latest','qwen-vl-plus-latest','qwen3-vl-plus','qwen3-vl-flash','qwen-vl-plus','qwen-vl-max'];
+var QWEN_MODELS = [
+  'qwen3-vl-flash',
+  'qwen3-vl-plus',
+  'qwen-vl-max-latest',
+  'qwen-vl-plus-latest',
+  'qwen-vl-max',
+  'qwen-vl-plus',
+  'qwen-vl-ocr-latest',
+  'qwen-vl-ocr',
+  'qwen2.5-vl-72b-instruct',
+  'qwen2.5-vl-7b-instruct',
+  'qwen2.5-vl-3b-instruct',
+  'qwen-vl-plus-2025-08-15',
+  'qwen-vl-max-2025-08-13',
+  'qwen3-vl-235b-a22b-instruct',
+  'qwen3-vl-32b-instruct'
+];
 
 /* --- Photo selection entry (routes to engine) --- */
 function onMealPhotoSelected(input){
@@ -2455,19 +2471,20 @@ function analyzeMealPhotoQwen(base64, key, cb){
       if(res.status === 401){
         throw new Error('通义千问密钥无效');
       }
-      if(res.status === 404 || res.status === 400){
-        /* Model not available, try next */
+      if(res.status === 404 || res.status === 400 || res.status === 403){
+        /* Model not available / no permission, try next */
         var errText = '';
         try { errText = (res.json().error || {}).message || ''; } catch(e){}
-        if(errText.indexOf('model') >= 0 || res.status === 404){
+        if(modelIdx < QWEN_MODELS.length - 1){
+          console.log('[Qwen] ' + model + ' 返回 ' + res.status + '：' + (errText || '') + '，自动尝试下一模型');
           modelIdx++;
           tryModel();
           return;
         }
-        throw new Error('请求格式错误: ' + (errText || res.status));
+        throw new Error('通义千问所有模型 403/404 无权限访问。请到百炼平台「模型体验」开通视觉模型服务。');
       }
       if(!res.ok){
-        throw new Error('通义千问 API 返回 ' + res.status);
+        throw new Error('通义千问 API 返回 ' + res.status + '（模型 ' + model + '）');
       }
       return res.json();
     }).then(function(data){
