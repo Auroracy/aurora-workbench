@@ -475,6 +475,20 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
   display:none;
 }
 .ai-result-hint.show{display:block;}
+.ai-test-btn{
+  margin-top:0.4em;padding:0.5em 0.9em;
+  font-size:clamp(11px,0.9vw,12px);
+  background:var(--input-bg);color:var(--text-2);
+  border:1px solid var(--line);border-radius:var(--radius-sm);
+  cursor:pointer;
+}
+.ai-test-btn:hover{border-color:var(--accent);}
+.ai-test-btn:disabled{opacity:0.5;cursor:wait;}
+.ai-test-hint{
+  font-size:clamp(11px,0.9vw,12px);
+  margin-top:0.4em;display:none;line-height:1.5;
+}
+.ai-test-hint.show{display:block;}
 
 /* ====== Pull-to-Refresh ====== */
 .pull-refresh{
@@ -1066,12 +1080,16 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
 
           <!-- Qwen Key -->
           <div id="qwenKeyBox" style="display:none;">
-            <label class="form-label">通义千问 API Key（DashScope）</label>
-            <input type="password" id="qwenKey" placeholder="粘贴你的 DashScope API Key" onblur="saveQwenKey()">
+            <label class="form-label">通义千问 API Key（百炼平台）</label>
+            <input type="password" id="qwenKey" placeholder="粘贴你的 API Key（sk-开头）" onblur="saveQwenKey()">
+            <button class="ai-test-btn" onclick="testQwenKey()" id="qwenTestBtn">🔍 测试通义千问 Key</button>
+            <div class="ai-test-hint" id="qwenTestHint"></div>
             <div class="ai-help">
-              1. 打开 <a href="https://dashscope.console.aliyun.com/apiKey" target="_blank">阿里云 DashScope</a> 免费获取密钥<br>
-              2. 新用户有免费额度，国内直连无需代理<br>
-              3. 粘贴到上方输入框，点击空白处即自动保存
+              1. 打开 <a href="https://bailian.console.aliyun.com/" target="_blank">阿里云百炼平台</a>（原 DashScope）<br>
+              2. 左侧菜单「API-Key 管理」→ 创建 API-Key → 复制 sk- 开头的 Key<br>
+              3. 粘贴到上方输入框，点空白处自动保存<br>
+              4. 点「测试通义千问 Key」验证是否可用<br>
+              <span style="color:var(--text-3);">⚠ 不需要在平台手动开通模型免费额度，API Key 创建后即可调用</span>
             </div>
           </div>
 
@@ -2227,6 +2245,74 @@ function switchAiEngine(eng){
 function toggleAiSettings(){
   document.getElementById('aiSettings').classList.toggle('open');
 }
+async function testQwenKey(){
+  var key = (document.getElementById('qwenKey').value || '').trim();
+  if(!key){ toast('请先输入通义千问 API Key'); return; }
+  if(key.indexOf('sk-') !== 0){
+    toast('Key 格式异常，百炼 Key 通常以 sk- 开头');
+  }
+  /* Save first */
+  localStorage.setItem('aurora_qwen_key', key);
+  updateAiSettingsStatus();
+
+  var btn = document.getElementById('qwenTestBtn');
+  var hint = document.getElementById('qwenTestHint');
+  btn.disabled = true;
+  btn.textContent = '测试中...';
+  hint.classList.remove('show');
+
+  try {
+    /* Use a simple text-only request to verify the key — qwen-plus is a cheap text model */
+    var url = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
+    var resp = await Promise.race([
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+        body: JSON.stringify({
+          model: 'qwen-plus',
+          messages: [{ role: 'user', content: 'hi' }],
+          max_tokens: 5
+        })
+      }),
+      new Promise(function(_, reject){ setTimeout(function(){ reject(new Error('请求超时（15s）')); }, 15000); })
+    ]);
+
+    if(resp.status === 401){
+      hint.textContent = '✗ Key 无效：认证失败（401）。请检查 Key 是否完整、是否以 sk- 开头、有无多余空格。';
+      hint.style.color = '#c0392b';
+      hint.classList.add('show');
+      return;
+    }
+    if(resp.status === 429){
+      hint.textContent = '✓ Key 有效，但触发限流（429）。稍后再试或检查额度。';
+      hint.style.color = '#8B7355';
+      hint.classList.add('show');
+      return;
+    }
+    if(!resp.ok){
+      var errBody = '';
+      try { errBody = (await resp.json()).error.message || ''; } catch(e){}
+      hint.textContent = '⚠ API 返回 ' + resp.status + (errBody ? '：' + errBody : '');
+      hint.style.color = '#c0392b';
+      hint.classList.add('show');
+      return;
+    }
+    var data = await resp.json();
+    var modelUsed = data.model || 'qwen-plus';
+    hint.innerHTML = '✓ <b>Key 有效</b>！文本模型 ' + modelUsed + ' 调用成功。<br>' +
+      '现在可以上传餐食照片测试视觉模型了（代码会自动尝试 qwen-vl-max-latest / qwen-vl-plus-latest / qwen3-vl-plus 等多个模型）。';
+    hint.style.color = 'var(--accent)';
+    hint.classList.add('show');
+    toast('✓ 通义千问 Key 验证成功');
+  } catch(err){
+    hint.textContent = '✗ 网络错误：' + (err.message || '未知') + '。可能需要检查网络或代理设置。';
+    hint.style.color = '#c0392b';
+    hint.classList.add('show');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔍 测试通义千问 Key';
+  }
+}
 function updateAiSettingsStatus(){
   var eng = getAiEngine();
   var key = eng === 'qwen' ? getQwenKey() : getGeminiKey();
@@ -2265,27 +2351,47 @@ function onMealPhotoSelected(input){
       return;
     }
     var base64 = dataUrl.split(',')[1];
-    var analyzeFn = eng === 'qwen' ? analyzeMealPhotoQwen : analyzeMealPhotoGemini;
-    analyzeFn(base64, key, function(err, result){
-      loading.classList.remove('show');
-      if(err){
-        resultHint.textContent = '\u26a0 ' + err;
+    var primaryFn = eng === 'qwen' ? analyzeMealPhotoQwen : analyzeMealPhotoGemini;
+
+    function tryAnalyze(fn, keyArg, engineLabel, isFallback){
+      fn(base64, keyArg, function(err, result){
+        if(!err){ onSuccess(result, engineLabel); return; }
+
+        /* If primary engine failed (NOT user-fixable like bad key), auto-fallback to the other engine */
+        var fallbackEngine = eng === 'qwen' ? 'gemini' : 'qwen';
+        var fallbackKey = fallbackEngine === 'gemini' ? getGeminiKey() : getQwenKey();
+        if(!isFallback && fallbackKey && err.indexOf('密钥') < 0 && err.indexOf('Key') < 0){
+          var fbFn = fallbackEngine === 'gemini' ? analyzeMealPhotoGemini : analyzeMealPhotoQwen;
+          var fbLabel = fallbackEngine === 'qwen' ? '通义千问' : 'Gemini';
+          loadingText.textContent = '主引擎(' + engineLabel + ')失败，自动切换 ' + fbLabel + ' 重试...';
+          toast('自动切换 ' + fbLabel + ' 重试');
+          tryAnalyze(fbFn, fallbackKey, fbLabel, true);
+          return;
+        }
+
+        loading.classList.remove('show');
+        resultHint.textContent = '⚠ ' + err + (isFallback ? '（已尝试双引擎）' : '');
         resultHint.style.color = '#c0392b';
         resultHint.classList.add('show');
         toast('AI 分析失败，请手动填写');
-        return;
-      }
+      });
+    }
+
+    function onSuccess(result, engineLabel){
+      loading.classList.remove('show');
       if(result.food_name){
         document.getElementById('mealFood').value = result.food_name;
       }
       if(result.calories){
         document.getElementById('mealCal').value = result.calories;
       }
-      resultHint.textContent = '\u2713 AI 已识别：' + (result.food_name || '') + ' \u00b7 ' + (result.calories || '?') + ' kcal';
+      resultHint.textContent = '✓ ' + engineLabel + ' AI 已识别：' + (result.food_name || '') + ' · ' + (result.calories || '?') + ' kcal';
       resultHint.style.color = 'var(--accent)';
       resultHint.classList.add('show');
       toast('AI 识别完成，请确认后保存');
-    });
+    }
+
+    tryAnalyze(primaryFn, key, eng === 'qwen' ? '通义千问' : 'Gemini', false);
   });
 }
 
