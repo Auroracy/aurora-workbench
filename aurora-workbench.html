@@ -9,27 +9,27 @@
 /* ====== Reset & Base ====== */
 *{margin:0;padding:0;box-sizing:border-box;}
 :root{
-  --bg:#F4F3EF;
-  --sidebar:#FBFAF7;
+  --bg:#EEF3F6;
+  --sidebar:#F6FAFC;
   --card:#FFFFFF;
-  --text:#2C2A26;
-  --text-2:#8A8780;
-  --text-3:#B8B5AE;
-  --accent:#8B7355;
-  --accent-d:#7A6248;
-  --accent-bg:#F0EBE3;
-  --line:#E8E5DF;
-  --line-soft:#F0EEE9;
-  --input-bg:#F8F7F4;
-  --input-border:#DDD9D2;
-  --green:#6B9B6B;
-  --green-bg:#EDF5ED;
-  --amber:#B8924A;
-  --amber-bg:#F7F0E4;
-  --red:#B66B6B;
-  --red-bg:#F7EDED;
-  --blue:#6B8AAD;
-  --blue-bg:#EDF1F6;
+  --text:#1B2A35;
+  --text-2:#5C7484;
+  --text-3:#9CB2C0;
+  --accent:#15A49B;
+  --accent-d:#0F8780;
+  --accent-bg:#E0F4F2;
+  --line:#D6E2E9;
+  --line-soft:#EBF1F5;
+  --input-bg:#F2F7FA;
+  --input-border:#C4D6DF;
+  --green:#2DAB66;
+  --green-bg:#E4F6EC;
+  --amber:#D4933C;
+  --amber-bg:#FAF0E0;
+  --red:#DB6B6B;
+  --red-bg:#FAEAEA;
+  --blue:#2E86C1;
+  --blue-bg:#E6F2FB;
   --radius:10px;
   --radius-sm:6px;
   --mono:'SF Mono','Fira Code','Consolas','Monaco',monospace;
@@ -261,7 +261,7 @@ input:focus,textarea:focus,select:focus{
   box-shadow:0 0 0 3px var(--accent-bg);
 }
 textarea{resize:vertical;min-height:4.5em;line-height:1.6;}
-select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%238A8780' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 0.85em center;padding-right:2.2em;}
+select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%235C7484' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 0.85em center;padding-right:2.2em;}
 .form-row{display:flex;gap:clamp(8px,1vw,12px);margin-bottom:0.8em;align-items:flex-end;flex-wrap:wrap;}
 .form-row > *{flex:1 1 0%;min-width:0;box-sizing:border-box;}
 .form-row .auto{flex:0 0 auto;}
@@ -490,6 +490,58 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 }
 .ai-test-hint.show{display:block;}
 
+/* ====== Meal Photo Dropzone ====== */
+.meal-photo-zone{
+  position:relative;
+  width:100%;
+  min-height:180px;
+  border:2px dashed var(--input-border);
+  border-radius:var(--radius);
+  background:var(--input-bg);
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  transition:border-color 0.2s,background 0.2s;
+}
+.meal-photo-zone:hover{border-color:var(--accent);background:var(--accent-bg);}
+.meal-photo-zone.has-photo{border-style:solid;border-color:var(--line);background:var(--card);}
+.meal-photo-zone.has-photo:hover{border-color:var(--accent);}
+.photo-zone-empty{
+  text-align:center;color:var(--text-3);
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+  padding:24px;pointer-events:none;
+}
+.photo-zone-empty svg{color:var(--text-3);transition:color 0.2s;}
+.meal-photo-zone:hover .photo-zone-empty svg{color:var(--accent);}
+.photo-zone-text{font-size:clamp(13px,1.1vw,14px);color:var(--text-2);font-weight:500;}
+.photo-zone-sub{font-size:clamp(11px,0.9vw,12px);color:var(--text-3);}
+.photo-zone-preview{
+  width:100%;height:100%;min-height:180px;
+  object-fit:cover;position:absolute;inset:0;
+}
+.photo-zone-remove{
+  position:absolute;top:8px;right:8px;
+  width:30px;height:30px;border-radius:50%;
+  background:rgba(0,0,0,0.5);color:#fff;
+  border:none;cursor:pointer;
+  font-size:20px;line-height:1;
+  display:flex;align-items:center;justify-content:center;
+  transition:background 0.2s;z-index:3;
+}
+.photo-zone-remove:hover{background:rgba(0,0,0,0.7);}
+.photo-zone-retake{
+  position:absolute;bottom:8px;right:8px;
+  padding:5px 12px;border-radius:var(--radius-sm);
+  background:rgba(0,0,0,0.5);color:#fff;
+  border:none;cursor:pointer;
+  font-size:12px;font-family:inherit;
+  display:flex;align-items:center;gap:4px;
+  transition:background 0.2s;z-index:3;
+}
+.photo-zone-retake:hover{background:rgba(0,0,0,0.7);}
+
 /* ====== Pull-to-Refresh ====== */
 .pull-refresh{
   position:fixed;top:0;left:0;right:0;
@@ -709,9 +761,9 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 .news-sentiment-bar{display:flex;gap:14px;align-items:center;padding:clamp(8px,1vw,10px) clamp(11px,1.2vw,14px);background:var(--input-bg);border-radius:var(--radius-sm);margin-bottom:14px;font-size:clamp(12px,1vw,13px);}
 .news-sentiment-bar .sent-item{display:flex;align-items:center;gap:5px;}
 .news-sentiment-bar .sent-dot{width:8px;height:8px;border-radius:50%;display:inline-block;}
-.sent-dot.positive{background:#B66B6B;}
-.sent-dot.negative{background:#6B9B6B;}
-.sent-dot.neutral{background:#B8B5AE;}
+.sent-dot.positive{background:#DB6B6B;}
+.sent-dot.negative{background:#2DAB66;}
+.sent-dot.neutral{background:#9CB2C0;}
 .news-card.clickable{cursor:default;transition:all 0.2s;}
 .news-card.clickable:hover{border-color:var(--blue);box-shadow:0 1px 8px rgba(0,0,0,0.04);}
 .news-card .news-headline{font-size:clamp(13px,1.1vw,14px);font-weight:600;color:var(--text);line-height:1.5;cursor:pointer;}
@@ -1115,21 +1167,32 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
           <label class="form-label">食物描述</label>
           <input type="text" id="mealFood" placeholder="如：燕麦粥+鸡蛋">
         </div>
+        <div class="form-group auto">
+          <label class="form-label">卡路里 (kcal)</label>
+          <input type="number" id="mealCal" placeholder="350" min="0">
+        </div>
       </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">预估卡路里 (kcal)</label>
-          <input type="number" id="mealCal" placeholder="如：350" min="0">
-        </div>
-        <div class="form-group">
-          <label class="form-label">餐食照片</label>
-          <input type="file" id="mealPhoto" accept="image/*" onchange="onMealPhotoSelected(this)" style="font-size:12px;">
-          <div class="ai-loading" id="aiLoading">
-            <div class="ai-spinner"></div>
-            <span id="aiLoadingText">AI 识别中...</span>
+      <div class="form-group">
+        <label class="form-label">餐食照片 <span class="hint">（AI 自动识别食物 + 估算卡路里）</span></label>
+        <div class="meal-photo-zone" id="mealPhotoZone" onclick="document.getElementById('mealPhoto').click()">
+          <input type="file" id="mealPhoto" accept="image/*" capture="environment" onchange="onMealPhotoSelected(this)" style="display:none;">
+          <div class="photo-zone-empty" id="photoZoneEmpty">
+            <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+            <span class="photo-zone-text">点击拍照 / 上传餐食照片</span>
+            <span class="photo-zone-sub">AI 自动识别食物 + 估算卡路里</span>
           </div>
-          <div class="ai-result-hint" id="aiResultHint"></div>
+          <img class="photo-zone-preview" id="photoZonePreview" style="display:none;">
+          <button class="photo-zone-remove" id="photoZoneRemove" onclick="event.stopPropagation();clearMealPhoto()" style="display:none;">&times;</button>
+          <button class="photo-zone-retake" id="photoZoneRetake" onclick="event.stopPropagation();document.getElementById('mealPhoto').click()" style="display:none;">重新拍照</button>
         </div>
+        <div class="ai-loading" id="aiLoading">
+          <div class="ai-spinner"></div>
+          <span id="aiLoadingText">AI 识别中...</span>
+        </div>
+        <div class="ai-result-hint" id="aiResultHint"></div>
       </div>
       <button class="btn btn-primary btn-sm" onclick="addMeal()">添加餐食</button>
       <div id="mealList" style="margin-top:14px;"></div>
@@ -2285,7 +2348,7 @@ async function testQwenKey(){
     }
     if(resp.status === 429){
       hint.textContent = '✓ Key 有效，但触发限流（429）。稍后再试或检查额度。';
-      hint.style.color = '#8B7355';
+      hint.style.color = '#15A49B';
       hint.classList.add('show');
       return;
     }
@@ -2344,10 +2407,26 @@ var QWEN_MODELS = [
 function onMealPhotoSelected(input){
   if(!input.files || !input.files[0]) return;
   var file = input.files[0];
+
+  /* 1. Show preview immediately */
+  var reader = new FileReader();
+  reader.onload = function(e){
+    var preview = document.getElementById('photoZonePreview');
+    var zone = document.getElementById('mealPhotoZone');
+    preview.src = e.target.result;
+    preview.style.display = 'block';
+    document.getElementById('photoZoneEmpty').style.display = 'none';
+    document.getElementById('photoZoneRemove').style.display = 'flex';
+    document.getElementById('photoZoneRetake').style.display = 'flex';
+    zone.classList.add('has-photo');
+  };
+  reader.readAsDataURL(file);
+
+  /* 2. AI analysis (optional — photo still shows if no key) */
   var eng = getAiEngine();
   var key = eng === 'qwen' ? getQwenKey() : getGeminiKey();
   if(!key){
-    toast(eng === 'qwen' ? '请先在 AI 设置中配置通义千问密钥' : '请先在 AI 设置中配置 Gemini 密钥');
+    toast('照片已上传，未配置 AI 密钥 — 可手动填写食物和卡路里');
     document.getElementById('aiSettings').classList.add('open');
     return;
   }
@@ -2581,6 +2660,22 @@ function searchFoodCal(name){
   return 0;
 }
 
+function clearMealPhoto(){
+  var input = document.getElementById('mealPhoto');
+  input.value = '';
+  var preview = document.getElementById('photoZonePreview');
+  preview.src = '';
+  preview.style.display = 'none';
+  document.getElementById('photoZoneEmpty').style.display = 'flex';
+  document.getElementById('photoZoneRemove').style.display = 'none';
+  document.getElementById('photoZoneRetake').style.display = 'none';
+  document.getElementById('mealPhotoZone').classList.remove('has-photo');
+  var resultHint = document.getElementById('aiResultHint');
+  resultHint.classList.remove('show');
+  var loading = document.getElementById('aiLoading');
+  loading.classList.remove('show');
+}
+
 function addMeal(){
   var date = document.getElementById('fitDate').value || today();
   var food = document.getElementById('mealFood').value.trim();
@@ -2593,7 +2688,7 @@ function addMeal(){
       saveDb();
       document.getElementById('mealFood').value = '';
       document.getElementById('mealCal').value = '';
-      document.getElementById('mealPhoto').value = '';
+      clearMealPhoto();
       renderMeals();
       renderDailySummary();
       toast('餐食已记录');
@@ -2603,6 +2698,7 @@ function addMeal(){
     saveDb();
     document.getElementById('mealFood').value = '';
     document.getElementById('mealCal').value = '';
+    clearMealPhoto();
     renderMeals();
     renderDailySummary();
     toast('餐食已记录');
@@ -2660,21 +2756,21 @@ function renderWeightChart(){
     return { x: x, y: y, w: w };
   });
   var pathD = pts.map(function(p, i){ return (i===0?'M':'L') + p.x.toFixed(1) + ',' + p.y.toFixed(1); }).join(' ');
-  var dots = pts.map(function(p){ return '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="3" fill="#8B7355"/>'; }).join('');
-  var labels = pts.map(function(p){ return '<text x="' + p.x.toFixed(1) + '" y="' + (p.y - 8).toFixed(1) + '" text-anchor="middle" font-size="10" fill="#8A8780">' + p.w.weight + '</text>'; }).join('');
+  var dots = pts.map(function(p){ return '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="3" fill="#15A49B"/>'; }).join('');
+  var labels = pts.map(function(p){ return '<text x="' + p.x.toFixed(1) + '" y="' + (p.y - 8).toFixed(1) + '" text-anchor="middle" font-size="10" fill="#5C7484">' + p.w.weight + '</text>'; }).join('');
   var dates = pts.map(function(p, i){
     if(ws.length > 8 && i % 2 !== 0) return '';
-    return '<text x="' + p.x.toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="9" fill="#B8B5AE">' + p.w.date.slice(5) + '</text>';
+    return '<text x="' + p.x.toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="9" fill="#9CB2C0">' + p.w.date.slice(5) + '</text>';
   }).join('');
   var latest = ws[ws.length - 1];
   var first = ws[0];
   var diff = (latest.weight - first.weight).toFixed(1);
   var diffStr = diff > 0 ? '+' + diff : diff;
-  var diffColor = diff > 0 ? '#B66B6B' : '#6B9B6B';
+  var diffColor = diff > 0 ? '#DB6B6B' : '#2DAB66';
   box.innerHTML =
     '<div style="text-align:right;font-size:12px;margin-bottom:8px;">变化趋势：<span style="color:' + diffColor + ';font-weight:600;">' + diffStr + ' kg</span></div>' +
     '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;max-width:540px;">' +
-      '<path d="' + pathD + '" fill="none" stroke="#8B7355" stroke-width="2"/>' +
+      '<path d="' + pathD + '" fill="none" stroke="#15A49B" stroke-width="2"/>' +
       dots + labels + dates +
     '</svg>';
 }
