@@ -972,6 +972,50 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 .filter-bar select{width:auto;min-width:7em;}
 .filter-bar .filter-label{font-size:clamp(11px,1vw,12.5px);color:var(--text-2);}
 
+/* ====== Reading: hero / overview ====== */
+.book-hero{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:clamp(10px,1vw,14px);
+  margin-bottom:clamp(12px,1.2vw,16px);
+}
+.book-hero-item{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--radius-sm);
+  padding:clamp(13px,1.2vw,16px) 10px;text-align:center;
+}
+.bh-val{font-size:clamp(20px,2.4vw,26px);font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums;letter-spacing:-0.5px;}
+.bh-label{font-size:11px;color:var(--text-2);margin-top:3px;}
+.card-title-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
+.card-title-row .btn{white-space:nowrap;}
+
+/* ====== Book Note Modal ====== */
+.book-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:1000;
+  display:none;align-items:flex-end;justify-content:center;padding:0;
+}
+.book-overlay.show{display:flex;}
+.book-modal{
+  background:var(--card);border-radius:var(--radius) var(--radius) 0 0;
+  width:100%;max-width:540px;max-height:92vh;overflow-y:auto;
+  box-shadow:0 -12px 48px rgba(0,0,0,0.15);
+  padding-bottom:max(16px,env(safe-area-inset-bottom));
+  animation:bookSlideUp 0.25s ease-out;
+}
+@keyframes bookSlideUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
+@media(min-width:680px){
+  .book-overlay{align-items:center;padding:16px;}
+  .book-modal{border-radius:var(--radius);width:min(540px,92vw);max-height:88vh;animation:bookFadeIn 0.2s ease-out;}
+  @keyframes bookFadeIn{from{opacity:0;transform:scale(0.96);}to{opacity:1;transform:scale(1);}}
+}
+.book-modal-header{padding:18px 22px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--card);z-index:2;}
+.book-modal-title{font-size:16px;font-weight:600;color:var(--text);}
+.book-modal-close{cursor:pointer;color:var(--text-3);font-size:24px;border:none;background:transparent;line-height:1;padding:0;}
+.book-modal-close:hover{color:var(--text);}
+.book-modal-body{padding:18px 22px;}
+.book-modal-body .form-label{margin-bottom:4px;}
+.book-modal-body input,.book-modal-body textarea,.book-modal-body select{font-size:13px;margin-bottom:12px;}
+.book-modal-body .form-row{margin-bottom:0;}
+.book-modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:6px;padding-top:4px;}
+.book-modal-actions .btn{flex:0 0 auto;}
+
 /* ====== Misc ====== */
 .divider{height:1px;background:var(--line);margin:16px 0;}
 .text-muted{color:var(--text-2);}
@@ -1720,76 +1764,13 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     <div class="section-desc">书籍传记 · 金句摘录 · 深度思考</div>
   </div>
 
-  <div class="card">
-    <div class="card-title">新增读书笔记</div>
-    <div class="form-row">
-      <div class="form-group">
-        <label class="form-label">书名</label>
-        <input type="text" id="bTitle" placeholder="如：史蒂夫·乔布斯传">
-      </div>
-      <div class="form-group">
-        <label class="form-label">作者</label>
-        <input type="text" id="bAuthor" placeholder="如：沃尔特·艾萨克森">
-      </div>
-      <div class="form-group auto">
-        <label class="form-label">类型</label>
-        <select id="bType">
-          <option value="biography">名人传记</option>
-          <option value="business">商业书籍</option>
-          <option value="psychology">心理学</option>
-          <option value="other">其他</option>
-        </select>
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-group auto">
-        <label class="form-label">开始阅读</label>
-        <input type="date" id="bStartDate">
-      </div>
-      <div class="form-group auto">
-        <label class="form-label">读完日期</label>
-        <input type="date" id="bFinishDate">
-      </div>
-      <div class="form-group auto">
-        <label class="form-label">阅读状态</label>
-        <select id="bStatus">
-          <option value="reading">在读</option>
-          <option value="paused">暂停阅读</option>
-          <option value="finished">已读完</option>
-        </select>
-      </div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">个人评分</label>
-      <div id="bRating" style="display:flex;gap:4px;">
-        <span class="star-input" data-val="1" onclick="setRating(this)">&#9733;</span>
-        <span class="star-input" data-val="2" onclick="setRating(this)">&#9733;</span>
-        <span class="star-input" data-val="3" onclick="setRating(this)">&#9733;</span>
-        <span class="star-input" data-val="4" onclick="setRating(this)">&#9733;</span>
-        <span class="star-input" data-val="5" onclick="setRating(this)">&#9733;</span>
-      </div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">金句摘录</label>
-      <textarea id="bQuotes" rows="3" placeholder="摘抄书中精华原文、人物关键观点..."></textarea>
-    </div>
-    <div class="form-group">
-      <label class="form-label">人物记录（传记专用）</label>
-      <textarea id="bCharacters" rows="3" placeholder="名人关键人生节点、重要抉择、思维模式、性格优缺点..."></textarea>
-    </div>
-    <div class="form-group">
-      <label class="form-label">个人思考感悟</label>
-      <textarea id="bThoughts" rows="3" placeholder="联系自身生活、投资、育儿、成长产生的想法..."></textarea>
-    </div>
-    <div class="form-group">
-      <label class="form-label">疑问留存</label>
-      <textarea id="bQuestions" rows="2" placeholder="阅读过程有待深入思考的问题..."></textarea>
-    </div>
-    <button class="btn btn-primary" onclick="addBook()">保存笔记</button>
-  </div>
+  <div class="book-hero" id="bookHero"></div>
 
   <div class="card">
-    <div class="card-title">读书笔记归档</div>
+    <div class="card-title-row">
+      <div class="card-title">读书笔记归档</div>
+      <button class="btn btn-primary btn-sm" onclick="openBookModal()">＋ 新增笔记</button>
+    </div>
     <div class="filter-bar">
       <span class="filter-label">筛选：</span>
       <select id="bookFilter" onchange="renderBooks()">
@@ -3812,6 +3793,7 @@ function renderRecipes(){
 var TYPE_LABEL = { biography: '名人传记', business: '商业书籍', psychology: '心理学', other: '其他' };
 var STATUS_LABEL = { reading: '在读', paused: '暂停', finished: '已读完' };
 var STATUS_CLASS = { reading: 'chip-green', paused: 'chip-amber', finished: 'chip-gray' };
+var editingBookIdx = -1;
 
 function setRating(el){
   var val = parseInt(el.dataset.val);
@@ -3821,7 +3803,57 @@ function setRating(el){
   });
 }
 
-function addBook(){
+function renderReadingOverview(){
+  var books = DB.reading.books;
+  var reading = 0, finished = 0, fav = 0;
+  books.forEach(function(b){
+    if(b.status === 'reading') reading++;
+    else if(b.status === 'finished') finished++;
+    if(b.fav) fav++;
+  });
+  var hero = document.getElementById('bookHero');
+  if(!hero) return;
+  hero.innerHTML =
+    '<div class="book-hero-item"><div class="bh-val">' + books.length + '</div><div class="bh-label">累计笔记</div></div>' +
+    '<div class="book-hero-item"><div class="bh-val" style="color:var(--green);">' + reading + '</div><div class="bh-label">在读</div></div>' +
+    '<div class="book-hero-item"><div class="bh-val" style="color:var(--blue);">' + finished + '</div><div class="bh-label">已读完</div></div>' +
+    '<div class="book-hero-item"><div class="bh-val" style="color:var(--amber);">' + fav + '</div><div class="bh-label">重点标记</div></div>';
+}
+
+function openBookModal(idx){
+  clearBookForm();
+  var titleEl = document.getElementById('bookModalTitle');
+  if(idx !== undefined && idx >= 0){
+    editingBookIdx = idx;
+    var b = DB.reading.books[idx];
+    if(!b) return;
+    titleEl.textContent = '编辑读书笔记';
+    document.getElementById('bTitle').value = b.title || '';
+    document.getElementById('bAuthor').value = b.author || '';
+    document.getElementById('bType').value = b.type || 'biography';
+    document.getElementById('bStatus').value = b.status || 'reading';
+    document.getElementById('bStartDate').value = b.startDate || '';
+    document.getElementById('bFinishDate').value = b.finishDate || '';
+    document.getElementById('bQuotes').value = b.quotes || '';
+    document.getElementById('bCharacters').value = b.characters || '';
+    document.getElementById('bThoughts').value = b.thoughts || '';
+    document.getElementById('bQuestions').value = b.questions || '';
+    selectedRating = b.rating || 0;
+    document.querySelectorAll('#bRating .star-input').forEach(function(s){
+      s.classList.toggle('on', parseInt(s.dataset.val) <= selectedRating);
+    });
+  } else {
+    editingBookIdx = -1;
+    titleEl.textContent = '新增读书笔记';
+  }
+  document.getElementById('bookOverlay').classList.add('show');
+}
+function closeBookModal(){
+  document.getElementById('bookOverlay').classList.remove('show');
+  editingBookIdx = -1;
+}
+
+function saveBook(){
   var title = document.getElementById('bTitle').value.trim();
   var author = document.getElementById('bAuthor').value.trim();
   if(!title){ toast('请输入书名'); return; }
@@ -3833,17 +3865,27 @@ function addBook(){
   var characters = document.getElementById('bCharacters').value.trim();
   var thoughts = document.getElementById('bThoughts').value.trim();
   var questions = document.getElementById('bQuestions').value.trim();
-  DB.reading.books.unshift({
-    title: title, author: author, type: type,
-    startDate: startDate, finishDate: finishDate, status: status,
-    rating: selectedRating,
-    quotes: quotes, characters: characters, thoughts: thoughts, questions: questions,
-    fav: false, date: today()
-  });
+  if(editingBookIdx >= 0 && DB.reading.books[editingBookIdx]){
+    var b = DB.reading.books[editingBookIdx];
+    b.title = title; b.author = author; b.type = type;
+    b.startDate = startDate; b.finishDate = finishDate; b.status = status;
+    b.rating = selectedRating;
+    b.quotes = quotes; b.characters = characters; b.thoughts = thoughts; b.questions = questions;
+    toast('读书笔记已更新');
+  } else {
+    DB.reading.books.unshift({
+      title: title, author: author, type: type,
+      startDate: startDate, finishDate: finishDate, status: status,
+      rating: selectedRating,
+      quotes: quotes, characters: characters, thoughts: thoughts, questions: questions,
+      fav: false, date: today()
+    });
+    toast('读书笔记已保存');
+  }
   saveDb();
-  clearBookForm();
+  closeBookModal();
+  renderReadingOverview();
   renderBooks();
-  toast('读书笔记已保存');
 }
 function clearBookForm(){
   document.getElementById('bTitle').value = '';
@@ -3857,10 +3899,16 @@ function clearBookForm(){
   selectedRating = 0;
   document.querySelectorAll('#bRating .star-input').forEach(function(s){ s.classList.remove('on'); });
 }
-function deleteBook(i){ DB.reading.books.splice(i,1); saveDb(); renderBooks(); }
+function deleteBook(i){
+  if(!confirm('确定删除这条读书笔记吗？')) return;
+  DB.reading.books.splice(i,1); saveDb();
+  renderReadingOverview(); renderBooks();
+}
 function toggleBookFav(i){ DB.reading.books[i].fav = !DB.reading.books[i].fav; saveDb(); renderBooks(); }
+function editBook(i){ openBookModal(i); }
 
 function renderBooks(){
+  renderReadingOverview();
   var filter = document.getElementById('bookFilter').value;
   var favOnly = document.getElementById('bookFavOnly').checked;
   var list = DB.reading.books.filter(function(b){
@@ -3869,7 +3917,7 @@ function renderBooks(){
     return true;
   });
   var box = document.getElementById('bookArchive');
-  if(list.length === 0){ box.innerHTML = '<div class="empty-hint">暂无读书笔记，开始记录第一本吧</div>'; return; }
+  if(list.length === 0){ box.innerHTML = '<div class="empty-hint">暂无读书笔记，点击右上角「＋ 新增笔记」开始记录</div>'; return; }
   box.innerHTML = list.map(function(b){
     var idx = DB.reading.books.indexOf(b);
     var stars = '';
@@ -3878,7 +3926,7 @@ function renderBooks(){
     }
     var html = '<div class="book-item' + (b.fav ? ' fav' : '') + '">';
     html += '<div class="book-item-head">';
-    html += '<div>';
+    html += '<div class="book-item-main">';
     html += '<div class="book-item-title">' + escapeHtml(b.title) + '</div>';
     html += '<div class="book-item-meta">';
     if(b.author) html += escapeHtml(b.author) + ' · ';
@@ -3887,12 +3935,13 @@ function renderBooks(){
     if(b.rating > 0) html += ' <span class="stars">' + stars + '</span>';
     html += '</div></div>';
     html += '<div class="record-actions">';
-    html += '<button class="btn-icon ' + (b.fav ? 'fav-on' : '') + '" onclick="toggleBookFav(' + idx + ')">&#9733;</button>';
-    html += '<button class="btn-icon" onclick="deleteBook(' + idx + ')">&#10005;</button>';
+    html += '<button class="btn-icon ' + (b.fav ? 'fav-on' : '') + '" onclick="toggleBookFav(' + idx + ')" title="重点">&#9733;</button>';
+    html += '<button class="btn-icon" onclick="editBook(' + idx + ')" title="编辑">&#9998;</button>';
+    html += '<button class="btn-icon" onclick="deleteBook(' + idx + ')" title="删除">&#10005;</button>';
     html += '</div></div>';
     var hasDetail = b.quotes || b.characters || b.thoughts || b.questions;
     if(hasDetail){
-      html += '<button class="expand-btn" onclick="this.nextElementSibling.classList.toggle(\'open\')">展开/收起详情</button>';
+      html += '<button class="expand-btn" onclick="this.nextElementSibling.classList.toggle(\'open\')">展开 / 收起详情</button>';
       html += '<div class="book-detail">';
       if(b.quotes){
         html += '<div class="detail-section"><div class="detail-label">金句摘录</div><div style="font-size:13px;line-height:1.7;">' + escapeHtml(b.quotes).replace(/\n/g, '<br>') + '</div></div>';
@@ -4271,6 +4320,87 @@ window.addEventListener('DOMContentLoaded', init);
         <button onclick="testCloudToken()" id="cloudTestBtn" style="background:var(--input-bg);">🔍 测试 Token</button>
       </div>
       <div class="cloud-status" id="cloudStatus">未配置</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Book Note Modal ===== -->
+<div class="book-overlay" id="bookOverlay" onclick="if(event.target===this)closeBookModal()">
+  <div class="book-modal">
+    <div class="book-modal-header">
+      <div class="book-modal-title" id="bookModalTitle">新增读书笔记</div>
+      <button class="book-modal-close" onclick="closeBookModal()">&times;</button>
+    </div>
+    <div class="book-modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">书名</label>
+          <input type="text" id="bTitle" placeholder="如：史蒂夫·乔布斯传">
+        </div>
+        <div class="form-group">
+          <label class="form-label">作者</label>
+          <input type="text" id="bAuthor" placeholder="如：沃尔特·艾萨克森">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">类型</label>
+          <select id="bType">
+            <option value="biography">名人传记</option>
+            <option value="business">商业书籍</option>
+            <option value="psychology">心理学</option>
+            <option value="other">其他</option>
+          </select>
+        </div>
+        <div class="form-group auto">
+          <label class="form-label">阅读状态</label>
+          <select id="bStatus">
+            <option value="reading">在读</option>
+            <option value="paused">暂停阅读</option>
+            <option value="finished">已读完</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group auto">
+          <label class="form-label">开始阅读</label>
+          <input type="date" id="bStartDate">
+        </div>
+        <div class="form-group auto">
+          <label class="form-label">读完日期</label>
+          <input type="date" id="bFinishDate">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">个人评分</label>
+        <div id="bRating" style="display:flex;gap:4px;">
+          <span class="star-input" data-val="1" onclick="setRating(this)">&#9733;</span>
+          <span class="star-input" data-val="2" onclick="setRating(this)">&#9733;</span>
+          <span class="star-input" data-val="3" onclick="setRating(this)">&#9733;</span>
+          <span class="star-input" data-val="4" onclick="setRating(this)">&#9733;</span>
+          <span class="star-input" data-val="5" onclick="setRating(this)">&#9733;</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">金句摘录</label>
+        <textarea id="bQuotes" rows="3" placeholder="摘抄书中精华原文、人物关键观点..."></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">人物记录（传记专用）</label>
+        <textarea id="bCharacters" rows="3" placeholder="名人关键人生节点、重要抉择、思维模式、性格优缺点..."></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">个人思考感悟</label>
+        <textarea id="bThoughts" rows="3" placeholder="联系自身生活、投资、育儿、成长产生的想法..."></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">疑问留存</label>
+        <textarea id="bQuestions" rows="2" placeholder="阅读过程有待深入思考的问题..."></textarea>
+      </div>
+      <div class="book-modal-actions">
+        <button class="btn btn-ghost" onclick="closeBookModal()">取消</button>
+        <button class="btn btn-primary" onclick="saveBook()">保存笔记</button>
+      </div>
     </div>
   </div>
 </div>
