@@ -348,6 +348,7 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 .stat-value.green{color:var(--green);}
 .stat-value.amber{color:var(--amber);}
 .stat-value.red{color:var(--red);}
+.stat-value.blue{color:var(--blue);}
 .stat-label{font-size:12px;color:var(--text-2);margin-top:4px;}
 .stat-edit{
   font-size:11px;color:var(--text-3);
@@ -356,40 +357,38 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 }
 .stat-edit:hover{color:var(--accent);}
 
-/* ====== Early Ed: consumed clickable + detail ====== */
-.stat-clickable{cursor:pointer;transition:transform .12s ease, box-shadow .12s ease;}
-.stat-clickable:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(21,164,155,0.12);}
-.stat-clickable:active{transform:translateY(0);}
-.stat-toggle{
-  font-size:11px;color:var(--text-3);margin-top:5px;
-  display:inline-flex;align-items:center;gap:3px;
+/* ====== Early Ed: hero + progress + timeline ====== */
+.ee-hero{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:clamp(10px,1vw,14px);
+  margin-bottom:clamp(12px,1.2vw,16px);
 }
-.stat-clickable:hover .stat-toggle{color:var(--accent);}
-.chevron{transition:transform .22s ease;}
-.chevron.open{transform:rotate(180deg);}
-.ee-detail{
-  display:grid;
-  grid-template-rows:0fr;
-  transition:grid-template-rows .3s ease;
-  margin-top:0;
+.ee-hero-item{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--radius-sm);
+  padding:clamp(13px,1.2vw,16px) 10px;text-align:center;
 }
-.ee-detail.open{grid-template-rows:1fr;margin-top:16px;}
-.ee-detail-inner{
-  overflow:hidden;
-  border-top:1px dashed var(--line);
-  padding-top:0;
+.ee-hero-item .eh-val{font-size:clamp(20px,2.4vw,26px);font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums;letter-spacing:-0.5px;}
+.ee-hero-item .eh-val.blue{color:var(--blue);}
+.ee-hero-item .eh-val.green{color:var(--green);}
+.ee-hero-item .eh-val.amber{color:var(--amber);}
+.ee-hero-item .eh-label{font-size:11px;color:var(--text-2);margin-top:3px;}
+
+.ee-progress{margin:4px 0 clamp(14px,1.5vw,18px);}
+.ee-progress-track{
+  height:9px;background:var(--input-bg);border-radius:6px;overflow:hidden;
 }
-.ee-detail.open .ee-detail-inner{padding-top:14px;}
-.ee-detail-head{
-  display:flex;justify-content:space-between;align-items:center;
-  font-size:12px;color:var(--text-2);margin-bottom:10px;
+.ee-progress-fill{
+  height:100%;border-radius:6px;
+  background:linear-gradient(90deg,var(--accent),var(--blue));
+  transition:width .4s ease;
 }
-.ee-detail-sub{color:var(--text-3);font-size:11px;}
+.ee-progress-text{font-size:11.5px;color:var(--text-3);margin-top:6px;text-align:right;}
+
 .ee-detail-row{
   display:flex;align-items:flex-start;gap:12px;
   padding:11px 0;border-bottom:1px solid var(--line-soft);
   position:relative;
 }
+.ee-detail-row:first-child{padding-top:2px;}
 .ee-detail-row:last-child{border-bottom:none;}
 .ee-detail-row::before{
   content:'';position:absolute;left:-1px;top:18px;
@@ -411,6 +410,36 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 .ee-detail-hours .h-unit{font-size:10px;color:var(--text-3);display:block;}
 .ee-detail-actions{display:flex;gap:4px;flex-shrink:0;align-self:center;}
 .ee-detail-empty{padding:18px 0;text-align:center;color:var(--text-3);font-size:12.5px;}
+
+/* ====== Early Ed Modal ====== */
+.ee-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:1000;
+  display:none;align-items:flex-end;justify-content:center;padding:0;
+}
+.ee-overlay.show{display:flex;}
+.ee-modal{
+  background:var(--card);border-radius:var(--radius) var(--radius) 0 0;
+  width:100%;max-width:520px;max-height:92vh;overflow-y:auto;
+  box-shadow:0 -12px 48px rgba(0,0,0,0.15);
+  padding-bottom:max(16px,env(safe-area-inset-bottom));
+  animation:eeSlideUp 0.25s ease-out;
+}
+@keyframes eeSlideUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
+@media(min-width:680px){
+  .ee-overlay{align-items:center;padding:16px;}
+  .ee-modal{border-radius:var(--radius);width:min(520px,92vw);max-height:88vh;animation:eeFadeIn 0.2s ease-out;}
+  @keyframes eeFadeIn{from{opacity:0;transform:scale(0.96);}to{opacity:1;transform:scale(1);}}
+}
+.ee-modal-header{padding:18px 22px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--card);z-index:2;}
+.ee-modal-title{font-size:16px;font-weight:600;color:var(--text);}
+.ee-modal-close{cursor:pointer;color:var(--text-3);font-size:24px;border:none;background:transparent;line-height:1;padding:0;}
+.ee-modal-close:hover{color:var(--text);}
+.ee-modal-body{padding:18px 22px;}
+.ee-modal-body .form-label{margin-bottom:4px;}
+.ee-modal-body input,.ee-modal-body textarea,.ee-modal-body select{font-size:13px;margin-bottom:12px;}
+.ee-modal-body .form-row{margin-bottom:0;}
+.ee-modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:6px;padding-top:4px;}
+.ee-modal-actions .btn{flex:0 0 auto;}
 
 /* ====== Grid ====== */
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:clamp(12px,1.5vw,18px);}
@@ -1109,72 +1138,88 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     <div class="section-desc">记录每一次课堂互动与成长瞬间</div>
   </div>
 
-  <div class="card">
-    <div class="card-title">新增课时记录</div>
-    <div class="form-row">
-      <div class="form-group">
-        <label class="form-label">日期</label>
-        <input type="date" id="eeDate">
-      </div>
-      <div class="form-group">
-        <label class="form-label">本次课时</label>
-        <div class="radio-group" id="eeHoursGroup">
-          <span class="radio-item checked" data-val="1" onclick="eeSelectHours(this)">1 课时</span>
-          <span class="radio-item" data-val="1.5" onclick="eeSelectHours(this)">1.5 课时</span>
-          <span class="radio-item" data-val="2" onclick="eeSelectHours(this)">2 课时</span>
-        </div>
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-group" style="flex:1;">
-        <label class="form-label">课程 <span class="hint">— 可选择或自定义添加</span></label>
-        <select id="eeCourse" onchange="eeSelectCourse(this.value)">
-          <option value="">— 请选择课程 —</option>
-        </select>
-      </div>
-      <div class="form-group auto" style="align-self:flex-end;">
-        <button class="btn btn-ghost" onclick="eeAddCustomCourse()">+ 自定义课程</button>
-      </div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">课堂情况记录</label>
-      <textarea id="eeNotes" rows="3" placeholder="记录课堂互动、宝宝情绪、表现亮点..."></textarea>
-    </div>
-    <button class="btn btn-primary" onclick="addEarlyEdRecord()">保存记录</button>
-  </div>
+  <div class="ee-hero" id="eeHero"></div>
 
   <div class="card">
-    <div class="card-title">课时统计</div>
+    <div class="card-title-row">
+      <div class="card-title" style="margin-bottom:0;">课时概览</div>
+      <button class="btn btn-primary btn-sm" onclick="openEeModal()">＋ 新增课时</button>
+    </div>
+
+    <div class="ee-progress">
+      <div class="ee-progress-track"><div class="ee-progress-fill" id="eeProgressFill"></div></div>
+      <div class="ee-progress-text" id="eeProgressText"></div>
+    </div>
+
     <div class="stats-grid">
       <div class="stat-box">
         <div class="stat-value" id="eeTotal">48</div>
         <div class="stat-label">总购买课时</div>
         <div class="stat-edit" onclick="eeEditTotal()">点击修改</div>
       </div>
-      <div class="stat-box stat-clickable" id="eeConsumedBox" onclick="toggleEeDetail()">
-        <div class="stat-value" id="eeConsumed">0</div>
+      <div class="stat-box">
+        <div class="stat-value blue" id="eeConsumed">0</div>
         <div class="stat-label">累计已消耗</div>
-        <div class="stat-toggle">
-          <span id="eeDetailHint">点击查看</span>
-          <svg class="chevron" id="eeChevron" viewBox="0 0 24 24" width="13" height="13"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </div>
       </div>
       <div class="stat-box">
         <div class="stat-value green" id="eeRemaining">48</div>
         <div class="stat-label">剩余课时</div>
       </div>
     </div>
-    <div class="ee-detail" id="eeDetail">
-      <div class="ee-detail-inner">
-        <div class="ee-detail-head">
-          <span id="eeDetailCount">共 0 次课</span>
-          <span class="ee-detail-sub">按日期倒序</span>
+  </div>
+
+  <div class="card">
+    <div class="card-title-row">
+      <div class="card-title" style="margin-bottom:0;">课时记录 <span class="sub" id="eeDetailCount"></span></div>
+    </div>
+    <div id="eeDetailList"></div>
+  </div>
+</section>
+
+<!-- ====== Early Ed Modal ====== -->
+<div class="ee-overlay" id="eeOverlay" onclick="if(event.target===this)closeEeModal()">
+  <div class="ee-modal">
+    <div class="ee-modal-header">
+      <div class="ee-modal-title" id="eeModalTitle">新增课时记录</div>
+      <button class="ee-modal-close" onclick="closeEeModal()">&times;</button>
+    </div>
+    <div class="ee-modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">日期</label>
+          <input type="date" id="eeDate">
         </div>
-        <div id="eeDetailList"></div>
+        <div class="form-group">
+          <label class="form-label">本次课时</label>
+          <div class="radio-group" id="eeHoursGroup">
+            <span class="radio-item checked" data-val="1" onclick="eeSelectHours(this)">1 课时</span>
+            <span class="radio-item" data-val="1.5" onclick="eeSelectHours(this)">1.5 课时</span>
+            <span class="radio-item" data-val="2" onclick="eeSelectHours(this)">2 课时</span>
+          </div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="flex:1;">
+          <label class="form-label">课程 <span class="hint">— 可选择或自定义添加</span></label>
+          <select id="eeCourse" onchange="eeSelectCourse(this.value)">
+            <option value="">— 请选择课程 —</option>
+          </select>
+        </div>
+        <div class="form-group auto" style="align-self:flex-end;">
+          <button class="btn btn-ghost" onclick="eeAddCustomCourse()">+ 自定义课程</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">课堂情况记录</label>
+        <textarea id="eeNotes" rows="3" placeholder="记录课堂互动、宝宝情绪、表现亮点..."></textarea>
+      </div>
+      <div class="ee-modal-actions">
+        <button class="btn btn-ghost" onclick="closeEeModal()">取消</button>
+        <button class="btn btn-primary" onclick="saveEeRecord()">保存记录</button>
       </div>
     </div>
   </div>
-</section>
+</div>
 
 <!-- ========== Tab 2: Fitness ========== -->
 <section id="tab2" class="tab-section">
@@ -2055,7 +2100,55 @@ function eeAddCustomCourse(){
   toast('已添加：' + name);
 }
 
-function addEarlyEdRecord(){
+var editingEeIdx = -1;
+
+function openEeModal(idx){
+  eeRenderCourseDropdown();
+  var titleEl = document.getElementById('eeModalTitle');
+  if(idx !== undefined && idx >= 0){
+    editingEeIdx = idx;
+    var r = DB.earlyEd.records[idx];
+    if(!r) return;
+    titleEl.textContent = '编辑课时记录';
+    document.getElementById('eeDate').value = r.date || today();
+    document.getElementById('eeNotes').value = r.notes || '';
+    // restore hours
+    eeSelectedHours = r.hours || 1;
+    document.querySelectorAll('#eeHoursGroup .radio-item').forEach(function(ri){
+      ri.classList.toggle('checked', parseFloat(ri.dataset.val) === eeSelectedHours);
+    });
+    // restore course
+    eeSelectedCourse = '';
+    var cval = '';
+    if(r.course){
+      if(EE_COURSES.indexOf(r.course) !== -1){ cval = r.course; }
+      else if(DB.earlyEd.customCourses && DB.earlyEd.customCourses.indexOf(r.course) !== -1){
+        cval = '__custom_' + DB.earlyEd.customCourses.indexOf(r.course);
+      }
+    }
+    document.getElementById('eeCourse').value = cval;
+    eeSelectedCourse = cval;
+  } else {
+    editingEeIdx = -1;
+    titleEl.textContent = '新增课时记录';
+    document.getElementById('eeDate').value = today();
+    document.getElementById('eeNotes').value = '';
+    eeSelectedHours = 1;
+    document.querySelectorAll('#eeHoursGroup .radio-item').forEach(function(ri){
+      ri.classList.toggle('checked', ri.dataset.val === '1');
+    });
+    document.getElementById('eeCourse').value = '';
+    eeSelectedCourse = '';
+  }
+  document.getElementById('eeOverlay').classList.add('show');
+}
+
+function closeEeModal(){
+  document.getElementById('eeOverlay').classList.remove('show');
+  editingEeIdx = -1;
+}
+
+function saveEeRecord(){
   var date = document.getElementById('eeDate').value || today();
   var notes = document.getElementById('eeNotes').value.trim();
   var course = document.getElementById('eeCourse').value;
@@ -2069,13 +2162,17 @@ function addEarlyEdRecord(){
       courseLabel = course;
     }
   }
-  DB.earlyEd.records.unshift({ date: date, hours: eeSelectedHours, notes: notes, course: courseLabel, ts: Date.now() });
+  if(editingEeIdx >= 0 && DB.earlyEd.records[editingEeIdx]){
+    var r = DB.earlyEd.records[editingEeIdx];
+    r.date = date; r.hours = eeSelectedHours; r.notes = notes; r.course = courseLabel;
+    toast('记录已更新');
+  } else {
+    DB.earlyEd.records.unshift({ date: date, hours: eeSelectedHours, notes: notes, course: courseLabel, ts: Date.now() });
+    toast('记录已保存');
+  }
   saveDb();
-  document.getElementById('eeNotes').value = '';
-  document.getElementById('eeCourse').value = '';
-  eeSelectedCourse = '';
+  closeEeModal();
   renderEarlyEd();
-  toast('记录已保存');
 }
 
 function deleteEarlyEdRecord(i){
@@ -2085,96 +2182,7 @@ function deleteEarlyEdRecord(i){
   renderEarlyEd();
 }
 
-function editEarlyEdRecord(i){
-  var r = DB.earlyEd.records[i];
-  if(!r) return;
-  // Inline edit form
-  var box = document.getElementById('eeDetailList');
-  var node = box.children[i];
-  if(!node) return;
-  var oldHtml = node.innerHTML;
-  var courseOptions = '<option value="">— 无 —</option>';
-  EE_COURSES.forEach(function(c){
-    courseOptions += '<option value="' + c + '"' + (r.course === c ? ' selected' : '') + '>' + c + '</option>';
-  });
-  if(DB.earlyEd.customCourses){
-    DB.earlyEd.customCourses.forEach(function(c, ci){
-      var v = '__custom_' + ci;
-      courseOptions += '<option value="' + v + '"' + (r.course === c ? ' selected' : '') + '>' + c + ' (自定义)</option>';
-    });
-  }
-  var hoursChecked = function(v){ return r.hours === v ? ' checked' : ''; };
-  node.innerHTML =
-    '<div class="edit-form">' +
-      '<div class="form-row">' +
-        '<div class="form-group" style="flex:0 0 140px;">' +
-          '<label class="form-label">日期</label>' +
-          '<input type="date" id="eeEditDate_' + i + '" value="' + (r.date || '') + '">' +
-        '</div>' +
-        '<div class="form-group">' +
-          '<label class="form-label">课时</label>' +
-          '<div class="radio-group">' +
-            '<span class="radio-item' + (r.hours === 1 ? ' checked' : '') + '" data-val="1">1 课时</span>' +
-            '<span class="radio-item' + (r.hours === 1.5 ? ' checked' : '') + '" data-val="1.5">1.5 课时</span>' +
-            '<span class="radio-item' + (r.hours === 2 ? ' checked' : '') + '" data-val="2">2 课时</span>' +
-          '</div>' +
-        '</div>' +
-      '</div>' +
-      '<div class="form-group">' +
-        '<label class="form-label">课程</label>' +
-        '<select id="eeEditCourse_' + i + '">' + courseOptions + '</select>' +
-      '</div>' +
-      '<div class="form-group">' +
-        '<label class="form-label">课堂情况</label>' +
-        '<textarea id="eeEditNotes_' + i + '" rows="3">' + escapeHtml(r.notes || '') + '</textarea>' +
-      '</div>' +
-      '<div style="display:flex;gap:8px;justify-content:flex-end;">' +
-        '<button class="btn btn-ghost btn-sm" onclick="renderEarlyEd()">取消</button>' +
-        '<button class="btn btn-primary btn-sm" onclick="saveEarlyEdEdit(' + i + ')">保存</button>' +
-      '</div>' +
-    '</div>';
-  // Bind radio click
-  var radios = node.querySelectorAll('.radio-item');
-  radios.forEach(function(rb){
-    rb.addEventListener('click', function(){
-      radios.forEach(function(x){ x.classList.remove('checked'); });
-      rb.classList.add('checked');
-    });
-  });
-}
-
-function saveEarlyEdEdit(i){
-  var r = DB.earlyEd.records[i];
-  if(!r) return;
-  var newDate = document.getElementById('eeEditDate_' + i).value || r.date;
-  var newNotes = document.getElementById('eeEditNotes_' + i).value.trim();
-  var newCourse = document.getElementById('eeEditCourse_' + i).value;
-  var newHours = r.hours;
-  var node = document.getElementById('eeDetailList').children[i];
-  if(node){
-    var checked = node.querySelector('.radio-item.checked');
-    if(checked) newHours = parseFloat(checked.dataset.val);
-  }
-  var newCourseLabel = '';
-  if(newCourse){
-    if(newCourse.startsWith('__custom_')){
-      var idx = parseInt(newCourse.replace('__custom_', ''), 10);
-      newCourseLabel = DB.earlyEd.customCourses[idx] || '';
-    } else {
-      newCourseLabel = newCourse;
-    }
-  }
-  r.date = newDate;
-  r.hours = newHours;
-  r.notes = newNotes;
-  r.course = newCourseLabel;
-  saveDb();
-  if(!document.getElementById('eeDetail').classList.contains('open')){
-    toggleEeDetail();
-  }
-  renderEarlyEd();
-  toast('已更新');
-}
+function editEarlyEdRecord(i){ openEeModal(i); }
 
 function eeEditTotal(){
   var v = prompt('请输入总购买课时：', DB.earlyEd.totalHours);
@@ -2204,10 +2212,23 @@ function renderEarlyEd(){
   else if(remaining <= 10) remEl.classList.add('amber');
   else remEl.classList.add('green');
 
-  var consumedBox = document.getElementById('eeConsumedBox');
-  if(consumedBox){
-    consumedBox.style.display = DB.earlyEd.records.length ? '' : 'none';
+  // Hero overview
+  var hero = document.getElementById('eeHero');
+  if(hero){
+    hero.innerHTML =
+      '<div class="ee-hero-item"><div class="eh-val">' + DB.earlyEd.records.length + '</div><div class="eh-label">累计课次</div></div>' +
+      '<div class="ee-hero-item"><div class="eh-val blue">' + consumed + '</div><div class="eh-label">已消耗课时</div></div>' +
+      '<div class="ee-hero-item"><div class="eh-val green">' + remaining + '</div><div class="eh-label">剩余课时</div></div>' +
+      '<div class="ee-hero-item"><div class="eh-val' + (remaining <= 5 ? ' amber' : '') + '">' + (total > 0 ? Math.round(remaining / total * 100) : 0) + '%</div><div class="eh-label">剩余占比</div></div>';
   }
+
+  // Progress bar
+  var pct = total > 0 ? Math.min(100, consumed / total * 100) : 0;
+  var fill = document.getElementById('eeProgressFill');
+  var ptext = document.getElementById('eeProgressText');
+  if(fill) fill.style.width = pct + '%';
+  if(ptext) ptext.textContent = '已消耗 ' + consumed + ' / ' + total + ' 课时';
+
   renderEeDetailList();
 }
 
@@ -2246,16 +2267,6 @@ function renderEeDetailList(){
       '</div>' +
     '</div>';
   }).join('');
-}
-
-function toggleEeDetail(){
-  var detail = document.getElementById('eeDetail');
-  var chevron = document.getElementById('eeChevron');
-  var hint = document.getElementById('eeDetailHint');
-  if(!detail || DB.earlyEd.records.length === 0) return;
-  var open = detail.classList.toggle('open');
-  if(chevron) chevron.classList.toggle('open', open);
-  if(hint) hint.textContent = open ? '收起' : '点击查看';
 }
 
 /* ============================================================
