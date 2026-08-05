@@ -357,6 +357,28 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 }
 .stat-edit:hover{color:var(--accent);}
 
+/* ====== Fitness Hero (daily summary) ====== */
+.fit-hero{
+  display:grid;grid-template-columns:auto 1fr;gap:clamp(14px,2vw,22px);align-items:center;
+  background:linear-gradient(120deg,var(--accent-bg),var(--blue-bg));
+  border:1px solid var(--line);border-radius:var(--radius);
+  padding:clamp(14px,1.6vw,20px) clamp(16px,2vw,24px);
+  margin-bottom:clamp(14px,1.2vw,18px);
+}
+.fit-hero-date{flex:0 0 auto;}
+.fit-hero-date .form-label{margin-bottom:4px;}
+.fit-hero-date input[type="date"]{min-width:150px;}
+.fit-hero-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(10px,1.5vw,20px);}
+.fit-hero-item{text-align:center;}
+.fit-hero-item .fh-val{font-size:clamp(22px,3vw,30px);font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums;letter-spacing:-0.5px;line-height:1.1;}
+.fit-hero-item .fh-val.amber{color:var(--amber);}
+.fit-hero-item .fh-val.green{color:var(--green);}
+.fit-hero-item .fh-label{font-size:12px;color:var(--text-2);margin-top:5px;}
+@media(max-width:760px){
+  .fit-hero{grid-template-columns:1fr;align-items:stretch;}
+  .fit-hero-date input[type="date"]{width:100%;}
+}
+
 /* ====== Early Ed: hero + progress + timeline ====== */
 .ee-hero{
   display:grid;grid-template-columns:repeat(4,1fr);gap:clamp(10px,1vw,14px);
@@ -1228,6 +1250,28 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     <div class="section-desc">16+8 间歇断食 · 饮食记录 · 体重趋势 · 运动管理</div>
   </div>
 
+  <!-- Daily Summary Hero -->
+  <div class="fit-hero">
+    <div class="fit-hero-date">
+      <label class="form-label">记录日期</label>
+      <input type="date" id="fitDate">
+    </div>
+    <div class="fit-hero-stats">
+      <div class="fit-hero-item">
+        <div class="fh-val amber" id="sumIntake">0</div>
+        <div class="fh-label">摄入 (kcal)</div>
+      </div>
+      <div class="fit-hero-item">
+        <div class="fh-val green" id="sumBurn">0</div>
+        <div class="fh-label">消耗 (kcal)</div>
+      </div>
+      <div class="fit-hero-item">
+        <div class="fh-val" id="sumNet">0</div>
+        <div class="fh-label">热量差额</div>
+      </div>
+    </div>
+  </div>
+
   <!-- Recipe Recommendation -->
   <div class="card">
     <div class="card-title">今日健康食谱推荐 <span class="sub" id="recipeIdx"></span></div>
@@ -1259,159 +1303,135 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     <div class="fasting-labels"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div>
   </div>
 
-  <div class="grid-2">
-    <!-- Meal Record -->
-    <div class="card">
-      <div class="card-title">餐食记录 <span class="ai-badge">AI 识图</span></div>
+  <!-- Meal Record (full width) -->
+  <div class="card">
+    <div class="card-title">餐食记录 <span class="ai-badge">AI 识图</span></div>
 
-      <!-- AI Settings (collapsible) -->
-      <div class="ai-settings" id="aiSettings">
-        <div class="ai-settings-header" onclick="toggleAiSettings()">
-          <span>⚙ AI 分析设置</span>
-          <span id="aiSettingsStatus" style="font-size:11px;color:var(--text-3);">点击配置</span>
+    <!-- AI Settings (collapsible) -->
+    <div class="ai-settings" id="aiSettings">
+      <div class="ai-settings-header" onclick="toggleAiSettings()">
+        <span>⚙ AI 分析设置</span>
+        <span id="aiSettingsStatus" style="font-size:11px;color:var(--text-3);">点击配置</span>
+      </div>
+      <div class="ai-settings-body">
+        <label class="form-label">识图引擎</label>
+        <div class="ai-engine-row">
+          <label class="ai-engine-opt" id="engineOptQwen">
+            <input type="radio" name="aiEngine" value="qwen" onchange="switchAiEngine('qwen')">
+            <span>通义千问 VL<span class="ai-engine-tag">国内推荐</span></span>
+          </label>
+          <label class="ai-engine-opt" id="engineOptGemini">
+            <input type="radio" name="aiEngine" value="gemini" onchange="switchAiEngine('gemini')">
+            <span>Gemini Vision</span>
+          </label>
         </div>
-        <div class="ai-settings-body">
-          <label class="form-label">识图引擎</label>
-          <div class="ai-engine-row">
-            <label class="ai-engine-opt" id="engineOptQwen">
-              <input type="radio" name="aiEngine" value="qwen" onchange="switchAiEngine('qwen')">
-              <span>通义千问 VL<span class="ai-engine-tag">国内推荐</span></span>
-            </label>
-            <label class="ai-engine-opt" id="engineOptGemini">
-              <input type="radio" name="aiEngine" value="gemini" onchange="switchAiEngine('gemini')">
-              <span>Gemini Vision</span>
-            </label>
-          </div>
 
-          <!-- Qwen Key -->
-          <div id="qwenKeyBox" style="display:none;">
-            <label class="form-label">通义千问 API Key（百炼平台）</label>
-            <input type="password" id="qwenKey" placeholder="粘贴你的 API Key（sk-开头）" onblur="saveQwenKey()">
-            <button class="ai-test-btn" onclick="testQwenKey()" id="qwenTestBtn">🔍 测试通义千问 Key</button>
-            <div class="ai-test-hint" id="qwenTestHint"></div>
-            <div class="ai-help">
-              1. 打开 <a href="https://bailian.console.aliyun.com/" target="_blank">阿里云百炼平台</a>（原 DashScope）<br>
-              2. 左侧菜单「API-Key 管理」→ 创建 API-Key → 复制 sk- 开头的 Key<br>
-              3. 粘贴到上方输入框，点空白处自动保存<br>
-              4. 点「测试通义千问 Key」验证是否可用<br>
-              <span style="color:var(--text-3);">⚠ 不需要在平台手动开通模型免费额度，API Key 创建后即可调用</span>
-            </div>
+        <!-- Qwen Key -->
+        <div id="qwenKeyBox" style="display:none;">
+          <label class="form-label">通义千问 API Key（百炼平台）</label>
+          <input type="password" id="qwenKey" placeholder="粘贴你的 API Key（sk-开头）" onblur="saveQwenKey()">
+          <button class="ai-test-btn" onclick="testQwenKey()" id="qwenTestBtn">🔍 测试通义千问 Key</button>
+          <div class="ai-test-hint" id="qwenTestHint"></div>
+          <div class="ai-help">
+            1. 打开 <a href="https://bailian.console.aliyun.com/" target="_blank">阿里云百炼平台</a>（原 DashScope）<br>
+            2. 左侧菜单「API-Key 管理」→ 创建 API-Key → 复制 sk- 开头的 Key<br>
+            3. 粘贴到上方输入框，点空白处自动保存<br>
+            4. 点「测试通义千问 Key」验证是否可用<br>
+            <span style="color:var(--text-3);">⚠ 不需要在平台手动开通模型免费额度，API Key 创建后即可调用</span>
           </div>
+        </div>
 
-          <!-- Gemini Key -->
-          <div id="geminiKeyBox" style="display:none;">
-            <label class="form-label">Gemini API Key（免费）</label>
-            <input type="password" id="geminiKey" placeholder="粘贴你的 Gemini API Key" onblur="saveGeminiKey()">
-            <div class="ai-help">
-              1. 打开 <a href="https://aistudio.google.com/apikey" target="_blank">Google AI Studio</a> 免费获取密钥<br>
-              2. 粘贴到上方输入框，点击空白处即自动保存<br>
-              3. 需要能访问 Google 服务
-            </div>
+        <!-- Gemini Key -->
+        <div id="geminiKeyBox" style="display:none;">
+          <label class="form-label">Gemini API Key（免费）</label>
+          <input type="password" id="geminiKey" placeholder="粘贴你的 Gemini API Key" onblur="saveGeminiKey()">
+          <div class="ai-help">
+            1. 打开 <a href="https://aistudio.google.com/apikey" target="_blank">Google AI Studio</a> 免费获取密钥<br>
+            2. 粘贴到上方输入框，点击空白处即自动保存<br>
+            3. 需要能访问 Google 服务
           </div>
         </div>
       </div>
+    </div>
 
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">食物描述</label>
+        <input type="text" id="mealFood" placeholder="如：燕麦粥+鸡蛋">
+      </div>
+      <div class="form-group auto">
+        <label class="form-label">卡路里 (kcal)</label>
+        <input type="number" id="mealCal" placeholder="350" min="0">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">餐食照片 <span class="hint">（AI 自动识别食物 + 估算卡路里）</span></label>
+      <div class="meal-photo-zone" id="mealPhotoZone" onclick="document.getElementById('mealPhoto').click()">
+        <input type="file" id="mealPhoto" accept="image/*" capture="environment" onchange="onMealPhotoSelected(this)" style="display:none;">
+        <div class="photo-zone-empty" id="photoZoneEmpty">
+          <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+          <span class="photo-zone-text">点击拍照 / 上传餐食照片</span>
+          <span class="photo-zone-sub">AI 自动识别食物 + 估算卡路里</span>
+        </div>
+        <img class="photo-zone-preview" id="photoZonePreview" style="display:none;">
+        <button class="photo-zone-remove" id="photoZoneRemove" onclick="event.stopPropagation();clearMealPhoto()" style="display:none;">&times;</button>
+        <button class="photo-zone-retake" id="photoZoneRetake" onclick="event.stopPropagation();document.getElementById('mealPhoto').click()" style="display:none;">重新拍照</button>
+      </div>
+      <div class="ai-loading" id="aiLoading">
+        <div class="ai-spinner"></div>
+        <span id="aiLoadingText">AI 识别中...</span>
+      </div>
+      <div class="ai-result-hint" id="aiResultHint"></div>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="addMeal()">添加餐食</button>
+    <div id="mealList" style="margin-top:14px;"></div>
+  </div>
+
+  <div class="grid-2">
+    <!-- Weight -->
+    <div class="card">
+      <div class="card-title">体重打卡</div>
       <div class="form-row">
         <div class="form-group auto">
           <label class="form-label">日期</label>
-          <input type="date" id="fitDate">
+          <input type="date" id="weightDate">
         </div>
         <div class="form-group">
-          <label class="form-label">食物描述</label>
-          <input type="text" id="mealFood" placeholder="如：燕麦粥+鸡蛋">
+          <label class="form-label">晨起体重 (kg)</label>
+          <input type="number" id="weightVal" step="0.1" placeholder="如：58.5">
+        </div>
+        <div class="auto" style="align-self:flex-end;"><button class="btn btn-primary btn-sm" onclick="addWeight()">记录</button></div>
+      </div>
+      <div id="weightChart"></div>
+    </div>
+
+    <!-- Exercise -->
+    <div class="card">
+      <div class="card-title">运动记录</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">运动类型</label>
+          <select id="exType">
+            <option value="">选择类型</option>
+            <option>快走</option><option>慢跑</option><option>瑜伽</option>
+            <option>游泳</option><option>骑行</option><option>力量训练</option>
+            <option>跳绳</option><option>HIIT</option><option>其他</option>
+          </select>
         </div>
         <div class="form-group auto">
-          <label class="form-label">卡路里 (kcal)</label>
-          <input type="number" id="mealCal" placeholder="350" min="0">
+          <label class="form-label">时长(分)</label>
+          <input type="number" id="exDur" min="0" placeholder="30">
         </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">餐食照片 <span class="hint">（AI 自动识别食物 + 估算卡路里）</span></label>
-        <div class="meal-photo-zone" id="mealPhotoZone" onclick="document.getElementById('mealPhoto').click()">
-          <input type="file" id="mealPhoto" accept="image/*" capture="environment" onchange="onMealPhotoSelected(this)" style="display:none;">
-          <div class="photo-zone-empty" id="photoZoneEmpty">
-            <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-              <circle cx="12" cy="13" r="4"/>
-            </svg>
-            <span class="photo-zone-text">点击拍照 / 上传餐食照片</span>
-            <span class="photo-zone-sub">AI 自动识别食物 + 估算卡路里</span>
-          </div>
-          <img class="photo-zone-preview" id="photoZonePreview" style="display:none;">
-          <button class="photo-zone-remove" id="photoZoneRemove" onclick="event.stopPropagation();clearMealPhoto()" style="display:none;">&times;</button>
-          <button class="photo-zone-retake" id="photoZoneRetake" onclick="event.stopPropagation();document.getElementById('mealPhoto').click()" style="display:none;">重新拍照</button>
+        <div class="form-group auto">
+          <label class="form-label">消耗(kcal)</label>
+          <input type="number" id="exCal" min="0" placeholder="200">
         </div>
-        <div class="ai-loading" id="aiLoading">
-          <div class="ai-spinner"></div>
-          <span id="aiLoadingText">AI 识别中...</span>
-        </div>
-        <div class="ai-result-hint" id="aiResultHint"></div>
+        <div class="auto" style="align-self:flex-end;"><button class="btn btn-primary btn-sm" onclick="addExercise()">添加</button></div>
       </div>
-      <button class="btn btn-primary btn-sm" onclick="addMeal()">添加餐食</button>
-      <div id="mealList" style="margin-top:14px;"></div>
-    </div>
-
-    <!-- Weight + Exercise -->
-    <div>
-      <div class="card">
-        <div class="card-title">体重打卡</div>
-        <div class="form-row">
-          <div class="form-group auto">
-            <label class="form-label">日期</label>
-            <input type="date" id="weightDate">
-          </div>
-          <div class="form-group">
-            <label class="form-label">晨起体重 (kg)</label>
-            <input type="number" id="weightVal" step="0.1" placeholder="如：58.5">
-          </div>
-          <div class="auto" style="align-self:flex-end;"><button class="btn btn-primary btn-sm" onclick="addWeight()">记录</button></div>
-        </div>
-        <div id="weightChart"></div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">运动记录</div>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">运动类型</label>
-            <select id="exType">
-              <option value="">选择类型</option>
-              <option>快走</option><option>慢跑</option><option>瑜伽</option>
-              <option>游泳</option><option>骑行</option><option>力量训练</option>
-              <option>跳绳</option><option>HIIT</option><option>其他</option>
-            </select>
-          </div>
-          <div class="form-group auto">
-            <label class="form-label">时长(分)</label>
-            <input type="number" id="exDur" min="0" placeholder="30">
-          </div>
-          <div class="form-group auto">
-            <label class="form-label">消耗(kcal)</label>
-            <input type="number" id="exCal" min="0" placeholder="200">
-          </div>
-          <div class="auto" style="align-self:flex-end;"><button class="btn btn-primary btn-sm" onclick="addExercise()">添加</button></div>
-        </div>
-        <div id="exList"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Daily Summary -->
-  <div class="card">
-    <div class="card-title">每日热量汇总 <span class="sub" id="sumDate"></span></div>
-    <div class="stats-grid">
-      <div class="stat-box">
-        <div class="stat-value amber" id="sumIntake">0</div>
-        <div class="stat-label">总摄入 (kcal)</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-value green" id="sumBurn">0</div>
-        <div class="stat-label">总消耗 (kcal)</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-value" id="sumNet">0</div>
-        <div class="stat-label">热量差额 (kcal)</div>
-      </div>
+      <div id="exList"></div>
     </div>
   </div>
 </section>
@@ -2890,7 +2910,6 @@ function renderExercises(){
 
 function renderDailySummary(){
   var date = document.getElementById('fitDate').value || today();
-  document.getElementById('sumDate').textContent = date;
   var intake = DB.fitness.meals.filter(function(m){ return m.date === date; }).reduce(function(s,m){ return s + m.cal; }, 0);
   var burn = DB.fitness.exercises.filter(function(e){ return e.date === date; }).reduce(function(s,e){ return s + e.cal; }, 0);
   var net = intake - burn;
@@ -2898,12 +2917,14 @@ function renderDailySummary(){
   document.getElementById('sumBurn').textContent = burn;
   var netEl = document.getElementById('sumNet');
   netEl.textContent = (net >= 0 ? '+' : '') + net;
-  netEl.className = 'stat-value';
+  netEl.className = 'fh-val';
   if(net > 500) netEl.classList.add('amber');
   else if(net < 0) netEl.classList.add('green');
 }
 
 function renderFitness(){
+  if(!document.getElementById('fitDate').value) document.getElementById('fitDate').value = today();
+  if(!document.getElementById('weightDate').value) document.getElementById('weightDate').value = today();
   document.getElementById('fastStart').value = DB.fitness.fastStart;
   document.getElementById('fastEnd').value = DB.fitness.fastEnd;
   /* AI settings: restore engine selection + keys */
