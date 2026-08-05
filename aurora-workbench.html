@@ -975,6 +975,8 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
   border-radius:var(--radius-sm);
   margin-top:10px;
 }
+.recipe-detail{margin-top:8px;padding-top:10px;border-top:1px solid var(--line-soft);display:none;}
+.recipe-detail.open{display:block;}
 .ing-row{display:flex;gap:0.5em;margin-bottom:0.4em;align-items:center;}
 .ing-row input{flex:1;}
 .step-row{display:flex;gap:0.5em;margin-bottom:0.4em;align-items:flex-start;}
@@ -3920,8 +3922,10 @@ function renderRecipes(){
       html += '<div style="font-size:13px;margin-top:2px;">' + r.ingredients.map(function(ing){ return escapeHtml(ing.name) + (ing.amount ? ' <span class="text-muted">' + escapeHtml(ing.amount) + '</span>' : ''); }).join('、') + '</div>';
     }
     if(r.steps.length > 0){
-      html += '<div style="margin-top:10px;font-size:12px;color:var(--text-2);">步骤：</div>';
+      html += '<button class="expand-btn" onclick="this.nextElementSibling.classList.toggle(\'open\')">展开 / 收起步骤</button>';
+      html += '<div class="recipe-detail">';
       html += '<ol style="font-size:13px;margin-top:2px;padding-left:20px;line-height:1.8;">' + r.steps.map(function(s){ return '<li>' + escapeHtml(s) + '</li>'; }).join('') + '</ol>';
+      html += '</div>';
     }
     if(r.notes){
       html += '<div style="margin-top:10px;font-size:12px;color:var(--text-2);">心得：</div>';
