@@ -989,6 +989,43 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
   margin-top:0.45em;
 }
 .step-row textarea{flex:1;min-height:2.4em;padding:0.45em 0.7em;}
+.recipe-hero{
+  display:flex;align-items:center;justify-content:space-between;gap:clamp(12px,1.5vw,20px);
+  background:linear-gradient(120deg,var(--accent-bg),var(--blue-bg));
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  padding:clamp(14px,1.6vw,20px) clamp(16px,2vw,24px);
+  margin-bottom:14px;
+}
+.recipe-hero-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(12px,2vw,28px);flex:1;}
+.recipe-hero-item{text-align:center;}
+.recipe-hero-item .rh-val{font-size:clamp(22px,3vw,30px);font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums;letter-spacing:-0.5px;line-height:1.1;}
+.recipe-hero-item .rh-val.amber{color:var(--amber);}
+.recipe-hero-item .rh-val.blue{color:var(--blue);}
+.recipe-hero-item .rh-label{font-size:12px;color:var(--text-2);margin-top:5px;}
+@media(max-width:640px){
+  .recipe-hero{flex-direction:column;align-items:stretch;}
+  .recipe-hero .btn{width:100%;}
+}
+.recipe-overlay{position:fixed;inset:0;background:rgba(20,40,50,0.45);display:none;z-index:1000;align-items:flex-end;justify-content:center;}
+.recipe-overlay.show{display:flex;}
+.recipe-modal{background:var(--card);width:100%;max-width:600px;border-radius:var(--radius) var(--radius) 0 0;max-height:92vh;display:flex;flex-direction:column;animation:recipeSlideUp 0.25s ease-out;box-shadow:0 -8px 30px rgba(0,0,0,0.18);}
+@keyframes recipeSlideUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
+@media(min-width:680px){
+  .recipe-overlay{align-items:center;padding:16px;}
+  .recipe-modal{border-radius:var(--radius);width:min(600px,92vw);max-height:88vh;animation:recipeFadeIn 0.2s ease-out;}
+  @keyframes recipeFadeIn{from{opacity:0;transform:scale(0.96);}to{opacity:1;transform:scale(1);}}
+}
+.recipe-modal-header{padding:18px 22px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--card);z-index:2;}
+.recipe-modal-title{font-size:16px;font-weight:600;color:var(--text);}
+.recipe-modal-close{cursor:pointer;color:var(--text-3);font-size:24px;border:none;background:transparent;line-height:1;padding:0;}
+.recipe-modal-close:hover{color:var(--text);}
+.recipe-modal-body{padding:18px 22px;overflow-y:auto;}
+.recipe-modal-body .form-label{margin-bottom:4px;}
+.recipe-modal-body input,.recipe-modal-body textarea,.recipe-modal-body select{font-size:13px;margin-bottom:12px;}
+.recipe-modal-body .form-row{margin-bottom:0;}
+.recipe-modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:6px;padding-top:4px;}
+.recipe-modal-actions .btn{flex:0 0 auto;}
 
 /* ====== Tab7: Reading ====== */
 .book-item{
@@ -1754,58 +1791,20 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     <div class="section-desc">烘焙面包 · 家常菜品 · 甜品配方收纳</div>
   </div>
 
-  <div class="card">
-    <div class="card-title">新增配方</div>
-    <div class="form-row">
-      <div class="form-group">
-        <label class="form-label">食谱名称</label>
-        <input type="text" id="rName" placeholder="如：北海道吐司">
-      </div>
-      <div class="form-group auto">
-        <label class="form-label">分类</label>
-        <select id="rCategory">
-          <option value="bread">面包烘焙</option>
-          <option value="dish">家常菜</option>
-          <option value="dessert">甜品</option>
-        </select>
-      </div>
-      <div class="form-group auto">
-        <label class="form-label">难度</label>
-        <select id="rDifficulty">
-          <option value="easy">简单</option>
-          <option value="medium">中等</option>
-          <option value="hard">复杂</option>
-        </select>
-      </div>
+  <div class="recipe-hero">
+    <div class="recipe-hero-stats">
+      <div class="recipe-hero-item"><div class="rh-val" id="rhTotal">0</div><div class="rh-label">配方总数</div></div>
+      <div class="recipe-hero-item"><div class="rh-val amber" id="rhFav">0</div><div class="rh-label">常用标记</div></div>
+      <div class="recipe-hero-item"><div class="rh-val blue" id="rhCate">0</div><div class="rh-label">分类覆盖</div></div>
     </div>
-    <div class="form-row">
-      <div class="form-group auto">
-        <label class="form-label">烘烤温度时间</label>
-        <input type="text" id="rDuration" placeholder="如：180°C / 35分钟">
-      </div>
-      <div class="form-group">
-        <label class="form-label">成品照片</label>
-        <input type="file" id="rPhoto" accept="image/*" style="font-size:12px;">
-      </div>
-    </div>
-
-    <label class="form-label">原料清单</label>
-    <div id="ingList"></div>
-    <button class="btn btn-ghost btn-sm" onclick="addIngRow()" style="margin:6px 0 12px;">+ 添加原料</button>
-
-    <label class="form-label">制作步骤</label>
-    <div id="stepList"></div>
-    <button class="btn btn-ghost btn-sm" onclick="addStepRow()" style="margin:6px 0 12px;">+ 添加步骤</button>
-
-    <div class="form-group">
-      <label class="form-label">实操心得 & 调整记录</label>
-      <textarea id="rNotes" rows="3" placeholder="减糖、调整水量、失败原因、口感评价..."></textarea>
-    </div>
-    <button class="btn btn-primary" onclick="addRecipe()">保存配方</button>
+    <button class="btn btn-primary" onclick="openRecipeModal()">＋ 新增配方</button>
   </div>
 
   <div class="card">
-    <div class="card-title">配方归档</div>
+    <div class="card-title-row">
+      <div class="card-title">配方归档</div>
+      <span class="sub" id="recipeCount"></span>
+    </div>
     <div class="filter-bar">
       <span class="filter-label">筛选：</span>
       <select id="recipeFilter" onchange="renderRecipes()">
@@ -1821,6 +1820,67 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     <div id="recipeArchive"></div>
   </div>
 </section>
+
+<!-- ========== Recipe Modal ========== -->
+<div class="recipe-overlay" id="recipeOverlay" onclick="if(event.target===this)closeRecipeModal()">
+  <div class="recipe-modal">
+    <div class="recipe-modal-header">
+      <div class="recipe-modal-title" id="recipeModalTitle">新增配方</div>
+      <button class="recipe-modal-close" onclick="closeRecipeModal()">&times;</button>
+    </div>
+    <div class="recipe-modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">食谱名称</label>
+          <input type="text" id="rName" placeholder="如：北海道吐司">
+        </div>
+        <div class="form-group auto">
+          <label class="form-label">分类</label>
+          <select id="rCategory">
+            <option value="bread">面包烘焙</option>
+            <option value="dish">家常菜</option>
+            <option value="dessert">甜品</option>
+          </select>
+        </div>
+        <div class="form-group auto">
+          <label class="form-label">难度</label>
+          <select id="rDifficulty">
+            <option value="easy">简单</option>
+            <option value="medium">中等</option>
+            <option value="hard">复杂</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group auto">
+          <label class="form-label">烘烤温度时间</label>
+          <input type="text" id="rDuration" placeholder="如：180°C / 35分钟">
+        </div>
+        <div class="form-group">
+          <label class="form-label">成品照片</label>
+          <input type="file" id="rPhoto" accept="image/*" style="font-size:12px;">
+        </div>
+      </div>
+
+      <label class="form-label">原料清单</label>
+      <div id="ingList"></div>
+      <button class="btn btn-ghost btn-sm" onclick="addIngRow()" style="margin:6px 0 12px;">+ 添加原料</button>
+
+      <label class="form-label">制作步骤</label>
+      <div id="stepList"></div>
+      <button class="btn btn-ghost btn-sm" onclick="addStepRow()" style="margin:6px 0 12px;">+ 添加步骤</button>
+
+      <div class="form-group">
+        <label class="form-label">实操心得 & 调整记录</label>
+        <textarea id="rNotes" rows="3" placeholder="减糖、调整水量、失败原因、口感评价..."></textarea>
+      </div>
+      <div class="recipe-modal-actions">
+        <button class="btn btn-ghost" onclick="closeRecipeModal()">取消</button>
+        <button class="btn btn-primary" onclick="saveRecipe()">保存配方</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- ========== Tab 7: Reading ========== -->
 <section id="tab7" class="tab-section">
@@ -1964,7 +2024,7 @@ function switchTab(n){
   if(n === 3) renderWords();
   if(n === 4) renderMarket();
   if(n === 5) renderPython();
-  if(n === 6) renderRecipes();
+  if(n === 6){ renderRecipeHero(); renderRecipes(); }
   if(n === 7) renderBooks();
   closeMobileSidebar();
 }
@@ -2040,7 +2100,7 @@ function switchTab(n){
       else if(n === 3) renderWords();
       else if(n === 4) fetchNews(true);
       else if(n === 5) renderPython();
-      else if(n === 6) renderRecipes();
+      else if(n === 6){ renderRecipeHero(); renderRecipes(); }
       else if(n === 7) renderBooks();
     } catch(err){ console.error('Refresh error:', err); }
     // Hide indicator. For Tab4 (async fetch), wait longer so user sees "刷新中..."
@@ -3704,22 +3764,22 @@ function renderPython(){
 var CATEGORY_LABEL = { bread: '面包烘焙', dish: '家常菜', dessert: '甜品' };
 var DIFFICULTY_LABEL = { easy: '简单', medium: '中等', hard: '复杂' };
 
-function addIngRow(){
+function addIngRow(name, amount){
   var box = document.getElementById('ingList');
   var row = document.createElement('div');
   row.className = 'ing-row';
-  row.innerHTML = '<input type="text" placeholder="食材名称" class="ing-input-name">' +
-    '<input type="text" placeholder="用量（如 300g）" class="ing-input-amount" style="flex:0 0 140px;">' +
+  row.innerHTML = '<input type="text" placeholder="食材名称" class="ing-input-name" value="' + (name ? escapeHtml(name) : '') + '">' +
+    '<input type="text" placeholder="用量（如 300g）" class="ing-input-amount" style="flex:0 0 140px;" value="' + (amount ? escapeHtml(amount) : '') + '">' +
     '<button class="btn-icon" onclick="this.parentElement.remove()">&#10005;</button>';
   box.appendChild(row);
 }
-function addStepRow(){
+function addStepRow(text){
   var box = document.getElementById('stepList');
   var rows = box.querySelectorAll('.step-row');
   var row = document.createElement('div');
   row.className = 'step-row';
   row.innerHTML = '<div class="step-idx">' + (rows.length + 1) + '</div>' +
-    '<textarea placeholder="制作步骤、温度、时长等..." rows="1"></textarea>' +
+    '<textarea placeholder="制作步骤、温度、时长等..." rows="1">' + (text ? escapeHtml(text) : '') + '</textarea>' +
     '<button class="btn-icon" onclick="this.parentElement.remove();renumberSteps()">&#10005;</button>';
   box.appendChild(row);
 }
@@ -3729,7 +3789,45 @@ function renumberSteps(){
   });
 }
 
-function addRecipe(){
+var editingRecipeIdx = -1;
+function openRecipeModal(idx){
+  editingRecipeIdx = (typeof idx === 'number') ? idx : -1;
+  var title = document.getElementById('recipeModalTitle');
+  // reset inputs
+  document.getElementById('rName').value = '';
+  document.getElementById('rDuration').value = '';
+  document.getElementById('rNotes').value = '';
+  document.getElementById('rPhoto').value = '';
+  document.getElementById('rCategory').value = 'bread';
+  document.getElementById('rDifficulty').value = 'easy';
+  document.getElementById('ingList').innerHTML = '';
+  document.getElementById('stepList').innerHTML = '';
+  if(editingRecipeIdx >= 0){
+    var r = DB.recipes.items[editingRecipeIdx];
+    title.textContent = '编辑配方';
+    document.getElementById('rName').value = r.name || '';
+    document.getElementById('rCategory').value = r.category || 'bread';
+    document.getElementById('rDifficulty').value = r.difficulty || 'easy';
+    document.getElementById('rDuration').value = r.duration || '';
+    document.getElementById('rNotes').value = r.notes || '';
+    (r.ingredients && r.ingredients.length ? r.ingredients : [null]).forEach(function(ing){
+      addIngRow(ing ? ing.name : '', ing ? ing.amount : '');
+    });
+    (r.steps && r.steps.length ? r.steps : [null]).forEach(function(s){
+      addStepRow(s || '');
+    });
+  } else {
+    title.textContent = '新增配方';
+    addIngRow();
+    addStepRow();
+  }
+  document.getElementById('recipeOverlay').classList.add('show');
+}
+function closeRecipeModal(){
+  document.getElementById('recipeOverlay').classList.remove('show');
+  editingRecipeIdx = -1;
+}
+function saveRecipe(){
   var name = document.getElementById('rName').value.trim();
   if(!name){ toast('请输入食谱名称'); return; }
   var category = document.getElementById('rCategory').value;
@@ -3748,34 +3846,47 @@ function addRecipe(){
     if(v) steps.push(v);
   });
   var photoInput = document.getElementById('rPhoto');
+  function commit(photoData){
+    if(editingRecipeIdx >= 0){
+      var item = DB.recipes.items[editingRecipeIdx];
+      item.name = name; item.category = category; item.difficulty = difficulty;
+      item.duration = duration; item.notes = notes; item.ingredients = ingredients; item.steps = steps;
+      if(photoData !== null) item.photo = photoData;
+      saveDb();
+      toast('配方已更新');
+    } else {
+      DB.recipes.items.unshift({ name: name, category: category, difficulty: difficulty, duration: duration, photo: photoData || '', ingredients: ingredients, steps: steps, notes: notes, fav: false, date: today() });
+      saveDb();
+      toast('配方已保存');
+    }
+    closeRecipeModal();
+    renderRecipeHero();
+    renderRecipes();
+  }
   if(photoInput.files[0]){
     compressImage(photoInput.files[0], 500, function(dataUrl){
-      DB.recipes.items.unshift({ name: name, category: category, difficulty: difficulty, duration: duration, photo: dataUrl, ingredients: ingredients, steps: steps, notes: notes, fav: false, date: today() });
-      saveDb();
-      clearRecipeForm();
-      renderRecipes();
-      toast('配方已保存');
+      commit(dataUrl || '');
     });
   } else {
-    DB.recipes.items.unshift({ name: name, category: category, difficulty: difficulty, duration: duration, photo: '', ingredients: ingredients, steps: steps, notes: notes, fav: false, date: today() });
-    saveDb();
-    clearRecipeForm();
-    renderRecipes();
-    toast('配方已保存');
+    commit(null);
   }
 }
-function clearRecipeForm(){
-  document.getElementById('rName').value = '';
-  document.getElementById('rDuration').value = '';
-  document.getElementById('rNotes').value = '';
-  document.getElementById('rPhoto').value = '';
-  document.getElementById('ingList').innerHTML = '';
-  document.getElementById('stepList').innerHTML = '';
-  addIngRow();
-  addStepRow();
+function deleteRecipe(i){
+  if(!confirm('确定删除该配方？')) return;
+  DB.recipes.items.splice(i,1); saveDb(); renderRecipeHero(); renderRecipes();
 }
-function deleteRecipe(i){ DB.recipes.items.splice(i,1); saveDb(); renderRecipes(); }
-function toggleRecipeFav(i){ DB.recipes.items[i].fav = !DB.recipes.items[i].fav; saveDb(); renderRecipes(); }
+function toggleRecipeFav(i){ DB.recipes.items[i].fav = !DB.recipes.items[i].fav; saveDb(); renderRecipeHero(); renderRecipes(); }
+function editRecipe(i){ openRecipeModal(i); }
+
+function renderRecipeHero(){
+  var items = DB.recipes.items;
+  var favCount = items.filter(function(r){ return r.fav; }).length;
+  var cateSet = {};
+  items.forEach(function(r){ if(r.category) cateSet[r.category] = 1; });
+  document.getElementById('rhTotal').textContent = items.length;
+  document.getElementById('rhFav').textContent = favCount;
+  document.getElementById('rhCate').textContent = Object.keys(cateSet).length;
+}
 
 function renderRecipes(){
   var filter = document.getElementById('recipeFilter').value;
@@ -3786,6 +3897,7 @@ function renderRecipes(){
     return true;
   });
   var box = document.getElementById('recipeArchive');
+  document.getElementById('recipeCount').textContent = '共 ' + list.length + ' 份';
   if(list.length === 0){ box.innerHTML = '<div class="empty-hint">暂无配方，开始记录第一份吧</div>'; return; }
   box.innerHTML = list.map(function(r){
     var idx = DB.recipes.items.indexOf(r);
@@ -3798,8 +3910,9 @@ function renderRecipes(){
     if(r.duration) html += '<span>' + escapeHtml(r.duration) + '</span>';
     html += '</div></div>';
     html += '<div class="record-actions">';
-    html += '<button class="btn-icon ' + (r.fav ? 'fav-on' : '') + '" onclick="toggleRecipeFav(' + idx + ')">&#9733;</button>';
-    html += '<button class="btn-icon" onclick="deleteRecipe(' + idx + ')">&#10005;</button>';
+    html += '<button class="btn-icon ' + (r.fav ? 'fav-on' : '') + '" onclick="toggleRecipeFav(' + idx + ')" title="常用">&#9733;</button>';
+    html += '<button class="btn-icon" onclick="editRecipe(' + idx + ')" title="编辑">&#9998;</button>';
+    html += '<button class="btn-icon" onclick="deleteRecipe(' + idx + ')" title="删除">&#10005;</button>';
     html += '</div></div>';
     if(r.photo) html += '<img class="recipe-item-photo" src="' + r.photo + '">';
     if(r.ingredients.length > 0){
@@ -4304,9 +4417,8 @@ function init(){
   updateCloudBtn();
   // Init Tab1
   renderEarlyEd();
-  // Init recipe form
-  addIngRow();
-  addStepRow();
+  // Init recipe hero
+  renderRecipeHero();
   // Start fasting timer
   setInterval(updateFastingNow, 60000);
 }
