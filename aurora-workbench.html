@@ -1367,18 +1367,18 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     <div class="form-group">
       <label class="form-label">餐食照片 <span class="hint">（AI 自动识别食物 + 估算卡路里）</span></label>
       <div class="meal-photo-zone" id="mealPhotoZone" onclick="document.getElementById('mealPhoto').click()">
-        <input type="file" id="mealPhoto" accept="image/*" capture="environment" onchange="onMealPhotoSelected(this)" style="display:none;">
+        <input type="file" id="mealPhoto" accept="image/*" onchange="onMealPhotoSelected(this)" style="display:none;">
         <div class="photo-zone-empty" id="photoZoneEmpty">
           <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
             <circle cx="12" cy="13" r="4"/>
           </svg>
-          <span class="photo-zone-text">点击拍照 / 上传餐食照片</span>
+          <span class="photo-zone-text">点击拍照 / 选择相册照片</span>
           <span class="photo-zone-sub">AI 自动识别食物 + 估算卡路里</span>
         </div>
         <img class="photo-zone-preview" id="photoZonePreview" style="display:none;">
         <button class="photo-zone-remove" id="photoZoneRemove" onclick="event.stopPropagation();clearMealPhoto()" style="display:none;">&times;</button>
-        <button class="photo-zone-retake" id="photoZoneRetake" onclick="event.stopPropagation();document.getElementById('mealPhoto').click()" style="display:none;">重新拍照</button>
+        <button class="photo-zone-retake" id="photoZoneRetake" onclick="event.stopPropagation();document.getElementById('mealPhoto').click()" style="display:none;">重拍 / 重选</button>
       </div>
       <div class="ai-loading" id="aiLoading">
         <div class="ai-spinner"></div>
