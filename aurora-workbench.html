@@ -977,6 +977,9 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 }
 .recipe-detail{margin-top:8px;padding-top:10px;border-top:1px solid var(--line-soft);display:none;}
 .recipe-detail.open{display:block;}
+.ing-group{margin-bottom:10px;background:var(--input-bg);border:1px solid var(--line);border-radius:var(--radius-sm);padding:10px 12px;}
+.ing-group-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+.ing-group-head .form-label{margin-bottom:0;}
 .ing-row{display:flex;gap:0.5em;margin-bottom:0.4em;align-items:center;}
 .ing-row input{flex:1;}
 .step-row{display:flex;gap:0.5em;margin-bottom:0.4em;align-items:flex-start;}
@@ -1864,9 +1867,21 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
         </div>
       </div>
 
-      <label class="form-label">原料清单</label>
-      <div id="ingList"></div>
-      <button class="btn btn-ghost btn-sm" onclick="addIngRow()" style="margin:6px 0 12px;">+ 添加原料</button>
+      <div class="ing-group">
+        <div class="ing-group-head">
+          <label class="form-label">面团原料</label>
+          <button class="btn btn-ghost btn-sm" onclick="addIngRow('doughIngList')">+ 添加</button>
+        </div>
+        <div id="doughIngList"></div>
+      </div>
+
+      <div class="ing-group">
+        <div class="ing-group-head">
+          <label class="form-label">馅料</label>
+          <button class="btn btn-ghost btn-sm" onclick="addIngRow('fillingIngList')">+ 添加</button>
+        </div>
+        <div id="fillingIngList"></div>
+      </div>
 
       <label class="form-label">制作步骤</label>
       <div id="stepList"></div>
@@ -3766,8 +3781,8 @@ function renderPython(){
 var CATEGORY_LABEL = { bread: '面包烘焙', dish: '家常菜', dessert: '甜品' };
 var DIFFICULTY_LABEL = { easy: '简单', medium: '中等', hard: '复杂' };
 
-function addIngRow(name, amount){
-  var box = document.getElementById('ingList');
+function addIngRow(listId, name, amount){
+  var box = document.getElementById(listId || 'doughIngList');
   var row = document.createElement('div');
   row.className = 'ing-row';
   row.innerHTML = '<input type="text" placeholder="食材名称" class="ing-input-name" value="' + (name ? escapeHtml(name) : '') + '">' +
@@ -3802,7 +3817,8 @@ function openRecipeModal(idx){
   document.getElementById('rPhoto').value = '';
   document.getElementById('rCategory').value = 'bread';
   document.getElementById('rDifficulty').value = 'easy';
-  document.getElementById('ingList').innerHTML = '';
+  document.getElementById('doughIngList').innerHTML = '';
+  document.getElementById('fillingIngList').innerHTML = '';
   document.getElementById('stepList').innerHTML = '';
   if(editingRecipeIdx >= 0){
     var r = DB.recipes.items[editingRecipeIdx];
@@ -3812,15 +3828,20 @@ function openRecipeModal(idx){
     document.getElementById('rDifficulty').value = r.difficulty || 'easy';
     document.getElementById('rDuration').value = r.duration || '';
     document.getElementById('rNotes').value = r.notes || '';
-    (r.ingredients && r.ingredients.length ? r.ingredients : [null]).forEach(function(ing){
-      addIngRow(ing ? ing.name : '', ing ? ing.amount : '');
+    var dough = r.doughIng && r.doughIng.length ? r.doughIng : (r.ingredients && r.ingredients.length ? r.ingredients : [null]);
+    var filling = r.fillingIng && r.fillingIng.length ? r.fillingIng : [null];
+    dough.forEach(function(ing){
+      addIngRow('doughIngList', ing ? ing.name : '', ing ? ing.amount : '');
+    });
+    filling.forEach(function(ing){
+      addIngRow('fillingIngList', ing ? ing.name : '', ing ? ing.amount : '');
     });
     (r.steps && r.steps.length ? r.steps : [null]).forEach(function(s){
       addStepRow(s || '');
     });
   } else {
     title.textContent = '新增配方';
-    addIngRow();
+    addIngRow('doughIngList');
     addStepRow();
   }
   document.getElementById('recipeOverlay').classList.add('show');
@@ -3836,11 +3857,16 @@ function saveRecipe(){
   var difficulty = document.getElementById('rDifficulty').value;
   var duration = document.getElementById('rDuration').value.trim();
   var notes = document.getElementById('rNotes').value.trim();
-  var ingredients = [];
-  document.querySelectorAll('#ingList .ing-row').forEach(function(r){
+  var doughIng = [], fillingIng = [];
+  document.querySelectorAll('#doughIngList .ing-row').forEach(function(r){
     var n = r.querySelector('.ing-input-name').value.trim();
     var a = r.querySelector('.ing-input-amount').value.trim();
-    if(n) ingredients.push({ name: n, amount: a });
+    if(n) doughIng.push({ name: n, amount: a });
+  });
+  document.querySelectorAll('#fillingIngList .ing-row').forEach(function(r){
+    var n = r.querySelector('.ing-input-name').value.trim();
+    var a = r.querySelector('.ing-input-amount').value.trim();
+    if(n) fillingIng.push({ name: n, amount: a });
   });
   var steps = [];
   document.querySelectorAll('#stepList .step-row textarea').forEach(function(t){
@@ -3852,12 +3878,12 @@ function saveRecipe(){
     if(editingRecipeIdx >= 0){
       var item = DB.recipes.items[editingRecipeIdx];
       item.name = name; item.category = category; item.difficulty = difficulty;
-      item.duration = duration; item.notes = notes; item.ingredients = ingredients; item.steps = steps;
+      item.duration = duration; item.notes = notes; item.doughIng = doughIng; item.fillingIng = fillingIng; item.steps = steps;
       if(photoData !== null) item.photo = photoData;
       saveDb();
       toast('配方已更新');
     } else {
-      DB.recipes.items.unshift({ name: name, category: category, difficulty: difficulty, duration: duration, photo: photoData || '', ingredients: ingredients, steps: steps, notes: notes, fav: false, date: today() });
+      DB.recipes.items.unshift({ name: name, category: category, difficulty: difficulty, duration: duration, photo: photoData || '', doughIng: doughIng, fillingIng: fillingIng, steps: steps, notes: notes, fav: false, date: today() });
       saveDb();
       toast('配方已保存');
     }
@@ -3917,9 +3943,15 @@ function renderRecipes(){
     html += '<button class="btn-icon" onclick="deleteRecipe(' + idx + ')" title="删除">&#10005;</button>';
     html += '</div></div>';
     if(r.photo) html += '<img class="recipe-item-photo" src="' + r.photo + '">';
-    if(r.ingredients.length > 0){
-      html += '<div style="margin-top:10px;font-size:12px;color:var(--text-2);">原料：</div>';
-      html += '<div style="font-size:13px;margin-top:2px;">' + r.ingredients.map(function(ing){ return escapeHtml(ing.name) + (ing.amount ? ' <span class="text-muted">' + escapeHtml(ing.amount) + '</span>' : ''); }).join('、') + '</div>';
+    var dough = r.doughIng && r.doughIng.length ? r.doughIng : (r.ingredients || []);
+    var filling = r.fillingIng || [];
+    if(dough.length > 0){
+      html += '<div style="margin-top:10px;font-size:12px;color:var(--text-2);">面团原料：</div>';
+      html += '<div style="font-size:13px;margin-top:2px;">' + dough.map(function(ing){ return escapeHtml(ing.name) + (ing.amount ? ' <span class="text-muted">' + escapeHtml(ing.amount) + '</span>' : ''); }).join('、') + '</div>';
+    }
+    if(filling.length > 0){
+      html += '<div style="margin-top:10px;font-size:12px;color:var(--text-2);">馅料：</div>';
+      html += '<div style="font-size:13px;margin-top:2px;">' + filling.map(function(ing){ return escapeHtml(ing.name) + (ing.amount ? ' <span class="text-muted">' + escapeHtml(ing.amount) + '</span>' : ''); }).join('、') + '</div>';
     }
     if(r.steps.length > 0){
       html += '<button class="expand-btn" onclick="this.nextElementSibling.classList.toggle(\'open\')">展开 / 收起步骤</button>';
