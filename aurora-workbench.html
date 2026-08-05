@@ -356,6 +356,62 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 }
 .stat-edit:hover{color:var(--accent);}
 
+/* ====== Early Ed: consumed clickable + detail ====== */
+.stat-clickable{cursor:pointer;transition:transform .12s ease, box-shadow .12s ease;}
+.stat-clickable:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(21,164,155,0.12);}
+.stat-clickable:active{transform:translateY(0);}
+.stat-toggle{
+  font-size:11px;color:var(--text-3);margin-top:5px;
+  display:inline-flex;align-items:center;gap:3px;
+}
+.stat-clickable:hover .stat-toggle{color:var(--accent);}
+.chevron{transition:transform .22s ease;}
+.chevron.open{transform:rotate(180deg);}
+.ee-detail{
+  display:grid;
+  grid-template-rows:0fr;
+  transition:grid-template-rows .3s ease;
+  margin-top:0;
+}
+.ee-detail.open{grid-template-rows:1fr;margin-top:16px;}
+.ee-detail-inner{
+  overflow:hidden;
+  border-top:1px dashed var(--line);
+  padding-top:0;
+}
+.ee-detail.open .ee-detail-inner{padding-top:14px;}
+.ee-detail-head{
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:12px;color:var(--text-2);margin-bottom:10px;
+}
+.ee-detail-sub{color:var(--text-3);font-size:11px;}
+.ee-detail-row{
+  display:flex;align-items:flex-start;gap:12px;
+  padding:11px 0;border-bottom:1px solid var(--line-soft);
+  position:relative;
+}
+.ee-detail-row:last-child{border-bottom:none;}
+.ee-detail-row::before{
+  content:'';position:absolute;left:-1px;top:18px;
+  width:7px;height:7px;border-radius:50%;
+  background:var(--accent);box-shadow:0 0 0 3px var(--accent-bg);
+}
+.ee-detail-row::after{
+  content:'';position:absolute;left:2.4px;top:25px;bottom:-1px;
+  width:1px;background:var(--line);
+}
+.ee-detail-row:last-child::after{display:none;}
+.ee-detail-main{flex:1;min-width:0;padding-left:12px;}
+.ee-detail-date{font-size:12.5px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
+.ee-detail-text{font-size:12.5px;color:var(--text-2);margin-top:3px;word-break:break-word;line-height:1.5;}
+.ee-detail-hours{
+  flex-shrink:0;text-align:right;
+}
+.ee-detail-hours .h-val{font-size:16px;font-weight:700;color:var(--blue);font-variant-numeric:tabular-nums;}
+.ee-detail-hours .h-unit{font-size:10px;color:var(--text-3);display:block;}
+.ee-detail-actions{display:flex;gap:4px;flex-shrink:0;align-self:center;}
+.ee-detail-empty{padding:18px 0;text-align:center;color:var(--text-3);font-size:12.5px;}
+
 /* ====== Grid ====== */
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:clamp(12px,1.5vw,18px);}
 .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(10px,1vw,14px);}
@@ -1051,20 +1107,28 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
         <div class="stat-label">总购买课时</div>
         <div class="stat-edit" onclick="eeEditTotal()">点击修改</div>
       </div>
-      <div class="stat-box">
+      <div class="stat-box stat-clickable" id="eeConsumedBox" onclick="toggleEeDetail()">
         <div class="stat-value" id="eeConsumed">0</div>
         <div class="stat-label">累计已消耗</div>
+        <div class="stat-toggle">
+          <span id="eeDetailHint">点击查看</span>
+          <svg class="chevron" id="eeChevron" viewBox="0 0 24 24" width="13" height="13"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
       </div>
       <div class="stat-box">
         <div class="stat-value green" id="eeRemaining">48</div>
         <div class="stat-label">剩余课时</div>
       </div>
     </div>
-  </div>
-
-  <div class="card">
-    <div class="card-title">历史记录</div>
-    <div id="eeRecords"></div>
+    <div class="ee-detail" id="eeDetail">
+      <div class="ee-detail-inner">
+        <div class="ee-detail-head">
+          <span id="eeDetailCount">共 0 次课</span>
+          <span class="ee-detail-sub">按日期倒序</span>
+        </div>
+        <div id="eeDetailList"></div>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -2044,7 +2108,7 @@ function editEarlyEdRecord(i){
   var r = DB.earlyEd.records[i];
   if(!r) return;
   // Inline edit form
-  var box = document.getElementById('eeRecords');
+  var box = document.getElementById('eeDetailList');
   var node = box.children[i];
   if(!node) return;
   var oldHtml = node.innerHTML;
@@ -2105,7 +2169,7 @@ function saveEarlyEdEdit(i){
   var newNotes = document.getElementById('eeEditNotes_' + i).value.trim();
   var newCourse = document.getElementById('eeEditCourse_' + i).value;
   var newHours = r.hours;
-  var node = document.getElementById('eeRecords').children[i];
+  var node = document.getElementById('eeDetailList').children[i];
   if(node){
     var checked = node.querySelector('.radio-item.checked');
     if(checked) newHours = parseFloat(checked.dataset.val);
@@ -2124,6 +2188,9 @@ function saveEarlyEdEdit(i){
   r.notes = newNotes;
   r.course = newCourseLabel;
   saveDb();
+  if(!document.getElementById('eeDetail').classList.contains('open')){
+    toggleEeDetail();
+  }
   renderEarlyEd();
   toast('已更新');
 }
@@ -2156,9 +2223,20 @@ function renderEarlyEd(){
   else if(remaining <= 10) remEl.classList.add('amber');
   else remEl.classList.add('green');
 
-  var box = document.getElementById('eeRecords');
+  var consumedBox = document.getElementById('eeConsumedBox');
+  if(consumedBox){
+    consumedBox.style.display = DB.earlyEd.records.length ? '' : 'none';
+  }
+  renderEeDetailList();
+}
+
+function renderEeDetailList(){
+  var box = document.getElementById('eeDetailList');
+  if(!box) return;
+  var countEl = document.getElementById('eeDetailCount');
   if(DB.earlyEd.records.length === 0){
-    box.innerHTML = '<div class="empty-hint">暂无记录，开始添加第一条吧</div>';
+    box.innerHTML = '';
+    if(countEl) countEl.textContent = '共 0 次课';
     return;
   }
   // Sort by date desc, then by ts desc (newest first)
@@ -2169,25 +2247,34 @@ function renderEarlyEd(){
       }
       return (b.r.ts || 0) - (a.r.ts || 0);
     });
+  if(countEl) countEl.textContent = '共 ' + sorted.length + ' 次课';
   box.innerHTML = sorted.map(function(item){
     var r = item.r;
     var i = item.idx;
     var courseHtml = r.course ? '<span class="chip chip-amber">' + escapeHtml(r.course) + '</span>' : '';
-    return '<div class="record-item">' +
-      '<div class="record-main">' +
-        '<div class="record-date"><span style="display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap;">' +
-          '<span>' + r.date + '</span>' +
-          '<span class="chip chip-gray">' + r.hours + ' 课时</span>' +
-          courseHtml +
-        '</span></div>' +
-        '<div class="record-text">' + escapeHtml(r.notes || '') + '</div>' +
+    return '<div class="ee-detail-row">' +
+      '<div class="ee-detail-main">' +
+        '<div class="ee-detail-date"><span>' + r.date + '</span>' +
+          '<span class="chip chip-gray">' + r.hours + ' 课时</span>' + courseHtml + '</div>' +
+        '<div class="ee-detail-text">' + escapeHtml(r.notes || '') + '</div>' +
       '</div>' +
-      '<div class="record-actions">' +
+      '<div class="ee-detail-hours"><span class="h-val">' + r.hours + '</span><span class="h-unit">课时</span></div>' +
+      '<div class="ee-detail-actions">' +
         '<button class="btn-icon" onclick="editEarlyEdRecord(' + i + ')" title="编辑">&#9998;</button>' +
         '<button class="btn-icon" onclick="deleteEarlyEdRecord(' + i + ')" title="删除">&#10005;</button>' +
       '</div>' +
     '</div>';
   }).join('');
+}
+
+function toggleEeDetail(){
+  var detail = document.getElementById('eeDetail');
+  var chevron = document.getElementById('eeChevron');
+  var hint = document.getElementById('eeDetailHint');
+  if(!detail || DB.earlyEd.records.length === 0) return;
+  var open = detail.classList.toggle('open');
+  if(chevron) chevron.classList.toggle('open', open);
+  if(hint) hint.textContent = open ? '收起' : '点击查看';
 }
 
 /* ============================================================
