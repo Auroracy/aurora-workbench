@@ -1273,14 +1273,44 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 .dca-history-form .auto{flex:0 0 130px;}
 .dca-history-form .dca-note-input{flex:1 1 140px;}
 .dca-history-form .btn{flex:0 0 auto;}
+.dca-firstday-banner{
+  display:flex;align-items:center;gap:14px;
+  background:linear-gradient(120deg,var(--accent-bg),var(--blue-bg));
+  border:1.5px solid var(--accent);
+  border-radius:var(--radius);
+  padding:14px 18px;margin-bottom:14px;
+  box-shadow:0 2px 8px rgba(21,164,155,0.12);
+}
+.dca-firstday-icon{font-size:30px;line-height:1;}
+.dca-firstday-text{flex:1;font-size:13px;line-height:1.6;color:var(--text);}
+.dca-firstday-text b{color:var(--accent);font-size:15px;}
+@media(max-width:560px){
+  .dca-firstday-banner{flex-wrap:wrap;padding:12px 14px;}
+  .dca-firstday-icon{font-size:24px;}
+}
+
+.dca-hist-detail{
+  display:flex;gap:14px;flex-wrap:wrap;
+  background:var(--bg);
+  font-size:11.5px;color:var(--text-3);
+  padding:4px 10px 8px;
+  border-top:0;
+  font-variant-numeric:tabular-nums;
+}
+.dca-hist-detail span{white-space:nowrap;}
+.dca-hist-ym{font-weight:600;color:var(--text);}
+.dca-hist-actions{display:flex;gap:4px;justify-content:flex-end;align-items:center;}
+.dca-hist-actions .btn{padding:3px 8px;font-size:11px;}
+
 .dca-history-table{border:1px solid var(--line);border-radius:var(--radius-sm);overflow:hidden;}
-.dca-hist-head,.dca-hist-row{display:grid;grid-template-columns:1fr 0.8fr 0.9fr 0.8fr 1.6fr 0.4fr;gap:6px;padding:8px 10px;align-items:center;font-size:12.5px;font-variant-numeric:tabular-nums;}
+.dca-hist-head,.dca-hist-row{display:grid;grid-template-columns:0.9fr 0.7fr 0.8fr 0.7fr 1.8fr 0.9fr;gap:6px;padding:8px 10px;align-items:center;font-size:12.5px;font-variant-numeric:tabular-nums;}
 .dca-hist-head{background:var(--accent-bg);font-weight:600;color:var(--text-2);font-size:11.5px;}
 .dca-hist-row{border-top:1px solid var(--line-soft);}
 .dca-hist-row .dca-hist-note{color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 @media(max-width:560px){
   .dca-calc-head,.dca-calc-row{grid-template-columns:1.2fr 1fr 0.7fr 0.7fr 0.9fr;font-size:11px;padding:7px 6px;gap:3px;}
-  .dca-hist-head,.dca-hist-row{grid-template-columns:0.9fr 0.7fr 0.8fr 0.7fr 1.4fr 0.4fr;font-size:11px;}
+  .dca-hist-head,.dca-hist-row{grid-template-columns:0.9fr 0.6fr 0.7fr 0.6fr 1.3fr 0.9fr;font-size:11px;}
+  .dca-hist-actions .btn{padding:2px 5px;font-size:10px;}
 }
 
 /* ====== Filter Bar ====== */
@@ -2219,12 +2249,15 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
 
   <div class="dca-risk">⚠️ 风险提示：仅数学演算，不构成投资建议，基金存在浮亏、QDII限额风险</div>
 
+  <!-- 每月 1 号自动提示条 -->
+  <div class="dca-firstday-banner" id="dcaFirstDayBanner" style="display:none;"></div>
+
   <div class="card">
-    <div class="card-title-row"><div class="card-title">固定基准</div><span class="sub">不要修改</span></div>
+    <div class="card-title-row"><div class="card-title">固定基准</div><span class="sub">30月均价 · 不要修改</span></div>
     <div class="dca-bench">
-      <div class="dca-bench-row"><span>纳斯达克100 · 3年均价</span><b>22400</b></div>
-      <div class="dca-bench-row"><span>中证500 · 3年均价</span><b>6300</b></div>
-      <div class="dca-bench-row"><span>黄金指数 · 3年均价</span><b>3450</b></div>
+      <div class="dca-bench-row"><span>纳斯达克100 · 30月均价</span><b>22548.87</b></div>
+      <div class="dca-bench-row"><span>中证500 · 30月均价</span><b>6536</b></div>
+      <div class="dca-bench-row"><span>黄金指数 · 30月均价</span><b>778</b></div>
       <div class="dca-bench-row"><span>每月总预算</span><b class="accent">3000 元</b></div>
     </div>
   </div>
@@ -2299,6 +2332,8 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
       <input type="number" id="dca_h_zz500" placeholder="中证500">
       <input type="number" id="dca_h_gold" placeholder="黄金">
       <input type="text" id="dca_h_note" placeholder="备注" class="dca-note-input">
+      <input type="hidden" id="dca_h_points">
+      <input type="hidden" id="dca_h_avgs">
       <button class="btn btn-primary btn-sm" onclick="addDcaHistory()">添加</button>
     </div>
     <div class="dca-history-table">
@@ -2387,9 +2422,14 @@ var defaultDb = {
   recipes: { items: [] },
   reading: { books: [] },
   dca: {
-    current: { nasdaq: '', zz500: '', gold: '' },
+    current: { nasdaq: '28274', zz500: '7454', gold: '883' },
     history: [
-      { ym: '2026-08', nasdaq: 960, zz500: 1110, gold: 930, note: '初始建仓月' }
+      { ym: '2026-08', nasdaq: 936, zz500: 1029, gold: 1034, note: '上个月忘了买定投，多买了188。本月买754',
+        points: { nasdaq: 28274, zz500: 7454, gold: 883 }, avgs: { nasdaq: 22548.87, zz500: 6536, gold: 778 } },
+      { ym: '2026-07', nasdaq: 942, zz500: 928, gold: 1130, note: '限购，每月定投50，需要20天',
+        points: { nasdaq: 30276, zz500: 9030, gold: 871 }, avgs: { nasdaq: 22177, zz500: 6517, gold: 765 } },
+      { ym: '2026-06', nasdaq: 960, zz500: 1018, gold: 1022, note: '原本是限购，要换新的，也限购，分几天买',
+        points: { nasdaq: 30333, zz500: 8358, gold: 990 }, avgs: { nasdaq: 21729, zz500: 6350, gold: 755 } }
     ]
   }
 };
@@ -4607,9 +4647,9 @@ function renderRecipes(){
    ============================================================ */
 var DCA_BUDGET = 3000;
 var DCA_ITEMS = [
-  { key: 'nasdaq', name: '纳斯达克100', avg3: 22400 },
-  { key: 'zz500', name: '中证500', avg3: 6300 },
-  { key: 'gold', name: '黄金指数', avg3: 3450 }
+  { key: 'nasdaq', name: '纳斯达克100', avg30: 22548.87 },
+  { key: 'zz500', name: '中证500', avg30: 6536 },
+  { key: 'gold', name: '黄金指数', avg30: 778 }
 ];
 
 function onDcaInput(){
@@ -4623,7 +4663,7 @@ function onDcaInput(){
 function calcDca(){
   var rows = DCA_ITEMS.map(function(it){
     var cur = parseFloat(document.getElementById('dca_' + it.key).value);
-    var ratio = (cur > 0) ? (it.avg3 / cur) : 0;
+    var ratio = (cur > 0) ? (it.avg30 / cur) : 0;
     return { it: it, cur: cur, ratio: ratio, weight: 0, raw: 0 };
   });
   var sumRatio = rows.reduce(function(s, r){ return s + r.ratio; }, 0);
@@ -4676,6 +4716,15 @@ function saveDcaMonth(){
   document.getElementById('dca_h_zz500').value = res.amounts[1];
   document.getElementById('dca_h_gold').value = res.amounts[2];
   document.getElementById('dca_h_note').value = '';
+  // 同步记录当时点位+30月均价，方便后续回填
+  var points = {}, avgs = {};
+  DCA_ITEMS.forEach(function(it){
+    points[it.key] = parseFloat(document.getElementById('dca_' + it.key).value) || 0;
+    avgs[it.key] = it.avg30;
+  });
+  // 把 points/avgs 暂存到表单旁的隐藏字段，由 addDcaHistory 读取
+  document.getElementById('dca_h_points').value = JSON.stringify(points);
+  document.getElementById('dca_h_avgs').value = JSON.stringify(avgs);
   addDcaHistory(true);
 }
 
@@ -4687,7 +4736,10 @@ function addDcaHistory(fromCalc){
   var note = document.getElementById('dca_h_note').value.trim();
   if(!ym){ toast('请填写年月'); return; }
   if(isNaN(n) || isNaN(z) || isNaN(g)){ toast('请填写三项金额'); return; }
-  DB.dca.history.unshift({ ym: ym, nasdaq: n, zz500: z, gold: g, note: note });
+  var points = null, avgs = null;
+  try { points = JSON.parse(document.getElementById('dca_h_points').value || 'null'); } catch(e){}
+  try { avgs = JSON.parse(document.getElementById('dca_h_avgs').value || 'null'); } catch(e){}
+  DB.dca.history.unshift({ ym: ym, nasdaq: n, zz500: z, gold: g, note: note, points: points, avgs: avgs });
   saveDb();
   renderDcaHistory();
   if(!fromCalc){
@@ -4696,6 +4748,9 @@ function addDcaHistory(fromCalc){
     document.getElementById('dca_h_gold').value = '';
     document.getElementById('dca_h_note').value = '';
   }
+  // 清空暂存
+  document.getElementById('dca_h_points').value = '';
+  document.getElementById('dca_h_avgs').value = '';
   toast('已存档');
 }
 
@@ -4712,14 +4767,27 @@ function renderDcaHistory(){
     return;
   }
   box.innerHTML = DB.dca.history.map(function(h, i){
+    var pts = h.points;
+    var avgs = h.avgs;
+    var detailHtml = '';
+    if(pts){
+      detailHtml = '<div class="dca-hist-detail">' +
+        '<span>纳指 ' + (pts.nasdaq||0) + (avgs ? ' / 均价 ' + Number(avgs.nasdaq||0).toFixed(2) : '') + '</span>' +
+        '<span>中证 ' + (pts.zz500||0) + (avgs ? ' / 均价 ' + (avgs.zz500||0) : '') + '</span>' +
+        '<span>黄金 ' + (pts.gold||0) + (avgs ? ' / 均价 ' + (avgs.gold||0) : '') + '</span>' +
+      '</div>';
+    }
     return '<div class="dca-hist-row">' +
-      '<span>' + escapeHtml(h.ym) + '</span>' +
+      '<span class="dca-hist-ym">' + escapeHtml(h.ym) + '</span>' +
       '<span>' + (h.nasdaq || 0) + '</span>' +
       '<span>' + (h.zz500 || 0) + '</span>' +
       '<span>' + (h.gold || 0) + '</span>' +
       '<span class="dca-hist-note">' + escapeHtml(h.note || '') + '</span>' +
-      '<button class="btn-icon" onclick="deleteDcaHistory(' + i + ')" title="删除">&#10005;</button>' +
-      '</div>';
+      '<span class="dca-hist-actions">' +
+        (pts ? '<button class="btn btn-ghost btn-sm" onclick="applyHistoryPoints(' + i + ')" title="把当时点位套用到上方计算器">↩ 套用</button>' : '') +
+        '<button class="btn-icon" onclick="deleteDcaHistory(' + i + ')" title="删除">&#10005;</button>' +
+      '</span>' +
+    '</div>' + detailHtml;
   }).join('');
 }
 
@@ -4733,12 +4801,71 @@ function clearDcaInputs(){
 }
 
 function initDca(){
+  // 1) 还原当前点位
   DCA_ITEMS.forEach(function(it){
     var v = DB.dca.current[it.key];
     if(v !== undefined && v !== null && v !== '') document.getElementById('dca_' + it.key).value = v;
   });
   renderDcaHistory();
   calcDca();
+  // 2) 月度自动更新：检测今天是否 1 号
+  var today = new Date();
+  var dom = today.getDate();
+  var ymNow = today.getFullYear() + '-' + ('0' + (today.getMonth() + 1)).slice(-2);
+  var banner = document.getElementById('dcaFirstDayBanner');
+  if(banner){
+    if(dom === 1){
+      banner.style.display = 'flex';
+      banner.innerHTML = '<span class="dca-firstday-icon">🎯</span>' +
+        '<div class="dca-firstday-text"><b>今日是 ' + ymNow.replace('-', '年') + '月1日</b> · 定投日<br>' +
+        '<span class="text-muted text-sm">已自动加载上月末最新点位，请核对外汇/大盘后点「存档本月结果」</span></div>' +
+        '<button class="btn btn-ghost btn-sm" onclick="applyLastSavedPoints()">🔄 重新加载上月末点位</button>';
+      // 自动加载最近一次历史存档的点位
+      applyLastSavedPoints(true);
+    } else {
+      banner.style.display = 'none';
+    }
+  }
+}
+
+// 把最近一次历史存档的「当前点位」套用到计算器
+function applyLastSavedPoints(silent){
+  if(!DB.dca.history || DB.dca.history.length === 0){
+    if(!silent) toast('暂无历史存档，请手动填写当前点位');
+    return;
+  }
+  // 找第一条带 points 的存档
+  var last = null;
+  for(var i = 0; i < DB.dca.history.length; i++){
+    if(DB.dca.history[i].points){ last = DB.dca.history[i]; break; }
+  }
+  if(!last){ if(!silent) toast('历史存档未记录点位，请手动填写'); return; }
+  DCA_ITEMS.forEach(function(it){
+    var p = last.points[it.key];
+    if(p){
+      document.getElementById('dca_' + it.key).value = p;
+      DB.dca.current[it.key] = String(p);
+    }
+  });
+  saveDb();
+  calcDca();
+  if(!silent) toast('已套用 ' + last.ym + ' 存档点位（' + (last.points.nasdaq||0) + ' / ' + (last.points.zz500||0) + ' / ' + (last.points.gold||0) + '）');
+}
+
+// 从某条历史存档回填点位到计算器（用于历史表行的"套用"按钮）
+function applyHistoryPoints(i){
+  var h = DB.dca.history[i];
+  if(!h || !h.points){ toast('该条存档未记录点位'); return; }
+  DCA_ITEMS.forEach(function(it){
+    var p = h.points[it.key];
+    if(p){
+      document.getElementById('dca_' + it.key).value = p;
+      DB.dca.current[it.key] = String(p);
+    }
+  });
+  saveDb();
+  calcDca();
+  toast('已套用 ' + h.ym + ' 点位到计算器');
 }
 
 /* ============================================================
