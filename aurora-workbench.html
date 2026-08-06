@@ -4801,14 +4801,20 @@ function clearDcaInputs(){
 }
 
 function initDca(){
-  // 1) 还原当前点位
+  // 1) 还原已保存的当前点位
   DCA_ITEMS.forEach(function(it){
     var v = DB.dca.current[it.key];
     if(v !== undefined && v !== null && v !== '') document.getElementById('dca_' + it.key).value = v;
   });
   renderDcaHistory();
-  calcDca();
-  // 2) 月度自动更新：检测今天是否 1 号
+  // 2) 若当前点位为空，自动套用最近一次存档点位，开盘即显示本月（最近月）自动计算结果
+  var anyFilled = DCA_ITEMS.some(function(it){ return DB.dca.current[it.key]; });
+  if(!anyFilled){
+    applyLastSavedPoints(true); // 内部已调用 calcDca()
+  } else {
+    calcDca();
+  }
+  // 3) 月度自动更新：检测今天是否 1 号（跨月提醒 + 重新加载上月末点位）
   var today = new Date();
   var dom = today.getDate();
   var ymNow = today.getFullYear() + '-' + ('0' + (today.getMonth() + 1)).slice(-2);
@@ -4820,7 +4826,6 @@ function initDca(){
         '<div class="dca-firstday-text"><b>今日是 ' + ymNow.replace('-', '年') + '月1日</b> · 定投日<br>' +
         '<span class="text-muted text-sm">已自动加载上月末最新点位，请核对外汇/大盘后点「存档本月结果」</span></div>' +
         '<button class="btn btn-ghost btn-sm" onclick="applyLastSavedPoints()">🔄 重新加载上月末点位</button>';
-      // 自动加载最近一次历史存档的点位
       applyLastSavedPoints(true);
     } else {
       banner.style.display = 'none';
