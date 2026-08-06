@@ -815,14 +815,189 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 .recipe-card .rdesc{font-size:clamp(11px,0.9vw,12px);color:var(--text-3);margin-top:6px;}
 
 /* ====== Tab3: Words ====== */
-.word-card{
-  padding:14px 0;
-  border-bottom:1px solid var(--line-soft);
+.word-hero{
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  gap:18px;
+  align-items:center;
+  background:linear-gradient(120deg,var(--accent-bg),var(--blue-bg));
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  padding:18px 20px;
+  margin-bottom:14px;
 }
-.word-card:last-child{border-bottom:none;}
-.word-en{font-size:clamp(15px,1.6vw,17px);font-weight:700;color:var(--text);}
-.word-cn{font-size:clamp(12px,1vw,13px);color:var(--text-2);margin-top:2px;}
-.word-ex{font-size:clamp(11.5px,0.95vw,12.5px);color:var(--text-3);margin-top:4px;font-style:italic;}
+.word-hero-date{display:flex;flex-direction:column;gap:4px;}
+.wh-label{font-size:11px;color:var(--text-3);letter-spacing:0.5px;text-transform:uppercase;}
+.wh-date{font-size:clamp(16px,1.6vw,20px);font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums;}
+.word-hero-progress{display:flex;flex-direction:column;gap:6px;min-width:0;}
+.wh-progress-row{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;}
+.wh-progress-text{font-size:clamp(15px,1.4vw,18px);font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;}
+.wh-progress-sub{font-size:11px;color:var(--text-2);}
+.wh-progress-track{height:6px;background:var(--line-soft);border-radius:3px;overflow:hidden;}
+.wh-progress-fill{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--blue));border-radius:3px;transition:width 0.4s;}
+.word-hero-nav{display:flex;gap:6px;flex-wrap:wrap;}
+@media(max-width:680px){
+  .word-hero{grid-template-columns:1fr;gap:12px;padding:14px 16px;}
+  .word-hero-nav{justify-content:flex-end;}
+}
+
+.word-flashcard{
+  padding:22px 22px 18px;
+  background:linear-gradient(180deg,var(--card) 0%,var(--card-2) 100%);
+}
+.word-flashcard-head{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  font-size:12px;color:var(--text-2);
+}
+.word-flashcard-no{font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums;}
+.word-flashcard-pos{
+  display:inline-block;padding:1px 8px;border-radius:10px;
+  background:var(--blue-bg);color:var(--blue);font-size:11px;font-weight:600;
+}
+.word-flashcard-status{
+  display:inline-block;padding:1px 8px;border-radius:10px;
+  font-size:11px;font-weight:600;display:none;
+}
+.word-flashcard-status.mark-known{background:var(--green-bg);color:var(--green);}
+.word-flashcard-status.mark-fuzzy{background:var(--amber-bg);color:var(--amber);}
+.word-flashcard-status.mark-unknown{background:var(--red-bg);color:var(--red);}
+
+.word-flashcard-cn{
+  font-size:clamp(20px,2.4vw,26px);
+  font-weight:700;
+  color:var(--text);
+  text-align:center;
+  padding:18px 8px 4px;
+  letter-spacing:0.5px;
+}
+.word-flashcard-en{
+  font-size:clamp(20px,2.2vw,24px);
+  font-weight:700;
+  text-align:center;
+  padding:6px 8px 12px;
+  color:var(--accent);
+  display:none;
+  letter-spacing:1px;
+}
+.word-flashcard-en.revealed{display:block;}
+
+.word-sentences-head{
+  display:flex;align-items:center;justify-content:space-between;
+  font-size:13px;color:var(--text-2);font-weight:600;
+  padding:12px 0 8px;border-top:1px solid var(--line-soft);
+}
+.word-sentences{display:flex;flex-direction:column;gap:14px;padding:6px 0 4px;}
+.word-sentence{
+  font-size:clamp(14px,1.3vw,15.5px);
+  line-height:1.85;
+  color:var(--text);
+}
+.word-sentence-other{
+  font-size:12px;color:var(--text-3);font-style:italic;
+  margin-bottom:-6px;margin-left:2px;
+}
+.word-blank{
+  display:inline-block;
+  min-width:80px;
+  border-bottom:2px solid var(--red);
+  margin:0 3px;
+  padding:0 6px;
+  color:transparent;
+  text-align:center;
+  vertical-align:baseline;
+  font-weight:700;
+  letter-spacing:1px;
+  transition:color 0.2s,border-color 0.2s;
+}
+.word-blank::after{content:'?';color:var(--red);font-weight:700;opacity:0.6;}
+.word-blank.revealed{
+  color:var(--accent);
+  border-color:var(--accent);
+  background:var(--accent-bg);
+  border-radius:4px;
+  padding:1px 6px;
+}
+.word-blank.revealed::after{content:'';}
+.word-blank.correct{color:var(--green);border-color:var(--green);background:var(--green-bg);}
+.word-blank.wrong{color:var(--red);border-color:var(--red);background:var(--red-bg);}
+
+.word-input-zone{
+  display:flex;gap:8px;align-items:center;
+  margin-top:14px;padding-top:14px;border-top:1px solid var(--line-soft);
+  flex-wrap:wrap;
+}
+.word-input-zone input{
+  flex:1;min-width:140px;
+  padding:0.7em 0.9em;
+  font-size:16px;
+  border:1px solid var(--line);
+  border-radius:var(--radius-sm);
+  background:var(--input-bg);
+  color:var(--text);
+  font-family:inherit;
+  letter-spacing:1px;
+}
+.word-input-zone input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg);}
+.btn-icon-loud{font-size:18px;flex:0 0 auto;}
+.word-spelling-hint{
+  margin-top:8px;font-size:13px;color:var(--text-2);
+  min-height:1.4em;
+}
+.word-spelling-hint.correct{color:var(--green);font-weight:600;}
+.word-spelling-hint.wrong{color:var(--red);font-weight:600;}
+
+.word-mark-row{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  margin-top:12px;padding-top:12px;border-top:1px solid var(--line-soft);
+}
+.word-mark-label{font-size:12px;color:var(--text-2);}
+.word-mark{
+  padding:5px 12px;border-radius:14px;border:1px solid var(--line);
+  background:var(--card);color:var(--text-2);font-size:12px;cursor:pointer;
+  transition:all 0.15s;font-family:inherit;
+}
+.word-mark:hover{transform:translateY(-1px);}
+.word-mark.active{color:#fff;border-color:transparent;}
+.word-mark-known.active{background:var(--green);}
+.word-mark-fuzzy.active{background:var(--amber);}
+.word-mark-unknown.active{background:var(--red);}
+.word-mark-known.active{background:var(--green);}
+.word-mark-fuzzy.active{background:var(--amber);}
+.word-mark-unknown.active{background:var(--red);}
+
+.word-flashcard-nav{
+  display:flex;justify-content:space-between;gap:8px;
+  margin-top:16px;
+}
+.word-flashcard-nav .btn{flex:1;}
+
+#wordHistoryCard .word-history-body{display:none;}
+#wordHistoryCard .word-history-body.open{display:block;}
+#wordHistoryCard .chevron{transition:transform 0.2s;}
+#wordHistoryCard.open .chevron{transform:rotate(180deg);}
+
+.word-history-body{padding-top:10px;}
+.word-history-day{
+  border:1px solid var(--line);border-radius:var(--radius-sm);
+  padding:10px 12px;margin-bottom:10px;background:var(--card-2);
+}
+.word-history-day-head{
+  display:flex;align-items:center;justify-content:space-between;
+  font-size:13px;font-weight:600;color:var(--text);
+  margin-bottom:6px;
+}
+.word-history-day-head .record-actions{margin-left:auto;display:flex;gap:4px;}
+.word-history-day-head .chip{margin-left:6px;}
+.word-history-chips{display:flex;flex-wrap:wrap;gap:4px;}
+.word-history-chip{
+  display:inline-flex;align-items:center;gap:3px;
+  font-size:11px;padding:2px 8px;border-radius:10px;
+  background:var(--bg);color:var(--text-2);
+}
+.word-history-chip.mark-known{background:var(--green-bg);color:var(--green);}
+.word-history-chip.mark-fuzzy{background:var(--amber-bg);color:var(--amber);}
+.word-history-chip.mark-unknown{background:var(--red-bg);color:var(--red);}
+.word-history-chip.none{opacity:0.6;}
 
 /* ====== Tab4: Market ====== */
 .disclaimer{
@@ -1534,36 +1709,89 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
 <section id="tab3" class="tab-section">
   <div class="section-header">
     <div class="section-title">每日英语单词</div>
-    <div class="section-desc">每日 10 词 · 持续积累 · 温故知新</div>
+    <div class="section-desc">逐词精练 · 填空巩固 · 持续积累</div>
   </div>
 
-  <div class="card">
-    <div class="card-title">
-      今日单词 <span class="sub" id="wordDateLabel"></span>
-      <span style="margin-left:auto;">
-        <button class="btn btn-ghost btn-sm" onclick="prevDayWords()">前一天</button>
-        <button class="btn btn-ghost btn-sm" style="margin-left:6px;" onclick="nextDayWords()">后一天</button>
-        <button class="btn btn-ghost btn-sm" style="margin-left:6px;" onclick="goTodayWords()">今天</button>
-      </span>
+  <!-- 顶部日期+进度 hero -->
+  <div class="word-hero">
+    <div class="word-hero-date">
+      <div class="wh-label">练习日期</div>
+      <div class="wh-date" id="wordHeroDate">—</div>
     </div>
-    <div id="wordList"></div>
+    <div class="word-hero-progress">
+      <div class="wh-progress-row">
+        <span class="wh-progress-text" id="wordProgressText">0 / 10</span>
+        <span class="wh-progress-sub" id="wordProgressSub">已掌握 0 · 模糊 0 · 不认识 0</span>
+      </div>
+      <div class="wh-progress-track">
+        <div class="wh-progress-fill" id="wordProgressFill"></div>
+      </div>
+    </div>
+    <div class="word-hero-nav">
+      <button class="btn btn-ghost btn-sm" onclick="prevDayWords()">前一天</button>
+      <button class="btn btn-ghost btn-sm" onclick="goTodayWords()">今天</button>
+      <button class="btn btn-ghost btn-sm" onclick="nextDayWords()">后一天</button>
+    </div>
   </div>
 
+  <!-- 单词练习大卡片（逐词呈现） -->
+  <div class="card word-flashcard" id="wordFlashcard">
+    <div class="word-flashcard-head">
+      <span class="word-flashcard-no" id="wordFlashNo">1 / 10</span>
+      <span class="word-flashcard-pos" id="wordFlashPos"></span>
+      <span class="word-flashcard-status" id="wordFlashStatus"></span>
+    </div>
+
+    <div class="word-flashcard-cn" id="wordFlashCn"></div>
+    <div class="word-flashcard-en" id="wordFlashEn"></div>
+
+    <div class="word-sentences-head">
+      <span>例句填空（请回忆单词拼写）</span>
+      <button class="btn btn-ghost btn-sm" onclick="revealAnswer()">显示答案</button>
+    </div>
+    <div class="word-sentences" id="wordSentences"></div>
+
+    <div class="word-input-zone">
+      <input type="text" id="wordSpellingInput" placeholder="在此拼写单词..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+      <button class="btn btn-primary" onclick="checkSpelling()">验证拼写</button>
+      <button class="btn-icon btn-icon-loud" onclick="speakWord()" title="朗读单词">🔊</button>
+    </div>
+    <div class="word-spelling-hint" id="wordSpellingHint"></div>
+
+    <div class="word-mark-row">
+      <span class="word-mark-label">标记：</span>
+      <button class="word-mark word-mark-known" data-val="known" onclick="setWordMark(this)">✓ 已掌握</button>
+      <button class="word-mark word-mark-fuzzy" data-val="fuzzy" onclick="setWordMark(this)">~ 模糊</button>
+      <button class="word-mark word-mark-unknown" data-val="unknown" onclick="setWordMark(this)">✗ 不认识</button>
+    </div>
+
+    <div class="word-flashcard-nav">
+      <button class="btn btn-ghost" onclick="prevWord()">← 上一词</button>
+      <button class="btn btn-primary" onclick="nextWord()">下一词 →</button>
+    </div>
+  </div>
+
+  <!-- 学习便签与打卡 -->
   <div class="card">
     <div class="card-title">学习便签</div>
-    <textarea id="wordNotes" rows="4" placeholder="记录记忆技巧、易错点、学习感悟..." oninput="saveWordNotes()"></textarea>
+    <textarea id="wordNotes" rows="3" placeholder="记录记忆技巧、易错点、学习感悟..." oninput="saveWordNotes()"></textarea>
     <div style="margin-top:12px;">
-      <label class="form-label">学习打卡</label>
+      <label class="form-label">今日打卡</label>
       <div class="radio-group" id="wordStatusGroup">
-        <span class="radio-item" data-val="studied" onclick="setWordStatus(this)">已学习</span>
-        <span class="radio-item" data-val="review" onclick="setWordStatus(this)">待复习</span>
+        <span class="radio-item" data-val="studied" onclick="setWordStatus(this)">已完成今日 10 词</span>
+        <span class="radio-item" data-val="review" onclick="setWordStatus(this)">明日待复习</span>
       </div>
     </div>
   </div>
 
-  <div class="card">
-    <div class="card-title">历史归档</div>
-    <div id="wordHistory"></div>
+  <!-- 记忆历史（折叠式） -->
+  <div class="card" id="wordHistoryCard">
+    <div class="card-title-row" onclick="toggleWordHistory()">
+      <span>记忆历史</span>
+      <span class="sub" id="wordHistoryCount"></span>
+      <span class="chevron" id="wordHistoryChevron">▾</span>
+    </div>
+    <div class="word-history-body" id="wordHistory"></div>
   </div>
 </section>
 
@@ -2096,6 +2324,7 @@ var DB_KEY = 'aurora_workbench_v2';
 var pyodide = null;
 var pyLoading = false;
 var currentWordOffset = 0;
+var currentWordIndex = 0;
 var selectedRating = 0;
 
 function today(){
@@ -3310,17 +3539,129 @@ function getWordDateStr(offset){
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
 
+// 取当前词在 WORD_BANK 中的真实下标（用于多例句补充）
+function getCurrentWordBankIdx(){
+  var base = getWordDate() + currentWordOffset;
+  var startIdx = ((base * 10) % WORD_BANK.length + WORD_BANK.length) % WORD_BANK.length;
+  return (startIdx + currentWordIndex) % WORD_BANK.length;
+}
+
+// 解析"v. 致力于"为 {pos:'v.', cn:'致力于'}
+function parsePosCn(posCn){
+  var m = (posCn || '').match(/^([^.;]+[.;])\s*(.*)$/);
+  if(m) return { pos: m[1], cn: m[2] };
+  return { pos: '', cn: posCn || '' };
+}
+
+// 当前单词的 3 个例句：主例句（挖空）+ 2 个其他词例句（只读对照）
+function getCurrentExamples(){
+  var idx = getCurrentWordBankIdx();
+  var w = WORD_BANK[idx];
+  var main = w[2];
+  var list = [{ text: main, isMain: true }];
+  for(var off = 1; off <= 2; off++){
+    var otherIdx = (idx + off * 11) % WORD_BANK.length;
+    if(otherIdx === idx) otherIdx = (idx + 1) % WORD_BANK.length;
+    list.push({ text: WORD_BANK[otherIdx][2], isMain: false });
+  }
+  return list;
+}
+
+function renderWordFlashcard(){
+  var dateStr = getWordDateStr(currentWordOffset);
+  var rec = DB.words.dailyRecords[dateStr] || {};
+  if(!rec.perWord) rec.perWord = {};
+  var idx = getCurrentWordBankIdx();
+  var w = WORD_BANK[idx];
+  var word = w[0];
+  var pc = parsePosCn(w[1]);
+
+  // 头部序号
+  document.getElementById('wordFlashNo').textContent = (currentWordIndex + 1) + ' / 10';
+
+  // 词性
+  var posEl = document.getElementById('wordFlashPos');
+  posEl.textContent = pc.pos || 'word';
+  posEl.style.display = pc.pos ? 'inline-block' : 'none';
+
+  // 释义（中文大字）
+  document.getElementById('wordFlashCn').textContent = pc.cn || '';
+
+  // 英文（默认隐藏，revealAnswer 时显示）
+  var enEl = document.getElementById('wordFlashEn');
+  enEl.textContent = word;
+  enEl.classList.remove('revealed');
+
+  // 例句：主例句挖空，其他例句只读
+  var examples = getCurrentExamples();
+  var sentBox = document.getElementById('wordSentences');
+  sentBox.innerHTML = examples.map(function(ex, i){
+    var html = '';
+    if(!ex.isMain){
+      html += '<div class="word-sentence-other">其他用法参考</div>';
+    }
+    var safeText = escapeHtml(ex.text);
+    if(ex.isMain){
+      // 挖空本词（大小写不敏感，匹配一次）
+      var re = new RegExp('\\b' + word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i');
+      var blanked = safeText.replace(re, '<span class="word-blank" data-main="1"></span>');
+      html += '<div class="word-sentence">' + blanked + '</div>';
+    } else {
+      html += '<div class="word-sentence" style="color:var(--text-2);">' + safeText + '</div>';
+    }
+    return html;
+  }).join('');
+
+  // 拼写输入框
+  var input = document.getElementById('wordSpellingInput');
+  input.value = '';
+  input.classList.remove('correct','wrong');
+  document.getElementById('wordSpellingHint').textContent = '';
+  document.getElementById('wordSpellingHint').className = 'word-spelling-hint';
+
+  // 状态标记
+  var mark = rec.perWord[currentWordIndex] || {};
+  document.querySelectorAll('.word-mark').forEach(function(b){
+    b.classList.toggle('active', b.dataset.val === mark.mark);
+  });
+  var statusEl = document.getElementById('wordFlashStatus');
+  if(mark.mark){
+    statusEl.textContent = mark.mark === 'known' ? '已掌握' : mark.mark === 'fuzzy' ? '模糊' : '不认识';
+    statusEl.className = 'word-flashcard-status mark-' + mark.mark;
+    statusEl.style.display = 'inline-block';
+  } else {
+    statusEl.textContent = '';
+    statusEl.className = 'word-flashcard-status';
+    statusEl.style.display = 'none';
+  }
+}
+
+function renderWordHero(){
+  var dateStr = getWordDateStr(currentWordOffset);
+  document.getElementById('wordHeroDate').textContent = dateStr;
+  var rec = DB.words.dailyRecords[dateStr] || {};
+  var perWord = rec.perWord || {};
+  var known = 0, fuzzy = 0, unknown = 0;
+  for(var i = 0; i < 10; i++){
+    var m = perWord[i] || {};
+    if(m.mark === 'known') known++;
+    else if(m.mark === 'fuzzy') fuzzy++;
+    else if(m.mark === 'unknown') unknown++;
+  }
+  var marked = known + fuzzy + unknown;
+  document.getElementById('wordProgressText').textContent = marked + ' / 10';
+  document.getElementById('wordProgressSub').textContent = '已掌握 ' + known + ' · 模糊 ' + fuzzy + ' · 不认识 ' + unknown;
+  document.getElementById('wordProgressFill').style.width = (marked * 10) + '%';
+}
+
 function renderWords(){
   var dateStr = getWordDateStr(currentWordOffset);
-  document.getElementById('wordDateLabel').textContent = dateStr;
-  var words = getWordsForOffset(currentWordOffset);
-  document.getElementById('wordList').innerHTML = words.map(function(w, i){
-    return '<div class="word-card">' +
-      '<div class="word-en">' + (i+1) + '. ' + escapeHtml(w[0]) + '</div>' +
-      '<div class="word-cn">' + escapeHtml(w[1]) + '</div>' +
-      '<div class="word-ex">' + escapeHtml(w[2]) + '</div>' +
-    '</div>';
-  }).join('');
+  document.getElementById('wordDateLabel') && (document.getElementById('wordDateLabel').textContent = dateStr);
+  if(currentWordIndex < 0) currentWordIndex = 0;
+  if(currentWordIndex > 9) currentWordIndex = 9;
+  renderWordHero();
+  renderWordFlashcard();
+  // 顶部"今日单词"标签已并入 hero；同步便签与打卡状态
   var rec = DB.words.dailyRecords[dateStr];
   document.getElementById('wordNotes').value = (rec && rec.notes) || '';
   document.querySelectorAll('#wordStatusGroup .radio-item').forEach(function(r){
@@ -3328,9 +3669,125 @@ function renderWords(){
   });
   renderWordHistory();
 }
-function prevDayWords(){ currentWordOffset--; renderWords(); }
-function nextDayWords(){ currentWordOffset++; renderWords(); }
-function goTodayWords(){ currentWordOffset = 0; renderWords(); }
+
+function prevWord(){
+  if(currentWordIndex > 0){ currentWordIndex--; renderWordFlashcard(); renderWordHero(); }
+  else toast('已经是第 1 个单词');
+}
+function nextWord(){
+  if(currentWordIndex < 9){ currentWordIndex++; renderWordFlashcard(); renderWordHero(); }
+  else toast('已经是最后一个单词');
+}
+
+function checkSpelling(){
+  var idx = getCurrentWordBankIdx();
+  var word = WORD_BANK[idx][0];
+  var input = document.getElementById('wordSpellingInput');
+  var typed = (input.value || '').trim();
+  var hint = document.getElementById('wordSpellingHint');
+  var mainBlank = document.querySelector('#wordSentences .word-blank[data-main="1"]');
+  if(!typed){
+    toast('请先输入拼写');
+    input.focus();
+    return;
+  }
+  if(typed.toLowerCase() === word.toLowerCase()){
+    hint.textContent = '✓ 拼写正确！' + word;
+    hint.className = 'word-spelling-hint correct';
+    if(mainBlank){
+      mainBlank.textContent = word;
+      mainBlank.classList.add('correct','revealed');
+    }
+    input.classList.add('correct');
+    // 答对自动标记为"已掌握"（用户可手动覆盖）
+    setWordMarkAuto('known');
+  } else {
+    hint.textContent = '✗ 拼写错误，正确答案是：' + word;
+    hint.className = 'word-spelling-hint wrong';
+    if(mainBlank){
+      mainBlank.textContent = typed + ' ✗';
+      mainBlank.classList.add('wrong');
+    }
+    input.classList.add('wrong');
+    setWordMarkAuto('fuzzy');
+  }
+}
+
+function setWordMarkAuto(mark){
+  var dateStr = getWordDateStr(currentWordOffset);
+  if(!DB.words.dailyRecords[dateStr]) DB.words.dailyRecords[dateStr] = {};
+  if(!DB.words.dailyRecords[dateStr].perWord) DB.words.dailyRecords[dateStr].perWord = {};
+  var prev = DB.words.dailyRecords[dateStr].perWord[currentWordIndex] || {};
+  if(!prev.mark){
+    DB.words.dailyRecords[dateStr].perWord[currentWordIndex] = { mark: mark };
+    saveDb();
+    renderWordHero();
+    renderWordFlashcard();
+  }
+}
+
+function revealAnswer(){
+  var idx = getCurrentWordBankIdx();
+  var word = WORD_BANK[idx][0];
+  var enEl = document.getElementById('wordFlashEn');
+  enEl.textContent = word;
+  enEl.classList.add('revealed');
+  var mainBlank = document.querySelector('#wordSentences .word-blank[data-main="1"]');
+  if(mainBlank && !mainBlank.classList.contains('revealed')){
+    mainBlank.textContent = word;
+    mainBlank.classList.add('revealed');
+  }
+  var input = document.getElementById('wordSpellingInput');
+  if(!input.value){
+    input.value = word;
+    input.classList.add('correct');
+    var hint = document.getElementById('wordSpellingHint');
+    hint.textContent = '已显示答案：' + word;
+    hint.className = 'word-spelling-hint correct';
+  }
+}
+
+function setWordMark(btn){
+  var dateStr = getWordDateStr(currentWordOffset);
+  if(!DB.words.dailyRecords[dateStr]) DB.words.dailyRecords[dateStr] = {};
+  if(!DB.words.dailyRecords[dateStr].perWord) DB.words.dailyRecords[dateStr].perWord = {};
+  var wasActive = btn.classList.contains('active');
+  var val = wasActive ? '' : btn.dataset.val;
+  if(val){
+    DB.words.dailyRecords[dateStr].perWord[currentWordIndex] = { mark: val };
+  } else {
+    delete DB.words.dailyRecords[dateStr].perWord[currentWordIndex];
+  }
+  saveDb();
+  renderWordHero();
+  renderWordFlashcard();
+}
+
+function speakWord(){
+  var idx = getCurrentWordBankIdx();
+  var word = WORD_BANK[idx][0];
+  if(!('speechSynthesis' in window)){ toast('当前浏览器不支持朗读'); return; }
+  try{
+    window.speechSynthesis.cancel();
+    var u = new SpeechSynthesisUtterance(word);
+    u.lang = 'en-US';
+    u.rate = 0.85;
+    window.speechSynthesis.speak(u);
+  }catch(e){
+    toast('朗读失败：' + e.message);
+  }
+}
+
+function toggleWordHistory(){
+  var card = document.getElementById('wordHistoryCard');
+  var body = document.getElementById('wordHistory');
+  var open = card.classList.toggle('open');
+  if(open) body.classList.add('open');
+  else body.classList.remove('open');
+}
+function prevDayWords(){ currentWordOffset--; currentWordIndex = 0; renderWords(); }
+function nextDayWords(){ currentWordOffset++; currentWordIndex = 0; renderWords(); }
+function goTodayWords(){ currentWordOffset = 0; currentWordIndex = 0; renderWords(); }
 
 function saveWordNotes(){
   var dateStr = getWordDateStr(currentWordOffset);
@@ -3347,20 +3804,37 @@ function setWordStatus(el){
   saveDb();
   toast('打卡完成');
 }
+
 function renderWordHistory(){
   var keys = Object.keys(DB.words.dailyRecords).sort().reverse();
   var box = document.getElementById('wordHistory');
+  var countEl = document.getElementById('wordHistoryCount');
+  if(countEl) countEl.textContent = keys.length ? '共 ' + keys.length + ' 天' : '';
   if(keys.length === 0){ box.innerHTML = '<div class="empty-hint">暂无历史记录</div>'; return; }
-  box.innerHTML = keys.slice(0, 20).map(function(k){
+  box.innerHTML = keys.slice(0, 30).map(function(k){
     var rec = DB.words.dailyRecords[k];
-    var statusChip = rec.status === 'studied' ? '<span class="chip chip-green">已学习</span>' :
+    var perWord = rec.perWord || {};
+    var statusChip = rec.status === 'studied' ? '<span class="chip chip-green">已完成</span>' :
                      rec.status === 'review' ? '<span class="chip chip-amber">待复习</span>' : '';
-    return '<div class="record-item">' +
-      '<div class="record-main">' +
-        '<div class="record-date">' + k + ' ' + statusChip + '</div>' +
-        '<div class="record-text">' + (rec.notes ? escapeHtml(rec.notes) : '<span class="text-muted">无笔记</span>') + '</div>' +
+    var chipsHtml = '';
+    for(var i = 0; i < 10; i++){
+      var m = perWord[i] || {};
+      var label = 'D' + (i < 9 ? '0' + (i+1) : (i+1));
+      if(m.mark){
+        var txt = m.mark === 'known' ? '已掌握' : m.mark === 'fuzzy' ? '模糊' : '不认识';
+        chipsHtml += '<span class="word-history-chip mark-' + m.mark + '">' + label + '@' + txt + '</span>';
+      } else {
+        chipsHtml += '<span class="word-history-chip none">' + label + '@未标</span>';
+      }
+    }
+    return '<div class="word-history-day">' +
+      '<div class="word-history-day-head">' +
+        '<span>' + k + ' ' + statusChip + '</span>' +
+        '<span class="record-actions">' +
+          '<button class="btn btn-ghost btn-sm" onclick="jumpToWordDate(\'' + k + '\')">查看</button>' +
+        '</span>' +
       '</div>' +
-      '<div class="record-actions"><button class="btn btn-ghost btn-sm" onclick="jumpToWordDate(\'' + k + '\')">查看</button></div>' +
+      '<div class="word-history-chips">' + chipsHtml + '</div>' +
     '</div>';
   }).join('');
 }
@@ -3368,6 +3842,7 @@ function jumpToWordDate(dateStr){
   var target = new Date(dateStr);
   var today = new Date();
   currentWordOffset = Math.round((target - today) / 86400000);
+  currentWordIndex = 0;
   renderWords();
 }
 
