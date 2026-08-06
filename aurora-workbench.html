@@ -1060,6 +1060,54 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 .detail-section{margin-bottom:12px;}
 .detail-label{font-size:clamp(11px,1vw,12.5px);font-weight:600;color:var(--text-2);margin-bottom:0.3em;}
 
+/* ====== Tab 8: Monthly DCA Calculator ====== */
+.dca-risk{
+  background:var(--red-bg);border:1px solid var(--red);
+  color:var(--red);border-radius:var(--radius-sm);
+  padding:11px 14px;margin-bottom:14px;
+  font-size:clamp(11.5px,1vw,13px);font-weight:500;line-height:1.5;
+}
+.dca-bench{display:grid;gap:8px;}
+.dca-bench-row{display:flex;justify-content:space-between;align-items:center;font-size:clamp(12.5px,1.1vw,14px);padding:7px 10px;background:var(--input-bg);border-radius:var(--radius-sm);}
+.dca-bench-row b{font-size:clamp(14px,1.3vw,16px);font-variant-numeric:tabular-nums;}
+.dca-bench-row b.accent{color:var(--accent);}
+.dca-calc-table{margin-bottom:12px;border:1px solid var(--line);border-radius:var(--radius-sm);overflow:hidden;}
+.dca-calc-head,.dca-calc-row{display:grid;grid-template-columns:1.4fr 1.3fr 0.8fr 0.8fr 1fr;gap:6px;align-items:center;padding:9px 10px;}
+.dca-calc-head{background:var(--accent-bg);font-size:11.5px;color:var(--text-2);font-weight:600;}
+.dca-calc-head span:not(:first-child),.dca-calc-row span:not(.dca-name){text-align:right;}
+.dca-calc-row{border-top:1px solid var(--line-soft);font-size:13px;}
+.dca-calc-row .dca-name{font-weight:600;color:var(--text);}
+.dca-calc-row .dca-point{margin:0;min-height:2.4em;}
+.dca-calc-row .dca-ratio,.dca-calc-row .dca-weight{font-variant-numeric:tabular-nums;color:var(--text-2);}
+.dca-calc-row .dca-amount{font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums;}
+.dca-summary{background:var(--blue-bg);border:1px solid var(--blue);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:12px;}
+.dca-sum-row{display:flex;justify-content:space-between;font-size:13px;padding:3px 0;color:var(--text-2);}
+.dca-sum-row b{color:var(--text);font-variant-numeric:tabular-nums;}
+.dca-sum-note{font-size:11.5px;color:var(--blue);margin-top:6px;line-height:1.5;}
+.dca-sum-total{font-size:14px;margin-top:8px;padding-top:8px;border-top:1px dashed var(--blue);}
+.dca-sum-total b{color:var(--accent);font-size:17px;font-variant-numeric:tabular-nums;}
+.dca-actions{display:flex;gap:10px;}
+.dca-ref{display:grid;gap:6px;}
+.dca-ref-row{font-size:12.5px;color:var(--text-2);background:var(--input-bg);border-radius:var(--radius-sm);padding:7px 10px;}
+.dca-ref-row b{color:var(--accent);font-variant-numeric:tabular-nums;}
+.dca-ref-check{font-size:12px;color:var(--text);margin-top:4px;font-weight:600;font-variant-numeric:tabular-nums;}
+.dca-rules{margin:0;padding-left:20px;line-height:1.9;font-size:13px;color:var(--text);}
+.dca-rules li{margin-bottom:4px;}
+.dca-history-form{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px; align-items:flex-end;}
+.dca-history-form input{min-height:2.6em;flex:1 1 90px;}
+.dca-history-form .auto{flex:0 0 130px;}
+.dca-history-form .dca-note-input{flex:1 1 140px;}
+.dca-history-form .btn{flex:0 0 auto;}
+.dca-history-table{border:1px solid var(--line);border-radius:var(--radius-sm);overflow:hidden;}
+.dca-hist-head,.dca-hist-row{display:grid;grid-template-columns:1fr 0.8fr 0.9fr 0.8fr 1.6fr 0.4fr;gap:6px;padding:8px 10px;align-items:center;font-size:12.5px;font-variant-numeric:tabular-nums;}
+.dca-hist-head{background:var(--accent-bg);font-weight:600;color:var(--text-2);font-size:11.5px;}
+.dca-hist-row{border-top:1px solid var(--line-soft);}
+.dca-hist-row .dca-hist-note{color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+@media(max-width:560px){
+  .dca-calc-head,.dca-calc-row{grid-template-columns:1.2fr 1fr 0.7fr 0.7fr 0.9fr;font-size:11px;padding:7px 6px;gap:3px;}
+  .dca-hist-head,.dca-hist-row{grid-template-columns:0.9fr 0.7fr 0.8fr 0.7fr 1.4fr 0.4fr;font-size:11px;}
+}
+
 /* ====== Filter Bar ====== */
 .filter-bar{display:flex;gap:0.5em;margin-bottom:0.9em;flex-wrap:wrap;align-items:center;}
 .filter-bar select{width:auto;min-width:7em;}
@@ -1181,6 +1229,10 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     <button class="nav-item" data-tab="7" onclick="switchTab(7)">
       <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></span>
       <span class="nav-num">07</span><span class="nav-text">阅思集 · 读书札记</span>
+    </button>
+    <button class="nav-item" data-tab="8" onclick="switchTab(8)">
+      <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg></span>
+      <span class="nav-num">08</span><span class="nav-text">月度定投计算器</span>
     </button>
   </nav>
   <div class="sidebar-footer" id="footerDate">
@@ -1930,6 +1982,106 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
   </div>
 </section>
 
+<!-- ========== Tab 8: Monthly DCA Calculator ========== -->
+<section id="tab8" class="tab-section">
+  <div class="section-header">
+    <div class="section-title">📆 月度定投计算器</div>
+    <div class="section-desc">C哥20年定投公式 · 每月总预算：3000元</div>
+  </div>
+
+  <div class="dca-risk">⚠️ 风险提示：仅数学演算，不构成投资建议，基金存在浮亏、QDII限额风险</div>
+
+  <div class="card">
+    <div class="card-title-row"><div class="card-title">固定基准</div><span class="sub">不要修改</span></div>
+    <div class="dca-bench">
+      <div class="dca-bench-row"><span>纳斯达克100 · 3年均价</span><b>22400</b></div>
+      <div class="dca-bench-row"><span>中证500 · 3年均价</span><b>6300</b></div>
+      <div class="dca-bench-row"><span>黄金指数 · 3年均价</span><b>3450</b></div>
+      <div class="dca-bench-row"><span>每月总预算</span><b class="accent">3000 元</b></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">每月定投计算</div>
+    <div class="dca-calc-table">
+      <div class="dca-calc-head">
+        <span>品种</span><span>当前点位</span><span>比值</span><span>权重</span><span>本月应投</span>
+      </div>
+      <div class="dca-calc-row">
+        <span class="dca-name">纳斯达克100</span>
+        <input type="number" id="dca_nasdaq" class="dca-point" oninput="onDcaInput()" placeholder="如 29488">
+        <span class="dca-ratio" id="dca_ratio_nasdaq">—</span>
+        <span class="dca-weight" id="dca_weight_nasdaq">—</span>
+        <span class="dca-amount" id="dca_amount_nasdaq">—</span>
+      </div>
+      <div class="dca-calc-row">
+        <span class="dca-name">中证500</span>
+        <input type="number" id="dca_zz500" class="dca-point" oninput="onDcaInput()" placeholder="如 7780">
+        <span class="dca-ratio" id="dca_ratio_zz500">—</span>
+        <span class="dca-weight" id="dca_weight_zz500">—</span>
+        <span class="dca-amount" id="dca_amount_zz500">—</span>
+      </div>
+      <div class="dca-calc-row">
+        <span class="dca-name">黄金指数</span>
+        <input type="number" id="dca_gold" class="dca-point" oninput="onDcaInput()" placeholder="如 5620">
+        <span class="dca-ratio" id="dca_ratio_gold">—</span>
+        <span class="dca-weight" id="dca_weight_gold">—</span>
+        <span class="dca-amount" id="dca_amount_gold">—</span>
+      </div>
+    </div>
+    <div class="dca-summary">
+      <div class="dca-sum-row"><span>比值总和</span><b id="dca_sumRatio">—</b></div>
+      <div class="dca-sum-row"><span>三项原始求和</span><b id="dca_rawSum">—</b></div>
+      <div class="dca-sum-row"><span>差额 (3000 − 原始求和)</span><b id="dca_diff">—</b></div>
+      <div class="dca-sum-note">👉 差额全部加到【比值最高】的品种，最终合计严格 = 3000</div>
+      <div class="dca-sum-total">最终合计：<b id="dca_finalTotal">—</b> 元</div>
+    </div>
+    <div class="dca-actions">
+      <button class="btn btn-primary btn-sm" onclick="saveDcaMonth()">📥 存档本月结果</button>
+      <button class="btn btn-ghost btn-sm" onclick="clearDcaInputs()">清空输入</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title-row"><div class="card-title">2026-08 示范参考</div><span class="sub">直接抄作业</span></div>
+    <div class="dca-ref">
+      <div class="dca-ref-row"><span>纳斯达克100｜点位 29488｜比值 0.76｜权重 32%｜本月投：<b>960</b></span></div>
+      <div class="dca-ref-row"><span>中证500｜点位 7780｜比值 0.81｜权重 37%｜本月投：<b>1110</b></span></div>
+      <div class="dca-ref-row"><span>黄金指数｜点位 5620｜比值 0.61｜权重 28%｜本月投：<b>930</b></span></div>
+      <div class="dca-ref-check">校验总和：960 + 1110 + 930 = 3000</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">执行纪律</div>
+    <ol class="dca-rules">
+      <li>纳斯达克100：场外多只基金拆分买入凑足金额；遇到限额优先场内ETF；溢价＞1.5%，当月纳指额度转移给到中证500</li>
+      <li>全部基金分红设置：红利再投资</li>
+      <li>使用手动下单，不要开启自动定投</li>
+      <li>长期教育金：第14‑18年逐年降低权益仓位，切换固收，规避到期遇到熊市</li>
+      <li>每月月末核对实际买入总额</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <div class="card-title-row"><div class="card-title">历史记录存档</div></div>
+    <div class="dca-history-form">
+      <input type="month" id="dca_ym" class="auto" style="min-width:130px;">
+      <input type="number" id="dca_h_nasdaq" placeholder="纳指">
+      <input type="number" id="dca_h_zz500" placeholder="中证500">
+      <input type="number" id="dca_h_gold" placeholder="黄金">
+      <input type="text" id="dca_h_note" placeholder="备注" class="dca-note-input">
+      <button class="btn btn-primary btn-sm" onclick="addDcaHistory()">添加</button>
+    </div>
+    <div class="dca-history-table">
+      <div class="dca-hist-head">
+        <span>年月</span><span>纳指</span><span>中证500</span><span>黄金</span><span>备注</span><span></span>
+      </div>
+      <div id="dcaHistoryList"></div>
+    </div>
+  </div>
+</section>
+
 </main>
 </div>
 
@@ -2004,7 +2156,13 @@ var defaultDb = {
     projects: []
   },
   recipes: { items: [] },
-  reading: { books: [] }
+  reading: { books: [] },
+  dca: {
+    current: { nasdaq: '', zz500: '', gold: '' },
+    history: [
+      { ym: '2026-08', nasdaq: 960, zz500: 1110, gold: 930, note: '初始建仓月' }
+    ]
+  }
 };
 
 function loadDb(){
@@ -2043,6 +2201,7 @@ function switchTab(n){
   if(n === 5) renderPython();
   if(n === 6){ renderRecipeHero(); renderRecipes(); }
   if(n === 7) renderBooks();
+  if(n === 8) initDca();
   closeMobileSidebar();
 }
 
@@ -3966,6 +4125,145 @@ function renderRecipes(){
     html += '</div>';
     return html;
   }).join('');
+}
+
+/* ============================================================
+   Tab 8: Monthly DCA Calculator (C哥20年定投公式)
+   ============================================================ */
+var DCA_BUDGET = 3000;
+var DCA_ITEMS = [
+  { key: 'nasdaq', name: '纳斯达克100', avg3: 22400 },
+  { key: 'zz500', name: '中证500', avg3: 6300 },
+  { key: 'gold', name: '黄金指数', avg3: 3450 }
+];
+
+function onDcaInput(){
+  DCA_ITEMS.forEach(function(it){
+    DB.dca.current[it.key] = document.getElementById('dca_' + it.key).value;
+  });
+  saveDb();
+  calcDca();
+}
+
+function calcDca(){
+  var rows = DCA_ITEMS.map(function(it){
+    var cur = parseFloat(document.getElementById('dca_' + it.key).value);
+    var ratio = (cur > 0) ? (it.avg3 / cur) : 0;
+    return { it: it, cur: cur, ratio: ratio, weight: 0, raw: 0 };
+  });
+  var sumRatio = rows.reduce(function(s, r){ return s + r.ratio; }, 0);
+  if(sumRatio <= 0){
+    rows.forEach(function(r){
+      document.getElementById('dca_ratio_' + r.it.key).textContent = '—';
+      document.getElementById('dca_weight_' + r.it.key).textContent = '—';
+      document.getElementById('dca_amount_' + r.it.key).textContent = '—';
+    });
+    document.getElementById('dca_sumRatio').textContent = '—';
+    document.getElementById('dca_rawSum').textContent = '—';
+    document.getElementById('dca_diff').textContent = '—';
+    document.getElementById('dca_finalTotal').textContent = '—';
+    return null;
+  }
+  rows.forEach(function(r){
+    r.weight = r.ratio / sumRatio;
+    r.raw = r.weight * DCA_BUDGET;
+  });
+  var amounts = rows.map(function(r){ return Math.round(r.raw); });
+  var rawSum = amounts.reduce(function(s, a){ return s + a; }, 0);
+  var diff = DCA_BUDGET - rawSum;
+  if(diff !== 0){
+    var maxIdx = 0;
+    for(var i = 1; i < rows.length; i++){
+      if(rows[i].ratio > rows[maxIdx].ratio) maxIdx = i;
+    }
+    amounts[maxIdx] += diff;
+  }
+  rows.forEach(function(r, i){
+    document.getElementById('dca_ratio_' + r.it.key).textContent = r.ratio.toFixed(2);
+    document.getElementById('dca_weight_' + r.it.key).textContent = Math.round(r.weight * 100) + '%';
+    document.getElementById('dca_amount_' + r.it.key).textContent = '¥' + amounts[i];
+  });
+  document.getElementById('dca_sumRatio').textContent = sumRatio.toFixed(2);
+  document.getElementById('dca_rawSum').textContent = '¥' + rawSum;
+  document.getElementById('dca_diff').textContent = (diff === 0 ? '0' : (diff > 0 ? '+' + diff : String(diff)));
+  var finalTotal = amounts.reduce(function(s, a){ return s + a; }, 0);
+  document.getElementById('dca_finalTotal').textContent = '¥' + finalTotal;
+  return { rows: rows, amounts: amounts };
+}
+
+function saveDcaMonth(){
+  var res = calcDca();
+  if(!res){ toast('请先填写三个品种的当前点位'); return; }
+  var now = new Date();
+  var ym = now.getFullYear() + '-' + ('0' + (now.getMonth() + 1)).slice(-2);
+  document.getElementById('dca_ym').value = ym;
+  document.getElementById('dca_h_nasdaq').value = res.amounts[0];
+  document.getElementById('dca_h_zz500').value = res.amounts[1];
+  document.getElementById('dca_h_gold').value = res.amounts[2];
+  document.getElementById('dca_h_note').value = '';
+  addDcaHistory(true);
+}
+
+function addDcaHistory(fromCalc){
+  var ym = document.getElementById('dca_ym').value.trim();
+  var n = parseFloat(document.getElementById('dca_h_nasdaq').value);
+  var z = parseFloat(document.getElementById('dca_h_zz500').value);
+  var g = parseFloat(document.getElementById('dca_h_gold').value);
+  var note = document.getElementById('dca_h_note').value.trim();
+  if(!ym){ toast('请填写年月'); return; }
+  if(isNaN(n) || isNaN(z) || isNaN(g)){ toast('请填写三项金额'); return; }
+  DB.dca.history.unshift({ ym: ym, nasdaq: n, zz500: z, gold: g, note: note });
+  saveDb();
+  renderDcaHistory();
+  if(!fromCalc){
+    document.getElementById('dca_h_nasdaq').value = '';
+    document.getElementById('dca_h_zz500').value = '';
+    document.getElementById('dca_h_gold').value = '';
+    document.getElementById('dca_h_note').value = '';
+  }
+  toast('已存档');
+}
+
+function deleteDcaHistory(i){
+  DB.dca.history.splice(i, 1);
+  saveDb();
+  renderDcaHistory();
+}
+
+function renderDcaHistory(){
+  var box = document.getElementById('dcaHistoryList');
+  if(DB.dca.history.length === 0){
+    box.innerHTML = '<div class="empty-hint">暂无存档，算完本月结果点「存档本月结果」</div>';
+    return;
+  }
+  box.innerHTML = DB.dca.history.map(function(h, i){
+    return '<div class="dca-hist-row">' +
+      '<span>' + escapeHtml(h.ym) + '</span>' +
+      '<span>' + (h.nasdaq || 0) + '</span>' +
+      '<span>' + (h.zz500 || 0) + '</span>' +
+      '<span>' + (h.gold || 0) + '</span>' +
+      '<span class="dca-hist-note">' + escapeHtml(h.note || '') + '</span>' +
+      '<button class="btn-icon" onclick="deleteDcaHistory(' + i + ')" title="删除">&#10005;</button>' +
+      '</div>';
+  }).join('');
+}
+
+function clearDcaInputs(){
+  DCA_ITEMS.forEach(function(it){
+    document.getElementById('dca_' + it.key).value = '';
+    DB.dca.current[it.key] = '';
+  });
+  saveDb();
+  calcDca();
+}
+
+function initDca(){
+  DCA_ITEMS.forEach(function(it){
+    var v = DB.dca.current[it.key];
+    if(v !== undefined && v !== null && v !== '') document.getElementById('dca_' + it.key).value = v;
+  });
+  renderDcaHistory();
+  calcDca();
 }
 
 /* ============================================================
