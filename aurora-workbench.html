@@ -1061,15 +1061,83 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 .sent-dot.neutral{background:#9CB2C0;}
 .news-card.clickable{cursor:default;transition:all 0.2s;}
 .news-card.clickable:hover{border-color:var(--blue);box-shadow:0 1px 8px rgba(0,0,0,0.04);}
-.news-card .news-headline{font-size:clamp(13px,1.1vw,14px);font-weight:600;color:var(--text);line-height:1.5;cursor:pointer;}
-.news-card .news-headline:hover{color:var(--blue);}
-.news-card .news-detail{font-size:clamp(12px,1vw,13px);color:var(--text-2);margin-top:8px;line-height:1.7;display:none;padding:10px 12px;background:var(--input-bg);border-radius:var(--radius-sm);}
-.news-card.expanded .news-detail{display:block;}
-.news-card .news-actions{display:flex;gap:10px;align-items:center;margin-top:8px;}
+.news-card .news-headline{font-size:clamp(13px,1.1vw,14px);font-weight:600;color:var(--text);line-height:1.5;}
+.news-card .news-actions{display:flex;gap:10px;align-items:center;margin-top:8px;justify-content:space-between;}
 .news-card .news-actions a{font-size:12px;color:var(--blue);text-decoration:none;}
 .news-card .news-actions a:hover{text-decoration:underline;}
-.news-card .expand-btn{font-size:12px;color:var(--text-3);cursor:pointer;background:none;border:none;padding:2px 4px;}
-.news-card .expand-btn:hover{color:var(--blue);}
+
+/* ====== Tab4 v2: Market Template (stats row + metric grid) ====== */
+.mkt-stats-row{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:10px;margin-bottom:14px;
+}
+.mkt-stat{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  padding:14px 12px;text-align:center;
+  display:flex;flex-direction:column;justify-content:center;align-items:center;
+  min-height:78px;transition:all 0.2s;
+}
+.mkt-stat:hover{transform:translateY(-1px);box-shadow:0 2px 12px rgba(0,0,0,0.04);}
+.mkt-stat.highlight{
+  background:linear-gradient(135deg,var(--accent) 0%,var(--blue) 100%);
+  border-color:transparent;color:#fff;
+}
+.mkt-stat-num{
+  font-size:clamp(22px,2.4vw,26px);font-weight:700;line-height:1.2;
+  font-variant-numeric:tabular-nums;letter-spacing:-0.5px;
+}
+.mkt-stat.highlight .mkt-stat-num{font-size:clamp(15px,1.5vw,17px);font-weight:600;}
+.mkt-stat-label{
+  font-size:clamp(11px,0.9vw,12px);color:var(--text-2);margin-top:5px;
+}
+.mkt-stat.highlight .mkt-stat-label{color:rgba(255,255,255,0.92);}
+
+.mkt-overview .card-title{margin-bottom:0;}
+.metric-grid{
+  display:grid;grid-template-columns:repeat(2,1fr);gap:10px;
+}
+.metric-tile{
+  background:var(--input-bg);
+  border:1px solid var(--line);border-radius:var(--radius-sm);
+  padding:11px 13px;
+  display:flex;flex-direction:column;gap:3px;
+  min-height:80px;justify-content:center;
+  transition:all 0.2s;
+}
+.metric-tile:hover{transform:translateY(-1px);box-shadow:0 2px 10px rgba(0,0,0,0.04);}
+.metric-tile.accent{
+  background:var(--card);
+  border-left:3px solid var(--red);
+}
+.metric-label{
+  font-size:clamp(11px,0.9vw,12px);color:var(--text-2);
+  font-weight:500;
+}
+.metric-value{
+  font-size:clamp(20px,2vw,22px);font-weight:700;color:var(--text);
+  font-variant-numeric:tabular-nums;line-height:1.2;letter-spacing:-0.5px;
+}
+.metric-value.pos{color:var(--red);}
+.metric-value.neg{color:var(--green);}
+.metric-value.neu{color:var(--text-2);}
+.metric-change{
+  font-size:clamp(10px,0.85vw,11px);color:var(--text-3);
+  font-variant-numeric:tabular-nums;
+}
+
+/* News card cleaner (v2) */
+.news-card{
+  border-left:3px solid var(--line);
+  background:var(--card);
+}
+.news-card.positive{border-left-color:var(--red);}
+.news-card.negative{border-left-color:var(--green);}
+.news-card.neutral{border-left-color:var(--text-3);}
+.news-card .news-summary{
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+  overflow:hidden;text-overflow:ellipsis;
+}
+.news-card .news-actions{justify-content:space-between;}
 .manual-add-toggle{margin-top:14px;}
 .manual-add-toggle .toggle-btn{font-size:12px;color:var(--text-2);cursor:pointer;background:none;border:1px dashed var(--line);padding:6px 14px;border-radius:var(--radius-sm);transition:all 0.2s;}
 .manual-add-toggle .toggle-btn:hover{border-color:var(--blue);color:var(--blue);}
@@ -1909,26 +1977,60 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     所有资讯仅用于信息整理与个人复盘，不构成任何投资建议。投资有风险，决策需谨慎。
   </div>
 
-  <!-- Section 1: Live News -->
-  <div class="card">
-    <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
-      <span>分区一 · 实时热点资讯</span>
-      <div class="news-refresh-bar" style="margin-bottom:0;">
+  <!-- Top Stats Row -->
+  <div class="mkt-stats-row">
+    <div class="mkt-stat">
+      <div class="mkt-stat-num" id="mktNewsCount">0</div>
+      <div class="mkt-stat-label">今日资讯</div>
+    </div>
+    <div class="mkt-stat">
+      <div class="mkt-stat-num" id="mktFavCount">0</div>
+      <div class="mkt-stat-label">已收藏</div>
+    </div>
+    <div class="mkt-stat highlight">
+      <div class="mkt-stat-num" id="mktMoodLabel">—</div>
+      <div class="mkt-stat-label">综合情绪</div>
+    </div>
+  </div>
+
+  <!-- Market Sentiment Overview -->
+  <div class="card mkt-overview">
+    <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+      <span>市场情绪概览</span>
+      <div style="display:flex;gap:10px;align-items:center;">
         <span class="text-sm text-muted" id="newsUpdateTime">未加载</span>
-        <button class="btn btn-sm" id="newsRefreshBtn" onclick="fetchNews(true)">刷新资讯</button>
-        <label class="text-sm" style="display:flex;align-items:center;gap:4px;cursor:pointer;">
-          <input type="checkbox" id="newsAutoRefresh" onchange="toggleAutoRefresh()" style="width:auto;"> 自动刷新
-        </label>
+        <button class="btn btn-sm" id="newsRefreshBtn" onclick="fetchNews(true)">🔄 刷新</button>
       </div>
     </div>
-    <div class="quick-links">
-      <a href="https://www.eastmoney.com/" target="_blank">东方财富</a>
-      <a href="https://www.10jqka.com.cn/" target="_blank">同花顺</a>
-      <a href="https://finance.sina.com.cn/" target="_blank">新浪财经</a>
-      <a href="https://www.sge.com.cn/" target="_blank">上海黄金交易所</a>
-      <a href="https://www.gold.org/" target="_blank">世界黄金协会</a>
+    <div class="section-desc" style="margin-bottom:14px;">利好 / 利空 / 中性 三维度情绪统计 · 数据为示例，实际请以券商 App 为准</div>
+    <div class="metric-grid">
+      <div class="metric-tile">
+        <div class="metric-label">利好</div>
+        <div class="metric-value pos" id="mPos">0</div>
+        <div class="metric-change" id="mPosSub">条</div>
+      </div>
+      <div class="metric-tile">
+        <div class="metric-label">利空</div>
+        <div class="metric-value neg" id="mNeg">0</div>
+        <div class="metric-change" id="mNegSub">条</div>
+      </div>
+      <div class="metric-tile">
+        <div class="metric-label">中性</div>
+        <div class="metric-value neu" id="mNeu">0</div>
+        <div class="metric-change">条</div>
+      </div>
+      <div class="metric-tile accent">
+        <div class="metric-label">综合判断</div>
+        <div class="metric-value" id="mVerdict">—</div>
+        <div class="metric-change">情绪倾向</div>
+      </div>
     </div>
-    <div id="newsSentimentBar" class="news-sentiment-bar" style="display:none;"></div>
+  </div>
+
+  <!-- Today's Featured News -->
+  <div class="card">
+    <div class="card-title">今日资讯精选</div>
+    <div class="section-desc" style="margin-bottom:12px;">利好 / 利空 / 中性 三维度实时热点 · 点击标题查看原文</div>
     <div class="filter-bar">
       <span class="filter-label">筛选：</span>
       <select id="newsFilterCat" onchange="renderNews()">
@@ -1944,6 +2046,9 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
       </select>
       <label class="filter-label" style="display:flex;align-items:center;gap:4px;cursor:pointer;">
         <input type="checkbox" id="newsFavOnly" onchange="renderNews()" style="width:auto;"> 仅看收藏
+      </label>
+      <label class="filter-label" style="display:flex;align-items:center;gap:4px;cursor:pointer;">
+        <input type="checkbox" id="newsAutoRefresh" onchange="toggleAutoRefresh()" style="width:auto;"> 自动刷新
       </label>
     </div>
     <div id="newsList"><div class="news-loading"><span class="spinner"></span>正在获取实时资讯...</div></div>
@@ -1981,6 +2086,13 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
           <div class="auto" style="padding-bottom:0;align-self:flex-end;"><button class="btn btn-primary btn-sm" onclick="addNews()">添加</button></div>
         </div>
       </div>
+    </div>
+    <div class="quick-links" style="margin-top:14px;">
+      <a href="https://www.eastmoney.com/" target="_blank">东方财富</a>
+      <a href="https://www.10jqka.com.cn/" target="_blank">同花顺</a>
+      <a href="https://finance.sina.com.cn/" target="_blank">新浪财经</a>
+      <a href="https://www.sge.com.cn/" target="_blank">上海黄金交易所</a>
+      <a href="https://www.gold.org/" target="_blank">世界黄金协会</a>
     </div>
   </div>
 
@@ -4562,14 +4674,6 @@ function toggleLiveFav(idx){
   renderNews();
 }
 
-function toggleNewsExpand(el){
-  var card = el.closest('.news-card');
-  if(!card) return;
-  card.classList.toggle('expanded');
-  var btn = card.querySelector('.expand-btn');
-  if(btn) btn.textContent = card.classList.contains('expanded') ? '收起' : '展开详情';
-}
-
 function renderNews(){
   var filterCat = document.getElementById('newsFilterCat').value;
   var filterTag = document.getElementById('newsFilterTag').value;
@@ -4602,22 +4706,11 @@ function renderNews(){
   var pos = all.filter(function(n){ return n.tag === 'positive'; }).length;
   var neg = all.filter(function(n){ return n.tag === 'negative'; }).length;
   var neu = all.filter(function(n){ return n.tag === 'neutral'; }).length;
-  var bar = document.getElementById('newsSentimentBar');
-  if(all.length > 0){
-    bar.style.display = 'flex';
-    bar.innerHTML =
-      '<span class="text-muted">今日情绪概览</span>' +
-      '<span class="sent-item"><span class="sent-dot positive"></span> 利好 ' + pos + '</span>' +
-      '<span class="sent-item"><span class="sent-dot negative"></span> 利空 ' + neg + '</span>' +
-      '<span class="sent-item"><span class="sent-dot neutral"></span> 中性 ' + neu + '</span>' +
-      '<span class="text-muted" style="margin-left:auto;">共 ' + all.length + ' 条</span>';
-  } else {
-    bar.style.display = 'none';
-  }
 
   var box = document.getElementById('newsList');
   if(DISPLAYED_NEWS.length === 0){
     box.innerHTML = '<div class="news-loading">暂无符合条件的资讯</div>';
+    refreshMarketSentimentViews(pos, neg, neu);
     return;
   }
 
@@ -4626,8 +4719,7 @@ function renderNews(){
   var tagLabel = { positive: '利好', negative: '利空', neutral: '中性' };
 
   box.innerHTML = DISPLAYED_NEWS.map(function(n, idx){
-    var hasLong = n.summary && n.summary.length > 80;
-    var html = '<div class="news-card clickable' + (n.fav ? ' fav' : '') + '">';
+    var html = '<div class="news-card ' + n.tag + (n.fav ? ' fav' : '') + '">';
     html += '<div class="news-meta">';
     html += '<span class="chip ' + tagClass[n.tag] + '">' + tagLabel[n.tag] + '</span>';
     html += '<span class="chip chip-blue">' + catLabel[n.cat] + '</span>';
@@ -4641,25 +4733,20 @@ function renderNews(){
       html += '<button class="btn-icon" onclick="event.stopPropagation();deleteNews(' + n.manualIdx + ')">&#10005;</button>';
     }
     html += '</div></div>';
-    html += '<div class="news-headline" onclick="toggleNewsExpand(this)">' + escapeHtml(n.title) + '</div>';
+    html += '<div class="news-headline">' + escapeHtml(n.title) + '</div>';
     if(n.summary){
-      var shortSum = hasLong ? n.summary.slice(0, 80) + '...' : n.summary;
-      html += '<div class="news-summary">' + escapeHtml(shortSum) + '</div>';
-      if(hasLong){
-        html += '<div class="news-detail">' + escapeHtml(n.summary) + '</div>';
-      }
+      html += '<div class="news-summary">' + escapeHtml(n.summary) + '</div>';
     }
     html += '<div class="news-actions">';
     if(n.url){
       html += '<a href="' + n.url + '" target="_blank" onclick="event.stopPropagation()">查看原文 →</a>';
     }
-    if(hasLong){
-      html += '<button class="expand-btn" onclick="event.stopPropagation();toggleNewsExpand(this)">展开详情</button>';
-    }
     html += '</div>';
     html += '</div>';
     return html;
   }).join('');
+  /* Sync top stats + sentiment overview tiles */
+  refreshMarketSentimentViews(pos, neg, neu);
 }
 
 function addTracking(){
@@ -4756,6 +4843,8 @@ function renderMarket(){
   renderTracking();
   loadSentiment();
   renderNotes();
+  renderMarketTopStats();
+  renderSentimentOverview();
   var updEl = document.getElementById('newsUpdateTime');
   if(updEl){
     updEl.textContent = DB.market.newsLastUpdate ? ('最后更新 ' + DB.market.newsLastUpdate) : '未加载';
@@ -4764,6 +4853,98 @@ function renderMarket(){
     renderNews();
   } else {
     fetchNews(false);
+  }
+}
+
+/* --- Tab4 v2 helpers: 顶部三联卡 + 2x2 情绪指标 --- */
+function computeMarketSentiment(){
+  var pos = 0, neg = 0, neu = 0;
+  LIVE_NEWS.forEach(function(n){
+    if(n.sentiment === 'positive') pos++;
+    else if(n.sentiment === 'negative') neg++;
+    else neu++;
+  });
+  DB.market.news.forEach(function(n){
+    if(n.tag === 'positive') pos++;
+    else if(n.tag === 'negative') neg++;
+    else neu++;
+  });
+  return { pos: pos, neg: neg, neu: neu, total: pos + neg + neu };
+}
+
+function judgeMarketMood(pos, neg, total){
+  if(total === 0) return { label: '—', cls: 'neu' };
+  if(pos >= neg * 1.5 && pos > 0) return { label: '看多', cls: 'pos' };
+  if(neg >= pos * 1.5 && neg > 0) return { label: '看空', cls: 'neg' };
+  return { label: '震荡', cls: 'neu' };
+}
+
+function renderMarketTopStats(){
+  var s = computeMarketSentiment();
+  var favCount = DB.market.favNewsIds.length + DB.market.news.filter(function(n){ return n.fav; }).length;
+  var newsCountEl = document.getElementById('mktNewsCount');
+  var favCountEl = document.getElementById('mktFavCount');
+  var moodEl = document.getElementById('mktMoodLabel');
+  if(newsCountEl) newsCountEl.textContent = s.total;
+  if(favCountEl) favCountEl.textContent = favCount;
+  if(moodEl){
+    var j = judgeMarketMood(s.pos, s.neg, s.total);
+    moodEl.textContent = j.label;
+  }
+}
+
+function renderSentimentOverview(){
+  var s = computeMarketSentiment();
+  var pct = function(n){ return s.total ? (Math.round(n / s.total * 100) + '%') : '—'; };
+  var posEl = document.getElementById('mPos');
+  var negEl = document.getElementById('mNeg');
+  var neuEl = document.getElementById('mNeu');
+  var posSubEl = document.getElementById('mPosSub');
+  var negSubEl = document.getElementById('mNegSub');
+  var verdictEl = document.getElementById('mVerdict');
+  if(posEl) posEl.textContent = s.pos;
+  if(negEl) negEl.textContent = s.neg;
+  if(neuEl) neuEl.textContent = s.neu;
+  if(posSubEl) posSubEl.textContent = pct(s.pos) + ' · ' + s.pos + ' 条';
+  if(negSubEl) negSubEl.textContent = pct(s.neg) + ' · ' + s.neg + ' 条';
+  if(verdictEl){
+    var j = judgeMarketMood(s.pos, s.neg, s.total);
+    verdictEl.textContent = j.label;
+    verdictEl.className = 'metric-value ' + j.cls;
+  }
+}
+
+function refreshMarketSentimentViews(pos, neg, neu){
+  /* Called from renderNews with already-computed counts (avoid double iteration) */
+  var total = pos + neg + neu;
+  var pct = function(n){ return total ? (Math.round(n / total * 100) + '%') : '—'; };
+  var posEl = document.getElementById('mPos');
+  var negEl = document.getElementById('mNeg');
+  var neuEl = document.getElementById('mNeu');
+  var posSubEl = document.getElementById('mPosSub');
+  var negSubEl = document.getElementById('mNegSub');
+  var verdictEl = document.getElementById('mVerdict');
+  var newsCountEl = document.getElementById('mktNewsCount');
+  var favCountEl = document.getElementById('mktFavCount');
+  var moodEl = document.getElementById('mktMoodLabel');
+  if(posEl) posEl.textContent = pos;
+  if(negEl) negEl.textContent = neg;
+  if(neuEl) neuEl.textContent = neu;
+  if(posSubEl) posSubEl.textContent = pct(pos) + ' · ' + pos + ' 条';
+  if(negSubEl) negSubEl.textContent = pct(neg) + ' · ' + neg + ' 条';
+  if(verdictEl){
+    var j = judgeMarketMood(pos, neg, total);
+    verdictEl.textContent = j.label;
+    verdictEl.className = 'metric-value ' + j.cls;
+  }
+  if(newsCountEl) newsCountEl.textContent = total;
+  if(favCountEl){
+    var favCount = DB.market.favNewsIds.length + DB.market.news.filter(function(n){ return n.fav; }).length;
+    favCountEl.textContent = favCount;
+  }
+  if(moodEl){
+    var j2 = judgeMarketMood(pos, neg, total);
+    moodEl.textContent = j2.label;
   }
 }
 
