@@ -1301,6 +1301,23 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 .dca-hist-note-edit{position:absolute;right:6px;top:50%;transform:translateY(-50%);opacity:.35;font-size:10px;color:var(--accent);transition:opacity .2s;pointer-events:none;}
 .dca-hist-note:hover .dca-hist-note-edit{opacity:.9;}
 .dca-hist-empty{padding:18px 12px;text-align:center;font-size:12.5px;color:var(--text-3);background:var(--input-bg);border-radius:var(--radius-sm);margin-top:8px;}
+.dca-hist-detail{background:var(--bg);padding:10px 14px 11px;display:grid;gap:5px;}
+.dca-hist-detail-head{display:grid;grid-template-columns:1.4fr 1.2fr 0.8fr 0.8fr 1fr;gap:10px;padding:6px 8px;background:rgba(255,255,255,0.6);border-radius:var(--radius-sm);font-size:11px;font-weight:600;color:var(--text-2);}
+.dca-hist-detail-head span{display:flex;align-items:center;justify-content:center;text-align:center;}
+.dca-hist-detail-row{display:grid;grid-template-columns:1.4fr 1.2fr 0.8fr 0.8fr 1fr;gap:10px;padding:5px 8px;background:#fff;border-radius:4px;font-variant-numeric:tabular-nums;font-size:12px;}
+.dca-hist-detail-row span{display:flex;align-items:center;justify-content:center;text-align:center;}
+.dd-name{font-weight:600;color:var(--text);}
+.dd-cur{color:var(--blue);font-weight:600;}
+.dd-ratio{color:var(--text-2);}
+.dd-weight{color:var(--text-2);}
+.dd-amt{color:var(--accent);font-weight:700;}
+.dca-hist-detail-foot{font-size:11px;color:var(--text-3);padding:4px 8px 0;font-variant-numeric:tabular-nums;}
+.dca-hist-detail-foot b{color:var(--text-2);font-weight:600;}
+.dca-hist-detail-empty{background:var(--bg);color:var(--text-3);font-size:12px;padding:12px 14px;text-align:center;}
+@media(max-width:560px){
+  .dca-hist-detail-head,.dca-hist-detail-row{grid-template-columns:1.2fr 1fr 0.7fr 0.7fr 1fr;gap:6px;padding:5px 6px;font-size:11px;}
+  .dca-hist-detail{padding:8px 10px;}
+}
 
 /* ====== Filter Bar ====== */
 .filter-bar{display:flex;gap:0.5em;margin-bottom:0.9em;flex-wrap:wrap;align-items:center;}
@@ -2397,11 +2414,28 @@ function loadDb(){
 function migrateDcaHistory(){
   // 用户实际从 2026-08 开始定投，清除 demo / 早期历史中的 2026-06 / 2026-07
   if(!DB.dca || !Array.isArray(DB.dca.history)) return;
+  var dirty = false;
   var before = DB.dca.history.length;
   DB.dca.history = DB.dca.history.filter(function(h){
     return h && h.ym && h.ym !== '2026-06' && h.ym !== '2026-07';
   });
-  if(DB.dca.history.length !== before){ saveDb(); }
+  if(DB.dca.history.length !== before){ dirty = true; }
+  // 给老存档补 avgs / budget / total 字段（用于历史详情复算）
+  DB.dca.history.forEach(function(h){
+    if(!h.avgs){
+      h.avgs = {};
+      if(typeof DCA_ITEMS !== 'undefined'){
+        DCA_ITEMS.forEach(function(it){ h.avgs[it.key] = it.avg30; });
+      }
+      dirty = true;
+    }
+    if(typeof h.budget !== 'number'){ h.budget = 3000; dirty = true; }
+    if(typeof h.total !== 'number'){
+      h.total = (h.nasdaq || 0) + (h.zz500 || 0) + (h.gold || 0);
+      dirty = true;
+    }
+  });
+  if(dirty) saveDb();
 }
 function saveDb(){
   localStorage.setItem(DB_KEY, JSON.stringify(DB));
@@ -4731,8 +4765,11 @@ function autoSaveDcaMonth(force){
   }
   if(existingIdx >= 0 && !force){ return false; }
   var points = {};
+  var avgs = {};
+  var budget = getDcaBudget();
   DCA_ITEMS.forEach(function(it){
     points[it.key] = parseFloat(DB.dca.current[it.key]) || 0;
+    avgs[it.key] = it.avg30;
   });
   var note = (existingIdx >= 0 && DB.dca.history[existingIdx].note)
     ? DB.dca.history[existingIdx].note
@@ -4742,8 +4779,11 @@ function autoSaveDcaMonth(force){
     nasdaq: res.amounts[0],
     zz500: res.amounts[1],
     gold: res.amounts[2],
+    total: res.amounts[0] + res.amounts[1] + res.amounts[2],
     note: note,
     points: points,
+    avgs: avgs,
+    budget: budget,
     auto: true
   };
   if(existingIdx >= 0){
@@ -4766,12 +4806,13 @@ function renderDcaHistory(){
     return;
   }
   box.innerHTML = DB.dca.history.map(function(h, i){
+    var detailHtml = renderDcaHistoryDetail(h);
     return '<div class="dca-hist-row">' +
       '<span class="dca-hist-ym">' + escapeHtml(h.ym) + '</span>' +
       '<span class="dca-hist-amt n">¥' + (h.nasdaq || 0) + '</span>' +
       '<span class="dca-hist-amt z">¥' + (h.zz500 || 0) + '</span>' +
       '<span class="dca-hist-amt g">¥' + (h.gold || 0) + '</span>' +
-      '<span class="dca-hist-total">¥' + ((h.nasdaq || 0) + (h.zz500 || 0) + (h.gold || 0)) + '</span>' +
+      '<span class="dca-hist-total">¥' + (h.total != null ? h.total : ((h.nasdaq||0)+(h.zz500||0)+(h.gold||0))) + '</span>' +
       '<span class="dca-hist-note" onclick="editDcaHistoryNote(' + i + ')" title="点击编辑备注">' +
         escapeHtml(h.note || '点击编辑备注') +
         '<span class="dca-hist-note-edit">✎</span>' +
@@ -4779,8 +4820,51 @@ function renderDcaHistory(){
       '<span class="dca-hist-del">' +
         '<button class="btn-icon" onclick="deleteDcaHistory(' + i + ')" title="删除">&#10005;</button>' +
       '</span>' +
+    '</div>' + detailHtml;
+  }).join('');
+}
+
+function renderDcaHistoryDetail(h){
+  if(!h || !h.points || !h.avgs || typeof DCA_ITEMS === 'undefined'){
+    return '<div class="dca-hist-detail"><div class="dca-hist-detail-empty">该存档未记录点位/均价明细</div></div>';
+  }
+  var budget = h.budget || 3000;
+  var ratios = DCA_ITEMS.map(function(it){
+    var cur = parseFloat(h.points[it.key]) || 0;
+    var avg = parseFloat(h.avgs[it.key]) || it.avg30;
+    return { it: it, cur: cur, avg: avg, ratio: (cur > 0) ? (avg / cur) : 0 };
+  });
+  var sumRatio = ratios.reduce(function(s, r){ return s + r.ratio; }, 0);
+  if(sumRatio <= 0){
+    return '<div class="dca-hist-detail"><div class="dca-hist-detail-empty">该存档点位异常（≤0），无法复算</div></div>';
+  }
+  var weights = ratios.map(function(r){ return r.ratio / sumRatio; });
+  var amounts = weights.map(function(w){ return Math.round(w * budget); });
+  var rawSum = amounts.reduce(function(s, a){ return s + a; }, 0);
+  var diff = budget - rawSum;
+  if(diff !== 0){
+    var maxIdx = 0;
+    for(var i = 1; i < ratios.length; i++){
+      if(ratios[i].ratio > ratios[maxIdx].ratio) maxIdx = i;
+    }
+    amounts[maxIdx] += diff;
+  }
+  var headRow = '<div class="dca-hist-detail-head">' +
+    '<span>品种</span><span>当前点位</span><span>比值</span><span>权重</span><span>本月应投</span>' +
+  '</div>';
+  var bodyRows = ratios.map(function(r, idx){
+    return '<div class="dca-hist-detail-row">' +
+      '<span class="dd-name">' + escapeHtml(r.it.name || r.it.key) + '</span>' +
+      '<span class="dd-cur">' + r.cur + '</span>' +
+      '<span class="dd-ratio">' + r.ratio.toFixed(2) + '</span>' +
+      '<span class="dd-weight">' + Math.round(weights[idx] * 100) + '%</span>' +
+      '<span class="dd-amt">¥' + amounts[idx] + '</span>' +
     '</div>';
   }).join('');
+  var footRow = '<div class="dca-hist-detail-foot">' +
+    '比值总和 <b>' + sumRatio.toFixed(2) + '</b> · 预算 <b>¥' + budget + '</b> · 差额自动补到比值最高品种' +
+  '</div>';
+  return '<div class="dca-hist-detail">' + headRow + bodyRows + footRow + '</div>';
 }
 
 function editDcaHistoryNote(i){
