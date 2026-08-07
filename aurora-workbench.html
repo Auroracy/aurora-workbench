@@ -1428,11 +1428,16 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 .hidden{display:none!important;}
 hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
 
-/* ====== Tab 10: 投资方向分析 ====== */
+/* ====== Tab 9 投资方向（合并显示） ====== */
+.xwlb-invest{background:linear-gradient(180deg,#f5fbfa,#ffffff);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:var(--radius);padding:16px 18px;margin:16px 0 2px;}
+.xwlb-invest-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:4px;}
+.xwlb-invest-title{font-size:16px;font-weight:700;color:var(--text);}
+@media(max-width:560px){
+  .xwlb-invest-head{flex-direction:column;align-items:stretch;gap:8px;}
+  .xwlb-invest-head .btn{width:100%;}
+}
 .invest-disclaimer{background:#FFF8E6;border:1px solid #F2D98A;color:#8a6d1a;border-radius:var(--radius-sm);padding:10px 13px;font-size:12px;line-height:1.55;margin-bottom:14px;}
 .invest-disclaimer b{color:#9a6b00;}
-.invest-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
-.invest-controls select{min-width:9.5em;}
 .invest-meta{font-size:12px;color:var(--text-2);margin:2px 2px 12px;}
 .invest-cards{display:grid;grid-template-columns:1fr;gap:12px;}
 .invest-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius-sm);padding:14px 16px;transition:box-shadow .15s;}
@@ -1452,12 +1457,6 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
 .invest-status.error{color:#C0392B;}
 .invest-status.loading{color:var(--accent);}
 .invest-empty{background:var(--bg);border-radius:var(--radius-sm);padding:18px 16px;color:var(--text-3);font-size:13px;line-height:1.6;text-align:center;}
-.invest-history{margin-top:6px;border-top:1px solid var(--line-soft);padding-top:12px;}
-.invest-history-title{font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:8px;}
-.invest-history-list{display:flex;flex-wrap:wrap;gap:7px;}
-.invest-history-chip{font-size:12px;padding:4px 11px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--text-2);cursor:pointer;transition:all .15s;}
-.invest-history-chip:hover{border-color:var(--accent);color:var(--accent);}
-.invest-history-empty{font-size:12px;color:var(--text-3);}
 @media(max-width:560px){
   .invest-card-head{flex-direction:column;align-items:flex-start;gap:4px;}
 }
@@ -1527,10 +1526,6 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     <button class="nav-item" data-tab="9" onclick="switchTab(9)">
       <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M4 5h16v12H4z"/><path d="M8 21h8M12 17v4"/></svg></span>
       <span class="nav-num">09</span><span class="nav-text">新闻联播 · 每日总结</span>
-    </button>
-    <button class="nav-item" data-tab="10" onclick="switchTab(10)">
-      <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M3 3h18v4H3z"/><path d="M3 10h18v4H3z"/><path d="M3 17h18v4H3z"/></svg></span>
-      <span class="nav-num">10</span><span class="nav-text">投资方向分析</span>
     </button>
   </nav>
   <div class="sidebar-footer" id="footerDate">
@@ -2415,6 +2410,16 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
 
   <div class="xwlb-body" id="xwlbBody"></div>
 
+  <div class="xwlb-invest" id="xwlbInvest">
+    <div class="xwlb-invest-head">
+      <div class="xwlb-invest-title">💡 投资方向参考</div>
+      <button class="btn btn-primary btn-sm" id="xwlbInvestBtn" onclick="generateXwlbInvest()">📊 生成投资分析</button>
+    </div>
+    <div class="invest-disclaimer">⚠️ 本功能基于《新闻联播》内容做主题映射，所列基金仅为<b>信息参考，不构成任何投资建议</b>。基金代码以交易所/基金公司最新公告为准，投资有风险，入市需谨慎。</div>
+    <div class="invest-status" id="xwlbInvestStatus"></div>
+    <div id="xwlbInvestBody"></div>
+  </div>
+
   <div class="xwlb-fallback" id="xwlbFallback" style="display:none;">
     <div class="xwlb-fallback-tip">自动抓取（前端代理）不可达。可手动粘贴当天《新闻联播》节目单，由通义千问生成总结：</div>
     <textarea id="xwlbManualInput" class="xwlb-manual-input" placeholder="每行一条，例如：&#10;【新思想引领新征程】服务消费扩容升级 激发内需新活力&#10;今年前7个月我国货物贸易进出口超30万亿元&#10;大面积单产提升持续加力 夯实秋粮稳产基础"></textarea>
@@ -2424,30 +2429,6 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
   <div class="xwlb-history">
     <div class="xwlb-history-title">历史归档</div>
     <div class="xwlb-history-list" id="xwlbHistoryList"></div>
-  </div>
-</section>
-
-<!-- ========== Tab 10: 投资方向分析 ========== -->
-<section id="tab10" class="tab-section">
-  <div class="section-header">
-    <div class="section-title">投资方向分析</div>
-    <button class="btn btn-primary btn-sm" id="investGenBtn" onclick="generateInvest()">📊 生成分析</button>
-  </div>
-
-  <div class="invest-disclaimer">⚠️ 本功能基于《新闻联播》内容做主题映射，所列基金仅为<b>信息参考，不构成任何投资建议</b>。基金代码以交易所/基金公司最新公告为准，投资有风险，入市需谨慎。</div>
-
-  <div class="invest-controls" id="investDateWrap">
-    <span class="filter-label">分析日期</span>
-    <select id="investDate" onchange="renderInvestForDate(this.value)"></select>
-  </div>
-
-  <div class="invest-status" id="investStatus"></div>
-
-  <div id="investBody"></div>
-
-  <div class="invest-history">
-    <div class="invest-history-title">历史分析</div>
-    <div class="invest-history-list" id="investHistoryList"></div>
   </div>
 </section>
 
@@ -2603,7 +2584,6 @@ function switchTab(n){
   if(n === 7) renderBooks();
   if(n === 8) initDca();
   if(n === 9) initXwlb();
-  if(n === 10) initInvest();
   closeMobileSidebar();
 }
 
@@ -2695,6 +2675,7 @@ function renderXwlb(data, sourceLabel){
   if(!data.summary){
     body.innerHTML = '<div class="xwlb-raw"><div class="xwlb-note">' + escapeHtml(data.note || '暂无 AI 总结，请配置通义千问 Key 后刷新，或手动粘贴节目单生成。') + '</div></div>';
     setXwlbStatus(data.note ? 'ℹ ' + data.note : '', 'info');
+    refreshXwlbInvestPanel(date);
     return;
   }
   var s = data.summary;
@@ -2710,6 +2691,7 @@ function renderXwlb(data, sourceLabel){
   }
   body.innerHTML = html;
   setXwlbStatus('', '');
+  refreshXwlbInvestPanel(date);
 }
 function setXwlbStatus(msg, type){
   var el = document.getElementById('xwlbStatus');
@@ -2790,9 +2772,10 @@ function viewXwlbDate(d){
   document.getElementById('xwlbDate').textContent = d;
   document.getElementById('xwlbFallback').style.display = 'none';
   renderXwlb(data, '归档');
+  refreshXwlbInvestPanel(d);
 }
 
-/* ====== Tab 10: 投资方向分析 ====== */
+/* ====== Tab 9 投资方向（合并显示） ====== */
 var THEME_FUNDS = {
   ai:        { label:'人工智能 / AI', kw:['人工智能','AI','大模型','算力','机器人','智能','数字化转型','算法'], funds:[{code:'159819',name:'易方达中证人工智能ETF'},{code:'515980',name:'华富人工智能ETF'},{code:'588790',name:'博时上证科创板人工智能ETF'}] },
   semi:      { label:'半导体 / 芯片', kw:['半导体','芯片','集成电路','光刻','算力芯片','晶圆','国产替代'], funds:[{code:'512480',name:'国联安中证全指半导体ETF'},{code:'512760',name:'国泰CES半导体芯片ETF'},{code:'159995',name:'华夏国证半导体芯片ETF'},{code:'588200',name:'嘉实上证科创板芯片ETF'}] },
@@ -2815,28 +2798,6 @@ var THEME_FUNDS = {
   gold:      { label:'黄金 / 避险', kw:['黄金','避险','贵金属','外汇储备','金价'], funds:[{code:'518880',name:'华安黄金ETF'}] },
   broad:     { label:'宽基 / A股整体', kw:['股市','资本市场','A股','指数','稳增长','经济回升','大盘'], funds:[{code:'510300',name:'华泰柏瑞沪深300ETF'},{code:'510500',name:'南方中证500ETF'},{code:'588000',name:'华夏上证科创板50ETF'},{code:'159915',name:'易方达创业板ETF'}] }
 };
-function initInvest(){
-  if(!DB.invest) DB.invest = { cache: {} };
-  if(!DB.invest.cache) DB.invest.cache = {};
-  var wrap = document.getElementById('investDateWrap');
-  var sel = document.getElementById('investDate');
-  var dates = getXwlbSummaryDates();
-  if(!dates.length){
-    if(wrap) wrap.style.display = 'none';
-    document.getElementById('investBody').innerHTML = '<div class="invest-empty">请先在「新闻联播 · 每日总结」(Tab9) 生成某日的 AI 总结，再来此生成投资方向分析。</div>';
-    setInvestStatus('', '');
-    renderInvestHistory();
-    return;
-  }
-  if(wrap) wrap.style.display = '';
-  sel.innerHTML = dates.map(function(d){ return '<option value="'+d+'">'+d+'</option>'; }).join('');
-  sel.value = dates[0];
-  renderInvestForDate(dates[0]);
-}
-function getXwlbSummaryDates(){
-  var c = (DB.xwlb && DB.xwlb.cache) || {};
-  return Object.keys(c).filter(function(d){ return c[d] && c[d].summary; }).sort().reverse();
-}
 function flattenSummary(s){
   if(!s) return '';
   var parts = [];
@@ -2846,40 +2807,15 @@ function flattenSummary(s){
   });
   return parts.join('\n');
 }
-function renderInvestForDate(date){
-  if(!date){ return; }
-  var cached = DB.invest.cache[date];
-  if(cached){ renderInvest(cached, '缓存'); return; }
-  document.getElementById('investBody').innerHTML = '<div class="invest-empty">点「📊 生成分析」，基于该日《新闻联播》总结，自动提炼可投资方向并列出对应基金。</div>';
-  setInvestStatus('', '');
-}
-function generateInvest(){
-  var sel = document.getElementById('investDate');
-  var date = sel ? sel.value : '';
-  if(!date){ toast('请先选择日期'); return; }
-  var data = DB.xwlb.cache[date];
-  if(!data || !data.summary){ toast('该日尚无 AI 总结，请先到 Tab9 生成'); return; }
-  var text = flattenSummary(data.summary);
-  var btn = document.getElementById('investGenBtn');
-  if(btn){ btn.disabled = true; btn.textContent = '⏳ 分析中…'; }
-  if(!getQwenKey()){
-    finishInvest({ date: date, themes: matchThemesByKeyword(text), generatedAt: new Date().toISOString(), source: '关键词匹配' });
-    return;
+function matchThemesByKeyword(text){
+  if(!text) return [];
+  var t = text.toLowerCase();
+  var out = [];
+  for(var key in THEME_FUNDS){
+    var hit = (THEME_FUNDS[key].kw || []).some(function(w){ return t.indexOf(w.toLowerCase()) >= 0; });
+    if(hit) out.push({ key: key, reason: '（根据新闻关键词自动匹配）', level: '中' });
   }
-  var themeList = Object.keys(THEME_FUNDS).map(function(k){ return k + '=' + THEME_FUNDS[k].label; }).join('；');
-  var sys = '你是宏观策略分析师。根据下方《新闻联播》每日总结，判断其中蕴含的可投资方向，并为每个方向写一句话投资逻辑。严格只输出如下 JSON（不要任何额外文字）：{"themes":[{"key":"<必须且只能从上述主题列表的key中选一个>","reason":"一句话投资逻辑（30字以内）","level":"高/中/低"}]}';
-  var user = '可选主题列表（key=标签）：' + themeList + '\n\n《新闻联播》每日总结：\n' + text;
-  setInvestStatus('⏳ 通义千问分析中…', 'loading');
-  callQwenText(user, sys, 'qwen-plus').then(function(out){
-    var themes = ((out && out.themes) || []).map(function(t){
-      var k = normalizeThemeKey(t.key);
-      return { key: k, reason: t.reason || '', level: t.level || '中' };
-    }).filter(function(t){ return t.key && THEME_FUNDS[t.key]; });
-    finishInvest({ date: date, themes: themes, generatedAt: new Date().toISOString(), source: '通义千问' });
-  }).catch(function(err){
-    setInvestStatus('⚠ AI 分析失败：' + (err && err.message ? err.message : err) + '。已改用关键词兜底。', 'error');
-    finishInvest({ date: date, themes: matchThemesByKeyword(text), generatedAt: new Date().toISOString(), source: '关键词匹配(兜底)' });
-  });
+  return out;
 }
 function normalizeThemeKey(k){
   if(!k) return null;
@@ -2892,30 +2828,46 @@ function normalizeThemeKey(k){
   }
   return null;
 }
-function matchThemesByKeyword(text){
-  if(!text) return [];
-  var t = text.toLowerCase();
-  var out = [];
-  for(var key in THEME_FUNDS){
-    var hit = (THEME_FUNDS[key].kw || []).some(function(w){ return t.indexOf(w.toLowerCase()) >= 0; });
-    if(hit) out.push({ key: key, reason: '（根据新闻关键词自动匹配）', level: '中' });
-  }
-  return out;
-}
-function finishInvest(res){
-  DB.invest.cache[res.date] = res;
-  saveDb();
-  renderInvest(res, res.source);
-  var btn = document.getElementById('investGenBtn');
-  if(btn){ btn.disabled = false; btn.textContent = '📊 生成分析'; }
-}
 function lvlClass(lv){ return lv === '高' ? 'high' : (lv === '低' ? 'low' : 'mid'); }
-function renderInvest(res, sourceLabel){
-  var body = document.getElementById('investBody');
+function curXwlbDate(){ var d = document.getElementById('xwlbDate'); return d ? d.textContent.trim() : today(); }
+function generateXwlbInvest(){
+  var date = curXwlbDate();
+  var data = DB.xwlb.cache[date];
+  if(!data || !data.summary){ toast('请先生成当日新闻联播 AI 总结'); return; }
+  var text = flattenSummary(data.summary);
+  var btn = document.getElementById('xwlbInvestBtn');
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ 分析中…'; }
+  var done = function(res){
+    DB.invest.cache[res.date] = res;
+    saveDb();
+    renderXwlbInvest(res, res.source);
+    if(btn){ btn.disabled = false; btn.textContent = '📊 生成投资分析'; }
+  };
+  if(!getQwenKey()){
+    done({ date: date, themes: matchThemesByKeyword(text), generatedAt: new Date().toISOString(), source: '关键词匹配' });
+    return;
+  }
+  var themeList = Object.keys(THEME_FUNDS).map(function(k){ return k + '=' + THEME_FUNDS[k].label; }).join('；');
+  var sys = '你是宏观策略分析师。根据下方《新闻联播》每日总结，判断其中蕴含的可投资方向，并为每个方向写一句话投资逻辑。严格只输出如下 JSON（不要任何额外文字）：{"themes":[{"key":"<必须且只能从上述主题列表的key中选一个>","reason":"一句话投资逻辑（30字以内）","level":"高/中/低"}]}';
+  var user = '可选主题列表（key=标签）：' + themeList + '\n\n《新闻联播》每日总结：\n' + text;
+  setXwlbInvestStatus('⏳ 通义千问分析中…', 'loading');
+  callQwenText(user, sys, 'qwen-plus').then(function(out){
+    var themes = ((out && out.themes) || []).map(function(t){
+      var k = normalizeThemeKey(t.key);
+      return { key: k, reason: t.reason || '', level: t.level || '中' };
+    }).filter(function(t){ return t.key && THEME_FUNDS[t.key]; });
+    done({ date: date, themes: themes, generatedAt: new Date().toISOString(), source: '通义千问' });
+  }).catch(function(err){
+    setXwlbInvestStatus('⚠ AI 分析失败：' + (err && err.message ? err.message : err) + '。已改用关键词兜底。', 'error');
+    done({ date: date, themes: matchThemesByKeyword(text), generatedAt: new Date().toISOString(), source: '关键词匹配(兜底)' });
+  });
+}
+function renderXwlbInvest(res, sourceLabel){
+  var body = document.getElementById('xwlbInvestBody');
+  if(!body) return;
   if(!res || !res.themes || !res.themes.length){
     body.innerHTML = '<div class="invest-empty">该日新闻未匹配到明显可投资方向。可换个日期，或检查新闻总结是否完整。</div>';
-    setInvestStatus('', '');
-    renderInvestHistory();
+    setXwlbInvestStatus('', '');
     return;
   }
   var html = '<div class="invest-meta">分析来源：' + escapeHtml(sourceLabel || '—') + ' · 共 ' + res.themes.length + ' 个方向</div>';
@@ -2936,29 +2888,27 @@ function renderInvest(res, sourceLabel){
   });
   html += '</div>';
   body.innerHTML = html;
-  setInvestStatus('', '');
-  renderInvestHistory();
+  setXwlbInvestStatus('', '');
 }
-function setInvestStatus(msg, type){
-  var el = document.getElementById('investStatus');
+function setXwlbInvestStatus(msg, type){
+  var el = document.getElementById('xwlbInvestStatus');
   if(!el) return;
   el.textContent = msg || '';
   el.className = 'invest-status' + (type ? (' ' + type) : '');
 }
-function renderInvestHistory(){
-  var list = document.getElementById('investHistoryList');
-  if(!list) return;
-  var dates = Object.keys(DB.invest.cache || {}).sort().reverse();
-  if(!dates.length){ list.innerHTML = '<span class="invest-history-empty">暂无</span>'; return; }
-  list.innerHTML = dates.map(function(d){
-    return '<button class="invest-history-chip" onclick="viewInvestDate(\'' + d + '\')">' + d.slice(5) + '</button>';
-  }).join('');
-}
-function viewInvestDate(d){
-  var sel = document.getElementById('investDate');
-  if(sel && sel.querySelector('option[value="' + d + '"]')) sel.value = d;
-  var data = DB.invest.cache[d];
-  if(data) renderInvest(data, '归档');
+function refreshXwlbInvestPanel(date){
+  if(!date) return;
+  var cached = DB.invest.cache[date];
+  if(cached){ renderXwlbInvest(cached, '缓存'); return; }
+  var data = DB.xwlb.cache[date];
+  var body = document.getElementById('xwlbInvestBody');
+  if(!body) return;
+  if(data && data.summary){
+    body.innerHTML = '<div class="invest-empty">点「📊 生成投资分析」，基于当日《新闻联播》总结，自动提炼可投资方向并列出对应基金。</div>';
+  } else {
+    body.innerHTML = '<div class="invest-empty">生成当日 AI 总结后，可在此生成投资方向分析。</div>';
+  }
+  setXwlbInvestStatus('', '');
 }
 
 /* ====== Pull-to-Refresh ====== */
