@@ -1320,6 +1320,42 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 .dd-ratio{color:var(--text-2);}
 .dd-weight{color:var(--text-2);}
 .dd-amt{color:var(--accent);font-weight:700;}
+
+/* ===== Tab 9: 新闻联播每日总结 ===== */
+.xwlb-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:2px 2px 10px;}
+.xwlb-date{font-size:clamp(15px,1.6vw,18px);font-weight:700;color:var(--text);}
+.xwlb-dot{width:8px;height:8px;border-radius:50%;background:var(--text-3);flex:0 0 auto;}
+.xwlb-dot.ok{background:var(--green);}
+.xwlb-dot.warn{background:var(--amber);}
+.xwlb-source{font-size:11.5px;color:var(--text-3);}
+.xwlb-status{font-size:12.5px;line-height:1.5;margin:0 2px 12px;min-height:0;}
+.xwlb-status.loading{color:var(--blue);}
+.xwlb-status.error{color:#c0392b;}
+.xwlb-status.info{color:var(--text-3);}
+.xwlb-body{margin-bottom:14px;}
+.xwlb-lead{background:var(--accent-bg);border-left:3px solid var(--accent);border-radius:var(--radius-sm);padding:11px 14px;font-size:14.5px;font-weight:600;color:var(--text);margin-bottom:12px;line-height:1.6;}
+.xwlb-group{background:#fff;border:1px solid var(--line);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:10px;}
+.xwlb-group-cat{font-size:12px;font-weight:700;color:var(--accent);margin-bottom:6px;letter-spacing:0.3px;}
+.xwlb-group-items{margin:0;padding-left:18px;}
+.xwlb-group-items li{font-size:13.5px;color:var(--text);line-height:1.7;margin-bottom:3px;}
+.xwlb-group-items li b{color:var(--text);}
+.xwlb-raw-details{margin-top:6px;font-size:12.5px;color:var(--text-2);}
+.xwlb-raw-details summary{cursor:pointer;color:var(--blue);padding:4px 0;user-select:none;}
+.xwlb-raw{background:var(--input-bg);border-radius:var(--radius-sm);padding:12px 14px;margin-top:4px;}
+.xwlb-raw-title{font-size:12.5px;font-weight:600;color:var(--text-2);margin-bottom:6px;}
+.xwlb-raw-item{font-size:13px;color:var(--text);line-height:1.7;}
+.xwlb-note{font-size:12px;color:var(--amber);margin-top:8px;}
+.xwlb-fallback{background:var(--accent-bg);border:1px dashed var(--line);border-radius:var(--radius-sm);padding:14px;margin-bottom:14px;}
+.xwlb-fallback-tip{font-size:12.5px;color:var(--text-2);margin-bottom:8px;line-height:1.5;}
+.xwlb-manual-input{width:100%;min-height:110px;resize:vertical;padding:10px 12px;border:1px solid var(--line);border-radius:var(--radius-sm);font-size:13px;font-family:inherit;line-height:1.6;background:#fff;color:var(--text);margin-bottom:10px;}
+.xwlb-manual-input:focus{outline:none;border-color:var(--accent);}
+.xwlb-history{margin-top:6px;border-top:1px solid var(--line-soft);padding-top:12px;}
+.xwlb-history-title{font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:8px;}
+.xwlb-history-list{display:flex;flex-wrap:wrap;gap:7px;}
+.xwlb-history-chip{font-size:12px;padding:4px 11px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--text-2);cursor:pointer;transition:all .15s;}
+.xwlb-history-chip:hover{border-color:var(--accent);color:var(--accent);}
+.xwlb-history-chip.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+.xwlb-history-empty{font-size:12px;color:var(--text-3);}
 .dca-hist-detail-foot{font-size:11px;color:var(--text-3);padding:4px 8px 0;font-variant-numeric:tabular-nums;}
 .dca-hist-detail-foot b{color:var(--text-2);font-weight:600;}
 .dca-hist-detail-empty{background:var(--bg);color:var(--text-3);font-size:12px;padding:12px 14px;text-align:center;}
@@ -1453,6 +1489,10 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     <button class="nav-item" data-tab="8" onclick="switchTab(8)">
       <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg></span>
       <span class="nav-num">08</span><span class="nav-text">月度定投计算器</span>
+    </button>
+    <button class="nav-item" data-tab="9" onclick="switchTab(9)">
+      <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M4 5h16v12H4z"/><path d="M8 21h8M12 17v4"/></svg></span>
+      <span class="nav-num">09</span><span class="nav-text">新闻联播 · 每日总结</span>
     </button>
   </nav>
   <div class="sidebar-footer" id="footerDate">
@@ -2320,6 +2360,36 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
   </div>
 </section>
 
+<!-- ========== Tab 9: 新闻联播每日总结 ========== -->
+<section id="tab9" class="tab-section">
+  <div class="section-header">
+    <div class="section-title">新闻联播 · 每日总结</div>
+    <button class="btn btn-ghost btn-sm" onclick="refreshXwlb()">🔄 刷新</button>
+  </div>
+
+  <div class="xwlb-meta">
+    <span class="xwlb-date" id="xwlbDate">—</span>
+    <span class="xwlb-dot" id="xwlbDot"></span>
+    <span class="xwlb-source" id="xwlbSource">—</span>
+    <button class="btn btn-ghost btn-xs" onclick="editXwlbEndpoint()">⚙ 数据源</button>
+  </div>
+
+  <div class="xwlb-status" id="xwlbStatus"></div>
+
+  <div class="xwlb-body" id="xwlbBody"></div>
+
+  <div class="xwlb-fallback" id="xwlbFallback" style="display:none;">
+    <div class="xwlb-fallback-tip">后端未运行或不可达。可手动粘贴当天《新闻联播》节目单，由通义千问生成总结：</div>
+    <textarea id="xwlbManualInput" class="xwlb-manual-input" placeholder="每行一条，例如：&#10;【新思想引领新征程】服务消费扩容升级 激发内需新活力&#10;今年前7个月我国货物贸易进出口超30万亿元&#10;大面积单产提升持续加力 夯实秋粮稳产基础"></textarea>
+    <button class="btn btn-primary btn-sm" id="xwlbManualBtn" onclick="summarizeXwlbManual()">✨ 生成总结</button>
+  </div>
+
+  <div class="xwlb-history">
+    <div class="xwlb-history-title">历史归档</div>
+    <div class="xwlb-history-list" id="xwlbHistoryList"></div>
+  </div>
+</section>
+
 </main>
 </div>
 
@@ -2401,6 +2471,10 @@ var defaultDb = {
     current: { nasdaq: '28274', zz500: '7454', gold: '8.43' }, // 示例点位：纳指/中证为指数点位，黄金为ETF价格（口径须与抓取均线一致）
     avgs: { nasdaq: null, zz500: null, gold: null }, // 30月均线，由 fetchDcaAverages 联网自动计算并缓存
     history: [] // 首次打开后由 autoSaveDcaMonth 自动生成当月真实存档
+  },
+  xwlb: {
+    endpoint: 'http://localhost:8787', // 新闻联播后端地址（node xwlb-server.js），可在 Tab9 内「⚙ 数据源」修改
+    cache: {} // 按日期归档：{ 'YYYY-MM-DD': {date, titles, summary, generatedAt, note} }
   }
 };
 
@@ -2465,7 +2539,176 @@ function switchTab(n){
   if(n === 6){ renderRecipeHero(); renderRecipes(); }
   if(n === 7) renderBooks();
   if(n === 8) initDca();
+  if(n === 9) initXwlb();
   closeMobileSidebar();
+}
+
+/* ====== Tab 9: 新闻联播每日总结 ====== */
+function initXwlb(){
+  if(!DB.xwlb) DB.xwlb = { endpoint: 'http://localhost:8787', cache: {} };
+  if(!DB.xwlb.cache) DB.xwlb.cache = {};
+  document.getElementById('xwlbDate').textContent = getXwlbToday();
+  renderXwlbHistory();
+  loadXwlb(false);
+}
+function getXwlbToday(){ return today(); }
+function loadXwlb(force){
+  var date = getXwlbToday();
+  var cached = DB.xwlb.cache[date];
+  if(cached && !force){
+    renderXwlb(cached, '缓存');
+    return;
+  }
+  fetchXwlbFromBackend(date);
+}
+function fetchXwlbFromBackend(date){
+  var ep = (DB.xwlb.endpoint || 'http://localhost:8787').replace(/\/+$/, '');
+  setXwlbStatus('⏳ 正在从后端获取 ' + date + ' 新闻联播…', 'loading');
+  document.getElementById('xwlbFallback').style.display = 'none';
+  var url = ep + '/xwlb?date=' + encodeURIComponent(date);
+  fetchWithTimeoutXwlb(url, 20000).then(function(res){
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    return res.json();
+  }).then(function(data){
+    saveXwlbCache(data);
+    renderXwlb(data, '后端实时');
+    renderXwlbHistory();
+  }).catch(function(err){
+    setXwlbStatus('⚠ 后端不可达（' + (err && err.message ? err.message : err) + '）。可手动粘贴节目单生成总结。', 'error');
+    document.getElementById('xwlbFallback').style.display = 'block';
+  });
+}
+function fetchWithTimeoutXwlb(url, ms){
+  return Promise.race([
+    fetch(url, { headers: { 'Accept': 'application/json' } }),
+    new Promise(function(_, reject){ setTimeout(function(){ reject(new Error('请求超时')); }, ms); })
+  ]);
+}
+function saveXwlbCache(data){
+  if(!data || !data.date) return;
+  DB.xwlb.cache[data.date] = data;
+  saveDb();
+}
+function renderXwlb(data, sourceLabel){
+  var date = data.date || getXwlbToday();
+  document.getElementById('xwlbDate').textContent = date;
+  document.getElementById('xwlbSource').textContent = sourceLabel || '—';
+  var dot = document.getElementById('xwlbDot');
+  dot.className = 'xwlb-dot ' + (data.summary ? 'ok' : 'warn');
+  var body = document.getElementById('xwlbBody');
+  if(!data.summary){
+    body.innerHTML = '<div class="xwlb-raw"><div class="xwlb-raw-title">当日节目单（共 ' + (data.titles ? data.titles.length : 0) + ' 条）</div>' +
+      (data.titles || []).map(function(t){ return '<div class="xwlb-raw-item">• ' + escapeHtml(t) + '</div>'; }).join('') +
+      (data.note ? '<div class="xwlb-note">' + escapeHtml(data.note) + '</div>' : '') + '</div>';
+    setXwlbStatus(data.note ? 'ℹ ' + data.note : '', 'info');
+    return;
+  }
+  var s = data.summary;
+  var html = '';
+  if(s.lead) html += '<div class="xwlb-lead">📌 ' + escapeHtml(s.lead) + '</div>';
+  if(Array.isArray(s.groups)){
+    html += s.groups.map(function(g){
+      var items = (g.items || []).map(function(it){
+        return '<li><b>' + escapeHtml(it.title || '') + '</b>' + (it.point ? ' — ' + escapeHtml(it.point) : '') + '</li>';
+      }).join('');
+      return '<div class="xwlb-group"><div class="xwlb-group-cat">' + escapeHtml(g.category || '') + '</div><ul class="xwlb-group-items">' + items + '</ul></div>';
+    }).join('');
+  }
+  if(data.titles && data.titles.length){
+    html += '<details class="xwlb-raw-details"><summary>查看原始节目单（' + data.titles.length + ' 条）</summary>' +
+      data.titles.map(function(t){ return '<div class="xwlb-raw-item">• ' + escapeHtml(t) + '</div>'; }).join('') + '</details>';
+  }
+  body.innerHTML = html;
+  setXwlbStatus('', '');
+}
+function setXwlbStatus(msg, type){
+  var el = document.getElementById('xwlbStatus');
+  if(!el) return;
+  el.textContent = msg || '';
+  el.className = 'xwlb-status' + (type ? ' ' + type : '');
+}
+function refreshXwlb(){
+  loadXwlb(true);
+  renderXwlbHistory();
+}
+function editXwlbEndpoint(){
+  var cur = DB.xwlb.endpoint || 'http://localhost:8787';
+  var v = prompt('新闻联播后端地址（运行 node xwlb-server.js 后填写，默认 http://localhost:8787）：', cur);
+  if(v === null) return;
+  DB.xwlb.endpoint = (v.trim() || cur);
+  saveDb();
+  toast('数据源已更新，正在刷新…');
+  loadXwlb(true);
+}
+function summarizeXwlbManual(){
+  var ta = document.getElementById('xwlbManualInput');
+  var text = (ta.value || '').trim();
+  if(!text){ toast('请先粘贴节目单'); return; }
+  var key = getQwenKey();
+  if(!key){ toast('请先在「设置 / AI 引擎」配置通义千问 Key'); return; }
+  var btn = document.getElementById('xwlbManualBtn');
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ 生成中…'; }
+  callQwenText(text,
+    '你是资深新闻编辑，把以下《新闻联播》节目单整理成结构化每日总结，严格只输出如下 JSON（不要任何额外文字）：{"lead":"一句话导语（20字以内）","groups":[{"category":"分类名（如：国内要闻/经济发展/国际动态/社会民生/其他）","items":[{"title":"原标题","point":"一句话要点（30字以内）"}]}]}',
+    'qwen-plus')
+    .then(function(summary){
+      var data = {
+        date: getXwlbToday(),
+        titles: text.split(/\n+/).map(function(s){ return s.trim(); }).filter(Boolean),
+        summary: summary,
+        generatedAt: new Date().toISOString(),
+        note: '手动生成'
+      };
+      saveXwlbCache(data);
+      renderXwlb(data, '手动生成');
+      renderXwlbHistory();
+    })
+    .catch(function(err){ toast('生成失败：' + (err && err.message ? err.message : err)); })
+    .finally(function(){ if(btn){ btn.disabled = false; btn.textContent = '✨ 生成总结'; } });
+}
+function callQwenText(userPrompt, sysPrompt, model){
+  var key = getQwenKey();
+  if(!key) return Promise.reject(new Error('未配置通义千问 Key'));
+  var url = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
+  return Promise.race([
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+      body: JSON.stringify({
+        model: model || 'qwen-plus',
+        messages: [
+          { role: 'system', content: sysPrompt || '你是新闻编辑。' },
+          { role: 'user', content: userPrompt }
+        ],
+        temperature: 0.3,
+        response_format: { type: 'json_object' }
+      })
+    }),
+    new Promise(function(_, reject){ setTimeout(function(){ reject(new Error('请求超时（20s）')); }, 20000); })
+  ]).then(function(resp){
+    if(!resp.ok) throw new Error('HTTP ' + resp.status);
+    return resp.json();
+  }).then(function(data){
+    if(data.error) throw new Error(data.error.message || 'API 错误');
+    return JSON.parse(data.choices[0].message.content);
+  });
+}
+function renderXwlbHistory(){
+  var list = document.getElementById('xwlbHistoryList');
+  if(!list) return;
+  var dates = Object.keys(DB.xwlb.cache || {}).sort().reverse();
+  if(!dates.length){ list.innerHTML = '<span class="xwlb-history-empty">暂无归档</span>'; return; }
+  list.innerHTML = dates.map(function(d){
+    var has = DB.xwlb.cache[d] && DB.xwlb.cache[d].summary;
+    return '<button class="xwlb-history-chip' + (d === getXwlbToday() ? ' active' : '') + '" onclick="viewXwlbDate(\'' + d + '\')">' + d.slice(5) + (has ? '' : '·原') + '</button>';
+  }).join('');
+}
+function viewXwlbDate(d){
+  var data = DB.xwlb.cache[d];
+  if(!data) return;
+  document.getElementById('xwlbDate').textContent = d;
+  document.getElementById('xwlbFallback').style.display = 'none';
+  renderXwlb(data, '归档');
 }
 
 /* ====== Pull-to-Refresh ====== */
