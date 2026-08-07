@@ -1278,13 +1278,13 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 
 @media(max-width:560px){
   .dca-calc-head,.dca-calc-row{grid-template-columns:1.2fr 1fr 0.7fr 0.7fr 0.9fr;font-size:11px;padding:7px 6px;gap:3px;}
-  .dca-hist-head,.dca-hist-row{grid-template-columns:0.9fr 1fr 1fr 1fr 2fr 0.6fr;}
+  .dca-hist-head,.dca-hist-row{grid-template-columns:0.9fr 1fr 1fr 1fr 0.8fr 2fr 0.6fr;}
   .dca-hist-head span,.dca-hist-row>span{padding:8px 4px;font-size:11px;}
   .dca-hist-note{padding:6px 8px;}
 }
 
 .dca-history-table{margin-top:8px;border:1px solid var(--line);border-radius:var(--radius-sm);overflow:hidden;background:#fff;}
-.dca-hist-head,.dca-hist-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 2fr 0.5fr;gap:0;align-items:stretch;font-variant-numeric:tabular-nums;}
+.dca-hist-head,.dca-hist-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 0.9fr 1.8fr 0.5fr;gap:0;align-items:stretch;font-variant-numeric:tabular-nums;}
 .dca-hist-head{background:var(--accent-bg);font-size:11.5px;font-weight:600;color:var(--text-2);}
 .dca-hist-head span{display:flex;align-items:center;justify-content:center;padding:9px 6px;text-align:center;border-right:1px solid var(--line-soft);}
 .dca-hist-head span:last-child{border-right:0;}
@@ -1295,6 +1295,7 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 .dca-hist-amt.n{color:var(--blue);font-weight:600;}
 .dca-hist-amt.z{color:var(--green);font-weight:600;}
 .dca-hist-amt.g{color:var(--amber);font-weight:600;}
+.dca-hist-total{color:var(--accent);font-weight:700;}
 .dca-hist-note{cursor:pointer;padding:6px 28px 6px 10px;color:var(--text-2);font-weight:400;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;justify-content:flex-start !important;text-align:left !important;position:relative;}
 .dca-hist-note:hover{background:var(--input-bg);color:var(--text);}
 .dca-hist-note-edit{position:absolute;right:6px;top:50%;transform:translateY(-50%);opacity:.35;font-size:10px;color:var(--accent);transition:opacity .2s;pointer-events:none;}
@@ -2282,7 +2283,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     </div>
     <div class="dca-history-table">
       <div class="dca-hist-head">
-        <span>年月</span><span>纳指</span><span>中证500</span><span>黄金</span><span>备注</span><span></span>
+        <span>年月</span><span>纳指</span><span>中证500</span><span>黄金</span><span>合计</span><span>备注</span><span></span>
       </div>
       <div id="dcaHistoryList"></div>
     </div>
@@ -4770,6 +4771,7 @@ function renderDcaHistory(){
       '<span class="dca-hist-amt n">¥' + (h.nasdaq || 0) + '</span>' +
       '<span class="dca-hist-amt z">¥' + (h.zz500 || 0) + '</span>' +
       '<span class="dca-hist-amt g">¥' + (h.gold || 0) + '</span>' +
+      '<span class="dca-hist-total">¥' + ((h.nasdaq || 0) + (h.zz500 || 0) + (h.gold || 0)) + '</span>' +
       '<span class="dca-hist-note" onclick="editDcaHistoryNote(' + i + ')" title="点击编辑备注">' +
         escapeHtml(h.note || '点击编辑备注') +
         '<span class="dca-hist-note-edit">✎</span>' +
