@@ -1154,8 +1154,6 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
   border-radius:var(--radius-sm);
   margin-top:10px;
 }
-.recipe-detail{margin-top:8px;padding-top:10px;border-top:1px solid var(--line-soft);display:none;}
-.recipe-detail.open{display:block;}
 .ing-group{margin-bottom:10px;background:var(--input-bg);border:1px solid var(--line);border-radius:var(--radius-sm);padding:10px 12px;}
 .ing-group-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
 .ing-group-head .form-label{margin-bottom:0;}
@@ -1234,10 +1232,23 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
   padding:0.3em 0;
 }
 .expand-btn:hover{text-decoration:underline;}
-.book-detail{margin-top:12px;padding-top:12px;border-top:1px solid var(--line-soft);display:none;}
-.book-detail.open{display:block;}
 .detail-section{margin-bottom:12px;}
 .detail-label{font-size:clamp(11px,1vw,12.5px);font-weight:600;color:var(--text-2);margin-bottom:0.3em;}
+
+/* 列表卡片可点击打开详情 + 分页器（食谱工坊 / 阅思集 共用） */
+.recipe-item,.book-item{cursor:pointer;}
+.recipe-item:hover,.book-item:hover{border-color:var(--accent);box-shadow:0 2px 12px rgba(21,164,155,0.12);}
+.item-open-hint{display:inline-flex;align-items:center;gap:3px;font-size:12px;color:var(--accent);margin-top:10px;}
+.pager{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:16px;}
+.pager-btn{font-size:13px;padding:7px 14px;border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--text-2);cursor:pointer;transition:all .15s;font-family:inherit;}
+.pager-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent);}
+.pager-btn:disabled{opacity:.45;cursor:not-allowed;}
+.pager-info{font-size:12px;color:var(--text-2);font-variant-numeric:tabular-nums;}
+.detail-photo{width:100%;max-height:260px;object-fit:cover;border-radius:var(--radius-sm);margin-bottom:14px;}
+.detail-steps{font-size:14px;line-height:1.9;padding-left:22px;margin:6px 0 0;}
+.detail-steps li{margin-bottom:8px;}
+.detail-note{font-size:13.5px;line-height:1.8;color:var(--text);background:var(--bg);border-radius:var(--radius-sm);padding:12px 14px;}
+.detail-ing-title{font-size:12px;font-weight:600;color:var(--text-2);margin:14px 0 4px;}
 
 /* ====== Tab 8: Monthly DCA Calculator ====== */
 .dca-risk{
@@ -1350,12 +1361,23 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 .xwlb-manual-input{width:100%;min-height:110px;resize:vertical;padding:10px 12px;border:1px solid var(--line);border-radius:var(--radius-sm);font-size:13px;font-family:inherit;line-height:1.6;background:#fff;color:var(--text);margin-bottom:10px;}
 .xwlb-manual-input:focus{outline:none;border-color:var(--accent);}
 .xwlb-history{margin-top:6px;border-top:1px solid var(--line-soft);padding-top:12px;}
-.xwlb-history-title{font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:8px;}
+.xwlb-history-title{font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
 .xwlb-history-list{display:flex;flex-wrap:wrap;gap:7px;}
 .xwlb-history-chip{font-size:12px;padding:4px 11px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--text-2);cursor:pointer;transition:all .15s;}
 .xwlb-history-chip:hover{border-color:var(--accent);color:var(--accent);}
 .xwlb-history-chip.active{background:var(--accent);border-color:var(--accent);color:#fff;}
 .xwlb-history-empty{font-size:12px;color:var(--text-3);}
+.xwlb-track{margin-top:14px;border-top:1px dashed var(--line-soft);padding-top:14px;}
+.track-meta{font-size:12px;color:var(--text-2);margin-bottom:10px;line-height:1.6;}
+.track-list{display:flex;flex-direction:column;gap:10px;}
+.track-row{display:flex;gap:10px;align-items:flex-start;background:var(--bg);border-radius:var(--radius-sm);padding:10px 12px;border-left:3px solid var(--accent);}
+.track-rank{flex:0 0 auto;width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:1px;}
+.track-main{flex:1 1 auto;min-width:0;}
+.track-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.track-freq{font-size:12px;color:var(--text-2);font-variant-numeric:tabular-nums;}
+.track-bar{height:6px;background:var(--line-soft);border-radius:999px;overflow:hidden;margin:7px 0 5px;}
+.track-bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--blue));border-radius:999px;}
+.track-dates{font-size:11px;color:var(--text-3);margin-bottom:7px;}
 .dca-hist-detail-foot{font-size:11px;color:var(--text-3);padding:4px 8px 0;font-variant-numeric:tabular-nums;}
 .dca-hist-detail-foot b{color:var(--text-2);font-weight:600;}
 .dca-hist-detail-empty{background:var(--bg);color:var(--text-3);font-size:12px;padding:12px 14px;text-align:center;}
@@ -2211,17 +2233,18 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     </div>
     <div class="filter-bar">
       <span class="filter-label">筛选：</span>
-      <select id="recipeFilter" onchange="renderRecipes()">
+      <select id="recipeFilter" onchange="recipePage=1;renderRecipes()">
         <option value="">全部分类</option>
         <option value="bread">面包烘焙</option>
         <option value="dish">家常菜</option>
         <option value="dessert">甜品</option>
       </select>
       <label class="filter-label" style="display:flex;align-items:center;gap:4px;cursor:pointer;">
-        <input type="checkbox" id="recipeFavOnly" onchange="renderRecipes()" style="width:auto;"> 仅看常用
+        <input type="checkbox" id="recipeFavOnly" onchange="recipePage=1;renderRecipes()" style="width:auto;"> 仅看常用
       </label>
     </div>
     <div id="recipeArchive"></div>
+    <div class="pager" id="recipePager"></div>
   </div>
 </section>
 
@@ -2298,6 +2321,17 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
   </div>
 </div>
 
+<!-- ========== Recipe Detail Modal ========== -->
+<div class="recipe-overlay" id="recipeDetailOverlay" onclick="if(event.target===this)closeRecipeDetail()">
+  <div class="recipe-modal">
+    <div class="recipe-modal-header">
+      <div class="recipe-modal-title" id="recipeDetailTitle">配方详情</div>
+      <button class="recipe-modal-close" onclick="closeRecipeDetail()">&times;</button>
+    </div>
+    <div class="recipe-modal-body" id="recipeDetailBody"></div>
+  </div>
+</div>
+
 <!-- ========== Tab 7: Reading ========== -->
 <section id="tab7" class="tab-section">
   <div class="section-header">
@@ -2314,7 +2348,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     </div>
     <div class="filter-bar">
       <span class="filter-label">筛选：</span>
-      <select id="bookFilter" onchange="renderBooks()">
+      <select id="bookFilter" onchange="bookPage=1;renderBooks()">
         <option value="">全部类型</option>
         <option value="biography">名人传记</option>
         <option value="business">商业书籍</option>
@@ -2322,10 +2356,11 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
         <option value="other">其他</option>
       </select>
       <label class="filter-label" style="display:flex;align-items:center;gap:4px;cursor:pointer;">
-        <input type="checkbox" id="bookFavOnly" onchange="renderBooks()" style="width:auto;"> 仅看重点
+        <input type="checkbox" id="bookFavOnly" onchange="bookPage=1;renderBooks()" style="width:auto;"> 仅看重点
       </label>
     </div>
     <div id="bookArchive"></div>
+    <div class="pager" id="bookPager"></div>
   </div>
 </section>
 
@@ -2427,8 +2462,9 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
   </div>
 
   <div class="xwlb-history">
-    <div class="xwlb-history-title">历史归档</div>
+    <div class="xwlb-history-title">历史归档 <button class="btn btn-ghost btn-xs" onclick="trackXwlb7d()">📈 近7天方向追踪</button></div>
     <div class="xwlb-history-list" id="xwlbHistoryList"></div>
+    <div id="xwlbTrackBody" class="xwlb-track"></div>
   </div>
 </section>
 
@@ -2909,6 +2945,62 @@ function refreshXwlbInvestPanel(date){
     body.innerHTML = '<div class="invest-empty">生成当日 AI 总结后，可在此生成投资方向分析。</div>';
   }
   setXwlbInvestStatus('', '');
+}
+function fmtDate(d){
+  var y = d.getFullYear(), m = ('0' + (d.getMonth() + 1)).slice(-2), day = ('0' + d.getDate()).slice(-2);
+  return y + '-' + m + '-' + day;
+}
+function trackXwlb7d(){
+  var body = document.getElementById('xwlbTrackBody');
+  if(!body) return;
+  var totalDays = 7;
+  var base = new Date();
+  var days = [];
+  for(var i = 0; i < totalDays; i++){ var d = new Date(base); d.setDate(base.getDate() - i); days.push(fmtDate(d)); }
+  var agg = {};
+  days.forEach(function(d){
+    var inv = DB.invest.cache[d];
+    var themes = [];
+    if(inv && inv.themes && inv.themes.length){ themes = inv.themes; }
+    else { var data = DB.xwlb.cache[d]; if(data && data.summary) themes = matchThemesByKeyword(flattenSummary(data.summary)); }
+    themes.forEach(function(t){
+      if(!t.key || !THEME_FUNDS[t.key]) return;
+      if(!agg[t.key]) agg[t.key] = { key: t.key, dates: [], strength: 0, count: 0, maxW: 0 };
+      var a = agg[t.key];
+      if(a.dates.indexOf(d) < 0) a.dates.push(d);
+      var lv = (t.level === '高' || t.level === '中' || t.level === '低') ? t.level : '中';
+      var w = lv === '高' ? 3 : (lv === '中' ? 2 : 1);
+      a.strength += w; a.count++; if(w > a.maxW) a.maxW = w;
+    });
+  });
+  var keys = Object.keys(agg);
+  if(!keys.length){
+    body.innerHTML = '<div class="invest-empty">近 7 天（' + days[6] + ' ~ ' + days[0] + '）暂无已生成的新闻总结数据。请先在多天生成《新闻联播》总结（及投资分析），再来做趋势追踪。</div>';
+    return;
+  }
+  keys.sort(function(a, b){ var x = agg[a], y = agg[b]; return (y.count - x.count) || (y.strength - x.strength); });
+  var html = '<div class="track-meta">近 7 天（' + days[6] + ' ~ ' + days[0] + '）共 <b>' + keys.length + '</b> 个方向被提及，按出现天数排序；连续多天出现的方向信号更强：</div>';
+  html += '<div class="track-list">';
+  keys.forEach(function(k, idx){
+    var a = agg[k], tf = THEME_FUNDS[k];
+    var freq = a.count, pct = Math.round(freq / totalDays * 100);
+    var lvl = freq >= 5 ? '高' : (freq >= 3 ? '中' : '低');
+    var funds = (tf.funds || []).map(function(f){ return '<span class="fund-chip" title="' + escapeHtml(f.name) + '"><b>' + escapeHtml(f.code) + '</b>' + escapeHtml(f.name) + '</span>'; }).join('');
+    var dateStr = a.dates.slice().sort().map(function(d){ return d.slice(5); }).join('、');
+    html += '<div class="track-row">' +
+      '<div class="track-rank">' + (idx + 1) + '</div>' +
+      '<div class="track-main">' +
+        '<div class="track-head"><span class="invest-theme">' + escapeHtml(tf.label) + '</span>' +
+          '<span class="track-freq">' + freq + '/' + totalDays + ' 天</span>' +
+          '<span class="invest-level lvl-' + lvlClass(lvl) + '">' + lvl + '频</span></div>' +
+        '<div class="track-bar"><div class="track-bar-fill" style="width:' + pct + '%"></div></div>' +
+        '<div class="track-dates">出现于：' + escapeHtml(dateStr) + '</div>' +
+        '<div class="invest-funds">' + funds + '</div>' +
+      '</div>' +
+    '</div>';
+  });
+  html += '</div>';
+  body.innerHTML = html;
 }
 
 /* ====== Pull-to-Refresh ====== */
@@ -5051,6 +5143,14 @@ function renderRecipeHero(){
   document.getElementById('rhCate').textContent = Object.keys(cateSet).length;
 }
 
+function renderPager(cur, total, fn){
+  if(total <= 1) return '';
+  var prev = '<button class="pager-btn" ' + (cur <= 1 ? 'disabled' : 'onclick="' + fn + '(' + (cur - 1) + ')"') + '>‹ 上一页</button>';
+  var info = '<span class="pager-info">第 ' + cur + ' / ' + total + ' 页</span>';
+  var next = '<button class="pager-btn" ' + (cur >= total ? 'disabled' : 'onclick="' + fn + '(' + (cur + 1) + ')"') + '>下一页 ›</button>';
+  return prev + info + next;
+}
+var recipePage = 1, recipePageSize = 5;
 function renderRecipes(){
   var filter = document.getElementById('recipeFilter').value;
   var favOnly = document.getElementById('recipeFavOnly').checked;
@@ -5060,11 +5160,17 @@ function renderRecipes(){
     return true;
   });
   var box = document.getElementById('recipeArchive');
+  var pager = document.getElementById('recipePager');
   document.getElementById('recipeCount').textContent = '共 ' + list.length + ' 份';
-  if(list.length === 0){ box.innerHTML = '<div class="empty-hint">暂无配方，开始记录第一份吧</div>'; return; }
-  box.innerHTML = list.map(function(r){
+  if(list.length === 0){ box.innerHTML = '<div class="empty-hint">暂无配方，开始记录第一份吧</div>'; if(pager) pager.innerHTML = ''; return; }
+  var totalPages = Math.max(1, Math.ceil(list.length / recipePageSize));
+  if(recipePage > totalPages) recipePage = totalPages;
+  if(recipePage < 1) recipePage = 1;
+  var start = (recipePage - 1) * recipePageSize;
+  var pageItems = list.slice(start, start + recipePageSize);
+  box.innerHTML = pageItems.map(function(r){
     var idx = DB.recipes.items.indexOf(r);
-    var html = '<div class="recipe-item' + (r.fav ? ' fav' : '') + '">';
+    var html = '<div class="recipe-item' + (r.fav ? ' fav' : '') + '" onclick="openRecipeDetail(' + idx + ')">';
     html += '<div class="recipe-item-head">';
     html += '<div><div class="recipe-item-name">' + escapeHtml(r.name) + '</div>';
     html += '<div class="recipe-item-meta">';
@@ -5073,35 +5179,53 @@ function renderRecipes(){
     if(r.duration) html += '<span>' + escapeHtml(r.duration) + '</span>';
     html += '</div></div>';
     html += '<div class="record-actions">';
-    html += '<button class="btn-icon ' + (r.fav ? 'fav-on' : '') + '" onclick="toggleRecipeFav(' + idx + ')" title="常用">&#9733;</button>';
-    html += '<button class="btn-icon" onclick="editRecipe(' + idx + ')" title="编辑">&#9998;</button>';
-    html += '<button class="btn-icon" onclick="deleteRecipe(' + idx + ')" title="删除">&#10005;</button>';
+    html += '<button class="btn-icon ' + (r.fav ? 'fav-on' : '') + '" onclick="event.stopPropagation();toggleRecipeFav(' + idx + ')" title="常用">&#9733;</button>';
+    html += '<button class="btn-icon" onclick="event.stopPropagation();editRecipe(' + idx + ')" title="编辑">&#9998;</button>';
+    html += '<button class="btn-icon" onclick="event.stopPropagation();deleteRecipe(' + idx + ')" title="删除">&#10005;</button>';
     html += '</div></div>';
     if(r.photo) html += '<img class="recipe-item-photo" src="' + r.photo + '">';
     var dough = r.doughIng && r.doughIng.length ? r.doughIng : (r.ingredients || []);
-    var filling = r.fillingIng || [];
     if(dough.length > 0){
       html += '<div style="margin-top:10px;font-size:12px;color:var(--text-2);">面团原料：</div>';
       html += '<div style="font-size:13px;margin-top:2px;">' + dough.map(function(ing){ return escapeHtml(ing.name) + (ing.amount ? ' <span class="text-muted">' + escapeHtml(ing.amount) + '</span>' : ''); }).join('、') + '</div>';
     }
-    if(filling.length > 0){
-      html += '<div style="margin-top:10px;font-size:12px;color:var(--text-2);">馅料：</div>';
-      html += '<div style="font-size:13px;margin-top:2px;">' + filling.map(function(ing){ return escapeHtml(ing.name) + (ing.amount ? ' <span class="text-muted">' + escapeHtml(ing.amount) + '</span>' : ''); }).join('、') + '</div>';
-    }
-    if(r.steps.length > 0){
-      html += '<button class="expand-btn" onclick="this.nextElementSibling.classList.toggle(\'open\')">展开 / 收起步骤</button>';
-      html += '<div class="recipe-detail">';
-      html += '<ol style="font-size:13px;margin-top:2px;padding-left:20px;line-height:1.8;">' + r.steps.map(function(s){ return '<li>' + escapeHtml(s) + '</li>'; }).join('') + '</ol>';
-      html += '</div>';
-    }
-    if(r.notes){
-      html += '<div style="margin-top:10px;font-size:12px;color:var(--text-2);">心得：</div>';
-      html += '<div style="font-size:13px;margin-top:2px;color:var(--text);">' + escapeHtml(r.notes) + '</div>';
-    }
+    html += '<div class="item-open-hint">查看完整配方 ›</div>';
     html += '</div>';
     return html;
   }).join('');
+  if(pager) pager.innerHTML = renderPager(recipePage, totalPages, 'goRecipePage');
 }
+function goRecipePage(p){ recipePage = p; renderRecipes(); }
+function openRecipeDetail(idx){
+  var r = DB.recipes.items[idx];
+  if(!r) return;
+  document.getElementById('recipeDetailTitle').textContent = r.name || '配方详情';
+  var body = document.getElementById('recipeDetailBody');
+  var html = '';
+  if(r.photo) html += '<img class="detail-photo" src="' + r.photo + '">';
+  html += '<div class="recipe-item-meta" style="margin-bottom:12px;">';
+  html += '<span class="chip chip-gray">' + CATEGORY_LABEL[r.category] + '</span>';
+  html += '<span class="chip chip-blue">' + DIFFICULTY_LABEL[r.difficulty] + '</span>';
+  if(r.duration) html += '<span>' + escapeHtml(r.duration) + '</span>';
+  html += '</div>';
+  var dough = r.doughIng && r.doughIng.length ? r.doughIng : (r.ingredients || []);
+  var filling = r.fillingIng || [];
+  if(dough.length){
+    html += '<div class="detail-ing-title">面团原料</div><div class="detail-ing-list">' + dough.map(function(ing){ return escapeHtml(ing.name) + (ing.amount ? ' <span class="text-muted">' + escapeHtml(ing.amount) + '</span>' : ''); }).join('、') + '</div>';
+  }
+  if(filling.length){
+    html += '<div class="detail-ing-title">馅料</div><div class="detail-ing-list">' + filling.map(function(ing){ return escapeHtml(ing.name) + (ing.amount ? ' <span class="text-muted">' + escapeHtml(ing.amount) + '</span>' : ''); }).join('、') + '</div>';
+  }
+  if(r.steps && r.steps.length){
+    html += '<div class="detail-ing-title">制作步骤</div><ol class="detail-steps">' + r.steps.map(function(s){ return '<li>' + escapeHtml(s) + '</li>'; }).join('') + '</ol>';
+  }
+  if(r.notes){
+    html += '<div class="detail-ing-title">实操心得 & 调整记录</div><div class="detail-note">' + escapeHtml(r.notes) + '</div>';
+  }
+  body.innerHTML = html;
+  document.getElementById('recipeDetailOverlay').classList.add('show');
+}
+function closeRecipeDetail(){ var o = document.getElementById('recipeDetailOverlay'); if(o) o.classList.remove('show'); }
 
 /* ============================================================
    Tab 8: Monthly DCA Calculator (C哥20年定投公式)
@@ -5582,6 +5706,7 @@ function deleteBook(i){
 function toggleBookFav(i){ DB.reading.books[i].fav = !DB.reading.books[i].fav; saveDb(); renderBooks(); }
 function editBook(i){ openBookModal(i); }
 
+var bookPage = 1, bookPageSize = 5;
 function renderBooks(){
   renderReadingOverview();
   var filter = document.getElementById('bookFilter').value;
@@ -5592,14 +5717,18 @@ function renderBooks(){
     return true;
   });
   var box = document.getElementById('bookArchive');
-  if(list.length === 0){ box.innerHTML = '<div class="empty-hint">暂无读书笔记，点击右上角「＋ 新增笔记」开始记录</div>'; return; }
-  box.innerHTML = list.map(function(b){
+  var pager = document.getElementById('bookPager');
+  if(list.length === 0){ box.innerHTML = '<div class="empty-hint">暂无读书笔记，点击右上角「＋ 新增笔记」开始记录</div>'; if(pager) pager.innerHTML = ''; return; }
+  var totalPages = Math.max(1, Math.ceil(list.length / bookPageSize));
+  if(bookPage > totalPages) bookPage = totalPages;
+  if(bookPage < 1) bookPage = 1;
+  var start = (bookPage - 1) * bookPageSize;
+  var pageItems = list.slice(start, start + bookPageSize);
+  box.innerHTML = pageItems.map(function(b){
     var idx = DB.reading.books.indexOf(b);
     var stars = '';
-    for(var i = 1; i <= 5; i++){
-      stars += i <= b.rating ? '&#9733;' : '<span class="off">&#9733;</span>';
-    }
-    var html = '<div class="book-item' + (b.fav ? ' fav' : '') + '">';
+    for(var i = 1; i <= 5; i++){ stars += i <= b.rating ? '&#9733;' : '<span class="off">&#9733;</span>'; }
+    var html = '<div class="book-item' + (b.fav ? ' fav' : '') + '" onclick="openBookDetail(' + idx + ')">';
     html += '<div class="book-item-head">';
     html += '<div class="book-item-main">';
     html += '<div class="book-item-title">' + escapeHtml(b.title) + '</div>';
@@ -5610,32 +5739,42 @@ function renderBooks(){
     if(b.rating > 0) html += ' <span class="stars">' + stars + '</span>';
     html += '</div></div>';
     html += '<div class="record-actions">';
-    html += '<button class="btn-icon ' + (b.fav ? 'fav-on' : '') + '" onclick="toggleBookFav(' + idx + ')" title="重点">&#9733;</button>';
-    html += '<button class="btn-icon" onclick="editBook(' + idx + ')" title="编辑">&#9998;</button>';
-    html += '<button class="btn-icon" onclick="deleteBook(' + idx + ')" title="删除">&#10005;</button>';
+    html += '<button class="btn-icon ' + (b.fav ? 'fav-on' : '') + '" onclick="event.stopPropagation();toggleBookFav(' + idx + ')" title="重点">&#9733;</button>';
+    html += '<button class="btn-icon" onclick="event.stopPropagation();editBook(' + idx + ')" title="编辑">&#9998;</button>';
+    html += '<button class="btn-icon" onclick="event.stopPropagation();deleteBook(' + idx + ')" title="删除">&#10005;</button>';
     html += '</div></div>';
-    var hasDetail = b.quotes || b.characters || b.thoughts || b.questions;
-    if(hasDetail){
-      html += '<button class="expand-btn" onclick="this.nextElementSibling.classList.toggle(\'open\')">展开 / 收起详情</button>';
-      html += '<div class="book-detail">';
-      if(b.quotes){
-        html += '<div class="detail-section"><div class="detail-label">金句摘录</div><div style="font-size:13px;line-height:1.7;">' + escapeHtml(b.quotes).replace(/\n/g, '<br>') + '</div></div>';
-      }
-      if(b.characters){
-        html += '<div class="detail-section"><div class="detail-label">人物记录</div><div style="font-size:13px;line-height:1.7;">' + escapeHtml(b.characters).replace(/\n/g, '<br>') + '</div></div>';
-      }
-      if(b.thoughts){
-        html += '<div class="detail-section"><div class="detail-label">个人思考</div><div style="font-size:13px;line-height:1.7;">' + escapeHtml(b.thoughts).replace(/\n/g, '<br>') + '</div></div>';
-      }
-      if(b.questions){
-        html += '<div class="detail-section"><div class="detail-label">疑问留存</div><div style="font-size:13px;line-height:1.7;">' + escapeHtml(b.questions).replace(/\n/g, '<br>') + '</div></div>';
-      }
-      html += '</div>';
-    }
+    html += '<div class="item-open-hint">查看完整笔记 ›</div>';
     html += '</div>';
     return html;
   }).join('');
+  if(pager) pager.innerHTML = renderPager(bookPage, totalPages, 'goBookPage');
 }
+function goBookPage(p){ bookPage = p; renderBooks(); }
+function openBookDetail(idx){
+  var b = DB.reading.books[idx];
+  if(!b) return;
+  document.getElementById('bookDetailTitle').textContent = b.title || '读书笔记';
+  var html = '';
+  html += '<div class="book-item-meta" style="margin-bottom:14px;">';
+  if(b.author) html += escapeHtml(b.author) + ' · ';
+  html += '<span class="chip chip-gray">' + TYPE_LABEL[b.type] + '</span> ';
+  html += '<span class="chip ' + STATUS_CLASS[b.status] + '">' + STATUS_LABEL[b.status] + '</span>';
+  if(b.rating > 0){
+    var st = '';
+    for(var i = 1; i <= 5; i++){ st += i <= b.rating ? '&#9733;' : '<span class="off">&#9733;</span>'; }
+    html += ' <span class="stars">' + st + '</span>';
+  }
+  html += '</div>';
+  var sec = [['quotes','金句摘录'],['characters','人物记录'],['thoughts','个人思考'],['questions','疑问留存']];
+  sec.forEach(function(s){
+    if(b[s[0]]){
+      html += '<div class="detail-section"><div class="detail-label">' + s[1] + '</div><div style="font-size:13.5px;line-height:1.8;">' + escapeHtml(b[s[0]]).replace(/\n/g, '<br>') + '</div></div>';
+    }
+  });
+  document.getElementById('bookDetailBody').innerHTML = html;
+  document.getElementById('bookDetailOverlay').classList.add('show');
+}
+function closeBookDetail(){ var o = document.getElementById('bookDetailOverlay'); if(o) o.classList.remove('show'); }
 
 /* ============================================================
    Cloud Sync (GitHub Gist) + Backup
@@ -6076,6 +6215,17 @@ window.addEventListener('DOMContentLoaded', init);
         <button class="btn btn-primary" onclick="saveBook()">保存笔记</button>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ========== Book Detail Modal ========== -->
+<div class="book-overlay" id="bookDetailOverlay" onclick="if(event.target===this)closeBookDetail()">
+  <div class="book-modal">
+    <div class="book-modal-header">
+      <div class="book-modal-title" id="bookDetailTitle">读书笔记详情</div>
+      <button class="book-modal-close" onclick="closeBookDetail()">&times;</button>
+    </div>
+    <div class="book-modal-body" id="bookDetailBody"></div>
   </div>
 </div>
 
