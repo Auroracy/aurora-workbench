@@ -1251,6 +1251,12 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 .dca-budget-bar .lbl{font-weight:600;color:var(--text);font-size:clamp(13px,1.2vw,15px);}
 .dca-budget-bar .right{display:flex;align-items:center;gap:6px;}
 .dca-budget-bar .unit{color:var(--text-2);font-size:13px;}
+.dca-avg-bar{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px;padding:10px 14px;background:var(--input-bg);border:1px solid var(--line);border-radius:var(--radius);}
+.dca-avg-bar .lbl{font-weight:600;color:var(--text);font-size:clamp(12px,1.1vw,13.5px);}
+.dca-avg-bar .vals{display:flex;flex-wrap:wrap;gap:12px;color:var(--text-2);font-size:12.5px;}
+.dca-avg-bar .vals .avg-item b{color:var(--blue);font-variant-numeric:tabular-nums;font-weight:700;}
+.dca-avg-bar .upd{color:var(--text-3);font-size:11px;margin-left:auto;}
+.dca-avg-note{font-size:11px;color:var(--text-3);line-height:1.5;margin:2px 2px 12px;}
 .dca-calc-table{margin-bottom:12px;border:1px solid var(--line);border-radius:var(--radius-sm);overflow:hidden;}
 .dca-calc-head,.dca-calc-row{display:grid;grid-template-columns:1.4fr 1.3fr 0.8fr 0.8fr 1fr;gap:6px;align-items:center;padding:9px 10px;}
 .dca-calc-head{background:var(--accent-bg);font-size:11.5px;color:var(--text-2);font-weight:600;}
@@ -2271,6 +2277,13 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
       <span class="lbl">💰 每月总预算</span>
       <span class="right"><input type="number" id="dcaBudget" class="dca-budget-input" oninput="onBudgetChange()" min="0" step="100"><span class="unit">元</span></span>
     </div>
+    <div class="dca-avg-bar">
+      <span class="lbl">📊 30月均线（历史月线自动计算）</span>
+      <span class="vals" id="dcaAvgVals">—</span>
+      <button class="btn btn-ghost btn-sm" id="dcaRefreshBtn" onclick="refreshDcaAverages()">🔄 更新</button>
+      <span class="upd" id="dcaAvgUpdated"></span>
+    </div>
+    <div class="dca-avg-note">数据来源：纳斯达克100=纳指100指数(us.NDX) · 中证500=中证500指数(000905) · 黄金=黄金ETF(518880)，经腾讯财经月线自动计算最近30个完整月均线。当前点位口径须对应（纳指/中证填指数点位，黄金填ETF价格）。</div>
     <div class="dca-calc-table">
       <div class="dca-calc-head">
         <span>品种</span><span>当前点位</span><span>比值</span><span>权重</span><span>本月应投</span>
@@ -2391,11 +2404,10 @@ var defaultDb = {
   reading: { books: [] },
   dca: {
     budget: 3000,
-    current: { nasdaq: '28274', zz500: '7454', gold: '883' },
-    history: [
-      { ym: '2026-08', nasdaq: 936, zz500: 1029, gold: 1034,
-        points: { nasdaq: 28274, zz500: 7454, gold: 883 }, avgs: { nasdaq: 22548.87, zz500: 6536, gold: 778 } }
-    ]
+    current: { nasdaq: '28274', zz500: '7454', gold: '8.43' }, // 示例点位：纳指/中证为指数点位，黄金为ETF价格（口径须与抓取均线一致）
+    avgs: { nasdaq: null, zz500: null, gold: null }, // 30月均线，由 fetchDcaAverages 联网自动计算并缓存
+    avgsUpdated: null,
+    history: [] // 首次打开后由 autoSaveDcaMonth 自动生成当月真实存档
   }
 };
 
@@ -2428,13 +2440,9 @@ function migrateDcaHistory(){
   if(DB.dca.history.length !== before){ dirty = true; }
   // 给老存档补 avgs / budget / total 字段（用于历史详情复算）
   DB.dca.history.forEach(function(h){
-    if(!h.avgs){
-      h.avgs = {};
-      if(typeof DCA_ITEMS !== 'undefined'){
-        DCA_ITEMS.forEach(function(it){ h.avgs[it.key] = it.avg30; });
-      }
-      dirty = true;
-    }
+    if(!h.avgs){ h.avgs = {}; dirty = true; } // 30月均线不再写死常量，缺失项在详情弹窗中兜底当前均线
+    // 清理改造前写死的旧口径均线（如黄金现货 778）：黄金均线 >50 视为旧口径，清空改由当前均线兜底
+    if(h.avgs && h.avgs.gold && h.avgs.gold > 50){ h.avgs.gold = null; dirty = true; }
     if(typeof h.budget !== 'number'){ h.budget = 3000; dirty = true; }
     if(typeof h.total !== 'number'){
       h.total = (h.nasdaq || 0) + (h.zz500 || 0) + (h.gold || 0);
@@ -4662,11 +4670,93 @@ function renderRecipes(){
 /* ============================================================
    Tab 8: Monthly DCA Calculator (C哥20年定投公式)
    ============================================================ */
+// 30月均线由联网抓取历史月线自动计算（见 fetchDcaAverages）
+// sym 为腾讯财经代码：纳指用 ETF 513100、中证500 用指数 000905、黄金用 ETF 518880 近似
 var DCA_ITEMS = [
-  { key: 'nasdaq', name: '纳斯达克100', avg30: 22548.87 },
-  { key: 'zz500', name: '中证500', avg30: 6536 },
-  { key: 'gold', name: '黄金指数', avg30: 778 }
+  { key: 'nasdaq', name: '纳斯达克100', sym: 'us.NDX', approx: '纳指100指数 us.NDX' },
+  { key: 'zz500',  name: '中证500',     sym: 'sh000905', approx: '中证500指数 000905' },
+  { key: 'gold',   name: '黄金',        sym: 'sh518880', approx: '黄金ETF 518880' }
 ];
+
+// ——— 30月均线：联网抓取历史月线自动计算 ———
+var DCA_PROXIES = [
+  'https://api.allorigins.win/raw?url=',
+  'https://corsproxy.io/?',
+  'https://api.codetabs.com/v1/proxy/?quest='
+];
+function fetchTextWithTimeout(url, ms){
+  return new Promise(function(resolve, reject){
+    var ctrl = ('AbortController' in window) ? new AbortController() : null;
+    var t = setTimeout(function(){ if(ctrl) ctrl.abort(); reject(new Error('timeout')); }, ms);
+    var opt = ctrl ? { signal: ctrl.signal } : {};
+    fetch(url, opt).then(function(r){ return r.text(); }).then(function(txt){ clearTimeout(t); resolve(txt); }).catch(function(e){ clearTimeout(t); reject(e); });
+  });
+}
+function fetchViaProxyPool(target, cb){
+  var i = 0;
+  function next(){
+    if(i >= DCA_PROXIES.length){ cb(new Error('所有代理均失败')); return; }
+    var url = DCA_PROXIES[i++] + encodeURIComponent(target);
+    fetchTextWithTimeout(url, 12000).then(function(txt){
+      try { cb(null, JSON.parse(txt)); } catch(e){ next(); }
+    }).catch(function(){ next(); });
+  }
+  next();
+}
+// 抓取三品种最近 40 个月月线，取最后 30 个月收盘价的算术平均作为 30月均线
+function fetchDcaAverages(done){
+  var pending = DCA_ITEMS.length, okCount = 0;
+  DCA_ITEMS.forEach(function(it){
+    var target = 'https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=' + it.sym + ',month,,,40,qfq';
+    fetchViaProxyPool(target, function(err, data){
+      pending--;
+      if(!err && data && data.data){
+        var k = data.data[Object.keys(data.data)[0]];
+        var arr = k ? (k.month || k.qfqmonth) : null;
+        if(arr && arr.length){
+          var ymNow = new Date().getFullYear() + '-' + ('0' + (new Date().getMonth() + 1)).slice(-2);
+          // 排除进行中的当月（腾讯美股当月数据常有脏值），仅取最近30个完整月
+          var closes = arr.filter(function(x){ return x[0] && x[0].slice(0,7) !== ymNow; })
+            .slice(-30).map(function(x){ return parseFloat(x[2]); })
+            .filter(function(v){ return !isNaN(v) && v > 0 && v < 1e7; });
+          if(closes.length){
+            var avg = closes.reduce(function(s, v){ return s + v; }, 0) / closes.length;
+            DB.dca.avgs[it.key] = Math.round(avg * 100) / 100;
+            okCount++;
+          }
+        }
+      }
+      if(pending === 0){
+        if(okCount > 0){ DB.dca.avgsUpdated = new Date().toISOString(); saveDb(); }
+        if(done) done(okCount === DCA_ITEMS.length);
+      }
+    });
+  });
+}
+function refreshDcaAverages(){
+  var btn = document.getElementById('dcaRefreshBtn');
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ 抓取中…'; }
+  fetchDcaAverages(function(ok){
+    if(btn){ btn.disabled = false; btn.textContent = '🔄 更新30月均线'; }
+    calcDca();
+    autoSaveDcaMonth(false);
+    renderDcaHistory();
+    updateDcaAvgUI();
+    toast(ok ? '30月均线已更新' : '部分品种均线更新失败，已保留可用值');
+  });
+}
+function hasDcaAvgs(){ return DCA_ITEMS.some(function(it){ return parseFloat(DB.dca.avgs[it.key]) > 0; }); }
+function updateDcaAvgUI(){
+  var box = document.getElementById('dcaAvgVals');
+  if(box){
+    box.innerHTML = DCA_ITEMS.map(function(it){
+      var v = DB.dca.avgs[it.key];
+      return '<span class="avg-item">' + it.name + ' <b>' + (v ? v.toLocaleString('zh-CN') : '—') + '</b></span>';
+    }).join('');
+  }
+  var up = document.getElementById('dcaAvgUpdated');
+  if(up){ up.textContent = DB.dca.avgsUpdated ? ('更新于 ' + new Date(DB.dca.avgsUpdated).toLocaleString('zh-CN')) : '尚未更新'; }
+}
 function getDcaBudget(){ return (DB.dca.budget && !isNaN(parseFloat(DB.dca.budget))) ? parseFloat(DB.dca.budget) : 3000; }
 function onBudgetChange(){
   var v = parseFloat(document.getElementById('dcaBudget').value);
@@ -4680,7 +4770,8 @@ function calcDca(){
   var budget = getDcaBudget();
   var rows = DCA_ITEMS.map(function(it){
     var cur = parseFloat(DB.dca.current[it.key]);
-    var ratio = (cur > 0) ? (it.avg30 / cur) : 0;
+    var avg = parseFloat(DB.dca.avgs[it.key]);
+    var ratio = (cur > 0 && avg > 0) ? (avg / cur) : 0;
     return { it: it, cur: cur, ratio: ratio, weight: 0, raw: 0 };
   });
   var sumRatio = rows.reduce(function(s, r){ return s + r.ratio; }, 0);
@@ -4707,14 +4798,20 @@ function calcDca(){
     amounts[maxIdx] += diff;
   }
   rows.forEach(function(r, i){
-    document.getElementById('dca_ratio_' + r.it.key).textContent = r.ratio.toFixed(2);
-    document.getElementById('dca_weight_' + r.it.key).textContent = Math.round(r.weight * 100) + '%';
-    document.getElementById('dca_amount_' + r.it.key).textContent = '¥' + amounts[i];
+    var has = r.cur > 0;
+    document.getElementById('dca_ratio_' + r.it.key).textContent = has ? r.ratio.toFixed(2) : '—';
+    document.getElementById('dca_weight_' + r.it.key).textContent = has ? Math.round(r.weight * 100) + '%' : '—';
+    document.getElementById('dca_amount_' + r.it.key).textContent = has ? '¥' + amounts[i] : '—';
   });
   return { rows: rows, amounts: amounts };
 }
 
 function initDca(){
+  // 黄金口径迁移：旧版 current.gold 为现货元/克口径(>50)，清空改由用户填写黄金ETF价格
+  if(DB.dca.current && DB.dca.current.gold && parseFloat(DB.dca.current.gold) > 50){
+    DB.dca.current.gold = '';
+    saveDb();
+  }
   // 0) 还原每月总预算（默认 3000，可修改）
   var bEl = document.getElementById('dcaBudget');
   if(bEl) bEl.value = getDcaBudget();
@@ -4753,6 +4850,15 @@ function initDca(){
   autoSaveDcaMonth(false);
   // 5) 渲染历史记录存档表格
   renderDcaHistory();
+  // 6) 30月均线：先显示已缓存值，再异步联网抓取历史月线刷新
+  updateDcaAvgUI();
+  if(hasDcaAvgs()) calcDca();
+  fetchDcaAverages(function(ok){
+    calcDca();
+    autoSaveDcaMonth(true); // 强制用最新真实均线刷新当月存档（修正改造前的写死示例）
+    renderDcaHistory();
+    updateDcaAvgUI();
+  });
 }
 
 function getCurrentYm(){
@@ -4775,7 +4881,7 @@ function autoSaveDcaMonth(force){
   var budget = getDcaBudget();
   DCA_ITEMS.forEach(function(it){
     points[it.key] = parseFloat(DB.dca.current[it.key]) || 0;
-    avgs[it.key] = it.avg30;
+    avgs[it.key] = parseFloat(DB.dca.avgs[it.key]) || null;
   });
   var record = {
     ym: ym,
@@ -4846,7 +4952,7 @@ function renderDcaHistoryDetail(h){
   var budget = h.budget || 3000;
   var ratios = DCA_ITEMS.map(function(it){
     var cur = parseFloat(h.points[it.key]) || 0;
-    var avg = parseFloat(h.avgs[it.key]) || it.avg30;
+    var avg = parseFloat(h.avgs[it.key]) || parseFloat(DB.dca.avgs[it.key]) || 0;
     return { it: it, cur: cur, avg: avg, ratio: (cur > 0) ? (avg / cur) : 0 };
   });
   var sumRatio = ratios.reduce(function(s, r){ return s + r.ratio; }, 0);
