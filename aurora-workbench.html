@@ -286,6 +286,8 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 .btn-ghost{background:transparent;color:var(--text-2);border:1px solid var(--line);}
 .btn-ghost:hover{background:var(--input-bg);color:var(--text);}
 .btn-sm{padding:0.35em 0.85em;font-size:clamp(11px,1vw,12.5px);}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+.btn:disabled:hover{background:transparent;color:var(--text-2);}
 .btn-icon{
   background:none;border:none;
   color:var(--text-3);cursor:pointer;
@@ -422,6 +424,8 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
   width:1px;background:var(--line);
 }
 .ee-detail-row:last-child::after{display:none;}
+.ee-pager{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:14px;padding-top:12px;border-top:1px dashed var(--line);}
+.ee-pager-info{font-size:12.5px;color:var(--text-2);font-variant-numeric:tabular-nums;min-width:80px;text-align:center;}
 .ee-detail-main{flex:1;min-width:0;padding-left:12px;}
 .ee-detail-date{font-size:12.5px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
 .ee-detail-text{font-size:12.5px;color:var(--text-2);margin-top:3px;word-break:break-word;line-height:1.5;}
@@ -1457,6 +1461,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
       <div class="card-title" style="margin-bottom:0;">课时记录 <span class="sub" id="eeDetailCount"></span></div>
     </div>
     <div id="eeDetailList"></div>
+    <div id="eePager"></div>
   </div>
 </section>
 
@@ -2480,6 +2485,7 @@ function closeMobileSidebar(){
 /* ============================================================
    Tab 1: Early Education
    ============================================================ */
+var eePage = 1; // 早教课时记录分页当前页（从1开始）
 var EE_COURSES = ['乐高搭建', '启蒙英语', '生活王国', '大树思维', '创意百科', 'BC全脑', '运动感统', '悦芽音乐', '奇妙音乐'];
 var eeSelectedHours = 1;
 var eeSelectedCourse = '';
@@ -2599,6 +2605,7 @@ function saveEeRecord(){
     toast('记录已更新');
   } else {
     DB.earlyEd.records.unshift({ date: date, hours: eeSelectedHours, notes: notes, course: courseLabel, ts: Date.now() });
+    eePage = 1; // 新记录排在最前，回到第 1 页查看
     toast('记录已保存');
   }
   saveDb();
@@ -2663,13 +2670,17 @@ function renderEarlyEd(){
   renderEeDetailList();
 }
 
+var EE_PAGE_SIZE = 10;
 function renderEeDetailList(){
   var box = document.getElementById('eeDetailList');
   if(!box) return;
   var countEl = document.getElementById('eeDetailCount');
-  if(DB.earlyEd.records.length === 0){
+  var pager = document.getElementById('eePager');
+  var total = DB.earlyEd.records.length;
+  if(total === 0){
     box.innerHTML = '';
     if(countEl) countEl.textContent = '共 0 次课';
+    if(pager) pager.innerHTML = '';
     return;
   }
   // Sort by date desc, then by ts desc (newest first)
@@ -2681,7 +2692,12 @@ function renderEeDetailList(){
       return (b.r.ts || 0) - (a.r.ts || 0);
     });
   if(countEl) countEl.textContent = '共 ' + sorted.length + ' 次课';
-  box.innerHTML = sorted.map(function(item){
+  var totalPages = Math.max(1, Math.ceil(sorted.length / EE_PAGE_SIZE));
+  if(eePage < 1) eePage = 1;
+  if(eePage > totalPages) eePage = totalPages;
+  var startIdx = (eePage - 1) * EE_PAGE_SIZE;
+  var pageItems = sorted.slice(startIdx, startIdx + EE_PAGE_SIZE);
+  box.innerHTML = pageItems.map(function(item){
     var r = item.r;
     var i = item.idx;
     var courseHtml = r.course ? '<span class="chip chip-amber">' + escapeHtml(r.course) + '</span>' : '';
@@ -2698,7 +2714,20 @@ function renderEeDetailList(){
       '</div>' +
     '</div>';
   }).join('');
+  if(pager){
+    if(totalPages <= 1){
+      pager.innerHTML = '';
+    } else {
+      pager.innerHTML = '<div class="ee-pager">' +
+        '<button class="btn btn-ghost btn-sm" onclick="eePrevPage()" ' + (eePage <= 1 ? 'disabled' : '') + '>‹ 上一页</button>' +
+        '<span class="ee-pager-info">第 ' + eePage + ' / ' + totalPages + ' 页</span>' +
+        '<button class="btn btn-ghost btn-sm" onclick="eeNextPage()" ' + (eePage >= totalPages ? 'disabled' : '') + '>下一页 ›</button>' +
+      '</div>';
+    }
+  }
 }
+function eePrevPage(){ if(eePage > 1){ eePage--; renderEeDetailList(); } }
+function eeNextPage(){ eePage++; renderEeDetailList(); }
 
 /* ============================================================
    Tab 2: Fitness
