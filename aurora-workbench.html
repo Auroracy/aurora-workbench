@@ -2083,25 +2083,26 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     <div class="section-desc" style="margin-bottom:12px;">利好 / 利空 / 中性 三维度实时热点 · 点击标题查看原文</div>
     <div class="filter-bar">
       <span class="filter-label">筛选：</span>
-      <select id="newsFilterCat" onchange="renderNews()">
+      <select id="newsFilterCat" onchange="newsPage=1;renderNews()">
         <option value="">全部分类</option>
         <option value="astock">A股 / 基金</option>
         <option value="gold">黄金市场</option>
       </select>
-      <select id="newsFilterTag" onchange="renderNews()">
+      <select id="newsFilterTag" onchange="newsPage=1;renderNews()">
         <option value="">全部标签</option>
         <option value="positive">利好</option>
         <option value="negative">利空</option>
         <option value="neutral">中性</option>
       </select>
       <label class="filter-label" style="display:flex;align-items:center;gap:4px;cursor:pointer;">
-        <input type="checkbox" id="newsFavOnly" onchange="renderNews()" style="width:auto;"> 仅看收藏
+        <input type="checkbox" id="newsFavOnly" onchange="newsPage=1;renderNews()" style="width:auto;"> 仅看收藏
       </label>
       <label class="filter-label" style="display:flex;align-items:center;gap:4px;cursor:pointer;">
         <input type="checkbox" id="newsAutoRefresh" onchange="toggleAutoRefresh()" style="width:auto;"> 自动刷新
       </label>
     </div>
     <div id="newsList"><div class="news-loading"><span class="spinner"></span>正在获取实时资讯...</div></div>
+    <div id="newsPager" class="pager"></div>
     <div class="manual-add-toggle">
       <button class="toggle-btn" onclick="toggleManualAdd()">+ 手动补充资讯</button>
       <div class="manual-add-form" id="manualAddForm">
@@ -4569,6 +4570,8 @@ var selectedMood = '';
 /* ====== Live News (Tab4 Section 1) ====== */
 var LIVE_NEWS = [];
 var DISPLAYED_NEWS = [];
+var newsPage = 1;
+var NEWS_PAGE_SIZE = 5;
 var newsRefreshTimer = null;
 var newsFetching = false;
 
@@ -4708,10 +4711,11 @@ function addNews(){
   document.getElementById('newsTitle').value = '';
   document.getElementById('newsSummary').value = '';
   document.getElementById('manualAddForm').classList.remove('show');
+  newsPage = 1;
   renderNews();
   toast('资讯已补充');
 }
-function deleteNews(i){ DB.market.news.splice(i,1); saveDb(); renderNews(); }
+function deleteNews(i){ DB.market.news.splice(i,1); saveDb(); newsPage = 1; renderNews(); }
 function toggleNewsFav(i){ DB.market.news[i].fav = !DB.market.news[i].fav; saveDb(); renderNews(); }
 
 function toggleLiveFav(idx){
@@ -4757,9 +4761,16 @@ function renderNews(){
   var neg = all.filter(function(n){ return n.tag === 'negative'; }).length;
   var neu = all.filter(function(n){ return n.tag === 'neutral'; }).length;
 
+  var total = DISPLAYED_NEWS.length;
+  var pages = Math.max(1, Math.ceil(total / NEWS_PAGE_SIZE));
+  if(newsPage > pages) newsPage = pages;
+  if(newsPage < 1) newsPage = 1;
+  var start = (newsPage - 1) * NEWS_PAGE_SIZE;
+
   var box = document.getElementById('newsList');
-  if(DISPLAYED_NEWS.length === 0){
+  if(total === 0){
     box.innerHTML = '<div class="news-loading">暂无符合条件的资讯</div>';
+    renderNewsPager(0, 1);
     refreshMarketSentimentViews(pos, neg, neu);
     return;
   }
@@ -4769,6 +4780,7 @@ function renderNews(){
   var tagLabel = { positive: '利好', negative: '利空', neutral: '中性' };
 
   box.innerHTML = DISPLAYED_NEWS.map(function(n, idx){
+    if(idx < start || idx >= start + NEWS_PAGE_SIZE) return '';
     var html = '<div class="news-card ' + n.tag + (n.fav ? ' fav' : '') + '">';
     html += '<div class="news-meta">';
     html += '<span class="chip ' + tagClass[n.tag] + '">' + tagLabel[n.tag] + '</span>';
@@ -4797,6 +4809,25 @@ function renderNews(){
   }).join('');
   /* Sync top stats + sentiment overview tiles */
   refreshMarketSentimentViews(pos, neg, neu);
+  renderNewsPager(total, pages);
+}
+
+function renderNewsPager(total, pages){
+  var pager = document.getElementById('newsPager');
+  if(!pager) return;
+  if(total === 0 || pages <= 1){ pager.innerHTML = ''; return; }
+  var html = '<div class="pager-info">共 ' + total + ' 条 · 第 ' + newsPage + ' / ' + pages + ' 页</div>';
+  html += '<div style="display:flex;gap:8px;align-items:center;">';
+  html += '<button class="pager-btn" ' + (newsPage <= 1 ? 'disabled' : '') + ' onclick="newsGoPage(' + (newsPage - 1) + ')">上一页</button>';
+  html += '<span class="pager-info" style="min-width:24px;text-align:center;">' + newsPage + '</span>';
+  html += '<button class="pager-btn" ' + (newsPage >= pages ? 'disabled' : '') + ' onclick="newsGoPage(' + (newsPage + 1) + ')">下一页</button>';
+  html += '</div>';
+  pager.innerHTML = html;
+}
+
+function newsGoPage(p){
+  newsPage = p;
+  renderNews();
 }
 
 function addTracking(){
