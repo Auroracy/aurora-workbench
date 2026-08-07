@@ -1125,6 +1125,50 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
   font-variant-numeric:tabular-nums;
 }
 
+/* Gold tile (market sentiment overview) — A股惯例：涨红 / 跌绿 */
+.metric-grid.gold-grid{gap:12px;}
+.metric-tile.gold-tile{
+  border-left:3px solid var(--red);
+  padding:14px 16px;min-height:96px;
+}
+.metric-tile.gold-tile .metric-label{
+  font-size:clamp(12px,1vw,13px);color:var(--text-2);
+  margin-bottom:4px;
+}
+.metric-tile.gold-tile .metric-value{
+  font-size:clamp(22px,2.6vw,28px);font-weight:700;
+  font-variant-numeric:tabular-nums;line-height:1.15;letter-spacing:-0.5px;
+  color:var(--text);transition:color 0.2s;
+}
+.metric-tile.gold-tile .metric-value.up{color:var(--red);}
+.metric-tile.gold-tile .metric-value.down{color:var(--green);}
+.metric-tile.gold-tile .metric-value.flat{color:var(--text-2);}
+.metric-tile.gold-tile .metric-change{
+  font-size:clamp(12px,1vw,13px);
+  font-variant-numeric:tabular-nums;margin-top:4px;
+  display:inline-flex;align-items:center;gap:3px;
+}
+.metric-tile.gold-tile .metric-change.up{color:var(--red);}
+.metric-tile.gold-tile .metric-change.down{color:var(--green);}
+.metric-tile.gold-tile .metric-change.flat{color:var(--text-3);}
+.metric-tile.gold-mood-tile{
+  border-left:4px solid #c0392b;
+  background:linear-gradient(135deg, rgba(192,57,43,0.07), rgba(192,57,43,0));
+  padding:14px 16px;min-height:96px;
+}
+.metric-tile.gold-mood-tile .metric-label{
+  font-size:clamp(12px,1vw,13px);color:var(--text-2);
+  margin-bottom:4px;
+}
+.metric-tile.gold-mood-tile .metric-value{
+  font-size:clamp(20px,2.2vw,24px);font-weight:700;
+  color:#c0392b;letter-spacing:-0.5px;line-height:1.2;
+}
+.metric-tile.gold-mood-tile .metric-change{
+  font-size:clamp(12px,1vw,13px);
+  color:var(--text-2);margin-top:4px;
+}
+
 /* News card cleaner (v2) */
 .news-card{
   border-left:3px solid var(--line);
@@ -1997,39 +2041,45 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
   <div class="card mkt-overview">
     <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
       <span>市场情绪概览</span>
-      <div style="display:flex;gap:10px;align-items:center;">
-        <span class="text-sm text-muted" id="newsUpdateTime">未加载</span>
-        <button class="btn btn-sm" id="newsRefreshBtn" onclick="fetchNews(true)">🔄 刷新</button>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <span class="text-sm text-muted" id="goldUpdateTime">金价 未加载</span>
+        <button class="btn btn-sm" id="goldRefreshBtn" onclick="fetchGoldQuotes(true)">🔄 刷新金价</button>
       </div>
     </div>
-    <div class="section-desc" style="margin-bottom:14px;">利好 / 利空 / 中性 三维度情绪统计 · 数据为示例，实际请以券商 App 为准</div>
-    <div class="metric-grid">
-      <div class="metric-tile">
-        <div class="metric-label">利好</div>
-        <div class="metric-value pos" id="mPos">0</div>
-        <div class="metric-change" id="mPosSub">条</div>
+    <div class="section-desc" style="margin-bottom:14px;">国际 / 国内金价 + 黄金 ETF 实时报价 + 自动情绪判断 · 数据为示例，实际请以券商 App 为准</div>
+    <div class="metric-grid gold-grid">
+      <div class="metric-tile gold-tile" id="goldIntlTile">
+        <div class="metric-label">国际金价 (USD/oz)</div>
+        <div class="metric-value" id="goldIntlPrice">—</div>
+        <div class="metric-change" id="goldIntlChg">取数中…</div>
       </div>
-      <div class="metric-tile">
-        <div class="metric-label">利空</div>
-        <div class="metric-value neg" id="mNeg">0</div>
-        <div class="metric-change" id="mNegSub">条</div>
+      <div class="metric-tile gold-tile" id="goldDomTile">
+        <div class="metric-label">国内金价 (元/克)</div>
+        <div class="metric-value" id="goldDomPrice">—</div>
+        <div class="metric-change" id="goldDomChg">取数中…</div>
       </div>
-      <div class="metric-tile">
-        <div class="metric-label">中性</div>
-        <div class="metric-value neu" id="mNeu">0</div>
-        <div class="metric-change">条</div>
+      <div class="metric-tile gold-tile" id="goldEtfTile">
+        <div class="metric-label">黄金 ETF (518880)</div>
+        <div class="metric-value" id="goldEtfPrice">—</div>
+        <div class="metric-change" id="goldEtfChg">取数中…</div>
       </div>
-      <div class="metric-tile accent">
-        <div class="metric-label">综合判断</div>
-        <div class="metric-value" id="mVerdict">—</div>
-        <div class="metric-change">情绪倾向</div>
+      <div class="metric-tile accent gold-mood-tile" id="goldMoodTile">
+        <div class="metric-label">市场情绪</div>
+        <div class="metric-value" id="goldMoodMain">—</div>
+        <div class="metric-change" id="goldMoodSub">—</div>
       </div>
     </div>
   </div>
 
   <!-- Today's Featured News -->
   <div class="card">
-    <div class="card-title">今日资讯精选</div>
+    <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+      <span>今日资讯精选</span>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <span class="text-sm text-muted" id="newsUpdateTime">未加载</span>
+        <button class="btn btn-sm" id="newsRefreshBtn" onclick="fetchNews(true)">🔄 刷新资讯</button>
+      </div>
+    </div>
     <div class="section-desc" style="margin-bottom:12px;">利好 / 利空 / 中性 三维度实时热点 · 点击标题查看原文</div>
     <div class="filter-bar">
       <span class="filter-label">筛选：</span>
@@ -2608,7 +2658,7 @@ var defaultDb = {
     recipeIdx: 0
   },
   words: { dailyRecords: {} },
-  market: { news: [], tracking: [], sentiment: {}, notes: [], favNewsIds: [], newsLastUpdate: '' },
+  market: { news: [], tracking: [], sentiment: {}, notes: [], favNewsIds: [], newsLastUpdate: '', gold: null },
   python: {
     progress: { basics: false, functions: false, files: false, data: false, projects: false },
     goal: '',
@@ -4844,7 +4894,6 @@ function renderMarket(){
   loadSentiment();
   renderNotes();
   renderMarketTopStats();
-  renderSentimentOverview();
   var updEl = document.getElementById('newsUpdateTime');
   if(updEl){
     updEl.textContent = DB.market.newsLastUpdate ? ('最后更新 ' + DB.market.newsLastUpdate) : '未加载';
@@ -4854,9 +4903,227 @@ function renderMarket(){
   } else {
     fetchNews(false);
   }
+  /* Gold tiles — async refresh (5min cache) */
+  var g = DB.market.gold;
+  var stale = !g || !g.updatedAt || (Date.now() - g.updatedAt > 5 * 60 * 1000);
+  if(stale){
+    fetchGoldQuotes(false);
+  } else {
+    renderGoldTiles();
+    var gUpdEl = document.getElementById('goldUpdateTime');
+    if(gUpdEl && g.ts) gUpdEl.textContent = '金价 更新于 ' + g.ts;
+  }
 }
 
-/* --- Tab4 v2 helpers: 顶部三联卡 + 2x2 情绪指标 --- */
+/* --- Tab4: 实时金价 (国际/国内/ETF) + 自动情绪判断 --- */
+var goldFetching = false;
+/* CORS 代理兜底：直连 → allorigins → corsproxy */
+var GOLD_PROXIES = [
+  function(u){ return u; },
+  function(u){ return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u); },
+  function(u){ return 'https://corsproxy.io/?' + encodeURIComponent(u); }
+];
+
+function tryFetchOnce(url){
+  /* 单 URL: 依次尝试 GOLD_PROXIES */
+  return new Promise(function(resolve, reject){
+    var attempt = function(pIdx){
+      if(pIdx >= GOLD_PROXIES.length){ reject(new Error('all proxies failed')); return; }
+      fetchWithTimeout(GOLD_PROXIES[pIdx](url), 10000)
+        .then(function(r){ return r.text(); })
+        .then(function(text){ resolve(text); })
+        .catch(function(e){
+          console.log('Gold proxy=' + pIdx + ' url=' + url + ' fail:', e);
+          attempt(pIdx + 1);
+        });
+    };
+    attempt(0);
+  });
+}
+
+function tryFetchSequence(urls, parser){
+  /* 多个候选 URL 依次尝试，任意一个解析成功即停 */
+  return urls.reduce(function(p, url){
+    return p.then(function(prev){
+      if(prev) return prev;
+      return tryFetchOnce(url).then(parser).catch(function(e){ return null; });
+    });
+  }, Promise.resolve(null));
+}
+
+/* === 国际金价 (USD/oz) — qt.gtimg.cn q=hf_GC ===
+   字段: price,chg,buy,sell,hi,lo,time,prevSettle,volume,... */
+function parseHqIntl(text){
+  var m = text.match(/="([^"]*)"/);
+  if(!m) return null;
+  var parts = m[1].split(',');
+  var price = parseFloat(parts[0]);
+  var chg = parseFloat(parts[1]);
+  if(isNaN(price) || isNaN(chg) || price <= 0) return null;
+  /* 客户端反推 prev: prev = price - chg；用于涨跌幅显示 */
+  var prev = price - chg;
+  return {
+    price: price,
+    prev: prev,
+    chg: chg,
+    chgPct: prev > 0 ? (chg / prev) * 100 : 0
+  };
+}
+
+function tryFetchIntlGold(){
+  return tryFetchSequence([
+    'https://qt.gtimg.cn/q=hf_GC',
+    'https://hq.sinajs.cn/list=hf_GC'
+  ], parseHqIntl);
+}
+
+/* === 国内金价 Au99.99 (元/克) — hq.sinajs.cn list=SGE_AU9999 ===
+   字段: ...,name,current,?,?,open,hi,lo,prev,bid,ask,...,time,chgPct% */
+function parseSinaSge(text){
+  var m = text.match(/="([^"]*)"/);
+  if(!m) return null;
+  var parts = m[1].split(',');
+  var price = parseFloat(parts[3]);
+  var chgPctStr = (parts[17] || '').replace('%', '').trim();
+  var chgPct = parseFloat(chgPctStr);
+  if(isNaN(price) || isNaN(chgPct) || price <= 0) return null;
+  var chg = price * chgPct / 100;
+  return {
+    price: price,
+    prev: price - chg,
+    chg: chg,
+    chgPct: chgPct
+  };
+}
+
+function tryFetchDomGold(){
+  return tryFetchSequence([
+    'https://hq.sinajs.cn/list=SGE_AU9999'
+  ], parseSinaSge);
+}
+
+/* === 黄金 ETF 518880 — ifzq appstock fqkline ===
+   JSON: data.sh518880.qt.sh518880[] — 索引: 3=当前 4=昨收 31=涨跌 32=涨跌幅% 33=最高 34=最低 */
+function parseIfzqEtf(text){
+  var json;
+  try { json = JSON.parse(text); } catch(e){ return null; }
+  var qt = json && json.data && json.data.sh518880 && json.data.sh518880.qt && json.data.sh518880.qt.sh518880;
+  if(!qt || qt.length < 35) return null;
+  var price = parseFloat(qt[3]);
+  var prev = parseFloat(qt[4]);
+  var chg = parseFloat(qt[31]);
+  var chgPct = parseFloat(qt[32]);
+  if(isNaN(price) || isNaN(prev) || isNaN(chgPct) || price <= 0) return null;
+  return {
+    price: price,
+    prev: prev,
+    chg: isNaN(chg) ? (price - prev) : chg,
+    chgPct: chgPct
+  };
+}
+
+function tryFetchEtfGold(){
+  return tryFetchSequence([
+    'https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=sh518880,day,,,5,qfq'
+  ], parseIfzqEtf);
+}
+
+async function fetchGoldQuotes(manual){
+  if(goldFetching) return;
+  goldFetching = true;
+  var btn = document.getElementById('goldRefreshBtn');
+  if(btn) btn.textContent = '刷新中…';
+  var updEl = document.getElementById('goldUpdateTime');
+  if(updEl) updEl.textContent = '金价 获取中…';
+
+  var now = new Date();
+  var ts = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+
+  try {
+    var results = await Promise.all([tryFetchIntlGold(), tryFetchDomGold(), tryFetchEtfGold()]);
+    var intl = results[0], dom = results[1], etf = results[2];
+
+    DB.market.gold = { intl:intl, dom:dom, etf:etf, ts:ts, updatedAt: Date.now() };
+    saveDb();
+    renderGoldTiles();
+    if(updEl) updEl.textContent = '金价 更新于 ' + ts;
+    if(!intl && !dom && !etf){
+      if(updEl) updEl.textContent = '金价 获取失败';
+      if(manual) toast('金价抓取失败，请稍后重试');
+    } else if(manual){
+      var okCount = [intl,dom,etf].filter(Boolean).length;
+      toast('金价已更新（' + okCount + '/3 路成功）');
+    }
+  } catch(e){
+    console.log('fetchGoldQuotes error:', e);
+    if(updEl) updEl.textContent = '金价 获取失败';
+  }
+  if(btn) btn.textContent = '🔄 刷新金价';
+  goldFetching = false;
+}
+
+function fillGoldTile(priceId, chgId, d){
+  var pEl = document.getElementById(priceId);
+  var cEl = document.getElementById(chgId);
+  if(!pEl || !cEl) return;
+  if(!d){
+    pEl.textContent = '—';
+    pEl.className = 'metric-value flat';
+    cEl.textContent = '取数失败';
+    cEl.className = 'metric-change flat';
+    return;
+  }
+  var dir = d.chgPct > 0.005 ? 'up' : (d.chgPct < -0.005 ? 'down' : 'flat');
+  var arrow = dir === 'up' ? '⬆' : (dir === 'down' ? '⬇' : '—');
+  /* 黄金 ETF 价格 < 10 保留 4 位；黄金现货 > 100 保留 2 位 */
+  var digits = d.price > 100 ? 2 : (d.price > 10 ? 3 : 4);
+  pEl.textContent = d.price.toFixed(digits);
+  pEl.className = 'metric-value ' + dir;
+  var sign = d.chgPct > 0 ? '+' : '';
+  cEl.textContent = arrow + ' ' + sign + d.chgPct.toFixed(2) + '%';
+  cEl.className = 'metric-change ' + dir;
+}
+
+function judgeGoldMood(intl, dom, etf){
+  var sources = [intl, dom, etf].filter(Boolean);
+  if(sources.length === 0) return { main: '—', sub: '行情均不可达' };
+  var avgPct = sources.reduce(function(s,d){ return s + (d.chgPct || 0); }, 0) / sources.length;
+  var upCount = sources.filter(function(d){ return d.chgPct > 0; }).length;
+  var downCount = sources.filter(function(d){ return d.chgPct < 0; }).length;
+  var main, sub;
+  if(avgPct >= 0.3){
+    main = '避险偏多';
+    sub = upCount >= sources.length ? '黄金全面走强' : '黄金震荡走强';
+  } else if(avgPct <= -0.3){
+    main = '避险消退';
+    sub = downCount >= sources.length ? '金价普遍回调' : '金价震荡偏弱';
+  } else if(upCount > downCount){
+    main = '震荡偏强';
+    sub = '关注地缘风险';
+  } else if(downCount > upCount){
+    main = '震荡偏弱';
+    sub = '关注美元指数';
+  } else {
+    main = '震荡观望';
+    sub = '方向暂不明朗';
+  }
+  return { main: main, sub: sub };
+}
+
+function renderGoldTiles(){
+  var g = DB.market.gold;
+  if(!g) return;
+  fillGoldTile('goldIntlPrice','goldIntlChg', g.intl);
+  fillGoldTile('goldDomPrice','goldDomChg', g.dom);
+  fillGoldTile('goldEtfPrice','goldEtfChg', g.etf);
+  var mood = judgeGoldMood(g.intl, g.dom, g.etf);
+  var mainEl = document.getElementById('goldMoodMain');
+  var subEl = document.getElementById('goldMoodSub');
+  if(mainEl) mainEl.textContent = mood.main;
+  if(subEl) subEl.textContent = mood.sub;
+}
+
+/* --- Tab4 v2 helpers (顶部三联卡 + 新闻情绪) --- */
 function computeMarketSentiment(){
   var pos = 0, neg = 0, neu = 0;
   LIVE_NEWS.forEach(function(n){
@@ -4894,58 +5161,21 @@ function renderMarketTopStats(){
 }
 
 function renderSentimentOverview(){
-  var s = computeMarketSentiment();
-  var pct = function(n){ return s.total ? (Math.round(n / s.total * 100) + '%') : '—'; };
-  var posEl = document.getElementById('mPos');
-  var negEl = document.getElementById('mNeg');
-  var neuEl = document.getElementById('mNeu');
-  var posSubEl = document.getElementById('mPosSub');
-  var negSubEl = document.getElementById('mNegSub');
-  var verdictEl = document.getElementById('mVerdict');
-  if(posEl) posEl.textContent = s.pos;
-  if(negEl) negEl.textContent = s.neg;
-  if(neuEl) neuEl.textContent = s.neu;
-  if(posSubEl) posSubEl.textContent = pct(s.pos) + ' · ' + s.pos + ' 条';
-  if(negSubEl) negSubEl.textContent = pct(s.neg) + ' · ' + s.neg + ' 条';
-  if(verdictEl){
-    var j = judgeMarketMood(s.pos, s.neg, s.total);
-    verdictEl.textContent = j.label;
-    verdictEl.className = 'metric-value ' + j.cls;
-  }
+  /* 兼容旧引用（早期 2x2 情绪统计），现改为直接渲染金价；保留为空避免报错 */
+  if(typeof renderGoldTiles === 'function') renderGoldTiles();
 }
 
 function refreshMarketSentimentViews(pos, neg, neu){
-  /* Called from renderNews with already-computed counts (avoid double iteration) */
-  var total = pos + neg + neu;
-  var pct = function(n){ return total ? (Math.round(n / total * 100) + '%') : '—'; };
-  var posEl = document.getElementById('mPos');
-  var negEl = document.getElementById('mNeg');
-  var neuEl = document.getElementById('mNeu');
-  var posSubEl = document.getElementById('mPosSub');
-  var negSubEl = document.getElementById('mNegSub');
-  var verdictEl = document.getElementById('mVerdict');
+  /* 兼容旧引用（从 renderNews 调用），刷新顶部三联卡的综合情绪 + 金价卡片 */
   var newsCountEl = document.getElementById('mktNewsCount');
-  var favCountEl = document.getElementById('mktFavCount');
   var moodEl = document.getElementById('mktMoodLabel');
-  if(posEl) posEl.textContent = pos;
-  if(negEl) negEl.textContent = neg;
-  if(neuEl) neuEl.textContent = neu;
-  if(posSubEl) posSubEl.textContent = pct(pos) + ' · ' + pos + ' 条';
-  if(negSubEl) negSubEl.textContent = pct(neg) + ' · ' + neg + ' 条';
-  if(verdictEl){
-    var j = judgeMarketMood(pos, neg, total);
-    verdictEl.textContent = j.label;
-    verdictEl.className = 'metric-value ' + j.cls;
-  }
+  var total = pos + neg + neu;
   if(newsCountEl) newsCountEl.textContent = total;
-  if(favCountEl){
-    var favCount = DB.market.favNewsIds.length + DB.market.news.filter(function(n){ return n.fav; }).length;
-    favCountEl.textContent = favCount;
-  }
   if(moodEl){
-    var j2 = judgeMarketMood(pos, neg, total);
-    moodEl.textContent = j2.label;
+    var j = judgeMarketMood(pos, neg, total);
+    moodEl.textContent = j.label;
   }
+  /* 金价信息保持原缓存（不重复抓） */
 }
 
 /* ============================================================
