@@ -1253,15 +1253,9 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 .dca-calc-head span:not(:first-child),.dca-calc-row span:not(.dca-name){text-align:right;}
 .dca-calc-row{border-top:1px solid var(--line-soft);font-size:13px;}
 .dca-calc-row .dca-name{font-weight:600;color:var(--text);}
-.dca-calc-row .dca-point{margin:0;min-height:2.4em;}
+.dca-calc-row .dca-point{display:flex;align-items:center;justify-content:flex-end;font-variant-numeric:tabular-nums;color:var(--text);font-weight:600;min-height:2.4em;padding:0 8px;}
 .dca-calc-row .dca-ratio,.dca-calc-row .dca-weight{font-variant-numeric:tabular-nums;color:var(--text-2);}
 .dca-calc-row .dca-amount{font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums;}
-.dca-summary{background:var(--blue-bg);border:1px solid var(--blue);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:12px;}
-.dca-sum-row{display:flex;justify-content:space-between;font-size:13px;padding:3px 0;color:var(--text-2);}
-.dca-sum-row b{color:var(--text);font-variant-numeric:tabular-nums;}
-.dca-sum-note{font-size:11.5px;color:var(--blue);margin-top:6px;line-height:1.5;}
-.dca-sum-total{font-size:14px;margin-top:8px;padding-top:8px;border-top:1px dashed var(--blue);}
-.dca-sum-total b{color:var(--accent);font-size:17px;font-variant-numeric:tabular-nums;}
 .dca-actions{display:flex;gap:10px;}
 .dca-history-form{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px; align-items:flex-end;}
 .dca-history-form input{min-height:2.6em;flex:1 1 90px;}
@@ -2259,36 +2253,28 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
       </div>
       <div class="dca-calc-row">
         <span class="dca-name">纳斯达克100</span>
-        <input type="number" id="dca_nasdaq" class="dca-point" oninput="onDcaInput()" placeholder="如 29488">
+        <span class="dca-point" id="dca_nasdaq">—</span>
         <span class="dca-ratio" id="dca_ratio_nasdaq">—</span>
         <span class="dca-weight" id="dca_weight_nasdaq">—</span>
         <span class="dca-amount" id="dca_amount_nasdaq">—</span>
       </div>
       <div class="dca-calc-row">
         <span class="dca-name">中证500</span>
-        <input type="number" id="dca_zz500" class="dca-point" oninput="onDcaInput()" placeholder="如 7780">
+        <span class="dca-point" id="dca_zz500">—</span>
         <span class="dca-ratio" id="dca_ratio_zz500">—</span>
         <span class="dca-weight" id="dca_weight_zz500">—</span>
         <span class="dca-amount" id="dca_amount_zz500">—</span>
       </div>
       <div class="dca-calc-row">
         <span class="dca-name">黄金指数</span>
-        <input type="number" id="dca_gold" class="dca-point" oninput="onDcaInput()" placeholder="如 5620">
+        <span class="dca-point" id="dca_gold">—</span>
         <span class="dca-ratio" id="dca_ratio_gold">—</span>
         <span class="dca-weight" id="dca_weight_gold">—</span>
         <span class="dca-amount" id="dca_amount_gold">—</span>
       </div>
     </div>
-    <div class="dca-summary">
-      <div class="dca-sum-row"><span>比值总和</span><b id="dca_sumRatio">—</b></div>
-      <div class="dca-sum-row"><span>三项原始求和</span><b id="dca_rawSum">—</b></div>
-      <div class="dca-sum-row"><span>差额 (<span id="dcaBudgetLabel">3000</span> − 原始求和)</span><b id="dca_diff">—</b></div>
-      <div class="dca-sum-note">👉 差额全部加到【比值最高】的品种，最终合计严格 = <span id="dcaBudgetLabel2">3000</span></div>
-      <div class="dca-sum-total">最终合计：<b id="dca_finalTotal">—</b> 元</div>
-    </div>
     <div class="dca-actions">
       <button class="btn btn-primary btn-sm" onclick="saveDcaMonth()">📥 存档本月结果</button>
-      <button class="btn btn-ghost btn-sm" onclick="clearDcaInputs()">清空输入</button>
     </div>
   </div>
 
@@ -4628,19 +4614,10 @@ function onBudgetChange(){
   calcDca();
 }
 
-function onDcaInput(){
-  DCA_ITEMS.forEach(function(it){
-    DB.dca.current[it.key] = document.getElementById('dca_' + it.key).value;
-  });
-  saveDb();
-  calcDca();
-}
-
 function calcDca(){
   var budget = getDcaBudget();
-  ['dcaBudgetLabel','dcaBudgetLabel2'].forEach(function(id){ var el=document.getElementById(id); if(el) el.textContent = budget; });
   var rows = DCA_ITEMS.map(function(it){
-    var cur = parseFloat(document.getElementById('dca_' + it.key).value);
+    var cur = parseFloat(DB.dca.current[it.key]);
     var ratio = (cur > 0) ? (it.avg30 / cur) : 0;
     return { it: it, cur: cur, ratio: ratio, weight: 0, raw: 0 };
   });
@@ -4651,10 +4628,6 @@ function calcDca(){
       document.getElementById('dca_weight_' + r.it.key).textContent = '—';
       document.getElementById('dca_amount_' + r.it.key).textContent = '—';
     });
-    document.getElementById('dca_sumRatio').textContent = '—';
-    document.getElementById('dca_rawSum').textContent = '—';
-    document.getElementById('dca_diff').textContent = '—';
-    document.getElementById('dca_finalTotal').textContent = '—';
     return null;
   }
   rows.forEach(function(r){
@@ -4676,11 +4649,6 @@ function calcDca(){
     document.getElementById('dca_weight_' + r.it.key).textContent = Math.round(r.weight * 100) + '%';
     document.getElementById('dca_amount_' + r.it.key).textContent = '¥' + amounts[i];
   });
-  document.getElementById('dca_sumRatio').textContent = sumRatio.toFixed(2);
-  document.getElementById('dca_rawSum').textContent = '¥' + rawSum;
-  document.getElementById('dca_diff').textContent = (diff === 0 ? '0' : (diff > 0 ? '+' + diff : String(diff)));
-  var finalTotal = amounts.reduce(function(s, a){ return s + a; }, 0);
-  document.getElementById('dca_finalTotal').textContent = '¥' + finalTotal;
   return { rows: rows, amounts: amounts };
 }
 
@@ -4697,7 +4665,7 @@ function saveDcaMonth(){
   // 同步记录当时点位+30月均价，方便后续回填
   var points = {}, avgs = {};
   DCA_ITEMS.forEach(function(it){
-    points[it.key] = parseFloat(document.getElementById('dca_' + it.key).value) || 0;
+    points[it.key] = parseFloat(DB.dca.current[it.key]) || 0;
     avgs[it.key] = it.avg30;
   });
   // 把 points/avgs 暂存到表单旁的隐藏字段，由 addDcaHistory 读取
@@ -4769,15 +4737,6 @@ function renderDcaHistory(){
   }).join('');
 }
 
-function clearDcaInputs(){
-  DCA_ITEMS.forEach(function(it){
-    document.getElementById('dca_' + it.key).value = '';
-    DB.dca.current[it.key] = '';
-  });
-  saveDb();
-  calcDca();
-}
-
 function initDca(){
   // 0) 还原每月总预算（默认 3000，可修改）
   var bEl = document.getElementById('dcaBudget');
@@ -4785,7 +4744,7 @@ function initDca(){
   // 1) 还原已保存的当前点位
   DCA_ITEMS.forEach(function(it){
     var v = DB.dca.current[it.key];
-    if(v !== undefined && v !== null && v !== '') document.getElementById('dca_' + it.key).value = v;
+    if(v !== undefined && v !== null && v !== '') document.getElementById('dca_' + it.key).textContent = v;
   });
   renderDcaHistory();
   // 2) 若当前点位为空，自动套用最近一次存档点位，开盘即显示本月（最近月）自动计算结果
@@ -4829,7 +4788,7 @@ function applyLastSavedPoints(silent){
   DCA_ITEMS.forEach(function(it){
     var p = last.points[it.key];
     if(p){
-      document.getElementById('dca_' + it.key).value = p;
+      document.getElementById('dca_' + it.key).textContent = p;
       DB.dca.current[it.key] = String(p);
     }
   });
@@ -4845,7 +4804,7 @@ function applyHistoryPoints(i){
   DCA_ITEMS.forEach(function(it){
     var p = h.points[it.key];
     if(p){
-      document.getElementById('dca_' + it.key).value = p;
+      document.getElementById('dca_' + it.key).textContent = p;
       DB.dca.current[it.key] = String(p);
     }
   });
