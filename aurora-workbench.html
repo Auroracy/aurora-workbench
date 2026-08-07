@@ -2371,7 +2371,6 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     <span class="xwlb-date" id="xwlbDate">—</span>
     <span class="xwlb-dot" id="xwlbDot"></span>
     <span class="xwlb-source" id="xwlbSource">—</span>
-    <button class="btn btn-ghost btn-xs" onclick="editXwlbEndpoint()">⚙ 数据源</button>
   </div>
 
   <div class="xwlb-status" id="xwlbStatus"></div>
@@ -2379,7 +2378,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
   <div class="xwlb-body" id="xwlbBody"></div>
 
   <div class="xwlb-fallback" id="xwlbFallback" style="display:none;">
-    <div class="xwlb-fallback-tip">自动抓取（前端代理/后端）均不可达。可手动粘贴当天《新闻联播》节目单，由通义千问生成总结；或运行 <code>node xwlb-server.js</code> 后在「⚙ 数据源」填写地址以启用后端自动抓取：</div>
+    <div class="xwlb-fallback-tip">自动抓取（前端代理）不可达。可手动粘贴当天《新闻联播》节目单，由通义千问生成总结：</div>
     <textarea id="xwlbManualInput" class="xwlb-manual-input" placeholder="每行一条，例如：&#10;【新思想引领新征程】服务消费扩容升级 激发内需新活力&#10;今年前7个月我国货物贸易进出口超30万亿元&#10;大面积单产提升持续加力 夯实秋粮稳产基础"></textarea>
     <button class="btn btn-primary btn-sm" id="xwlbManualBtn" onclick="summarizeXwlbManual()">✨ 生成总结</button>
   </div>
@@ -2473,7 +2472,6 @@ var defaultDb = {
     history: [] // 首次打开后由 autoSaveDcaMonth 自动生成当月真实存档
   },
   xwlb: {
-    endpoint: '', // 新闻联播后端地址（可选，运行 node xwlb-server.js 后于 Tab9 内「⚙ 数据源」填写；留空则前端自动代理抓取央视）
     cache: {} // 按日期归档：{ 'YYYY-MM-DD': {date, titles, summary, generatedAt, note} }
   }
 };
@@ -2545,7 +2543,7 @@ function switchTab(n){
 
 /* ====== Tab 9: 新闻联播每日总结 ====== */
 function initXwlb(){
-  if(!DB.xwlb) DB.xwlb = { endpoint: '', cache: {} };
+  if(!DB.xwlb) DB.xwlb = { cache: {} };
   if(!DB.xwlb.cache) DB.xwlb.cache = {};
   document.getElementById('xwlbDate').textContent = getXwlbToday();
   renderXwlbHistory();
@@ -2591,8 +2589,8 @@ function fetchXwlbDirect(date){
       var titles = parseXwlbHtml(html);
       if(!titles.length) throw new Error('未解析到节目单');
       if(!getQwenKey()){
-        var d0 = { date: date, titles: titles, summary: null, note: '已抓到 ' + titles.length + ' 条节目单，请在「设置 / AI 引擎」配置通义千问 Key 以生成总结' };
-        saveXwlbCache(d0); renderXwlb(d0, '前端抓取'); renderXwlbHistory();
+        setXwlbStatus('ℹ 已抓到节目单，但缺少通义千问 Key。请到「轻氧塑身日记 → 餐食记录 → ⚙ AI 分析设置」配置 Key 后刷新，即可生成 AI 总结。', 'info');
+        document.getElementById('xwlbFallback').style.display = 'block';
         return;
       }
       setXwlbStatus('⏳ 已抓到 ' + titles.length + ' 条，通义千问生成总结中…', 'loading');
@@ -2600,34 +2598,15 @@ function fetchXwlbDirect(date){
         var d = { date: date, titles: titles, summary: summary, generatedAt: new Date().toISOString(), note: '前端自动抓取 + 通义千问' };
         saveXwlbCache(d); renderXwlb(d, '前端自动'); renderXwlbHistory();
       }).catch(function(err){
-        var d = { date: date, titles: titles, summary: null, note: '抓取成功，但 AI 总结失败：' + (err && err.message ? err.message : err) };
-        saveXwlbCache(d); renderXwlb(d, '前端抓取'); renderXwlbHistory();
+        setXwlbStatus('⚠ AI 总结生成失败：' + (err && err.message ? err.message : err) + '。可手动粘贴节目单重试。', 'error');
+        document.getElementById('xwlbFallback').style.display = 'block';
       });
     }).catch(function(err){ tryProxy(i + 1); });
   }
 }
 function afterDirectFail(date){
-  var ep = (DB.xwlb.endpoint || '').replace(/\/+$/, '');
-  if(ep){ fetchXwlbFromBackend(date); return; }
-  setXwlbStatus('⚠ 自动抓取失败（代理不可达）。可手动粘贴节目单，由通义千问生成总结；或运行后端 node xwlb-server.js 后到⚙配置地址。', 'error');
+  setXwlbStatus('⚠ 自动抓取失败（代理不可达或央视页面异常）。可手动粘贴节目单，由通义千问生成总结。', 'error');
   document.getElementById('xwlbFallback').style.display = 'block';
-}
-function fetchXwlbFromBackend(date){
-  var ep = (DB.xwlb.endpoint || '').replace(/\/+$/, '');
-  setXwlbStatus('⏳ 正在从后端获取 ' + date + ' 新闻联播…', 'loading');
-  document.getElementById('xwlbFallback').style.display = 'none';
-  var url = ep + '/xwlb?date=' + encodeURIComponent(date);
-  fetchWithTimeoutXwlb(url, 20000).then(function(res){
-    if(!res.ok) throw new Error('HTTP ' + res.status);
-    return res.json();
-  }).then(function(data){
-    saveXwlbCache(data);
-    renderXwlb(data, '后端实时');
-    renderXwlbHistory();
-  }).catch(function(err){
-    setXwlbStatus('⚠ 后端不可达（' + (err && err.message ? err.message : err) + '）。可手动粘贴节目单生成总结。', 'error');
-    document.getElementById('xwlbFallback').style.display = 'block';
-  });
 }
 function fetchWithTimeoutXwlb(url, ms){
   return Promise.race([
@@ -2648,9 +2627,7 @@ function renderXwlb(data, sourceLabel){
   dot.className = 'xwlb-dot ' + (data.summary ? 'ok' : 'warn');
   var body = document.getElementById('xwlbBody');
   if(!data.summary){
-    body.innerHTML = '<div class="xwlb-raw"><div class="xwlb-raw-title">当日节目单（共 ' + (data.titles ? data.titles.length : 0) + ' 条）</div>' +
-      (data.titles || []).map(function(t){ return '<div class="xwlb-raw-item">• ' + escapeHtml(t) + '</div>'; }).join('') +
-      (data.note ? '<div class="xwlb-note">' + escapeHtml(data.note) + '</div>' : '') + '</div>';
+    body.innerHTML = '<div class="xwlb-raw"><div class="xwlb-note">' + escapeHtml(data.note || '暂无 AI 总结，请配置通义千问 Key 后刷新，或手动粘贴节目单生成。') + '</div></div>';
     setXwlbStatus(data.note ? 'ℹ ' + data.note : '', 'info');
     return;
   }
@@ -2665,10 +2642,6 @@ function renderXwlb(data, sourceLabel){
       return '<div class="xwlb-group"><div class="xwlb-group-cat">' + escapeHtml(g.category || '') + '</div><ul class="xwlb-group-items">' + items + '</ul></div>';
     }).join('');
   }
-  if(data.titles && data.titles.length){
-    html += '<details class="xwlb-raw-details"><summary>查看原始节目单（' + data.titles.length + ' 条）</summary>' +
-      data.titles.map(function(t){ return '<div class="xwlb-raw-item">• ' + escapeHtml(t) + '</div>'; }).join('') + '</details>';
-  }
   body.innerHTML = html;
   setXwlbStatus('', '');
 }
@@ -2681,15 +2654,6 @@ function setXwlbStatus(msg, type){
 function refreshXwlb(){
   loadXwlb(true);
   renderXwlbHistory();
-}
-function editXwlbEndpoint(){
-  var cur = DB.xwlb.endpoint || '';
-  var v = prompt('新闻联播后端地址（可选）。留空则使用前端代理自动抓取央视；若运行了 node xwlb-server.js，可填 http://localhost:8787 走后端：', cur);
-  if(v === null) return;
-  DB.xwlb.endpoint = (v.trim() || cur);
-  saveDb();
-  toast('数据源已更新，正在刷新…');
-  loadXwlb(true);
 }
 function summarizeXwlbManual(){
   var ta = document.getElementById('xwlbManualInput');
