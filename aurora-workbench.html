@@ -600,6 +600,15 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
   margin-top:0.4em;display:none;line-height:1.5;
 }
 .ai-test-hint.show{display:block;}
+.cloud-divider{
+  display:flex;align-items:center;gap:12px;
+  margin:20px 0 12px;
+  font-size:clamp(13px,1.1vw,14px);font-weight:600;color:var(--text-2);
+  letter-spacing:0.2px;
+}
+.cloud-divider::before,.cloud-divider::after{
+  content:'';flex:1;height:1px;background:var(--line);
+}
 
 /* ====== Meal Photo Dropzone ====== */
 .meal-photo-zone{
@@ -1717,53 +1726,6 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
   <div class="card">
     <div class="card-title">餐食记录 <span class="ai-badge">AI 识图</span></div>
 
-    <!-- AI Settings (collapsible) -->
-    <div class="ai-settings" id="aiSettings">
-      <div class="ai-settings-header" onclick="toggleAiSettings()">
-        <span>⚙ AI 分析设置</span>
-        <span id="aiSettingsStatus" style="font-size:11px;color:var(--text-3);">点击配置</span>
-      </div>
-      <div class="ai-settings-body">
-        <label class="form-label">识图引擎</label>
-        <div class="ai-engine-row">
-          <label class="ai-engine-opt" id="engineOptQwen">
-            <input type="radio" name="aiEngine" value="qwen" onchange="switchAiEngine('qwen')">
-            <span>通义千问 VL<span class="ai-engine-tag">国内推荐</span></span>
-          </label>
-          <label class="ai-engine-opt" id="engineOptGemini">
-            <input type="radio" name="aiEngine" value="gemini" onchange="switchAiEngine('gemini')">
-            <span>Gemini Vision</span>
-          </label>
-        </div>
-
-        <!-- Qwen Key -->
-        <div id="qwenKeyBox" style="display:none;">
-          <label class="form-label">通义千问 API Key（百炼平台）</label>
-          <input type="password" id="qwenKey" placeholder="粘贴你的 API Key（sk-开头）" onblur="saveQwenKey()">
-          <button class="ai-test-btn" onclick="testQwenKey()" id="qwenTestBtn">🔍 测试通义千问 Key</button>
-          <div class="ai-test-hint" id="qwenTestHint"></div>
-          <div class="ai-help">
-            1. 打开 <a href="https://bailian.console.aliyun.com/" target="_blank">阿里云百炼平台</a>（原 DashScope）<br>
-            2. 左侧菜单「API-Key 管理」→ 创建 API-Key → 复制 sk- 开头的 Key<br>
-            3. 粘贴到上方输入框，点空白处自动保存<br>
-            4. 点「测试通义千问 Key」验证是否可用<br>
-            <span style="color:var(--text-3);">⚠ 不需要在平台手动开通模型免费额度，API Key 创建后即可调用</span>
-          </div>
-        </div>
-
-        <!-- Gemini Key -->
-        <div id="geminiKeyBox" style="display:none;">
-          <label class="form-label">Gemini API Key（免费）</label>
-          <input type="password" id="geminiKey" placeholder="粘贴你的 Gemini API Key" onblur="saveGeminiKey()">
-          <div class="ai-help">
-            1. 打开 <a href="https://aistudio.google.com/apikey" target="_blank">Google AI Studio</a> 免费获取密钥<br>
-            2. 粘贴到上方输入框，点击空白处即自动保存<br>
-            3. 需要能访问 Google 服务
-          </div>
-        </div>
-      </div>
-    </div>
-
     <div class="form-row">
       <div class="form-group">
         <label class="form-label">食物描述</label>
@@ -2671,7 +2633,7 @@ function fetchXwlbDirect(date){
       var titles = parseXwlbHtml(html);
       if(!titles.length) throw new Error('未解析到节目单');
       if(!getQwenKey()){
-        setXwlbStatus('ℹ 已抓到节目单，但缺少通义千问 Key。请到「轻氧塑身日记 → 餐食记录 → ⚙ AI 分析设置」配置 Key 后刷新，即可生成 AI 总结。', 'info');
+        setXwlbStatus('ℹ 已抓到节目单，但缺少通义千问 Key。请到左下角「☁ 云同步 → 🤖 AI 引擎配置」填写 Key 后刷新，即可生成 AI 总结。', 'info');
         document.getElementById('xwlbFallback').style.display = 'block';
         return;
       }
@@ -3462,8 +3424,19 @@ function switchAiEngine(eng){
   updateAiSettingsStatus();
   toast(eng === 'qwen' ? '已切换到通义千问 VL' : '已切换到 Gemini Vision');
 }
-function toggleAiSettings(){
-  document.getElementById('aiSettings').classList.toggle('open');
+function syncAiSettingsUI(){
+  var eng = getAiEngine();
+  var engRadio = document.querySelector('input[name="aiEngine"][value="' + eng + '"]');
+  if(engRadio) engRadio.checked = true;
+  var qwenBox = document.getElementById('qwenKeyBox');
+  var geminiBox = document.getElementById('geminiKeyBox');
+  if(qwenBox) qwenBox.style.display = eng === 'qwen' ? 'block' : 'none';
+  if(geminiBox) geminiBox.style.display = eng === 'gemini' ? 'block' : 'none';
+  var qwenInput = document.getElementById('qwenKey');
+  if(qwenInput) qwenInput.value = getQwenKey();
+  var geminiInput = document.getElementById('geminiKey');
+  if(geminiInput) geminiInput.value = getGeminiKey();
+  updateAiSettingsStatus();
 }
 async function testQwenKey(){
   var key = (document.getElementById('qwenKey').value || '').trim();
@@ -3583,8 +3556,8 @@ function onMealPhotoSelected(input){
   var eng = getAiEngine();
   var key = eng === 'qwen' ? getQwenKey() : getGeminiKey();
   if(!key){
-    toast('照片已上传，未配置 AI 密钥 — 可手动填写食物和卡路里');
-    document.getElementById('aiSettings').classList.add('open');
+    toast('照片已上传，未配置 AI 密钥 — 可在「☁ 云同步 → 🤖 AI 引擎配置」填写，或手动填写食物和卡路里');
+    openCloudModal();
     return;
   }
   var loading = document.getElementById('aiLoading');
@@ -3985,19 +3958,6 @@ function renderFitness(){
   if(!document.getElementById('weightDate').value) document.getElementById('weightDate').value = today();
   document.getElementById('fastStart').value = DB.fitness.fastStart;
   document.getElementById('fastEnd').value = DB.fitness.fastEnd;
-  /* AI settings: restore engine selection + keys */
-  var eng = getAiEngine();
-  var engRadio = document.querySelector('input[name="aiEngine"][value="' + eng + '"]');
-  if(engRadio) engRadio.checked = true;
-  var qwenBox = document.getElementById('qwenKeyBox');
-  var geminiBox = document.getElementById('geminiKeyBox');
-  if(qwenBox) qwenBox.style.display = eng === 'qwen' ? 'block' : 'none';
-  if(geminiBox) geminiBox.style.display = eng === 'gemini' ? 'block' : 'none';
-  var qwenInput = document.getElementById('qwenKey');
-  if(qwenInput) qwenInput.value = getQwenKey();
-  var geminiInput = document.getElementById('geminiKey');
-  if(geminiInput) geminiInput.value = getGeminiKey();
-  updateAiSettingsStatus();
   renderRecipe();
   renderFastingBar();
   renderMeals();
@@ -5872,6 +5832,7 @@ function openCloudModal(){
   if(toggle) toggle.classList.toggle('on', !!cfg.autoSync);
   var ptoggle = document.getElementById('cloudProxyToggle');
   if(ptoggle) ptoggle.classList.toggle('on', !!cfg.useProxy);
+  syncAiSettingsUI();
   updateCloudStatus();
   document.getElementById('cloudOverlay').classList.add('show');
 }
@@ -6125,6 +6086,54 @@ window.addEventListener('DOMContentLoaded', init);
         <div class="cloud-toggle" id="cloudProxyToggle"></div>
         <span>使用网络代理（直连失败时自动启用，可手动切换）</span>
       </div>
+
+      <div class="cloud-divider"><span>🤖 AI 引擎配置</span></div>
+      <div class="ai-settings open">
+        <div class="ai-settings-header" style="cursor:default;">
+          <span>识图 / AI 总结引擎</span>
+          <span id="aiSettingsStatus" style="font-size:11px;color:var(--text-3);">点击配置</span>
+        </div>
+        <div class="ai-settings-body" style="display:block;">
+          <label class="form-label">识图引擎</label>
+          <div class="ai-engine-row">
+            <label class="ai-engine-opt" id="engineOptQwen">
+              <input type="radio" name="aiEngine" value="qwen" onchange="switchAiEngine('qwen')">
+              <span>通义千问 VL<span class="ai-engine-tag">国内推荐</span></span>
+            </label>
+            <label class="ai-engine-opt" id="engineOptGemini">
+              <input type="radio" name="aiEngine" value="gemini" onchange="switchAiEngine('gemini')">
+              <span>Gemini Vision</span>
+            </label>
+          </div>
+
+          <!-- Qwen Key -->
+          <div id="qwenKeyBox" style="display:none;">
+            <label class="form-label">通义千问 API Key（百炼平台）</label>
+            <input type="password" id="qwenKey" placeholder="粘贴你的 API Key（sk-开头）" onblur="saveQwenKey()">
+            <button class="ai-test-btn" onclick="testQwenKey()" id="qwenTestBtn">🔍 测试通义千问 Key</button>
+            <div class="ai-test-hint" id="qwenTestHint"></div>
+            <div class="ai-help">
+              1. 打开 <a href="https://bailian.console.aliyun.com/" target="_blank">阿里云百炼平台</a>（原 DashScope）<br>
+              2. 左侧菜单「API-Key 管理」→ 创建 API-Key → 复制 sk- 开头的 Key<br>
+              3. 粘贴到上方输入框，点空白处自动保存<br>
+              4. 点「测试通义千问 Key」验证是否可用<br>
+              <span style="color:var(--text-3);">⚠ 不需要在平台手动开通模型免费额度，API Key 创建后即可调用</span>
+            </div>
+          </div>
+
+          <!-- Gemini Key -->
+          <div id="geminiKeyBox" style="display:none;">
+            <label class="form-label">Gemini API Key（免费）</label>
+            <input type="password" id="geminiKey" placeholder="粘贴你的 Gemini API Key" onblur="saveGeminiKey()">
+            <div class="ai-help">
+              1. 打开 <a href="https://aistudio.google.com/apikey" target="_blank">Google AI Studio</a> 免费获取密钥<br>
+              2. 粘贴到上方输入框，点击空白处即自动保存<br>
+              3. 需要能访问 Google 服务
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="cloud-actions">
         <button class="primary" onclick="cloudPush()" id="cloudPushBtn">⬆ 上传到云端</button>
         <button onclick="cloudPull()" id="cloudPullBtn">⬇ 从云端恢复</button>
