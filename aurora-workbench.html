@@ -1427,6 +1427,40 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 .justify-between{justify-content:space-between;}
 .hidden{display:none!important;}
 hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
+
+/* ====== Tab 10: 投资方向分析 ====== */
+.invest-disclaimer{background:#FFF8E6;border:1px solid #F2D98A;color:#8a6d1a;border-radius:var(--radius-sm);padding:10px 13px;font-size:12px;line-height:1.55;margin-bottom:14px;}
+.invest-disclaimer b{color:#9a6b00;}
+.invest-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
+.invest-controls select{min-width:9.5em;}
+.invest-meta{font-size:12px;color:var(--text-2);margin:2px 2px 12px;}
+.invest-cards{display:grid;grid-template-columns:1fr;gap:12px;}
+.invest-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius-sm);padding:14px 16px;transition:box-shadow .15s;}
+.invest-card:hover{box-shadow:0 4px 16px rgba(0,0,0,0.05);}
+.invest-card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px;}
+.invest-theme{font-size:15px;font-weight:600;color:var(--text);}
+.invest-level{font-size:11px;padding:2px 9px;border-radius:999px;font-weight:600;}
+.lvl-high{background:#FDE9E7;color:#C0392B;}
+.lvl-mid{background:#E8F1FB;color:#2E86C1;}
+.lvl-low{background:#F0F0F0;color:#777;}
+.invest-reason{font-size:13px;color:var(--text-2);line-height:1.55;margin-bottom:10px;}
+.invest-funds-label{font-size:11.5px;color:var(--text-3);margin-bottom:6px;}
+.invest-funds{display:flex;flex-wrap:wrap;gap:7px;}
+.fund-chip{font-size:12px;padding:5px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--text-2);}
+.fund-chip b{color:var(--accent);margin-right:4px;font-variant-numeric:tabular-nums;}
+.invest-status{font-size:12.5px;line-height:1.5;margin:0 2px 12px;min-height:0;color:var(--text-2);}
+.invest-status.error{color:#C0392B;}
+.invest-status.loading{color:var(--accent);}
+.invest-empty{background:var(--bg);border-radius:var(--radius-sm);padding:18px 16px;color:var(--text-3);font-size:13px;line-height:1.6;text-align:center;}
+.invest-history{margin-top:6px;border-top:1px solid var(--line-soft);padding-top:12px;}
+.invest-history-title{font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:8px;}
+.invest-history-list{display:flex;flex-wrap:wrap;gap:7px;}
+.invest-history-chip{font-size:12px;padding:4px 11px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--text-2);cursor:pointer;transition:all .15s;}
+.invest-history-chip:hover{border-color:var(--accent);color:var(--accent);}
+.invest-history-empty{font-size:12px;color:var(--text-3);}
+@media(max-width:560px){
+  .invest-card-head{flex-direction:column;align-items:flex-start;gap:4px;}
+}
 </style>
 </head>
 <body>
@@ -1493,6 +1527,10 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     <button class="nav-item" data-tab="9" onclick="switchTab(9)">
       <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M4 5h16v12H4z"/><path d="M8 21h8M12 17v4"/></svg></span>
       <span class="nav-num">09</span><span class="nav-text">新闻联播 · 每日总结</span>
+    </button>
+    <button class="nav-item" data-tab="10" onclick="switchTab(10)">
+      <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M3 3h18v4H3z"/><path d="M3 10h18v4H3z"/><path d="M3 17h18v4H3z"/></svg></span>
+      <span class="nav-num">10</span><span class="nav-text">投资方向分析</span>
     </button>
   </nav>
   <div class="sidebar-footer" id="footerDate">
@@ -2389,6 +2427,30 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
   </div>
 </section>
 
+<!-- ========== Tab 10: 投资方向分析 ========== -->
+<section id="tab10" class="tab-section">
+  <div class="section-header">
+    <div class="section-title">投资方向分析</div>
+    <button class="btn btn-primary btn-sm" id="investGenBtn" onclick="generateInvest()">📊 生成分析</button>
+  </div>
+
+  <div class="invest-disclaimer">⚠️ 本功能基于《新闻联播》内容做主题映射，所列基金仅为<b>信息参考，不构成任何投资建议</b>。基金代码以交易所/基金公司最新公告为准，投资有风险，入市需谨慎。</div>
+
+  <div class="invest-controls" id="investDateWrap">
+    <span class="filter-label">分析日期</span>
+    <select id="investDate" onchange="renderInvestForDate(this.value)"></select>
+  </div>
+
+  <div class="invest-status" id="investStatus"></div>
+
+  <div id="investBody"></div>
+
+  <div class="invest-history">
+    <div class="invest-history-title">历史分析</div>
+    <div class="invest-history-list" id="investHistoryList"></div>
+  </div>
+</section>
+
 </main>
 </div>
 
@@ -2473,6 +2535,9 @@ var defaultDb = {
   },
   xwlb: {
     cache: {} // 按日期归档：{ 'YYYY-MM-DD': {date, titles, summary, generatedAt, note} }
+  },
+  invest: {
+    cache: {} // 按日期归档投资方向分析：{ 'YYYY-MM-DD': {date, themes:[{key,reason,level}], generatedAt, source} }
   }
 };
 
@@ -2538,6 +2603,7 @@ function switchTab(n){
   if(n === 7) renderBooks();
   if(n === 8) initDca();
   if(n === 9) initXwlb();
+  if(n === 10) initInvest();
   closeMobileSidebar();
 }
 
@@ -2724,6 +2790,175 @@ function viewXwlbDate(d){
   document.getElementById('xwlbDate').textContent = d;
   document.getElementById('xwlbFallback').style.display = 'none';
   renderXwlb(data, '归档');
+}
+
+/* ====== Tab 10: 投资方向分析 ====== */
+var THEME_FUNDS = {
+  ai:        { label:'人工智能 / AI', kw:['人工智能','AI','大模型','算力','机器人','智能','数字化转型','算法'], funds:[{code:'159819',name:'易方达中证人工智能ETF'},{code:'515980',name:'华富人工智能ETF'},{code:'588790',name:'博时上证科创板人工智能ETF'}] },
+  semi:      { label:'半导体 / 芯片', kw:['半导体','芯片','集成电路','光刻','算力芯片','晶圆','国产替代'], funds:[{code:'512480',name:'国联安中证全指半导体ETF'},{code:'512760',name:'国泰CES半导体芯片ETF'},{code:'159995',name:'华夏国证半导体芯片ETF'},{code:'588200',name:'嘉实上证科创板芯片ETF'}] },
+  robot:     { label:'机器人 / 具身智能', kw:['机器人','人形机器人','具身智能','智能制造','工业机器人'], funds:[{code:'562500',name:'华夏中证机器人ETF'},{code:'159530',name:'易方达机器人ETF'}] },
+  newenergy: { label:'新能源车 / 锂电', kw:['新能源','新能源车','电动车','锂电','充电桩','储能','电池','动力电池'], funds:[{code:'515030',name:'华夏中证新能源汽车ETF'},{code:'159806',name:'国泰中证新能源汽车ETF'},{code:'516160',name:'汇添富中证新能源ETF'}] },
+  green:     { label:'光伏 / 绿电 / 碳中和', kw:['光伏','风电','碳中和','绿电','清洁能源','绿色发展','新型储能'], funds:[{code:'515790',name:'华泰柏瑞中证光伏产业ETF'},{code:'159611',name:'广发中证全指电力ETF'}] },
+  military:  { label:'军工 / 国防', kw:['军工','国防','航天','航空','装备','卫星','兵器','导弹'], funds:[{code:'512660',name:'国泰中证军工ETF'},{code:'512810',name:'华宝中证军工ETF'},{code:'512710',name:'富国中证军工龙头ETF'}] },
+  medical:   { label:'医药 / 创新药', kw:['医药','创新药','生物','医疗','医保','健康','中医药','中药'], funds:[{code:'512010',name:'易方达沪深300医药ETF'},{code:'159938',name:'广发中证全指医药ETF'},{code:'560080',name:'汇添富中证中药ETF'}] },
+  consumer:  { label:'消费 / 白酒', kw:['消费','白酒','食品','零售','内需','促消费','服务消费','餐饮'], funds:[{code:'159928',name:'汇添富中证主要消费ETF'},{code:'512690',name:'鹏华中证酒ETF'},{code:'161725',name:'招商中证白酒LOF'}] },
+  digital:   { label:'5G / 数字经济 / 信创', kw:['5G','通信','数字经济','大数据','云计算','信创','数据要素','算力网络'], funds:[{code:'515050',name:'华夏中证5G通信ETF'},{code:'516700',name:'华宝中证大数据ETF'},{code:'560800',name:'鹏扬中证数字经济ETF'}] },
+  finance:   { label:'券商 / 金融', kw:['券商','证券','金融','资本市场','降准','降息','保险','银行'], funds:[{code:'512000',name:'华宝中证全指证券公司ETF'},{code:'512800',name:'华宝中证银行ETF'}] },
+  agri:      { label:'农业 / 乡村振兴', kw:['农业','乡村振兴','粮食','种业','农机','三农','丰收'], funds:[{code:'159825',name:'富国中证农业ETF'}] },
+  env:       { label:'环保 / 生态', kw:['环保','污染治理','生态文明','绿色发展','节能','降碳'], funds:[{code:'512580',name:'广发中证环保ETF'}] },
+  metal:     { label:'有色 / 稀土 / 资源', kw:['有色','金属','铜','铝','稀土','资源','锂矿','黄金'], funds:[{code:'512400',name:'南方中证申万有色金属ETF'},{code:'516780',name:'华泰柏瑞中证稀土产业ETF'}] },
+  energy:    { label:'煤炭 / 能源', kw:['煤炭','能源','石油','天然气','火电','油气'], funds:[{code:'515220',name:'国泰中证煤炭ETF'}] },
+  realestate:{ label:'地产 / 基建 / 建材', kw:['地产','房地产','基建','建材','城市更新','水利','保障房'], funds:[{code:'512200',name:'南方中证全指房地产ETF'},{code:'159745',name:'国泰中证建材ETF'}] },
+  media:     { label:'传媒 / 文旅', kw:['传媒','文旅','旅游','影视','游戏','文化','体育','假期'], funds:[{code:'512980',name:'广发中证传媒ETF'}] },
+  soe:       { label:'央企 / 国企改革', kw:['央企','国企','改革','市值管理','中特估','国资'], funds:[{code:'517090',name:'国泰中证央企创新驱动ETF'},{code:'560170',name:'南方中证国新央企科技引领ETF'}] },
+  hktech:    { label:'港股 / 互联网平台', kw:['港股','互联网','平台经济','恒生','中概','电商'], funds:[{code:'513770',name:'华宝中证港股通互联网ETF'}] },
+  gold:      { label:'黄金 / 避险', kw:['黄金','避险','贵金属','外汇储备','金价'], funds:[{code:'518880',name:'华安黄金ETF'}] },
+  broad:     { label:'宽基 / A股整体', kw:['股市','资本市场','A股','指数','稳增长','经济回升','大盘'], funds:[{code:'510300',name:'华泰柏瑞沪深300ETF'},{code:'510500',name:'南方中证500ETF'},{code:'588000',name:'华夏上证科创板50ETF'},{code:'159915',name:'易方达创业板ETF'}] }
+};
+function initInvest(){
+  if(!DB.invest) DB.invest = { cache: {} };
+  if(!DB.invest.cache) DB.invest.cache = {};
+  var wrap = document.getElementById('investDateWrap');
+  var sel = document.getElementById('investDate');
+  var dates = getXwlbSummaryDates();
+  if(!dates.length){
+    if(wrap) wrap.style.display = 'none';
+    document.getElementById('investBody').innerHTML = '<div class="invest-empty">请先在「新闻联播 · 每日总结」(Tab9) 生成某日的 AI 总结，再来此生成投资方向分析。</div>';
+    setInvestStatus('', '');
+    renderInvestHistory();
+    return;
+  }
+  if(wrap) wrap.style.display = '';
+  sel.innerHTML = dates.map(function(d){ return '<option value="'+d+'">'+d+'</option>'; }).join('');
+  sel.value = dates[0];
+  renderInvestForDate(dates[0]);
+}
+function getXwlbSummaryDates(){
+  var c = (DB.xwlb && DB.xwlb.cache) || {};
+  return Object.keys(c).filter(function(d){ return c[d] && c[d].summary; }).sort().reverse();
+}
+function flattenSummary(s){
+  if(!s) return '';
+  var parts = [];
+  if(s.lead) parts.push(s.lead);
+  (s.groups||[]).forEach(function(g){
+    (g.items||[]).forEach(function(it){ parts.push((it.title||'') + (it.point ? ('：'+it.point) : '')); });
+  });
+  return parts.join('\n');
+}
+function renderInvestForDate(date){
+  if(!date){ return; }
+  var cached = DB.invest.cache[date];
+  if(cached){ renderInvest(cached, '缓存'); return; }
+  document.getElementById('investBody').innerHTML = '<div class="invest-empty">点「📊 生成分析」，基于该日《新闻联播》总结，自动提炼可投资方向并列出对应基金。</div>';
+  setInvestStatus('', '');
+}
+function generateInvest(){
+  var sel = document.getElementById('investDate');
+  var date = sel ? sel.value : '';
+  if(!date){ toast('请先选择日期'); return; }
+  var data = DB.xwlb.cache[date];
+  if(!data || !data.summary){ toast('该日尚无 AI 总结，请先到 Tab9 生成'); return; }
+  var text = flattenSummary(data.summary);
+  var btn = document.getElementById('investGenBtn');
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ 分析中…'; }
+  if(!getQwenKey()){
+    finishInvest({ date: date, themes: matchThemesByKeyword(text), generatedAt: new Date().toISOString(), source: '关键词匹配' });
+    return;
+  }
+  var themeList = Object.keys(THEME_FUNDS).map(function(k){ return k + '=' + THEME_FUNDS[k].label; }).join('；');
+  var sys = '你是宏观策略分析师。根据下方《新闻联播》每日总结，判断其中蕴含的可投资方向，并为每个方向写一句话投资逻辑。严格只输出如下 JSON（不要任何额外文字）：{"themes":[{"key":"<必须且只能从上述主题列表的key中选一个>","reason":"一句话投资逻辑（30字以内）","level":"高/中/低"}]}';
+  var user = '可选主题列表（key=标签）：' + themeList + '\n\n《新闻联播》每日总结：\n' + text;
+  setInvestStatus('⏳ 通义千问分析中…', 'loading');
+  callQwenText(user, sys, 'qwen-plus').then(function(out){
+    var themes = ((out && out.themes) || []).map(function(t){
+      var k = normalizeThemeKey(t.key);
+      return { key: k, reason: t.reason || '', level: t.level || '中' };
+    }).filter(function(t){ return t.key && THEME_FUNDS[t.key]; });
+    finishInvest({ date: date, themes: themes, generatedAt: new Date().toISOString(), source: '通义千问' });
+  }).catch(function(err){
+    setInvestStatus('⚠ AI 分析失败：' + (err && err.message ? err.message : err) + '。已改用关键词兜底。', 'error');
+    finishInvest({ date: date, themes: matchThemesByKeyword(text), generatedAt: new Date().toISOString(), source: '关键词匹配(兜底)' });
+  });
+}
+function normalizeThemeKey(k){
+  if(!k) return null;
+  k = ('' + k).trim();
+  if(THEME_FUNDS[k]) return k;
+  var low = k.toLowerCase();
+  for(var key in THEME_FUNDS){
+    var lab = ('' + THEME_FUNDS[key].label).toLowerCase();
+    if(lab === low || lab.indexOf(low) >= 0 || low.indexOf(key.toLowerCase()) >= 0) return key;
+  }
+  return null;
+}
+function matchThemesByKeyword(text){
+  if(!text) return [];
+  var t = text.toLowerCase();
+  var out = [];
+  for(var key in THEME_FUNDS){
+    var hit = (THEME_FUNDS[key].kw || []).some(function(w){ return t.indexOf(w.toLowerCase()) >= 0; });
+    if(hit) out.push({ key: key, reason: '（根据新闻关键词自动匹配）', level: '中' });
+  }
+  return out;
+}
+function finishInvest(res){
+  DB.invest.cache[res.date] = res;
+  saveDb();
+  renderInvest(res, res.source);
+  var btn = document.getElementById('investGenBtn');
+  if(btn){ btn.disabled = false; btn.textContent = '📊 生成分析'; }
+}
+function lvlClass(lv){ return lv === '高' ? 'high' : (lv === '低' ? 'low' : 'mid'); }
+function renderInvest(res, sourceLabel){
+  var body = document.getElementById('investBody');
+  if(!res || !res.themes || !res.themes.length){
+    body.innerHTML = '<div class="invest-empty">该日新闻未匹配到明显可投资方向。可换个日期，或检查新闻总结是否完整。</div>';
+    setInvestStatus('', '');
+    renderInvestHistory();
+    return;
+  }
+  var html = '<div class="invest-meta">分析来源：' + escapeHtml(sourceLabel || '—') + ' · 共 ' + res.themes.length + ' 个方向</div>';
+  html += '<div class="invest-cards">';
+  res.themes.forEach(function(t){
+    var tf = THEME_FUNDS[t.key];
+    if(!tf) return;
+    var lv = (t.level === '高' || t.level === '中' || t.level === '低') ? t.level : '中';
+    var funds = (tf.funds || []).map(function(f){
+      return '<span class="fund-chip" title="' + escapeHtml(f.name) + '"><b>' + escapeHtml(f.code) + '</b>' + escapeHtml(f.name) + '</span>';
+    }).join('');
+    html += '<div class="invest-card">' +
+      '<div class="invest-card-head"><span class="invest-theme">' + escapeHtml(tf.label) + '</span><span class="invest-level lvl-' + lvlClass(lv) + '">' + lv + '匹配</span></div>' +
+      '<div class="invest-reason">' + escapeHtml(t.reason || '') + '</div>' +
+      '<div class="invest-funds-label">可关注基金</div>' +
+      '<div class="invest-funds">' + funds + '</div>' +
+    '</div>';
+  });
+  html += '</div>';
+  body.innerHTML = html;
+  setInvestStatus('', '');
+  renderInvestHistory();
+}
+function setInvestStatus(msg, type){
+  var el = document.getElementById('investStatus');
+  if(!el) return;
+  el.textContent = msg || '';
+  el.className = 'invest-status' + (type ? (' ' + type) : '');
+}
+function renderInvestHistory(){
+  var list = document.getElementById('investHistoryList');
+  if(!list) return;
+  var dates = Object.keys(DB.invest.cache || {}).sort().reverse();
+  if(!dates.length){ list.innerHTML = '<span class="invest-history-empty">暂无</span>'; return; }
+  list.innerHTML = dates.map(function(d){
+    return '<button class="invest-history-chip" onclick="viewInvestDate(\'' + d + '\')">' + d.slice(5) + '</button>';
+  }).join('');
+}
+function viewInvestDate(d){
+  var sel = document.getElementById('investDate');
+  if(sel && sel.querySelector('option[value="' + d + '"]')) sel.value = d;
+  var data = DB.invest.cache[d];
+  if(data) renderInvest(data, '归档');
 }
 
 /* ====== Pull-to-Refresh ====== */
