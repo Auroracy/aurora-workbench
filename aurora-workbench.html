@@ -1278,7 +1278,25 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 
 @media(max-width:560px){
   .dca-calc-head,.dca-calc-row{grid-template-columns:1.2fr 1fr 0.7fr 0.7fr 0.9fr;font-size:11px;padding:7px 6px;gap:3px;}
+  .dca-hist-head,.dca-hist-row{grid-template-columns:0.7fr 0.7fr 0.7fr 0.7fr 1.6fr 0.4fr;font-size:11px;padding:7px 8px;gap:4px;}
 }
+
+.dca-history-table{margin-top:6px;border:1px solid var(--line);border-radius:var(--radius-sm);overflow:hidden;}
+.dca-hist-head,.dca-hist-row{display:grid;grid-template-columns:0.8fr 0.7fr 0.8fr 0.7fr 1.7fr 0.5fr;gap:6px;padding:8px 12px;align-items:center;font-size:12.5px;font-variant-numeric:tabular-nums;}
+.dca-hist-head{background:var(--accent-bg);font-weight:600;color:var(--text-2);font-size:11.5px;}
+.dca-hist-row{border-top:1px solid var(--line-soft);}
+.dca-hist-ym{font-weight:600;color:var(--text);}
+.dca-hist-amt{text-align:right;font-weight:600;}
+.dca-hist-amt.n{color:var(--blue);}
+.dca-hist-amt.z{color:var(--green);}
+.dca-hist-amt.g{color:var(--amber);}
+.dca-hist-note{display:flex;align-items:center;gap:4px;color:var(--text-2);cursor:pointer;padding:2px 4px;border-radius:4px;overflow:hidden;}
+.dca-hist-note:hover{background:var(--input-bg);color:var(--text);}
+.dca-hist-note-text{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;}
+.dca-hist-note-edit{opacity:.4;flex-shrink:0;font-size:10px;transition:opacity .2s;color:var(--accent);}
+.dca-hist-note:hover .dca-hist-note-edit{opacity:1;}
+.dca-hist-empty{padding:18px 12px;text-align:center;color:var(--text-3);font-size:12.5px;}
+.dca-hist-actions{display:flex;justify-content:center;align-items:center;}
 
 /* ====== Filter Bar ====== */
 .filter-bar{display:flex;gap:0.5em;margin-bottom:0.9em;flex-wrap:wrap;align-items:center;}
@@ -2251,6 +2269,19 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
         <span class="dca-weight" id="dca_weight_gold">—</span>
         <span class="dca-amount" id="dca_amount_gold">—</span>
       </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title-row">
+      <div class="card-title">历史记录存档</div>
+      <span class="sub" style="font-size:11.5px;color:var(--text-3);">每月自动保存一条 · 点击备注可编辑</span>
+    </div>
+    <div class="dca-history-table">
+      <div class="dca-hist-head">
+        <span>年月</span><span>纳指</span><span>中证500</span><span>黄金</span><span>备注</span><span></span>
+      </div>
+      <div id="dcaHistoryList"></div>
     </div>
   </div>
 </section>
@@ -4659,12 +4690,103 @@ function initDca(){
       banner.innerHTML = '<span class="dca-firstday-icon">🎯</span>' +
         '<div class="dca-firstday-text"><b>今日是 ' + ymNow.replace('-', '年') + '月1日</b> · 定投日<br>' +
         '<span class="text-muted text-sm">已自动加载上月末最新点位</span></div>' +
+        '<button class="btn btn-ghost btn-sm" onclick="autoSaveDcaMonth(true)">📥 立即存档本月</button>' +
         '<button class="btn btn-ghost btn-sm" onclick="applyLastSavedPoints()">🔄 重新加载上月末点位</button>';
       applyLastSavedPoints(true);
+      autoSaveDcaMonth(true); // 1 号默认自动存档（保留已有备注）
     } else {
       banner.style.display = 'none';
     }
   }
+  // 4) 首次打开 Tab8 自动存档当月（点位齐全时，已有则跳过保留备注）
+  autoSaveDcaMonth(false);
+  // 5) 渲染历史记录存档表格
+  renderDcaHistory();
+}
+
+function getCurrentYm(){
+  var d = new Date();
+  return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2);
+}
+
+// 自动保存当月：已有则跳过（保留备注）；force=true 时强制覆盖更新
+function autoSaveDcaMonth(force){
+  var res = calcDca();
+  if(!res){ return false; }
+  var ym = getCurrentYm();
+  var existingIdx = -1;
+  for(var i = 0; i < DB.dca.history.length; i++){
+    if(DB.dca.history[i].ym === ym){ existingIdx = i; break; }
+  }
+  if(existingIdx >= 0 && !force){ return false; }
+  var points = {};
+  DCA_ITEMS.forEach(function(it){
+    points[it.key] = parseFloat(DB.dca.current[it.key]) || 0;
+  });
+  var note = (existingIdx >= 0 && DB.dca.history[existingIdx].note)
+    ? DB.dca.history[existingIdx].note
+    : ('自动存档 · ' + ym.replace('-', '年') + '月');
+  var record = {
+    ym: ym,
+    nasdaq: res.amounts[0],
+    zz500: res.amounts[1],
+    gold: res.amounts[2],
+    note: note,
+    points: points,
+    auto: true
+  };
+  if(existingIdx >= 0){
+    DB.dca.history[existingIdx] = record;
+    if(force) toast('已更新 ' + ym + ' 存档');
+  } else {
+    DB.dca.history.unshift(record);
+    toast('已自动存档 ' + ym);
+  }
+  saveDb();
+  renderDcaHistory();
+  return true;
+}
+
+function renderDcaHistory(){
+  var box = document.getElementById('dcaHistoryList');
+  if(!box) return;
+  if(!DB.dca.history || DB.dca.history.length === 0){
+    box.innerHTML = '<div class="dca-hist-empty">暂无存档，打开 Tab8 计算后将自动保存当月一条记录</div>';
+    return;
+  }
+  box.innerHTML = DB.dca.history.map(function(h, i){
+    return '<div class="dca-hist-row">' +
+      '<span class="dca-hist-ym">' + escapeHtml(h.ym) + '</span>' +
+      '<span class="dca-hist-amt n">¥' + (h.nasdaq || 0) + '</span>' +
+      '<span class="dca-hist-amt z">¥' + (h.zz500 || 0) + '</span>' +
+      '<span class="dca-hist-amt g">¥' + (h.gold || 0) + '</span>' +
+      '<span class="dca-hist-note" onclick="editDcaHistoryNote(' + i + ')" title="点击编辑备注">' +
+        '<span class="dca-hist-note-text">' + escapeHtml(h.note || '点击编辑备注') + '</span>' +
+        '<span class="dca-hist-note-edit">✎</span>' +
+      '</span>' +
+      '<span class="dca-hist-actions">' +
+        '<button class="btn-icon" onclick="deleteDcaHistory(' + i + ')" title="删除">&#10005;</button>' +
+      '</span>' +
+    '</div>';
+  }).join('');
+}
+
+function editDcaHistoryNote(i){
+  var h = DB.dca.history[i];
+  if(!h) return;
+  var v = prompt('编辑备注（' + h.ym + '）', h.note || '');
+  if(v === null) return;
+  h.note = v.trim();
+  saveDb();
+  renderDcaHistory();
+  toast('备注已更新');
+}
+
+function deleteDcaHistory(i){
+  if(!confirm('确定删除 ' + DB.dca.history[i].ym + ' 的存档吗？')) return;
+  DB.dca.history.splice(i, 1);
+  saveDb();
+  renderDcaHistory();
 }
 
 // 把最近一次历史点位的「当前点位」套用到计算器
@@ -4688,6 +4810,8 @@ function applyLastSavedPoints(silent){
   });
   saveDb();
   calcDca();
+  autoSaveDcaMonth(false);
+  renderDcaHistory();
   if(!silent) toast('已加载 ' + last.ym + ' 点位（' + (last.points.nasdaq||0) + ' / ' + (last.points.zz500||0) + ' / ' + (last.points.gold||0) + '）');
 }
 
