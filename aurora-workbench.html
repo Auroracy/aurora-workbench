@@ -1278,13 +1278,13 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 
 @media(max-width:560px){
   .dca-calc-head,.dca-calc-row{grid-template-columns:1.2fr 1fr 0.7fr 0.7fr 0.9fr;font-size:11px;padding:7px 6px;gap:3px;}
-  .dca-hist-head,.dca-hist-row{grid-template-columns:0.9fr 1fr 1fr 1fr 0.8fr 2fr 0.6fr;}
+  .dca-hist-head,.dca-hist-row{grid-template-columns:0.9fr 1fr 1fr 1fr 0.8fr 1.8fr 0.7fr 0.6fr;}
   .dca-hist-head span,.dca-hist-row>span{padding:8px 4px;font-size:11px;}
   .dca-hist-note{padding:6px 8px;}
 }
 
 .dca-history-table{margin-top:8px;border:1px solid var(--line);border-radius:var(--radius-sm);overflow:hidden;background:#fff;}
-.dca-hist-head,.dca-hist-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 0.9fr 1.8fr 0.5fr;gap:0;align-items:stretch;font-variant-numeric:tabular-nums;}
+.dca-hist-head,.dca-hist-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 0.9fr 1.6fr 0.7fr 0.5fr;gap:0;align-items:stretch;font-variant-numeric:tabular-nums;}
 .dca-hist-head{background:var(--accent-bg);font-size:11.5px;font-weight:600;color:var(--text-2);}
 .dca-hist-head span{display:flex;align-items:center;justify-content:center;padding:9px 6px;text-align:center;border-right:1px solid var(--line-soft);}
 .dca-hist-head span:last-child{border-right:0;}
@@ -1296,6 +1296,8 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 .dca-hist-amt.z{color:var(--green);font-weight:600;}
 .dca-hist-amt.g{color:var(--amber);font-weight:600;}
 .dca-hist-total{color:var(--accent);font-weight:700;}
+.dca-hist-detail-btn{display:flex;align-items:center;justify-content:center;}
+.dca-hist-detail-btn .btn{font-size:11px;padding:2px 9px;}
 .dca-hist-note{cursor:pointer;padding:6px 28px 6px 10px;color:var(--text-2);font-weight:400;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;justify-content:flex-start !important;text-align:left !important;position:relative;}
 .dca-hist-note:hover{background:var(--input-bg);color:var(--text);}
 .dca-hist-note-edit{position:absolute;right:6px;top:50%;transform:translateY(-50%);opacity:.35;font-size:10px;color:var(--accent);transition:opacity .2s;pointer-events:none;}
@@ -2300,7 +2302,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     </div>
     <div class="dca-history-table">
       <div class="dca-hist-head">
-        <span>年月</span><span>纳指</span><span>中证500</span><span>黄金</span><span>合计</span><span>备注</span><span></span>
+        <span>年月</span><span>纳指</span><span>中证500</span><span>黄金</span><span>合计</span><span>备注</span><span>详情</span><span></span>
       </div>
       <div id="dcaHistoryList"></div>
     </div>
@@ -4806,7 +4808,6 @@ function renderDcaHistory(){
     return;
   }
   box.innerHTML = DB.dca.history.map(function(h, i){
-    var detailHtml = renderDcaHistoryDetail(h);
     return '<div class="dca-hist-row">' +
       '<span class="dca-hist-ym">' + escapeHtml(h.ym) + '</span>' +
       '<span class="dca-hist-amt n">¥' + (h.nasdaq || 0) + '</span>' +
@@ -4817,10 +4818,13 @@ function renderDcaHistory(){
         escapeHtml(h.note || '点击编辑备注') +
         '<span class="dca-hist-note-edit">✎</span>' +
       '</span>' +
+      '<span class="dca-hist-detail-btn">' +
+        '<button class="btn btn-ghost btn-sm" onclick="openDcaDetail(' + i + ')">详情</button>' +
+      '</span>' +
       '<span class="dca-hist-del">' +
         '<button class="btn-icon" onclick="deleteDcaHistory(' + i + ')" title="删除">&#10005;</button>' +
       '</span>' +
-    '</div>' + detailHtml;
+    '</div>';
   }).join('');
 }
 
@@ -4865,6 +4869,22 @@ function renderDcaHistoryDetail(h){
     '比值总和 <b>' + sumRatio.toFixed(2) + '</b> · 预算 <b>¥' + budget + '</b> · 差额自动补到比值最高品种' +
   '</div>';
   return '<div class="dca-hist-detail">' + headRow + bodyRows + footRow + '</div>';
+}
+
+function openDcaDetail(i){
+  var h = DB.dca.history[i];
+  if(!h) return;
+  var body = document.getElementById('dcaDetailBody');
+  if(body) body.innerHTML = renderDcaHistoryDetail(h);
+  var title = document.getElementById('dcaDetailTitle');
+  if(title) title.textContent = (h.ym || '定投') + ' 定投明细';
+  var ov = document.getElementById('dcaDetailOverlay');
+  if(ov) ov.classList.add('show');
+}
+
+function closeDcaDetail(){
+  var ov = document.getElementById('dcaDetailOverlay');
+  if(ov) ov.classList.remove('show');
 }
 
 function editDcaHistoryNote(i){
@@ -5526,6 +5546,16 @@ window.addEventListener('DOMContentLoaded', init);
         <button class="btn btn-primary" onclick="saveBook()">保存笔记</button>
       </div>
     </div>
+  </div>
+</div>
+
+<div class="book-overlay" id="dcaDetailOverlay" onclick="if(event.target===this)closeDcaDetail()">
+  <div class="book-modal">
+    <div class="book-modal-header">
+      <div class="book-modal-title" id="dcaDetailTitle">定投明细</div>
+      <button class="book-modal-close" onclick="closeDcaDetail()">&times;</button>
+    </div>
+    <div class="book-modal-body" id="dcaDetailBody"></div>
   </div>
 </div>
 </body>
