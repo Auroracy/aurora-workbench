@@ -1280,12 +1280,12 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 
 @media(max-width:560px){
   .dca-calc-head,.dca-calc-row{grid-template-columns:1.1fr 0.95fr 0.95fr 0.55fr 0.55fr 0.95fr;font-size:11px;padding:7px 6px;gap:3px;}
-  .dca-hist-head,.dca-hist-row{grid-template-columns:0.9fr 1fr 1fr 1fr 0.7fr 0.6fr;}
+  .dca-hist-head,.dca-hist-row{grid-template-columns:1fr 1fr 1fr 1fr 0.7fr;}
   .dca-hist-head span,.dca-hist-row>span{padding:8px 4px;font-size:11px;}
 }
 
 .dca-history-table{margin-top:8px;border:1px solid var(--line);border-radius:var(--radius-sm);overflow:hidden;background:#fff;}
-.dca-hist-head,.dca-hist-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 0.7fr 0.5fr;gap:0;align-items:stretch;font-variant-numeric:tabular-nums;}
+.dca-hist-head,.dca-hist-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 0.7fr;gap:0;align-items:stretch;font-variant-numeric:tabular-nums;}
 .dca-hist-head{background:var(--accent-bg);font-size:11.5px;font-weight:600;color:var(--text-2);}
 .dca-hist-head span{display:flex;align-items:center;justify-content:center;padding:9px 6px;text-align:center;border-right:1px solid var(--line-soft);}
 .dca-hist-head span:last-child{border-right:0;}
@@ -1298,13 +1298,13 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 .dca-hist-amt.g{color:var(--amber);font-weight:600;}
 .dca-hist-detail-btn{display:flex;align-items:center;justify-content:center;}
 .dca-hist-detail-btn .btn{font-size:11px;padding:2px 9px;}
-.dca-history-foot{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 0.7fr 0.5fr;gap:0;margin-top:4px;padding:9px 0;border-top:2px solid var(--accent);background:var(--accent-bg);font-variant-numeric:tabular-nums;}
+.dca-history-foot{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 0.7fr;gap:0;margin-top:4px;padding:9px 0;border-top:2px solid var(--accent);background:var(--accent-bg);font-variant-numeric:tabular-nums;}
 .dca-history-foot span{display:flex;align-items:center;justify-content:center;padding:0 8px;font-size:13px;font-weight:700;}
 .dca-history-foot .foot-label{color:var(--accent);justify-content:flex-start;padding-left:14px;}
 .dca-history-foot .foot-amt{color:var(--text);}
 .dca-history-foot .foot-total{color:var(--accent);font-size:14px;}
 @media(max-width:560px){
-  .dca-history-foot{grid-template-columns:0.9fr 1fr 1fr 1fr 0.7fr 0.6fr;font-size:11px;padding:6px 0;}
+  .dca-history-foot{grid-template-columns:0.9fr 1fr 1fr 1fr 0.7fr;font-size:11px;padding:6px 0;}
   .dca-history-foot span{font-size:11.5px;padding:0 4px;}
   .dca-history-foot .foot-label{padding-left:8px;}
 }
@@ -2313,7 +2313,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     </div>
     <div class="dca-history-table">
       <div class="dca-hist-head">
-        <span>年月</span><span>纳指</span><span>中证500</span><span>黄金</span><span>详情</span><span></span>
+        <span>年月</span><span>纳指</span><span>中证500</span><span>黄金</span><span>详情</span>
       </div>
       <div id="dcaHistoryList"></div>
     </div>
@@ -4913,9 +4913,6 @@ function renderDcaHistory(){
       '<span class="dca-hist-detail-btn">' +
         '<button class="btn btn-ghost btn-sm" onclick="openDcaDetail(' + i + ')">详情</button>' +
       '</span>' +
-      '<span class="dca-hist-del">' +
-        '<button class="btn-icon" onclick="deleteDcaHistory(' + i + ')" title="删除">&#10005;</button>' +
-      '</span>' +
     '</div>';
   }).join('');
   var footHtml = '<div class="dca-history-foot">' +
@@ -4924,7 +4921,6 @@ function renderDcaHistory(){
     '<span class="foot-amt">¥' + totals.zz500 + '</span>' +
     '<span class="foot-amt">¥' + totals.gold + '</span>' +
     '<span class="foot-total">共 ¥' + totalSum + '</span>' +
-    '<span></span>' +
   '</div>';
   box.innerHTML = rowsHtml + footHtml;
 }
