@@ -1278,25 +1278,28 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 
 @media(max-width:560px){
   .dca-calc-head,.dca-calc-row{grid-template-columns:1.2fr 1fr 0.7fr 0.7fr 0.9fr;font-size:11px;padding:7px 6px;gap:3px;}
-  .dca-hist-head,.dca-hist-row{grid-template-columns:0.7fr 0.7fr 0.7fr 0.7fr 1.6fr 0.4fr;font-size:11px;padding:7px 8px;gap:4px;}
+  .dca-hist-head,.dca-hist-row{grid-template-columns:0.9fr 1fr 1fr 1fr 2fr 0.6fr;}
+  .dca-hist-head span,.dca-hist-row>span{padding:8px 4px;font-size:11px;}
+  .dca-hist-note{padding:6px 8px;}
 }
 
-.dca-history-table{margin-top:6px;border:1px solid var(--line);border-radius:var(--radius-sm);overflow:hidden;}
-.dca-hist-head,.dca-hist-row{display:grid;grid-template-columns:0.8fr 0.7fr 0.8fr 0.7fr 1.7fr 0.5fr;gap:6px;padding:8px 12px;align-items:center;font-size:12.5px;font-variant-numeric:tabular-nums;}
-.dca-hist-head{background:var(--accent-bg);font-weight:600;color:var(--text-2);font-size:11.5px;}
+.dca-history-table{margin-top:8px;border:1px solid var(--line);border-radius:var(--radius-sm);overflow:hidden;background:#fff;}
+.dca-hist-head,.dca-hist-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 2fr 0.5fr;gap:0;align-items:stretch;font-variant-numeric:tabular-nums;}
+.dca-hist-head{background:var(--accent-bg);font-size:11.5px;font-weight:600;color:var(--text-2);}
+.dca-hist-head span{display:flex;align-items:center;justify-content:center;padding:9px 6px;text-align:center;border-right:1px solid var(--line-soft);}
+.dca-hist-head span:last-child{border-right:0;}
 .dca-hist-row{border-top:1px solid var(--line-soft);}
-.dca-hist-ym{font-weight:600;color:var(--text);}
-.dca-hist-amt{text-align:right;font-weight:600;}
-.dca-hist-amt.n{color:var(--blue);}
-.dca-hist-amt.z{color:var(--green);}
-.dca-hist-amt.g{color:var(--amber);}
-.dca-hist-note{display:flex;align-items:center;gap:4px;color:var(--text-2);cursor:pointer;padding:2px 4px;border-radius:4px;overflow:hidden;}
+.dca-hist-row>span{display:flex;align-items:center;justify-content:center;padding:9px 8px;text-align:center;border-right:1px solid var(--line-soft);font-size:12.5px;color:var(--text);}
+.dca-hist-row>span:last-child{border-right:0;}
+.dca-hist-ym{font-weight:600;}
+.dca-hist-amt.n{color:var(--blue);font-weight:600;}
+.dca-hist-amt.z{color:var(--green);font-weight:600;}
+.dca-hist-amt.g{color:var(--amber);font-weight:600;}
+.dca-hist-note{cursor:pointer;padding:6px 28px 6px 10px;color:var(--text-2);font-weight:400;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;justify-content:flex-start !important;text-align:left !important;position:relative;}
 .dca-hist-note:hover{background:var(--input-bg);color:var(--text);}
-.dca-hist-note-text{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;}
-.dca-hist-note-edit{opacity:.4;flex-shrink:0;font-size:10px;transition:opacity .2s;color:var(--accent);}
-.dca-hist-note:hover .dca-hist-note-edit{opacity:1;}
-.dca-hist-empty{padding:18px 12px;text-align:center;color:var(--text-3);font-size:12.5px;}
-.dca-hist-actions{display:flex;justify-content:center;align-items:center;}
+.dca-hist-note-edit{position:absolute;right:6px;top:50%;transform:translateY(-50%);opacity:.35;font-size:10px;color:var(--accent);transition:opacity .2s;pointer-events:none;}
+.dca-hist-note:hover .dca-hist-note-edit{opacity:.9;}
+.dca-hist-empty{padding:18px 12px;text-align:center;font-size:12.5px;color:var(--text-3);background:var(--input-bg);border-radius:var(--radius-sm);margin-top:8px;}
 
 /* ====== Filter Bar ====== */
 .filter-bar{display:flex;gap:0.5em;margin-bottom:0.9em;flex-wrap:wrap;align-items:center;}
@@ -2367,11 +2370,7 @@ var defaultDb = {
     current: { nasdaq: '28274', zz500: '7454', gold: '883' },
     history: [
       { ym: '2026-08', nasdaq: 936, zz500: 1029, gold: 1034, note: '上个月忘了买定投，多买了188。本月买754',
-        points: { nasdaq: 28274, zz500: 7454, gold: 883 }, avgs: { nasdaq: 22548.87, zz500: 6536, gold: 778 } },
-      { ym: '2026-07', nasdaq: 942, zz500: 928, gold: 1130, note: '限购，每月定投50，需要20天',
-        points: { nasdaq: 30276, zz500: 9030, gold: 871 }, avgs: { nasdaq: 22177, zz500: 6517, gold: 765 } },
-      { ym: '2026-06', nasdaq: 960, zz500: 1018, gold: 1022, note: '原本是限购，要换新的，也限购，分几天买',
-        points: { nasdaq: 30333, zz500: 8358, gold: 990 }, avgs: { nasdaq: 21729, zz500: 6350, gold: 755 } }
+        points: { nasdaq: 28274, zz500: 7454, gold: 883 }, avgs: { nasdaq: 22548.87, zz500: 6536, gold: 778 } }
     ]
   }
 };
@@ -2391,6 +2390,17 @@ function loadDb(){
   } catch(e){
     DB = JSON.parse(JSON.stringify(defaultDb));
   }
+  migrateDcaHistory();
+}
+
+function migrateDcaHistory(){
+  // 用户实际从 2026-08 开始定投，清除 demo / 早期历史中的 2026-06 / 2026-07
+  if(!DB.dca || !Array.isArray(DB.dca.history)) return;
+  var before = DB.dca.history.length;
+  DB.dca.history = DB.dca.history.filter(function(h){
+    return h && h.ym && h.ym !== '2026-06' && h.ym !== '2026-07';
+  });
+  if(DB.dca.history.length !== before){ saveDb(); }
 }
 function saveDb(){
   localStorage.setItem(DB_KEY, JSON.stringify(DB));
@@ -4761,10 +4771,10 @@ function renderDcaHistory(){
       '<span class="dca-hist-amt z">¥' + (h.zz500 || 0) + '</span>' +
       '<span class="dca-hist-amt g">¥' + (h.gold || 0) + '</span>' +
       '<span class="dca-hist-note" onclick="editDcaHistoryNote(' + i + ')" title="点击编辑备注">' +
-        '<span class="dca-hist-note-text">' + escapeHtml(h.note || '点击编辑备注') + '</span>' +
+        escapeHtml(h.note || '点击编辑备注') +
         '<span class="dca-hist-note-edit">✎</span>' +
       '</span>' +
-      '<span class="dca-hist-actions">' +
+      '<span class="dca-hist-del">' +
         '<button class="btn-icon" onclick="deleteDcaHistory(' + i + ')" title="删除">&#10005;</button>' +
       '</span>' +
     '</div>';
