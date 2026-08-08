@@ -2783,6 +2783,7 @@ var XWLB_PROXIES = [
 ];
 function loadXwlb(force){
   var date = getXwlbToday();
+  currentXwlbView = date;
   var cached = DB.xwlb.cache[date];
   if(cached && !force){
     renderXwlb(cached, '缓存');
@@ -2901,6 +2902,7 @@ function summarizeXwlbManual(){
         note: '手动生成'
       };
       saveXwlbCache(data);
+      currentXwlbView = data.date;
       renderXwlb(data, '手动生成');
       renderXwlbHistory();
     })
@@ -2939,18 +2941,23 @@ function renderXwlbHistory(){
   if(!list) return;
   var dates = Object.keys(DB.xwlb.cache || {}).sort().reverse();
   if(!dates.length){ list.innerHTML = '<span class="xwlb-history-empty">暂无归档</span>'; return; }
+  // 优先用 currentXwlbView（用户最近点开的日期），其次回退到今天
+  var activeDate = currentXwlbView || getXwlbToday();
   list.innerHTML = dates.map(function(d){
     var has = DB.xwlb.cache[d] && DB.xwlb.cache[d].summary;
-    return '<button class="xwlb-history-chip' + (d === getXwlbToday() ? ' active' : '') + '" onclick="viewXwlbDate(\'' + d + '\')">' + d.slice(5) + (has ? '' : '·原') + '</button>';
+    return '<button class="xwlb-history-chip' + (d === activeDate ? ' active' : '') + '" onclick="viewXwlbDate(\'' + d + '\')">' + d.slice(5) + (has ? '' : '·原') + '</button>';
   }).join('');
 }
+var currentXwlbView = null; // 最近点开/正在查看的归档日期（驱动历史 chip 高亮）
 function viewXwlbDate(d){
   var data = DB.xwlb.cache[d];
   if(!data) return;
+  currentXwlbView = d;
   document.getElementById('xwlbDate').textContent = d;
   document.getElementById('xwlbFallback').style.display = 'none';
   renderXwlb(data, '归档');
   refreshXwlbInvestPanel(d);
+  renderXwlbHistory();
 }
 
 /* ====== Tab 9 投资方向（合并显示） ====== */
