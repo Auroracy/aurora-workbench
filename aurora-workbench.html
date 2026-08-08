@@ -1159,6 +1159,7 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
   cursor:pointer;font-family:inherit;
 }
 .metric-manual button:hover{opacity:0.9;}
+.metric-suffix{font-size:10.5px;color:var(--text-2);font-weight:400;margin-left:4px;padding:1px 5px;background:var(--bg);border-radius:8px;vertical-align:1px;}
 .gold-proxy-row{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:7px;font-size:11px;}
 .gold-proxy-status{color:var(--text-3);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .gold-proxy-status.ok{color:var(--accent);}
@@ -2053,7 +2054,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
         <div class="metric-change" id="goldIntlChg">取数中…</div>
       </div>
       <div class="metric-tile gold-tile" id="goldDomTile">
-        <div class="metric-label">国内金价 (元/克)</div>
+        <div class="metric-label" title="直连 / Worker 代理失败时，用 518880 ETF×100 (1 份=0.01克) 兜底估算 Au99.99 克价，误差<1%">国内金价 (元/克) <span class="metric-suffix">ETF×100 兜底</span></div>
         <div class="metric-value" id="goldDomPrice">—</div>
         <div class="metric-change" id="goldDomChg">取数中…</div>
         <div class="metric-manual">
@@ -5191,6 +5192,19 @@ async function fetchGoldQuotes(manual){
     var results = await Promise.all([tryFetchIntlGold(), tryFetchDomGold(), tryFetchEtfGold()]);
     var intl = results[0], dom = results[1], etf = results[2];
 
+    /* 国内金价 ETF×100 兜底：1 份 518880 ETF = 0.01 克黄金 → ETF价格×100 ≈ Au99.99 元/克（误差<1%），
+       仅在直连/代理/手动输入都拿不到真实 Au99.99 时启用，瓦片会标"518880×100 估算" */
+    if(!dom && etf && !DB.market.gold.domManual){
+      dom = {
+        price: etf.price * 100,
+        prev: etf.prev * 100,
+        chg: (isFinite(etf.chg) ? etf.chg : (etf.price - etf.prev)) * 100,
+        chgPct: etf.chgPct,
+        ts: etf.ts || Date.now(),
+        viaEtfApprox: true
+      };
+    }
+
     DB.market.gold = { intl:intl, dom:dom, etf:etf, ts:ts, updatedAt: Date.now() };
     saveDb();
     renderGoldTiles();
@@ -5229,6 +5243,18 @@ function fillGoldTile(priceId, chgId, d, fallbackMsg){
     pEl.className = 'metric-value flat';
     cEl.textContent = '手动输入 · ' + formatGoldTs(d.ts);
     cEl.className = 'metric-change flat';
+    return;
+  }
+  /* ETF×100 估算值：保留涨跌方向 + 颜色，chg 文字尾注"518880×100估算" */
+  if(d.viaEtfApprox){
+    var ad = d.price > 100 ? 2 : (d.price > 10 ? 3 : 4);
+    pEl.textContent = d.price.toFixed(ad);
+    var sdir = d.chgPct > 0.005 ? 'up' : (d.chgPct < -0.005 ? 'down' : 'flat');
+    var sarrow = sdir === 'up' ? '⬆' : (sdir === 'down' ? '⬇' : '—');
+    var ssign = d.chgPct > 0 ? '+' : '';
+    pEl.className = 'metric-value ' + sdir;
+    cEl.textContent = sarrow + ' ' + ssign + d.chgPct.toFixed(2) + '% · 518880×100估算';
+    cEl.className = 'metric-change ' + sdir;
     return;
   }
   var dir = d.chgPct > 0.005 ? 'up' : (d.chgPct < -0.005 ? 'down' : 'flat');
