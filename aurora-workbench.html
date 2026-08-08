@@ -1159,6 +1159,20 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
   cursor:pointer;font-family:inherit;
 }
 .metric-manual button:hover{opacity:0.9;}
+.gold-proxy-row{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:7px;font-size:11px;}
+.gold-proxy-status{color:var(--text-3);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.gold-proxy-status.ok{color:var(--accent);}
+.gold-proxy-status.err{color:var(--red);}
+.gold-proxy-toggle{color:var(--accent);cursor:pointer;text-decoration:none;white-space:nowrap;}
+.gold-proxy-toggle:hover{text-decoration:underline;}
+.gold-proxy-panel{background:var(--bg);border-radius:var(--radius-sm);padding:10px 12px;margin-top:6px;font-size:12px;}
+.gold-proxy-panel .form-label{margin-bottom:3px;font-size:11px;}
+.gold-proxy-panel input{font-size:11.5px;font-family:var(--mono);}
+.gold-proxy-panel-btns{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;}
+.gold-proxy-panel-btns button{font-size:11.5px;padding:4px 10px;border:none;border-radius:6px;background:var(--accent);color:#fff;cursor:pointer;font-family:inherit;}
+.gold-proxy-panel-btns button.ghost{background:var(--input-bg);color:var(--text-2);border:1px solid var(--line);}
+.gold-proxy-hint{font-size:11px;color:var(--text-3);margin-top:6px;line-height:1.55;}
+.gold-proxy-hint a{color:var(--accent);}
 
 /* News card cleaner (v2) */
 .news-card{
@@ -2045,6 +2059,20 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
         <div class="metric-manual">
           <input type="number" id="goldDomManualInput" placeholder="手动输入" step="0.01" min="0">
           <button type="button" onclick="saveDomGoldManual()">保存</button>
+        </div>
+        <div class="gold-proxy-row">
+          <span class="gold-proxy-status" id="goldProxyStatus">代理：未配置</span>
+          <a class="gold-proxy-toggle" id="goldProxyToggle" onclick="toggleGoldProxyPanel()">⚙ 配置</a>
+        </div>
+        <div class="gold-proxy-panel" id="goldProxyPanel" style="display:none;">
+          <label class="form-label">Cloudflare Worker URL</label>
+          <input type="text" id="goldProxyUrlInput" placeholder="https://xxx.workers.dev">
+          <div class="gold-proxy-panel-btns">
+            <button onclick="saveGoldProxy()">保存并刷新</button>
+            <button onclick="testGoldProxy()" class="ghost">🔍 测试代理</button>
+            <button onclick="clearGoldProxy()" class="ghost">清除</button>
+          </div>
+          <div class="gold-proxy-hint" id="goldProxyHint">未配置：纯前端无法绕过新浪 Referer 锁。部署 Cloudflare Worker（<a href="https://github.com/Auroracy/aurora-workbench/blob/main/gold-proxy-worker.js" target="_blank">gold-proxy-worker.js</a>）即可秒级拿到实时 Au99.99，免费额度足够。</div>
         </div>
       </div>
       <div class="metric-tile gold-tile" id="goldEtfTile">
@@ -5081,6 +5109,18 @@ function parseSinaSge(text){
 }
 
 function tryFetchDomGold(){
+  /* 优先走 Cloudflare Worker 代理（绕过新浪 Referer 锁），未配置时退回直连 */
+  var proxy = getGoldProxyUrl();
+  if(proxy){
+    var url = proxy.replace(/\/+$/, '') + '/sge';
+    return tryFetchOnce(url, 'utf-8')
+      .then(function(text){
+        var j; try { j = JSON.parse(text); } catch(e){ return null; }
+        if(!j || j.error || !isFinite(j.price) || j.price <= 0) return null;
+        return { price: j.price, prev: j.prev, chg: j.chg, chgPct: j.chgPct, ts: j.ts || Date.now(), viaProxy: true };
+      })
+      .catch(function(){ return null; });
+  }
   return tryFetchSequence([
     'https://hq.sinajs.cn/list=SGE_AU9999'
   ], parseSinaSge, 'gb18030');
@@ -5188,6 +5228,92 @@ function formatGoldTs(ts){
   return m + '/' + dd + ' ' + hh + ':' + mm;
 }
 
+/* === 国内金价代理（Cloudflare Worker 绕过新浪 Referer 锁） === */
+var GOLD_PROXY_KEY = 'aurora_gold_proxy';
+function getGoldProxyUrl(){
+  try { return (localStorage.getItem(GOLD_PROXY_KEY) || '').trim(); } catch(e){ return ''; }
+}
+function setGoldProxyUrl(url){
+  try {
+    url = (url || '').trim();
+    if(url){
+      if(!/^https?:\/\/[^\s]+\.[^\s]+/.test(url)) throw new Error('URL 必须形如 https://xxx.workers.dev');
+      localStorage.setItem(GOLD_PROXY_KEY, url);
+    } else {
+      localStorage.removeItem(GOLD_PROXY_KEY);
+    }
+  } catch(e){
+    toast('保存失败：' + (e.message || e));
+    throw e;
+  }
+}
+function toggleGoldProxyPanel(){
+  var panel = document.getElementById('goldProxyPanel');
+  if(!panel) return;
+  if(panel.style.display === 'none'){
+    var inp = document.getElementById('goldProxyUrlInput');
+    if(inp) inp.value = getGoldProxyUrl();
+    panel.style.display = 'block';
+  } else {
+    panel.style.display = 'none';
+  }
+}
+function saveGoldProxy(){
+  var inp = document.getElementById('goldProxyUrlInput');
+  if(!inp) return;
+  try {
+    setGoldProxyUrl(inp.value);
+    toast('✓ 已保存代理 URL');
+    updateGoldProxyStatus();
+    fetchGoldQuotes(true);
+  } catch(e){ /* setGoldProxyUrl 已 toast */ }
+}
+function clearGoldProxy(){
+  try {
+    setGoldProxyUrl('');
+    var inp = document.getElementById('goldProxyUrlInput');
+    if(inp) inp.value = '';
+    toast('已清除代理');
+    updateGoldProxyStatus();
+    fetchGoldQuotes(true);
+  } catch(e){}
+}
+async function testGoldProxy(){
+  var inp = document.getElementById('goldProxyUrlInput');
+  var hint = document.getElementById('goldProxyHint');
+  var url = (inp && inp.value || '').trim();
+  if(!url){ toast('请先填入 Worker URL'); return; }
+  if(hint){ hint.textContent = '⏳ 测试中…'; hint.style.color = 'var(--text-3)'; }
+  try {
+    var r = await fetchWithTimeout(url.replace(/\/+$/,'') + '/health', 10000);
+    var j = await r.json().catch(function(){ return null; });
+    if(j && j.ok){
+      if(hint){ hint.innerHTML = '✓ 代理连通！返回：' + JSON.stringify(j).slice(0,80); hint.style.color = 'var(--accent)'; }
+      toast('✓ 代理连通');
+    } else {
+      if(hint){ hint.innerHTML = '⚠ 返回格式异常：' + JSON.stringify(j || {}).slice(0,120); hint.style.color = 'var(--red)'; }
+    }
+  } catch(e){
+    if(hint){ hint.innerHTML = '✗ 连接失败：' + escapeHtml(e.message || String(e)); hint.style.color = 'var(--red)'; }
+  }
+}
+function updateGoldProxyStatus(){
+  var st = document.getElementById('goldProxyStatus');
+  if(!st) return;
+  var url = getGoldProxyUrl();
+  if(url){
+    var shortUrl = url.replace(/^https?:\/\//,'').replace(/\/+$/,'');
+    if(shortUrl.length > 28) shortUrl = shortUrl.slice(0, 25) + '…';
+    st.textContent = '代理：' + shortUrl;
+    st.title = url;
+    st.className = 'gold-proxy-status ok';
+  } else {
+    st.textContent = '代理：未配置';
+    st.title = '';
+    st.className = 'gold-proxy-status';
+  }
+}
+
 function saveDomGoldManual(){
   var inp = document.getElementById('goldDomManualInput');
   if(!inp) return;
@@ -5241,6 +5367,7 @@ function renderGoldTiles(){
   var subEl = document.getElementById('goldMoodSub');
   if(mainEl) mainEl.textContent = mood.main;
   if(subEl) subEl.textContent = mood.sub;
+  updateGoldProxyStatus();
 }
 
 /* --- Tab4 v2 helpers (顶部三联卡 + 新闻情绪) --- */
