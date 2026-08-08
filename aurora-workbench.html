@@ -1480,7 +1480,17 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 .xwlb-history-chip.active{background:var(--accent);border-color:var(--accent);color:#fff;}
 .xwlb-history-empty{font-size:12px;color:var(--text-3);}
 .xwlb-track{margin-top:14px;border-top:1px dashed var(--line-soft);padding-top:14px;}
+.track-filter-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
+.track-filter-label{font-size:12px;font-weight:600;color:var(--text-2);white-space:nowrap;}
+.track-filter-chips{display:inline-flex;flex-wrap:wrap;gap:6px;}
+.track-filter-chip{font-size:12px;padding:4px 11px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--text-2);cursor:pointer;transition:all .15s;}
+.track-filter-chip:hover{border-color:var(--accent);color:var(--accent);}
+.track-filter-chip.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+.track-filter-chip.disabled{opacity:.45;cursor:not-allowed;}
 .track-meta{font-size:12px;color:var(--text-2);margin-bottom:10px;line-height:1.6;}
+.track-single-summary{font-size:12.5px;color:var(--text-2);margin-bottom:10px;line-height:1.6;background:var(--bg);padding:9px 12px;border-radius:var(--radius-sm);}
+.track-single-summary b{color:var(--accent);font-weight:700;}
+.track-no-data{background:var(--bg);border-radius:var(--radius-sm);padding:16px 14px;color:var(--text-3);font-size:12.5px;line-height:1.6;text-align:center;}
 .track-list{display:flex;flex-direction:column;gap:10px;}
 .track-row{display:flex;gap:10px;align-items:flex-start;background:var(--bg);border-radius:var(--radius-sm);padding:10px 12px;border-left:3px solid var(--accent);}
 .track-rank{flex:0 0 auto;width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:1px;}
@@ -3054,6 +3064,29 @@ function fmtDate(d){
   var y = d.getFullYear(), m = ('0' + (d.getMonth() + 1)).slice(-2), day = ('0' + d.getDate()).slice(-2);
   return y + '-' + m + '-' + day;
 }
+var XWLB_TRACK_FILTER = null; // null = 近7日聚合视图; 'YYYY-MM-DD' = 单日视图
+function setXwlbTrackFilter(d){
+  // 单选互斥：再次点击同一 chip → 回收（回到聚合视图）
+  XWLB_TRACK_FILTER = (XWLB_TRACK_FILTER === d) ? null : d;
+  trackXwlb7d();
+}
+function renderTrackFilterChips(days){
+  // days = [今天, -1, -2, ..., -6]
+  return '<div class="track-filter-row">' +
+    '<span class="track-filter-label">📈 近 7 日对比：</span>' +
+    '<span class="track-filter-chips">' +
+    days.map(function(d){
+      var hasData = !!(DB.invest.cache[d] || (DB.xwlb.cache[d] && DB.xwlb.cache[d].summary));
+      var active = XWLB_TRACK_FILTER === d;
+      var cls = 'track-filter-chip';
+      if(active) cls += ' active';
+      else if(!hasData) cls += ' disabled';
+      var tooltip = hasData ? '点击仅看 ' + d : d + ' 暂无总结数据';
+      var dis = hasData ? '' : ' disabled';
+      return '<button class="' + cls + '" data-date="' + d + '" onclick="setXwlbTrackFilter(\'' + d + '\')" title="' + escapeHtml(tooltip) + '"' + dis + '>' + d.slice(5) + '</button>';
+    }).join('') +
+    '</span></div>';
+}
 function trackXwlb7d(){
   var body = document.getElementById('xwlbTrackBody');
   if(!body) return;
@@ -3061,13 +3094,54 @@ function trackXwlb7d(){
   var base = new Date();
   var days = [];
   for(var i = 0; i < totalDays; i++){ var d = new Date(base); d.setDate(base.getDate() - i); days.push(fmtDate(d)); }
+  var chipsHtml = renderTrackFilterChips(days);
+  // === 单日视图 ===
+  if(XWLB_TRACK_FILTER){
+    var d = XWLB_TRACK_FILTER;
+    var themes = null;
+    var inv = DB.invest.cache[d];
+    var data = DB.xwlb.cache[d];
+    if(inv && inv.themes && inv.themes.length) themes = inv.themes;
+    else if(data && data.summary) themes = matchThemesByKeyword(flattenSummary(data.summary));
+    var summaryHtml = '<div class="track-single-summary">仅看 <b>' + d + '</b>' +
+      (data && data.summary ? '：基于当日新闻联播总结的方向信号' :
+       inv && inv.themes ? '：基于当日 AI 投资分析（' + escapeHtml(inv.source || 'AI') + '）' : '：基于关键词匹配（无 AI 分析 / 总结）') + '。</div>';
+    if(!themes || !themes.length){
+      body.innerHTML = chipsHtml + summaryHtml +
+        '<div class="track-no-data">该日（' + d + '）暂无已生成的投资方向分析或新闻总结。<br>请先在该日生成《新闻联播》总结或「📊 生成投资分析」。</div>';
+      return;
+    }
+    var rowsHtml = '<div class="track-list">';
+    themes.forEach(function(t, idx){
+      var tf = THEME_FUNDS[t.key];
+      if(!tf) return;
+      var lv = (t.level === '高' || t.level === '中' || t.level === '低') ? t.level : '中';
+      var funds = (tf.funds || []).map(function(f){
+        return '<span class="fund-chip" title="' + escapeHtml(f.name) + '"><b>' + escapeHtml(f.code) + '</b>' + escapeHtml(f.name) + '</span>';
+      }).join('');
+      rowsHtml += '<div class="track-row">' +
+        '<div class="track-rank">' + (idx + 1) + '</div>' +
+        '<div class="track-main">' +
+          '<div class="track-head"><span class="invest-theme">' + escapeHtml(tf.label) + '</span>' +
+            '<span class="invest-level lvl-' + lvlClass(lv) + '">' + lv + '匹配</span></div>' +
+          (t.reason ? '<div class="invest-reason">' + escapeHtml(t.reason) + '</div>' : '') +
+          '<div class="invest-funds-label">可关注基金</div>' +
+          '<div class="invest-funds">' + funds + '</div>' +
+        '</div>' +
+      '</div>';
+    });
+    rowsHtml += '</div>';
+    body.innerHTML = chipsHtml + summaryHtml + rowsHtml;
+    return;
+  }
+  // === 多日聚合视图（原逻辑） ===
   var agg = {};
   days.forEach(function(d){
-    var inv = DB.invest.cache[d];
-    var themes = [];
-    if(inv && inv.themes && inv.themes.length){ themes = inv.themes; }
-    else { var data = DB.xwlb.cache[d]; if(data && data.summary) themes = matchThemesByKeyword(flattenSummary(data.summary)); }
-    themes.forEach(function(t){
+    var inv2 = DB.invest.cache[d];
+    var themes2 = [];
+    if(inv2 && inv2.themes && inv2.themes.length){ themes2 = inv2.themes; }
+    else { var data2 = DB.xwlb.cache[d]; if(data2 && data2.summary) themes2 = matchThemesByKeyword(flattenSummary(data2.summary)); }
+    themes2.forEach(function(t){
       if(!t.key || !THEME_FUNDS[t.key]) return;
       if(!agg[t.key]) agg[t.key] = { key: t.key, dates: [], strength: 0, count: 0, maxW: 0 };
       var a = agg[t.key];
@@ -3079,7 +3153,7 @@ function trackXwlb7d(){
   });
   var keys = Object.keys(agg);
   if(!keys.length){
-    body.innerHTML = '<div class="invest-empty">近 7 天（' + days[6] + ' ~ ' + days[0] + '）暂无已生成的新闻总结数据。请先在多天生成《新闻联播》总结（及投资分析），再来做趋势追踪。</div>';
+    body.innerHTML = chipsHtml + '<div class="invest-empty">近 7 天（' + days[6] + ' ~ ' + days[0] + '）暂无已生成的新闻总结数据。点击上方日期 chip 可逐日查看（先在该日生成《新闻联播》总结或「📊 生成投资分析」）。</div>';
     return;
   }
   keys.sort(function(a, b){ var x = agg[a], y = agg[b]; return (y.count - x.count) || (y.strength - x.strength); });
@@ -3104,7 +3178,7 @@ function trackXwlb7d(){
     '</div>';
   });
   html += '</div>';
-  body.innerHTML = html;
+  body.innerHTML = chipsHtml + html;
 }
 
 /* ====== Pull-to-Refresh ====== */
