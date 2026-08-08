@@ -1143,6 +1143,22 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
   font-size:clamp(12px,1vw,13px);
   color:var(--text-2);margin-top:4px;
 }
+.metric-manual{display:flex;gap:6px;margin-top:8px;align-items:center;}
+.metric-manual input{
+  flex:1;min-width:0;
+  font-size:12px;padding:5px 8px;
+  border:1px solid var(--line);border-radius:6px;
+  background:var(--input-bg);color:var(--text);
+  font-family:inherit;font-variant-numeric:tabular-nums;
+}
+.metric-manual input:focus{outline:none;border-color:var(--accent);}
+.metric-manual button{
+  font-size:12px;padding:5px 10px;
+  border:none;border-radius:6px;
+  background:var(--accent);color:#fff;
+  cursor:pointer;font-family:inherit;
+}
+.metric-manual button:hover{opacity:0.9;}
 
 /* News card cleaner (v2) */
 .news-card{
@@ -2016,6 +2032,10 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
         <div class="metric-label">国内金价 (元/克)</div>
         <div class="metric-value" id="goldDomPrice">—</div>
         <div class="metric-change" id="goldDomChg">取数中…</div>
+        <div class="metric-manual">
+          <input type="number" id="goldDomManualInput" placeholder="手动输入" step="0.01" min="0">
+          <button type="button" onclick="saveDomGoldManual()">保存</button>
+        </div>
       </div>
       <div class="metric-tile gold-tile" id="goldEtfTile">
         <div class="metric-label">黄金 ETF (518880)</div>
@@ -4913,14 +4933,16 @@ var GOLD_PROXIES = [
   function(u){ return 'https://corsproxy.io/?' + encodeURIComponent(u); }
 ];
 
-function tryFetchOnce(url){
-  /* 单 URL: 依次尝试 GOLD_PROXIES */
+function tryFetchOnce(url, charset){
+  /* charset: 'utf-8' (默认) | 'gbk' | 'gb18030' — 新浪/腾讯接口返回 GBK/GB18030 */
+  var decoder;
+  try { decoder = new TextDecoder(charset || 'utf-8'); } catch(e){ decoder = new TextDecoder('utf-8'); }
   return new Promise(function(resolve, reject){
     var attempt = function(pIdx){
       if(pIdx >= GOLD_PROXIES.length){ reject(new Error('all proxies failed')); return; }
       fetchWithTimeout(GOLD_PROXIES[pIdx](url), 10000)
-        .then(function(r){ return r.text(); })
-        .then(function(text){ resolve(text); })
+        .then(function(r){ return r.arrayBuffer(); })
+        .then(function(buf){ resolve(decoder.decode(buf)); })
         .catch(function(e){
           console.log('Gold proxy=' + pIdx + ' url=' + url + ' fail:', e);
           attempt(pIdx + 1);
@@ -4930,12 +4952,11 @@ function tryFetchOnce(url){
   });
 }
 
-function tryFetchSequence(urls, parser){
-  /* 多个候选 URL 依次尝试，任意一个解析成功即停 */
+function tryFetchSequence(urls, parser, charset){
   return urls.reduce(function(p, url){
     return p.then(function(prev){
       if(prev) return prev;
-      return tryFetchOnce(url).then(parser).catch(function(e){ return null; });
+      return tryFetchOnce(url, charset).then(parser).catch(function(e){ return null; });
     });
   }, Promise.resolve(null));
 }
@@ -4963,7 +4984,7 @@ function tryFetchIntlGold(){
   return tryFetchSequence([
     'https://qt.gtimg.cn/q=hf_GC',
     'https://hq.sinajs.cn/list=hf_GC'
-  ], parseHqIntl);
+  ], parseHqIntl, 'gbk');
 }
 
 /* === 国内金价 Au99.99 (元/克) — hq.sinajs.cn list=SGE_AU9999 ===
@@ -4988,7 +5009,7 @@ function parseSinaSge(text){
 function tryFetchDomGold(){
   return tryFetchSequence([
     'https://hq.sinajs.cn/list=SGE_AU9999'
-  ], parseSinaSge);
+  ], parseSinaSge, 'gb18030');
 }
 
 /* === 黄金 ETF 518880 — ifzq appstock fqkline ===
@@ -5051,14 +5072,24 @@ async function fetchGoldQuotes(manual){
   goldFetching = false;
 }
 
-function fillGoldTile(priceId, chgId, d){
+function fillGoldTile(priceId, chgId, d, fallbackMsg){
+  fallbackMsg = fallbackMsg || '取数失败';
   var pEl = document.getElementById(priceId);
   var cEl = document.getElementById(chgId);
   if(!pEl || !cEl) return;
   if(!d){
     pEl.textContent = '—';
     pEl.className = 'metric-value flat';
-    cEl.textContent = '取数失败';
+    cEl.textContent = fallbackMsg;
+    cEl.className = 'metric-change flat';
+    return;
+  }
+  /* 手动输入值：灰显 + 标注"手动" */
+  if(d.isManual){
+    var md = d.price > 100 ? 2 : (d.price > 10 ? 3 : 4);
+    pEl.textContent = d.price.toFixed(md);
+    pEl.className = 'metric-value flat';
+    cEl.textContent = '手动输入 · ' + formatGoldTs(d.ts);
     cEl.className = 'metric-change flat';
     return;
   }
@@ -5073,8 +5104,32 @@ function fillGoldTile(priceId, chgId, d){
   cEl.className = 'metric-change ' + dir;
 }
 
+function formatGoldTs(ts){
+  if(!ts) return '';
+  var d = new Date(ts);
+  var m = String(d.getMonth()+1).padStart(2,'0');
+  var dd = String(d.getDate()).padStart(2,'0');
+  var hh = String(d.getHours()).padStart(2,'0');
+  var mm = String(d.getMinutes()).padStart(2,'0');
+  return m + '/' + dd + ' ' + hh + ':' + mm;
+}
+
+function saveDomGoldManual(){
+  var inp = document.getElementById('goldDomManualInput');
+  if(!inp) return;
+  var v = parseFloat(inp.value);
+  if(!v || v <= 0){ toast('请输入有效价格（>0）'); return; }
+  if(!DB.market.gold) DB.market.gold = {};
+  DB.market.gold.domManual = { price: v, ts: Date.now() };
+  saveDb();
+  renderGoldTiles();
+  inp.value = '';
+  toast('已保存手动金价 · ' + v.toFixed(2) + ' 元/克');
+}
+
 function judgeGoldMood(intl, dom, etf){
-  var sources = [intl, dom, etf].filter(Boolean);
+  /* 排除手动输入值（无涨跌数据），避免拉偏情绪平均 */
+  var sources = [intl, dom, etf].filter(function(d){ return d && !d.isManual; });
   if(sources.length === 0) return { main: '—', sub: '行情均不可达' };
   var avgPct = sources.reduce(function(s,d){ return s + (d.chgPct || 0); }, 0) / sources.length;
   var upCount = sources.filter(function(d){ return d.chgPct > 0; }).length;
@@ -5103,9 +5158,11 @@ function renderGoldTiles(){
   var g = DB.market.gold;
   if(!g) return;
   fillGoldTile('goldIntlPrice','goldIntlChg', g.intl);
-  fillGoldTile('goldDomPrice','goldDomChg', g.dom);
+  /* 国内金价：自动抓取失败时降级为手动输入值（纯前端无法绕开新浪 Referer 锁） */
+  var domSrc = g.dom || (g.domManual ? { price: g.domManual.price, ts: g.domManual.ts, isManual: true } : null);
+  fillGoldTile('goldDomPrice','goldDomChg', domSrc, '实时接口受限');
   fillGoldTile('goldEtfPrice','goldEtfChg', g.etf);
-  var mood = judgeGoldMood(g.intl, g.dom, g.etf);
+  var mood = judgeGoldMood(g.intl, domSrc, g.etf);
   var mainEl = document.getElementById('goldMoodMain');
   var subEl = document.getElementById('goldMoodSub');
   if(mainEl) mainEl.textContent = mood.main;
