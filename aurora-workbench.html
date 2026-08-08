@@ -1066,32 +1066,7 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 .news-card .news-actions a{font-size:12px;color:var(--blue);text-decoration:none;}
 .news-card .news-actions a:hover{text-decoration:underline;}
 
-/* ====== Tab4 v2: Market Template (stats row + metric grid) ====== */
-.mkt-stats-row{
-  display:grid;grid-template-columns:repeat(3,1fr);
-  gap:10px;margin-bottom:14px;
-}
-.mkt-stat{
-  background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
-  padding:14px 12px;text-align:center;
-  display:flex;flex-direction:column;justify-content:center;align-items:center;
-  min-height:78px;transition:all 0.2s;
-}
-.mkt-stat:hover{transform:translateY(-1px);box-shadow:0 2px 12px rgba(0,0,0,0.04);}
-.mkt-stat.highlight{
-  background:linear-gradient(135deg,var(--accent) 0%,var(--blue) 100%);
-  border-color:transparent;color:#fff;
-}
-.mkt-stat-num{
-  font-size:clamp(22px,2.4vw,26px);font-weight:700;line-height:1.2;
-  font-variant-numeric:tabular-nums;letter-spacing:-0.5px;
-}
-.mkt-stat.highlight .mkt-stat-num{font-size:clamp(15px,1.5vw,17px);font-weight:600;}
-.mkt-stat-label{
-  font-size:clamp(11px,0.9vw,12px);color:var(--text-2);margin-top:5px;
-}
-.mkt-stat.highlight .mkt-stat-label{color:rgba(255,255,255,0.92);}
-
+/* ====== Tab4 v2: Market Template (metric grid) ====== */
 .mkt-overview .card-title{margin-bottom:0;}
 .metric-grid{
   display:grid;grid-template-columns:repeat(2,1fr);gap:10px;
@@ -2019,22 +1994,6 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
 
   <div class="disclaimer">
     所有资讯仅用于信息整理与个人复盘，不构成任何投资建议。投资有风险，决策需谨慎。
-  </div>
-
-  <!-- Top Stats Row -->
-  <div class="mkt-stats-row">
-    <div class="mkt-stat">
-      <div class="mkt-stat-num" id="mktNewsCount">0</div>
-      <div class="mkt-stat-label">今日资讯</div>
-    </div>
-    <div class="mkt-stat">
-      <div class="mkt-stat-num" id="mktFavCount">0</div>
-      <div class="mkt-stat-label">已收藏</div>
-    </div>
-    <div class="mkt-stat highlight">
-      <div class="mkt-stat-num" id="mktMoodLabel">—</div>
-      <div class="mkt-stat-label">综合情绪</div>
-    </div>
   </div>
 
   <!-- Market Sentiment Overview -->
@@ -4924,7 +4883,6 @@ function renderMarket(){
   renderTracking();
   loadSentiment();
   renderNotes();
-  renderMarketTopStats();
   var updEl = document.getElementById('newsUpdateTime');
   if(updEl){
     updEl.textContent = DB.market.newsLastUpdate ? ('最后更新 ' + DB.market.newsLastUpdate) : '未加载';
@@ -5177,35 +5135,14 @@ function judgeMarketMood(pos, neg, total){
   return { label: '震荡', cls: 'neu' };
 }
 
-function renderMarketTopStats(){
-  var s = computeMarketSentiment();
-  var favCount = DB.market.favNewsIds.length + DB.market.news.filter(function(n){ return n.fav; }).length;
-  var newsCountEl = document.getElementById('mktNewsCount');
-  var favCountEl = document.getElementById('mktFavCount');
-  var moodEl = document.getElementById('mktMoodLabel');
-  if(newsCountEl) newsCountEl.textContent = s.total;
-  if(favCountEl) favCountEl.textContent = favCount;
-  if(moodEl){
-    var j = judgeMarketMood(s.pos, s.neg, s.total);
-    moodEl.textContent = j.label;
-  }
-}
-
 function renderSentimentOverview(){
   /* 兼容旧引用（早期 2x2 情绪统计），现改为直接渲染金价；保留为空避免报错 */
   if(typeof renderGoldTiles === 'function') renderGoldTiles();
 }
 
 function refreshMarketSentimentViews(pos, neg, neu){
-  /* 兼容旧引用（从 renderNews 调用），刷新顶部三联卡的综合情绪 + 金价卡片 */
-  var newsCountEl = document.getElementById('mktNewsCount');
-  var moodEl = document.getElementById('mktMoodLabel');
+  /* 兼容旧引用（从 renderNews 调用）；顶部三联统计卡已移除，仅保留函数签名 */
   var total = pos + neg + neu;
-  if(newsCountEl) newsCountEl.textContent = total;
-  if(moodEl){
-    var j = judgeMarketMood(pos, neg, total);
-    moodEl.textContent = j.label;
-  }
   /* 金价信息保持原缓存（不重复抓） */
 }
 
