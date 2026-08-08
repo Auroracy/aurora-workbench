@@ -2604,7 +2604,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
   </div>
 
   <div class="xwlb-history">
-    <div class="xwlb-history-title">历史归档 <button class="btn btn-ghost btn-xs" onclick="trackXwlb7d()">📈 近7天方向追踪</button></div>
+    <div class="xwlb-history-title">历史归档 <button class="btn btn-ghost btn-xs" id="xwlbTrackToggleBtn" onclick="toggleXwlbTrack()">📈 近7天方向追踪</button></div>
     <div class="xwlb-history-list" id="xwlbHistoryList"></div>
     <div id="xwlbTrackBody" class="xwlb-track"></div>
   </div>
@@ -3100,6 +3100,23 @@ function fmtDate(d){
   return y + '-' + m + '-' + day;
 }
 var XWLB_TRACK_FILTER = null; // null = 近7日聚合视图; 'YYYY-MM-DD' = 单日视图
+var XWLB_TRACK_OPEN = false;   // 「近7天方向追踪」面板是否展开
+function toggleXwlbTrack(){
+  // 再次点击同一按钮 → 关闭面板（清空 body + 重置 chip filter + 改回 📈）
+  if(XWLB_TRACK_OPEN){
+    XWLB_TRACK_OPEN = false;
+    XWLB_TRACK_FILTER = null;
+    var body = document.getElementById('xwlbTrackBody');
+    if(body) body.innerHTML = '';
+    var btn = document.getElementById('xwlbTrackToggleBtn');
+    if(btn) btn.textContent = '📈 近7天方向追踪';
+    return;
+  }
+  XWLB_TRACK_OPEN = true;
+  var btn = document.getElementById('xwlbTrackToggleBtn');
+  if(btn) btn.textContent = '📉 收起追踪';
+  trackXwlb7d();
+}
 function setXwlbTrackFilter(d){
   // 单选互斥：再次点击同一 chip → 回收（回到聚合视图）
   XWLB_TRACK_FILTER = (XWLB_TRACK_FILTER === d) ? null : d;
