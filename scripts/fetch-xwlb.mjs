@@ -21,11 +21,13 @@ const args = Object.fromEntries(process.argv.slice(2).map(a => {
   return m ? [m[1], m[2]] : [a.replace(/^--/, ''), true];
 }));
 
-/* 默认取「今天 UTC」（CCTV 栏目首页只显示当日节目）。
-   定时任务 UTC 12:00 = 北京 20:00（节目播出 30 分钟后），与北京日期一致。
-   手动补录请显式传 --date=YYYY-MM-DD */
-const today = new Date();
-const defDate = today.toISOString().slice(0, 10);
+/* 默认取「北京当天」日期（UTC+8，无夏令时）。CCTV 栏目首页只显示当日节目。
+   定时任务 UTC 12:00 = 北京 20:00（节目播出 30 分钟后），抓北京当天节目。
+   手动触发同样按北京日期取，避免 UTC/北京跨日错位导致抓不到节目。
+   补录历史日期请显式传 --date，但 CCTV 只保留当日节目单，历史需在工作台 Tab9 手动粘贴。 */
+const now = new Date();
+const bjMs = now.getTime() + 8 * 3600 * 1000; // 北京 = UTC+8，无夏令时（不依赖运行机时区）
+const defDate = new Date(bjMs).toISOString().slice(0, 10);
 const date = args.date || defDate;
 const OUT = args.out || `data/xwlb/${date}.json`;
 
