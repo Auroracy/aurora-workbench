@@ -1493,6 +1493,8 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 .xwlb-history-chip{font-size:12px;padding:4px 11px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--text-2);cursor:pointer;transition:all .15s;}
 .xwlb-history-chip:hover{border-color:var(--accent);color:var(--accent);}
 .xwlb-history-chip.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+.xwlb-history-chip.empty{background:var(--bg);color:var(--text-3);border-style:dashed;border-color:var(--line-soft);}
+.xwlb-history-chip.empty:hover{background:#fff;border-color:var(--accent);color:var(--accent);border-style:solid;}
 .xwlb-history-empty{font-size:12px;color:var(--text-3);}
 .xwlb-track{margin-top:14px;border-top:1px dashed var(--line-soft);padding-top:14px;}
 .track-filter-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
@@ -2601,7 +2603,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
   <div class="xwlb-fallback" id="xwlbFallback" style="display:none;">
     <div class="xwlb-fallback-tip">自动抓取（前端代理）不可达。可手动粘贴当天《新闻联播》节目单，由通义千问生成总结：</div>
     <textarea id="xwlbManualInput" class="xwlb-manual-input" placeholder="每行一条，例如：&#10;【新思想引领新征程】服务消费扩容升级 激发内需新活力&#10;今年前7个月我国货物贸易进出口超30万亿元&#10;大面积单产提升持续加力 夯实秋粮稳产基础"></textarea>
-    <button class="btn btn-primary btn-sm" id="xwlbManualBtn" onclick="summarizeXwlbManual()">✨ 生成总结</button>
+    <button class="btn btn-primary btn-sm" id="xwlbManualBtn" onclick="summarizeXwlbManual(this.getAttribute('data-target-date'))">✨ 生成总结</button>
   </div>
 
   <div class="xwlb-history">
@@ -2790,7 +2792,32 @@ function loadXwlb(force){
     renderXwlb(cached, '缓存');
     return;
   }
-  fetchXwlbDirect(date);
+  /* 优先从 GitHub Actions 同步缓存抓（个人 GitHub Pages 部署的用户可享受每日定时同步） */
+  fetchXwlbFromGitHub(date, function(data){
+    if(data && data.summary){
+      saveXwlbCache(data);
+      renderXwlb(data, 'GitHub 同步');
+      renderXwlbHistory();
+      return;
+    }
+    /* GitHub 没抓到再 fallback 到前端自动抓 */
+    fetchXwlbDirect(date);
+  });
+}
+
+/* 从 GitHub Pages / GitHub raw 读 data/xwlb/{date}.json */
+var XWLB_REMOTE_BASE = 'https://raw.githubusercontent.com/Auroracy/aurora-workbench/main/data/xwlb/';
+function fetchXwlbFromGitHub(date, cb){
+  var url = XWLB_REMOTE_BASE + date + '.json';
+  fetch(url, { headers: { 'Accept': 'application/json' } })
+    .then(function(r){
+      if(!r.ok){ cb(null); return null; }
+      return r.json();
+    })
+    .then(function(j){
+      if(j && j.date === date && j.summary){ cb(j); } else { cb(null); }
+    })
+    .catch(function(){ cb(null); });
 }
 function parseXwlbHtml(html){
   if(!html) return [];
@@ -2880,15 +2907,33 @@ function setXwlbStatus(msg, type){
   el.className = 'xwlb-status' + (type ? ' ' + type : '');
 }
 function refreshXwlb(){
-  loadXwlb(true);
+  /* 优先刷新当前查看的日期（用户可能正在补录历史日期），否则刷今天 */
+  var date = currentXwlbView || getXwlbToday();
+  if(date === getXwlbToday()){
+    loadXwlb(true);
+  } else {
+    fetchXwlbFromGitHub(date, function(remote){
+      if(remote && remote.summary){
+        saveXwlbCache(remote);
+        renderXwlb(remote, 'GitHub 同步');
+        refreshXwlbInvestPanel(date);
+        renderXwlbHistory();
+        toast('已从 GitHub 同步 ' + date);
+        return;
+      }
+      enterXwlbHistoryEditMode(date);
+    });
+  }
   renderXwlbHistory();
 }
-function summarizeXwlbManual(){
+function summarizeXwlbManual(date){
+  /* date 缺省 = 补当天；可由「历史归档」chip 灰显补录传入指定日期 */
+  date = date || getXwlbToday();
   var ta = document.getElementById('xwlbManualInput');
   var text = (ta.value || '').trim();
   if(!text){ toast('请先粘贴节目单'); return; }
   var key = getQwenKey();
-  if(!key){ toast('请先在「设置 / AI 引擎」配置通义千问 Key'); return; }
+  if(!key){ toast('请先在「☁ 云同步 → 🤖 AI 引擎配置」配置通义千问 Key'); return; }
   var btn = document.getElementById('xwlbManualBtn');
   if(btn){ btn.disabled = true; btn.textContent = '⏳ 生成中…'; }
   callQwenText(text,
@@ -2896,7 +2941,7 @@ function summarizeXwlbManual(){
     'qwen-plus')
     .then(function(summary){
       var data = {
-        date: getXwlbToday(),
+        date: date,
         titles: text.split(/\n+/).map(function(s){ return s.trim(); }).filter(Boolean),
         summary: summary,
         generatedAt: new Date().toISOString(),
@@ -2904,11 +2949,15 @@ function summarizeXwlbManual(){
       };
       saveXwlbCache(data);
       currentXwlbView = data.date;
-      renderXwlb(data, '手动生成');
+      renderXwlb(data, '手动补录');
       renderXwlbHistory();
+      toast('已补录 ' + date + ' 总结');
     })
     .catch(function(err){ toast('生成失败：' + (err && err.message ? err.message : err)); })
-    .finally(function(){ if(btn){ btn.disabled = false; btn.textContent = '✨ 生成总结'; } });
+    .finally(function(){
+      if(btn){ btn.disabled = false; btn.textContent = '✨ 生成 ' + date.slice(5) + ' 总结'; }
+      if(ta) ta.value = '';
+    });
 }
 function callQwenText(userPrompt, sysPrompt, model){
   var key = getQwenKey();
@@ -2940,25 +2989,73 @@ function callQwenText(userPrompt, sysPrompt, model){
 function renderXwlbHistory(){
   var list = document.getElementById('xwlbHistoryList');
   if(!list) return;
-  var dates = Object.keys(DB.xwlb.cache || {}).sort().reverse();
-  if(!dates.length){ list.innerHTML = '<span class="xwlb-history-empty">暂无归档</span>'; return; }
-  // 优先用 currentXwlbView（用户最近点开的日期），其次回退到今天
+  /* 渲染最近 7 天范围（含无数据的灰显 chip），保证「近 7 天方向追踪」与历史 chip 一致 */
+  var days = getRecentXwlbDays(7);
+  if(!days.length){ list.innerHTML = '<span class="xwlb-history-empty">暂无归档</span>'; return; }
   var activeDate = currentXwlbView || getXwlbToday();
-  list.innerHTML = dates.map(function(d){
-    var has = DB.xwlb.cache[d] && DB.xwlb.cache[d].summary;
-    return '<button class="xwlb-history-chip' + (d === activeDate ? ' active' : '') + '" onclick="viewXwlbDate(\'' + d + '\')">' + d.slice(5) + (has ? '' : '·原') + '</button>';
+  list.innerHTML = days.map(function(d){
+    var entry = DB.xwlb.cache[d];
+    var has = entry && entry.summary;
+    var cls = 'xwlb-history-chip';
+    if(d === activeDate) cls += ' active';
+    else if(!has) cls += ' empty';
+    var label = d.slice(5) + (has ? '' : (d === getXwlbToday() ? '' : '·空'));
+    return '<button class="' + cls + '" data-date="' + d + '" onclick="viewXwlbDate(\'' + d + '\')" title="' + (has ? ('查看 ' + d + ' 总结') : ('补录 ' + d + ' 节目单')) + '">' + label + '</button>';
   }).join('');
+}
+function getRecentXwlbDays(n){
+  /* 今天往前 n 天（含今天），返回 ['YYYY-MM-DD', ...] 从新到旧 */
+  var base = new Date();
+  var out = [];
+  for(var i = 0; i < n; i++){
+    var d = new Date(base);
+    d.setDate(base.getDate() - i);
+    out.push(d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'));
+  }
+  return out;
 }
 var currentXwlbView = null; // 最近点开/正在查看的归档日期（驱动历史 chip 高亮）
 function viewXwlbDate(d){
-  var data = DB.xwlb.cache[d];
-  if(!data) return;
   currentXwlbView = d;
-  document.getElementById('xwlbDate').textContent = d;
-  document.getElementById('xwlbFallback').style.display = 'none';
-  renderXwlb(data, '归档');
-  refreshXwlbInvestPanel(d);
   renderXwlbHistory();
+  var data = DB.xwlb.cache[d];
+  if(data){
+    document.getElementById('xwlbFallback').style.display = 'none';
+    renderXwlb(data, '归档');
+    refreshXwlbInvestPanel(d);
+    return;
+  }
+  /* 无数据 → 进入补录模式：先尝试从 GitHub Actions 同步缓存取，再 fallback 到手动 */
+  fetchXwlbFromGitHub(d, function(remote){
+    if(remote && remote.summary){
+      saveXwlbCache(remote);
+      renderXwlb(remote, 'GitHub 同步');
+      refreshXwlbInvestPanel(d);
+      renderXwlbHistory();
+      toast('已从 GitHub 同步补齐 ' + d);
+      return;
+    }
+    enterXwlbHistoryEditMode(d);
+  });
+}
+function enterXwlbHistoryEditMode(d){
+  document.getElementById('xwlbDate').textContent = d + '（待补录）';
+  document.getElementById('xwlbSource').textContent = '—';
+  document.getElementById('xwlbDot').className = 'xwlb-dot warn';
+  document.getElementById('xwlbBody').innerHTML = '';
+  document.getElementById('xwlbInvestBody').innerHTML = '';
+  document.getElementById('xwlbInvestStatus').textContent = '';
+  var fb = document.getElementById('xwlbFallback');
+  var tip = fb.querySelector('.xwlb-fallback-tip');
+  if(tip){ tip.innerHTML = '<b>' + d + '</b> 暂无总结。可手动粘贴当天《新闻联播》节目单，由通义千问生成：'; }
+  var btn = document.getElementById('xwlbManualBtn');
+  if(btn){
+    btn.textContent = '✨ 生成 ' + d.slice(5) + ' 总结';
+    btn.setAttribute('data-target-date', d);
+  }
+  fb.style.display = 'block';
+  /* 滚到补录面板 */
+  fb.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 /* ====== Tab 9 投资方向（合并显示） ====== */
