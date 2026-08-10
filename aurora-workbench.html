@@ -1118,6 +1118,8 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 .metric-tile.gold-tile .metric-value.up{color:var(--red);}
 .metric-tile.gold-tile .metric-value.down{color:var(--green);}
 .metric-tile.gold-tile .metric-value.flat{color:var(--text-2);}
+/* ETF×100 近似估算值：琥珀色警示（非真实成交价） */
+.metric-tile.gold-tile .metric-value.estimated{color:#c77700 !important;}
 .metric-tile.gold-tile .metric-change{
   font-size:clamp(12px,1vw,13px);
   font-variant-numeric:tabular-nums;margin-top:4px;
@@ -2056,7 +2058,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
         <div class="metric-change" id="goldIntlChg">取数中…</div>
       </div>
       <div class="metric-tile gold-tile" id="goldDomTile">
-        <div class="metric-label" title="直连 / Worker 代理失败时，用 518880 ETF×100 (1 份=0.01克) 兜底估算 Au99.99 克价，误差<1%">国内金价 (元/克) <span class="metric-suffix">ETF×100 兜底</span></div>
+        <div class="metric-label" id="goldDomLabel" title="配置 Cloudflare Worker 代理后显示上金所真实 Au99.99；未配置时由 518880 ETF×100 近似（当前 ETF 折价约5%，仅供参考，非真实成交价）">国内金价 (元/克) <span class="metric-suffix" id="goldDomSuffix">ETF×100 近似</span></div>
         <div class="metric-value" id="goldDomPrice">—</div>
         <div class="metric-change" id="goldDomChg">取数中…</div>
         <div class="metric-manual">
@@ -5349,7 +5351,7 @@ function fillGoldTile(priceId, chgId, d, fallbackMsg){
     var sdir = d.chgPct > 0.005 ? 'up' : (d.chgPct < -0.005 ? 'down' : 'flat');
     var sarrow = sdir === 'up' ? '⬆' : (sdir === 'down' ? '⬇' : '—');
     var ssign = d.chgPct > 0 ? '+' : '';
-    pEl.className = 'metric-value ' + sdir;
+    pEl.className = 'metric-value ' + sdir + ' estimated';
     cEl.textContent = sarrow + ' ' + ssign + d.chgPct.toFixed(2) + '% · 518880×100估算';
     cEl.className = 'metric-change ' + sdir;
     return;
@@ -5508,6 +5510,14 @@ function renderGoldTiles(){
   /* 国内金价：自动抓取失败时降级为手动输入值（纯前端无法绕开新浪 Referer 锁） */
   var domSrc = g.dom || (g.domManual ? { price: g.domManual.price, ts: g.domManual.ts, isManual: true } : null);
   fillGoldTile('goldDomPrice','goldDomChg', domSrc, '实时接口受限');
+  /* 动态标签：区分 真实Worker价 / 手动 / ETF近似 / 受限 */
+  var suffix = document.getElementById('goldDomSuffix');
+  if(suffix){
+    if(domSrc && domSrc.viaProxy) suffix.textContent = 'Worker 真实价';
+    else if(domSrc && domSrc.isManual) suffix.textContent = '手动输入';
+    else if(domSrc && domSrc.viaEtfApprox) suffix.textContent = 'ETF×100 近似';
+    else suffix.textContent = '实时接口受限';
+  }
   fillGoldTile('goldEtfPrice','goldEtfChg', g.etf);
   var mood = judgeGoldMood(g.intl, domSrc, g.etf);
   var mainEl = document.getElementById('goldMoodMain');
