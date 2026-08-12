@@ -6212,13 +6212,22 @@ function finishOverlap(fs, holdings){
 var INDEX_LIST = [ { code: 'sh000300', name: '沪深300' }, { code: 'sz399006', name: '创业板指' }, { code: 'usIXIC', name: '纳斯达克' }, { code: 'hkHSI', name: '恒生指数' } ];
 function fetchIndexQuotes(){
   var target = 'https://qt.gtimg.cn/q=' + INDEX_LIST.map(function(x){ return x.code; }).join(',');
-  var i = 0;
-  function next(){
-    if(i >= DCA_PROXIES.length) return;
-    var url = DCA_PROXIES[i++] + encodeURIComponent(target);
-    fetchTextWithTimeout(url, 12000).then(function(txt){ parseIndex(txt); }).catch(function(){ next(); });
-  }
-  next();
+  /* 直连优先：qt.gtimg.cn 带 CORS 头，无须代理 */
+  fetchTextWithTimeout(target, 8000).then(function(txt){
+    if(txt && txt.indexOf('v_') >= 0){ parseIndex(txt); return; }
+    throw new Error('no v_');
+  }).catch(function(){
+    var i = 0;
+    function next(){
+      if(i >= DCA_PROXIES.length) return;
+      var url = DCA_PROXIES[i++] + encodeURIComponent(target);
+      fetchTextWithTimeout(url, 12000).then(function(txt){
+        if(txt && txt.indexOf('v_') >= 0) parseIndex(txt);
+        else next();
+      }).catch(function(){ next(); });
+    }
+    next();
+  });
 }
 function parseIndex(txt){
   INDEX_LIST.forEach(function(idx){
@@ -6416,13 +6425,22 @@ function fetchWatchQuotes(){
   if(!w.length){ renderWatchlist(); return; }
   var codes = w.map(function(x){ return (WATCH_QUOTE_MAP[x.market] || WATCH_QUOTE_MAP.a)(x.code); });
   var target = 'https://qt.gtimg.cn/q=' + codes.join(',');
-  var i = 0;
-  function next(){
-    if(i >= DCA_PROXIES.length){ renderWatchlist(); return; }
-    var url = DCA_PROXIES[i++] + encodeURIComponent(target);
-    fetchTextWithTimeout(url, 12000).then(function(txt){ parseWatch(txt); }).catch(function(){ next(); });
-  }
-  next();
+  /* qt.gtimg.cn 自带 Access-Control-Allow-Origin: *，可直接调用；失败才走代理池 */
+  fetchTextWithTimeout(target, 8000).then(function(txt){
+    parseWatch(txt);
+  }).catch(function(){
+    var i = 0;
+    function next(){
+      if(i >= DCA_PROXIES.length){ renderWatchlist(); return; }
+      var url = DCA_PROXIES[i++] + encodeURIComponent(target);
+      fetchTextWithTimeout(url, 12000).then(function(txt){
+        /* 检查代理是否返回了登录页/错误页而非真实数据 */
+        if(txt && txt.indexOf('v_') >= 0) parseWatch(txt);
+        else next();
+      }).catch(function(){ next(); });
+    }
+    next();
+  });
 }
 function parseWatch(txt){
   var w = DB.market.techWatch || [];
