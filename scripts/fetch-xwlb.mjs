@@ -33,11 +33,42 @@ const OUT = args.out || `data/xwlb/${date}.json`;
 
 const QWEN_KEY = process.env.QWEN_API_KEY;
 if(!QWEN_KEY){
-  console.error('❌ 缺少环境变量 QWEN_API_KEY');
+  console.error('❌ [step 0] 缺少环境变量 QWEN_API_KEY，请在仓库 Settings → Secrets and variables → Actions 配置');
   process.exit(1);
 }
+const HAS_QWEN = !!QWEN_KEY;
+const NO_QWEN_FLAG_FILE = process.env.NO_QWEN_FALLBACK === '1';
 
 const XWLB_SYS_PROMPT = '你是资深新闻编辑，把以下《新闻联播》节目单整理成结构化每日总结，严格只输出如下 JSON（不要任何额外文字）：{"lead":"一句话导语（20字以内）","groups":[{"category":"分类名（如：国内要闻/经济发展/国际动态/社会民生/其他）","items":[{"title":"原标题","point":"一句话要点（30字以内）"}]}]}';
+
+/* 关键词分类（无 QWEN 时降级用，不依赖 AI） */
+const CAT_KW = [
+  { cat: '国内要闻', kw: ['习近平','中共中央','中央政治局','国务院','全国人大','全国政协','中央军委','党和国家','总书记','主席'] },
+  { cat: '经济发展', kw: ['经济','产业','工业','农业','企业','市场','消费','投资','改革','发展','金融','数据','增长','项目','投产','开工'] },
+  { cat: '国际动态', kw: ['俄罗斯','美国','日本','韩国','朝鲜','伊朗','欧盟','联合国','北约','会谈','会见','外长','访问','国际','外交','峰会','元首','总统','总理'] },
+  { cat: '社会民生', kw: ['民生','教育','医疗','就业','保障','扶贫','乡村','群众','人民','群众','春节','文化','体育','考古','文物','航天','科技','卫星','火箭'] },
+  { cat: '其他',     kw: [] },
+];
+function fallbackSummary(titles){
+  const groups = {};
+  for(const title of titles){
+    let placed = false;
+    for(const def of CAT_KW){
+      if(def.kw.some(k => title.includes(k))){
+        (groups[def.cat] = groups[def.cat] || []).push({ title, point: title });
+        placed = true; break;
+      }
+    }
+    if(!placed){
+      (groups['其他'] = groups['其他'] || []).push({ title, point: title });
+    }
+  }
+  const order = ['国内要闻','经济发展','国际动态','社会民生','其他'];
+  return {
+    lead: `今日共 ${titles.length} 条要闻`,
+    groups: order.filter(c => groups[c]).map(c => ({ category: c, items: groups[c].slice(0, 5) })),
+  };
+}
 
 function parseTitles(html){
   /* CCTV 栏目页结构：<a href="...VIDEXXXXXX260810.shtml">标题</a>
@@ -57,35 +88,49 @@ function parseTitles(html){
 async function fetchCctv(){
   const url = 'https://tv.cctv.com/lm/xwlb/';
   console.log('🌐 抓取 CCTV 栏目首页:', url);
-  const res = await fetch(url, {
-    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Aurora-Workbench/1.0)' }
-  });
-  if(!res.ok) throw new Error('CCTV HTTP ' + res.status);
-  return res.text();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(new Error('CCTV timeout 30s')), 30000);
+  try {
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Aurora-Workbench/1.0)' },
+      signal: controller.signal,
+    });
+    if(!res.ok) throw new Error('CCTV HTTP ' + res.status);
+    return await res.text();
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function callQwen(titles){
   const url = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
   console.log('🤖 调通义千问生成总结...');
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + QWEN_KEY },
-    body: JSON.stringify({
-      model: 'qwen-plus',
-      messages: [
-        { role: 'system', content: XWLB_SYS_PROMPT },
-        { role: 'user', content: titles.map(t => t.title).join('\n') }
-      ],
-      temperature: 0.3,
-      response_format: { type: 'json_object' }
-    })
-  });
-  if(!res.ok){
-    const t = await res.text();
-    throw new Error('Qwen HTTP ' + res.status + ': ' + t.slice(0, 300));
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(new Error('Qwen timeout 60s')), 60000);
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + QWEN_KEY },
+      body: JSON.stringify({
+        model: 'qwen-plus',
+        messages: [
+          { role: 'system', content: XWLB_SYS_PROMPT },
+          { role: 'user', content: titles.map(t => t.title).join('\n') }
+        ],
+        temperature: 0.3,
+        response_format: { type: 'json_object' }
+      }),
+      signal: controller.signal,
+    });
+    if(!res.ok){
+      const t = await res.text();
+      throw new Error('Qwen HTTP ' + res.status + ': ' + t.slice(0, 300));
+    }
+    const j = await res.json();
+    return JSON.parse(j.choices[0].message.content);
+  } finally {
+    clearTimeout(timer);
   }
-  const j = await res.json();
-  return JSON.parse(j.choices[0].message.content);
 }
 
 (async () => {
@@ -107,9 +152,15 @@ async function callQwen(titles){
     console.log(`📋 抓到 ${titles.length} 条 ${date} 节目:`);
     titles.forEach((t, i) => console.log(`  ${i+1}. ${t}`));
 
-    /* 3. 调通义千问 */
-    const summary = await callQwen(titles);
-    console.log('✅ 总结生成成功:', JSON.stringify(summary).slice(0, 200));
+    /* 3. 调通义千问（失败则降级为本地关键词打分，保证 workflow 不 fail） */
+    let summary;
+    try {
+      summary = await callQwen(titles);
+      console.log('✅ AI 总结生成成功:', JSON.stringify(summary).slice(0, 200));
+    } catch(qe){
+      console.error('⚠️ Qwen 调用失败，使用关键词降级总结:', qe.message);
+      summary = fallbackSummary(titles);
+    }
 
     /* 4. 写文件 */
     const out = {
