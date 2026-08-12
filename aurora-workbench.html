@@ -1668,6 +1668,45 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
 .diary-entry .del{cursor:pointer;border:none;background:transparent;color:var(--text-2);}
 .diary-empty{font-size:13px;color:var(--text-2);}
 
+/* 财富总览仪表盘 */
+.overview-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin:6px 0 12px;}
+.overview-cell{background:var(--input-bg);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center;}
+.overview-cell .ov-num{font-size:22px;font-weight:700;color:var(--text);line-height:1.2;}
+.overview-cell .ov-num.accent{color:var(--accent);}
+.overview-cell .ov-num.amber{color:var(--amber,#E8A33D);}
+.overview-cell .ov-label{font-size:12px;color:var(--text-2);margin-top:4px;}
+.overview-quote{font-size:13px;color:var(--text-2);line-height:1.6;background:#FFF8EC;border-left:3px solid var(--amber,#E8A33D);padding:8px 12px;border-radius:6px;}
+
+/* 梦想清单：两行布局 */
+.dream-item{display:flex;flex-direction:column;gap:8px;}
+.dream-main{display:flex;align-items:flex-start;gap:10px;}
+.dream-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding-left:36px;}
+.dream-cat{width:auto;min-width:104px;font-size:12px;}
+.dream-why{flex:1 1 auto;min-width:160px;font-size:13px;}
+
+/* 金鹅账户 */
+.goose-ratio{margin:8px 0 4px;}
+.goose-ratio-in{width:64px;text-align:center;}
+.goose-ratio-hint{font-size:12px;margin-top:6px;min-height:16px;}
+.goose-ratio-hint.ok{color:var(--accent);}
+.goose-ratio-hint.bad{color:#e25b5b;}
+.goose-balance-row{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin:6px 0 2px;}
+.goose-balance{font-size:15px;color:var(--text);}
+.goose-balance b{color:var(--accent);font-size:18px;}
+.goose-suggest{font-size:12px;color:var(--text-2);}
+.goose-deposit .amt{width:110px;}
+.goose-deposit .note{flex:1 1 auto;min-width:100px;}
+
+/* 成功日记统计 + 热力 */
+.diary-stats{font-size:13px;color:var(--text);margin:4px 0 8px;}
+.diary-stats b{color:var(--accent);}
+.diary-heat{display:grid;grid-template-columns:repeat(28,1fr);gap:3px;margin:6px 0 4px;}
+.diary-heat .cell{aspect-ratio:1;border-radius:3px;background:#e3e9ed;}
+.diary-heat .cell.lv1{background:#bfe3df;}
+.diary-heat .cell.lv2{background:#7fc9c1;}
+.diary-heat .cell.lv3{background:#2E86C1;}
+.diary-heat .cell.today{border:2px solid var(--amber,#E8A33D);}
+
 </style>
 </head>
 <body>
@@ -2668,7 +2707,14 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
 <section id="tab10" class="tab-section">
   <div class="section-header">
     <div class="section-title">梦想金库 · 财富启蒙</div>
-    <div class="section-desc">源自《小狗钱钱》· 梦想清单 → 相册 → 储蓄罐 → 成功日记</div>
+    <div class="section-desc">源自《小狗钱钱》· 梦想清单 → 相册 → 储蓄罐 → 金鹅 → 成功日记</div>
+  </div>
+
+  <!-- 财富总览仪表盘 -->
+  <div class="card overview-card">
+    <div class="card-title">📊 财富总览</div>
+    <div class="overview-grid" id="overviewGrid"></div>
+    <div class="overview-quote" id="overviewQuote"></div>
   </div>
 
   <!-- 模块1：梦想清单（10→3 核心） -->
@@ -2677,7 +2723,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
       <span class="card-title">🌟 梦想清单 · 我必须变有钱的 10 个理由</span>
       <span class="sub" id="dreamCoreCount">已选 0 / 3 核心梦想</span>
     </div>
-    <div class="dream-tip">写下 10 个你想变有钱的理由或梦想，再从中选出 <b>3 个最想实现的</b>作为核心梦想（⭐）。这 3 个会自动生成「梦想相册」与「梦想储蓄罐」。</div>
+    <div class="dream-tip">写下 10 个你想变有钱的理由或梦想，给每条标上<b>分类</b>、写清<b>为什么想要</b>（画面越具体越好），再选出 <b>3 个最想实现的</b>作为核心梦想（⭐）。这 3 个会自动生成「梦想相册」「梦想储蓄罐」，并按 ①②③ 排定优先级。</div>
     <div id="dreamList" class="dream-list"></div>
     <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
       <button class="btn btn-primary btn-sm" onclick="addDream()">＋ 添加一条理由</button>
@@ -2688,15 +2734,42 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
   <!-- 模块2：梦想相册 -->
   <div class="card">
     <div class="card-title">🖼️ 梦想相册</div>
-    <div class="dream-tip">为每个核心梦想收集视觉化的照片，让目标看得见、感受得到。</div>
+    <div class="dream-tip">为每个核心梦想收集视觉化的照片，让目标看得见、感受得到。每天翻看，强化"我一定要实现它"的决心。</div>
     <div id="albumWrap" class="album-wrap"></div>
   </div>
 
   <!-- 模块3：梦想储蓄罐 -->
   <div class="card">
     <div class="card-title">🐷 梦想储蓄罐</div>
-    <div class="dream-tip">为每个核心梦想单独存钱，设定目标金额，积少成多。</div>
+    <div class="dream-tip">为每个核心梦想单独存钱，设定目标金额，积少成多。建议把每月收入分配里「梦想储蓄罐」那部分拆进这里。</div>
     <div id="piggyWrap" class="piggy-wrap"></div>
+  </div>
+
+  <!-- 模块3.5：金鹅账户 -->
+  <div class="card">
+    <div class="card-title">🦢 金鹅账户 · 养鹅法则</div>
+    <div class="dream-tip">《小狗钱钱》的灵魂：把收入分三份——<b>日常开销 / 梦想储蓄罐 / 金鹅</b>。金鹅是"会下金蛋的鹅"，用来储蓄和投资，<b>永远不要杀死你的鹅</b>（不动用本金）。养大金鹅，它就会持续为你生钱。</div>
+    <div class="goose-ratio">
+      <div class="form-row">
+        <div class="auto"><span class="sub">月收入 ¥</span><input class="form-input" id="gooseIncome" type="number" placeholder="0"></div>
+        <div class="auto"><span class="sub">日常</span><input class="form-input goose-ratio-in" id="gooseDaily" type="number" placeholder="50"><span class="sub">%</span></div>
+        <div class="auto"><span class="sub">梦想罐</span><input class="form-input goose-ratio-in" id="gooseDream" type="number" placeholder="40"><span class="sub">%</span></div>
+        <div class="auto"><span class="sub">金鹅</span><input class="form-input goose-ratio-in" id="gooseGoose" type="number" placeholder="10"><span class="sub">%</span></div>
+      </div>
+      <div class="goose-ratio-hint" id="gooseRatioHint"></div>
+    </div>
+    <div class="goose-balance-row">
+      <div class="goose-balance">金鹅余额 <b id="gooseBalance">¥0</b></div>
+      <div class="goose-suggest" id="gooseSuggest"></div>
+    </div>
+    <div class="piggy-bar"><div class="piggy-fill" id="gooseFill" style="width:0%"></div></div>
+    <div class="goose-deposit" style="display:flex;gap:8px;margin:10px 0;flex-wrap:wrap;">
+      <input class="form-input amt" id="gooseAmt" type="number" placeholder="存入金额">
+      <input class="form-input note" id="gooseNote" type="text" placeholder="备注（可选）">
+      <button class="btn btn-primary btn-sm" onclick="gooseDeposit()">存入金鹅</button>
+      <button class="btn btn-ghost btn-sm" onclick="gooseAutoSave()">📥 按本月比例自动存</button>
+    </div>
+    <div class="piggy-records" id="gooseRecords"></div>
   </div>
 
   <!-- 模块4：成功日记 -->
@@ -2706,6 +2779,8 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
       <span class="sub" id="diaryStreak"></span>
     </div>
     <div class="dream-tip">每天记录 <b>5 件你做成的事</b>，哪怕很小。坚持下去，自信心会肉眼可见地增长。</div>
+    <div class="diary-stats" id="diaryStats"></div>
+    <div class="diary-heat" id="diaryHeat"></div>
     <div class="diary-nav">
       <button class="btn btn-ghost btn-sm" onclick="diaryPrev()">前一天</button>
       <span class="diary-date" id="diaryDate">—</span>
@@ -2807,9 +2882,15 @@ var defaultDb = {
     cache: {} // 按日期归档投资方向分析：{ 'YYYY-MM-DD': {date, themes:[{key,reason,level}], generatedAt, source} }
   },
   wealth: {
-    dreamList: [],     // [{id, text, core}] 最多10条理由/梦想，core 最多3个
+    dreamList: [],     // [{id, text, reason, category, core}] 最多10条理由/梦想，core 最多3个；reason=为什么想要，category=分类
     albums: {},        // { [dreamId]: [base64,...] } 梦想相册图片
     piggy: {},         // { [dreamId]: { goal:number, deposits:[{ts,amount,note}] } } 梦想储蓄罐
+    goose: {           // 🦢 金鹅账户（养鹅法则）：储蓄/投资，绝不动用本金
+      income: 0,                       // 月收入（参考值，用于按比例估算）
+      ratio: { daily: 50, dream: 40, goose: 10 }, // 收入分配比例：日常开销/梦想储蓄罐/金鹅，合计100
+      balance: 0,                      // 金鹅当前余额
+      deposits: []                     // [{ts, amount, note}] 存入记录
+    },
     successDiary: {}   // { 'YYYY-MM-DD': [str,...] } 成功日记（每日5条）
   }
 };
@@ -2883,6 +2964,7 @@ function switchTab(n){
 /* ====== Tab 10: 梦想金库 · 财富启蒙 ====== */
 var WEALTH_DREAM_MAX = 10;
 var WEALTH_CORE_MAX = 3;
+var WEALTH_CATEGORIES = ['💡 成长','🏠 物质','✈️ 体验','❤️ 关系','💰 财务'];
 var wealthDiaryDate = null;
 
 function pad2(n){ return n < 10 ? '0' + n : '' + n; }
@@ -2890,15 +2972,20 @@ function toDateStr(d){ return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '
 function wealth(){ return DB.wealth; }
 
 function initWealth(){
-  if(!DB.wealth) DB.wealth = { dreamList: [], albums: {}, piggy: {}, successDiary: {} };
+  if(!DB.wealth) DB.wealth = { dreamList: [], albums: {}, piggy: {}, goose: { income: 0, ratio: { daily: 50, dream: 40, goose: 10 }, balance: 0, deposits: [] }, successDiary: {} };
   if(!DB.wealth.dreamList) DB.wealth.dreamList = [];
   if(!DB.wealth.albums) DB.wealth.albums = {};
   if(!DB.wealth.piggy) DB.wealth.piggy = {};
   if(!DB.wealth.successDiary) DB.wealth.successDiary = {};
+  if(!DB.wealth.goose) DB.wealth.goose = { income: 0, ratio: { daily: 50, dream: 40, goose: 10 }, balance: 0, deposits: [] };
+  if(!DB.wealth.goose.ratio) DB.wealth.goose.ratio = { daily: 50, dream: 40, goose: 10 };
+  if(!DB.wealth.goose.deposits) DB.wealth.goose.deposits = [];
   if(wealthDiaryDate === null) wealthDiaryDate = today();
+  renderWealthOverview();
   renderDreamList();
   renderAlbums();
   renderPiggy();
+  renderGoose();
   renderSuccessDiary();
 }
 
@@ -2909,9 +2996,12 @@ function renderDreamList(){
   document.getElementById('dreamCoreCount').textContent = '已选 ' + coreCount + ' / ' + WEALTH_CORE_MAX + ' 核心梦想';
   var box = document.getElementById('dreamList');
   box.innerHTML = '';
+  var coreSeq = 0;
   list.forEach(function(d, i){
+    if(d.core) coreSeq++;
     var item = document.createElement('div');
     item.className = 'dream-item' + (d.core ? ' core' : '');
+    var main = document.createElement('div'); main.className = 'dream-main';
     var no = document.createElement('div'); no.className = 'dream-no'; no.textContent = (i + 1);
     var ta = document.createElement('textarea');
     ta.rows = 1; ta.placeholder = '第 ' + (i + 1) + ' 个理由 / 梦想…';
@@ -2919,16 +3009,32 @@ function renderDreamList(){
     ta.oninput = function(){ d.text = ta.value; saveDb(); };
     var core = document.createElement('button');
     core.className = 'dream-core-btn' + (d.core ? ' on' : '');
-    core.textContent = d.core ? '⭐ 核心' : '☆ 设为核心';
+    core.textContent = d.core ? ('⭐ ' + coreSeq + ' 核心') : '☆ 设为核心';
     core.onclick = function(){ toggleCore(d.id); };
     var del = document.createElement('button');
     del.className = 'dream-del'; del.textContent = '✕'; del.title = '删除';
     del.onclick = function(){ delDream(d.id); };
-    item.appendChild(no); item.appendChild(ta); item.appendChild(core); item.appendChild(del);
+    main.appendChild(no); main.appendChild(ta); main.appendChild(core); main.appendChild(del);
+    item.appendChild(main);
+    var meta = document.createElement('div'); meta.className = 'dream-meta';
+    var cat = document.createElement('select'); cat.className = 'form-input dream-cat';
+    WEALTH_CATEGORIES.forEach(function(c){
+      var o = document.createElement('option'); o.value = c; o.textContent = c;
+      if((d.category || '') === c) o.selected = true;
+      cat.appendChild(o);
+    });
+    cat.onchange = function(){ d.category = cat.value; saveDb(); };
+    var why = document.createElement('input'); why.type = 'text'; why.className = 'form-input dream-why';
+    why.placeholder = '为什么想要它？（写下具体的画面）';
+    why.value = d.reason || '';
+    why.oninput = function(){ d.reason = why.value; saveDb(); };
+    meta.appendChild(cat); meta.appendChild(why);
+    item.appendChild(meta);
     box.appendChild(item);
   });
   renderAlbums();
   renderPiggy();
+  renderWealthOverview();
 }
 function addDream(){
   var list = wealth().dreamList;
@@ -3088,6 +3194,125 @@ function renderPiggy(){
   });
 }
 
+/* ---- 财富总览仪表盘 ---- */
+function renderWealthOverview(){
+  var grid = document.getElementById('overviewGrid');
+  if(!grid) return;
+  var cores = coreDreams();
+  var piggyTotal = 0, piggyGoal = 0;
+  cores.forEach(function(d){
+    var p = wealth().piggy[d.id];
+    if(p){
+      piggyGoal += (Number(p.goal) || 0);
+      piggyTotal += p.deposits.reduce(function(s, x){ return s + (Number(x.amount) || 0); }, 0);
+    }
+  });
+  var gooseBal = (wealth().goose && wealth().goose.balance) ? wealth().goose.balance : 0;
+  var s = wealth().successDiary;
+  var totalEntries = 0, days = 0;
+  for(var k in s){ if(s[k] && s[k].length){ days++; totalEntries += s[k].length; } }
+  var cells = [
+    { num: cores.length + ' / 3', label: '核心梦想', cls: 'amber' },
+    { num: '¥' + piggyTotal.toLocaleString(), label: '梦想储蓄已存', cls: 'accent' },
+    { num: piggyGoal > 0 ? Math.round(piggyTotal / piggyGoal * 100) + '%' : '—', label: '储蓄总进度', cls: '' },
+    { num: '¥' + gooseBal.toLocaleString(), label: '金鹅余额', cls: 'accent' },
+    { num: days + ' 天', label: '成功日记打卡', cls: '' },
+    { num: totalEntries + ' 条', label: '累计成功记录', cls: '' }
+  ];
+  grid.innerHTML = cells.map(function(c){
+    return '<div class="overview-cell"><div class="ov-num ' + c.cls + '">' + c.num + '</div><div class="ov-label">' + c.label + '</div></div>';
+  }).join('');
+  var quotes = [
+    '“你能否挣到钱，最关键的因素并不在于你是不是有一个好点子，而在于你的自信程度。”',
+    '“把精力集中在你知道的、能做的和拥有的东西上。”',
+    '“不要杀死你的鹅——哪怕遇到再大的诱惑，也绝不动用本金。”',
+    '“运气其实只是充分准备加上努力工作的结果。”',
+    '“每天写成功日记，是对自己能量的持续充电。”'
+  ];
+  var q = quotes[Math.floor((totalEntries + days) % quotes.length)];
+  var qEl = document.getElementById('overviewQuote');
+  if(qEl) qEl.textContent = q;
+}
+
+/* ---- 模块3.5：金鹅账户 ---- */
+function renderGoose(){
+  var g = wealth().goose;
+  if(!g) g = wealth().goose = { income: 0, ratio: { daily: 50, dream: 40, goose: 10 }, balance: 0, deposits: [] };
+  var incomeEl = document.getElementById('gooseIncome');
+  var dEl = document.getElementById('gooseDaily');
+  var drEl = document.getElementById('gooseDream');
+  var gEl = document.getElementById('gooseGoose');
+  if(incomeEl) incomeEl.value = g.income || '';
+  if(dEl) dEl.value = g.ratio.daily;
+  if(drEl) drEl.value = g.ratio.dream;
+  if(gEl) gEl.value = g.ratio.goose;
+  if(incomeEl) incomeEl.oninput = gooseSaveRatio;
+  if(dEl) dEl.oninput = gooseSaveRatio;
+  if(drEl) drEl.oninput = gooseSaveRatio;
+  if(gEl) gEl.oninput = gooseSaveRatio;
+  var sum = (Number(g.ratio.daily) || 0) + (Number(g.ratio.dream) || 0) + (Number(g.ratio.goose) || 0);
+  var hint = document.getElementById('gooseRatioHint');
+  if(hint){
+    if(sum === 100){ hint.className = 'goose-ratio-hint ok'; hint.textContent = '✓ 分配比例合计 100%，完美。'; }
+    else { hint.className = 'goose-ratio-hint bad'; hint.textContent = '⚠ 当前合计 ' + sum + '%，三项比例之和应为 100%。'; }
+  }
+  var balEl = document.getElementById('gooseBalance');
+  if(balEl) balEl.textContent = '¥' + (Number(g.balance) || 0).toLocaleString();
+  var suggest = document.getElementById('gooseSuggest');
+  if(suggest){
+    var monthlyGoose = (Number(g.income) || 0) * (Number(g.ratio.goose) || 0) / 100;
+    suggest.textContent = (Number(g.income) > 0 && monthlyGoose > 0) ? ('每月按 ' + g.ratio.goose + '% 可养鹅约 ¥' + Math.round(monthlyGoose).toLocaleString()) : '';
+  }
+  var fill = document.getElementById('gooseFill');
+  if(fill){
+    var target = (Number(g.income) || 0);
+    var pct = target > 0 ? Math.min(100, (Number(g.balance) || 0) / target * 100) : 0;
+    fill.style.width = pct + '%';
+  }
+  var rec = document.getElementById('gooseRecords');
+  if(rec){
+    rec.innerHTML = '';
+    (g.deposits || []).slice().reverse().forEach(function(x, ri){
+      var realIdx = g.deposits.length - 1 - ri;
+      var row = document.createElement('div'); row.className = 'piggy-rec';
+      var a = document.createElement('span'); a.className = 'amt'; a.textContent = '+¥' + Number(x.amount).toLocaleString();
+      var n = document.createElement('span'); n.className = 'note'; n.textContent = x.note || '养鹅';
+      var t = document.createElement('span'); t.className = 'ts'; t.textContent = new Date(x.ts).toLocaleDateString();
+      var dl = document.createElement('button'); dl.className = 'del'; dl.textContent = '✕';
+      dl.onclick = function(){ g.deposits.splice(realIdx, 1); g.balance = Math.max(0, (Number(g.balance) || 0) - Number(x.amount)); saveDb(); renderGoose(); renderWealthOverview(); };
+      row.appendChild(a); row.appendChild(n); row.appendChild(t); row.appendChild(dl);
+      rec.appendChild(row);
+    });
+  }
+}
+function gooseSaveRatio(){
+  var g = wealth().goose;
+  g.income = Number(document.getElementById('gooseIncome').value) || 0;
+  g.ratio.daily = Number(document.getElementById('gooseDaily').value) || 0;
+  g.ratio.dream = Number(document.getElementById('gooseDream').value) || 0;
+  g.ratio.goose = Number(document.getElementById('gooseGoose').value) || 0;
+  saveDb(); renderGoose();
+}
+function gooseDeposit(){
+  var g = wealth().goose;
+  var amt = Number(document.getElementById('gooseAmt').value);
+  if(!amt || amt <= 0){ alert('请输入有效金额'); return; }
+  g.balance = (Number(g.balance) || 0) + amt;
+  g.deposits.push({ ts: Date.now(), amount: amt, note: (document.getElementById('gooseNote').value || '').trim() });
+  document.getElementById('gooseAmt').value = '';
+  document.getElementById('gooseNote').value = '';
+  saveDb(); renderGoose(); renderWealthOverview();
+}
+function gooseAutoSave(){
+  var g = wealth().goose;
+  var monthly = (Number(g.income) || 0) * (Number(g.ratio.goose) || 0) / 100;
+  if(monthly <= 0){ alert('请先填写月收入并设定金鹅比例'); return; }
+  g.balance = (Number(g.balance) || 0) + monthly;
+  g.deposits.push({ ts: Date.now(), amount: monthly, note: '本月养鹅（' + g.ratio.goose + '%）' });
+  saveDb(); renderGoose(); renderWealthOverview();
+  toast('已按本月比例存入 ¥' + Math.round(monthly).toLocaleString());
+}
+
 /* ---- 模块4：成功日记 ---- */
 function renderSuccessDiary(){
   var date = wealthDiaryDate;
@@ -3109,6 +3334,8 @@ function renderSuccessDiary(){
   var filled = entries.filter(function(x){ return x && x.trim(); }).length;
   document.getElementById('diaryProgress').textContent = '今日 ' + filled + ' / 5';
   document.getElementById('diaryStreak').textContent = '连续打卡 ' + diaryStreak() + ' 天';
+  renderDiaryStats();
+  renderDiaryHeat();
 }
 function saveDiary(date, entries){
   var clean = entries.slice();
@@ -3141,6 +3368,36 @@ function diaryStreak(){
     else break;
   }
   return streak;
+}
+function renderDiaryStats(){
+  var el = document.getElementById('diaryStats');
+  if(!el) return;
+  var s = wealth().successDiary;
+  var now = new Date();
+  var ym = now.getFullYear() + '-' + pad2(now.getMonth() + 1);
+  var monthDays = 0, monthEntries = 0, totalDays = 0, totalEntries = 0;
+  for(var k in s){
+    if(!s[k] || !s[k].length) continue;
+    totalDays++; totalEntries += s[k].length;
+    if(k.slice(0, 7) === ym){ monthDays++; monthEntries += s[k].length; }
+  }
+  el.innerHTML = '本月打卡 <b>' + monthDays + '</b> 天 · 本月记录 <b>' + monthEntries + '</b> 条 · 累计 <b>' + totalDays + '</b> 天 / <b>' + totalEntries + '</b> 条成功';
+}
+function renderDiaryHeat(){
+  var el = document.getElementById('diaryHeat');
+  if(!el) return;
+  var s = wealth().successDiary;
+  var today = new Date();
+  var cells = [];
+  for(var i = 55; i >= 0; i--){
+    var d = new Date(today); d.setDate(d.getDate() - i);
+    var ds = toDateStr(d);
+    var n = (s[ds] && s[ds].length) ? s[ds].length : 0;
+    var lv = n >= 5 ? 3 : (n >= 3 ? 2 : (n >= 1 ? 1 : 0));
+    var isToday = (i === 0) ? ' today' : '';
+    cells.push('<div class="cell lv' + lv + isToday + '" title="' + ds + '：' + n + ' 条"></div>');
+  }
+  el.innerHTML = cells.join('');
 }
 
 /* ====== Tab 9: 新闻联播每日总结 ====== */
