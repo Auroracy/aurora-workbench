@@ -1752,7 +1752,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     </button>
     <button class="nav-item" data-tab="4" onclick="switchTab(4)">
       <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M23 6l-9.5 9.5-5-5L1 18"/><path d="M17 6h6v6"/></svg></span>
-      <span class="nav-num">04</span><span class="nav-text">市场瞭望 · 投资资讯</span>
+      <span class="nav-num">04</span><span class="nav-text">市场瞭望 · 投顾分析</span>
     </button>
     <button class="nav-item" data-tab="5" onclick="switchTab(5)">
       <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/></svg></span>
@@ -2118,225 +2118,211 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
   </div>
 </section>
 
-<!-- ========== Tab 4: Market ========== -->
+<!-- ========== Tab 4: Market / Investment Advisor ========== -->
 <section id="tab4" class="tab-section">
   <div class="section-header">
-    <div class="section-title">市场瞭望 · 投资资讯</div>
-    <div class="section-desc">资讯整理与个人复盘</div>
+    <div class="section-title">市场瞭望 · 投顾分析</div>
+    <div class="section-desc">科技资讯 · 基金诊断 · 资产配置建议</div>
   </div>
 
-  <div class="disclaimer">
-    所有资讯仅用于信息整理与个人复盘，不构成任何投资建议。投资有风险，决策需谨慎。
-  </div>
+  <div class="disclaimer">所有数据仅用于个人复盘与学习，报价来自公开接口盘中估算，基金诊断与建议不构成投资建议。投资有风险，决策需谨慎。</div>
 
-  <!-- Market Sentiment Overview -->
+  <style>
+    .fund-tbl{width:100%;border-collapse:collapse;font-size:13px;background:#fff;}
+    .fund-tbl th,.fund-tbl td{padding:8px 6px;border-bottom:1px solid #e2ebf0;text-align:right;white-space:nowrap;}
+    .fund-tbl th:first-child,.fund-tbl td:first-child{text-align:left;}
+    .fund-tbl th{color:#5a6b75;font-weight:600;background:#f6fafb;}
+    .chip{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;margin:1px 2px;background:#e8f3f1;color:#15A49B;}
+    .chip.theme{background:#eaf1fb;color:#2E86C1;}
+    .pos{color:#c0392b;font-weight:600;}
+    .neg{color:#1e8e4e;font-weight:600;}
+    .alloc-bar{display:flex;height:18px;border-radius:9px;overflow:hidden;margin:6px 0;background:#eef3f6;}
+    .alloc-seg{height:100%;}
+    .alloc-legend{display:flex;flex-wrap:wrap;gap:10px;font-size:12px;color:#5a6b75;}
+    .alloc-legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:middle;}
+    .import-tabs{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;}
+    .import-tabs .tab-btn{padding:6px 12px;border:1px solid #d4e0e6;background:#fff;border-radius:16px;cursor:pointer;font-size:13px;color:#4a5a63;}
+    .import-tabs .tab-btn.active{background:#15A49B;color:#fff;border-color:#15A49B;}
+    .import-preview table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px;}
+    .import-preview td,.import-preview th{padding:6px;border-bottom:1px solid #eef3f6;text-align:left;}
+    .import-preview input{width:90px;padding:4px;}
+    .overlap-pair{border:1px solid #e2ebf0;border-radius:8px;padding:10px;margin:8px 0;background:#fbfdfe;line-height:1.7;}
+    .news-item{border-left:3px solid #cfd8dd;padding:8px 10px;margin:8px 0;background:#fbfdfe;border-radius:4px;}
+    .import-pane{margin-top:6px;}
+  </style>
+
+  <!-- A. 市场全景 -->
   <div class="card mkt-overview">
     <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
-      <span>市场情绪概览</span>
+      <span>市场全景</span>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
         <span class="text-sm text-muted" id="goldUpdateTime">金价 未加载</span>
-        <button class="btn btn-sm" id="goldRefreshBtn" onclick="fetchGoldQuotes(true)">🔄 刷新金价</button>
+        <button class="btn btn-sm" id="goldRefreshBtn" onclick="fetchGoldQuotes(true)">🔄 刷新</button>
       </div>
     </div>
-    <div class="section-desc" style="margin-bottom:14px;">国际 / 国内金价 + 黄金 ETF 实时报价 + 自动情绪判断 · 数据为示例，实际请以券商 App 为准</div>
-    <div class="metric-grid gold-grid">
-      <div class="metric-tile gold-tile" id="goldIntlTile">
-        <div class="metric-label">国际金价 (USD/oz)</div>
-        <div class="metric-value" id="goldIntlPrice">—</div>
-        <div class="metric-change" id="goldIntlChg">取数中…</div>
-      </div>
-      <div class="metric-tile gold-tile" id="goldDomTile">
-        <div class="metric-label" id="goldDomLabel" title="配置 Cloudflare Worker 代理后显示上金所真实 Au99.99；未配置时由 518880 ETF×100 近似（当前 ETF 折价约5%，仅供参考，非真实成交价）">国内金价 (元/克) <span class="metric-suffix" id="goldDomSuffix">ETF×100 近似</span></div>
-        <div class="metric-value" id="goldDomPrice">—</div>
-        <div class="metric-change" id="goldDomChg">取数中…</div>
-        <div class="metric-manual">
-          <input type="number" id="goldDomManualInput" placeholder="手动输入" step="0.01" min="0">
-          <button type="button" onclick="saveDomGoldManual()">保存</button>
-        </div>
-        <div class="gold-proxy-row">
-          <span class="gold-proxy-status" id="goldProxyStatus">代理：未配置</span>
-          <a class="gold-proxy-toggle" id="goldProxyToggle" onclick="toggleGoldProxyPanel()">⚙ 配置</a>
-        </div>
-        <div class="gold-proxy-panel" id="goldProxyPanel" style="display:none;">
-          <label class="form-label">Cloudflare Worker URL</label>
-          <input type="text" id="goldProxyUrlInput" placeholder="https://xxx.workers.dev">
-          <div class="gold-proxy-panel-btns">
-            <button onclick="saveGoldProxy()">保存并刷新</button>
-            <button onclick="testGoldProxy()" class="ghost">🔍 测试代理</button>
-            <button onclick="clearGoldProxy()" class="ghost">清除</button>
-          </div>
-          <div class="gold-proxy-hint" id="goldProxyHint">未配置：纯前端无法绕过新浪 Referer 锁。部署 Cloudflare Worker（<a href="https://github.com/Auroracy/aurora-workbench/blob/main/gold-proxy-worker.js" target="_blank">gold-proxy-worker.js</a>）即可秒级拿到实时 Au99.99，免费额度足够。</div>
-        </div>
-      </div>
-      <div class="metric-tile gold-tile" id="goldEtfTile">
-        <div class="metric-label">黄金 ETF (518880)</div>
-        <div class="metric-value" id="goldEtfPrice">—</div>
-        <div class="metric-change" id="goldEtfChg">取数中…</div>
-      </div>
-      <div class="metric-tile accent gold-mood-tile" id="goldMoodTile">
-        <div class="metric-label">市场情绪</div>
-        <div class="metric-value" id="goldMoodMain">—</div>
-        <div class="metric-change" id="goldMoodSub">—</div>
-      </div>
+    <div class="section-desc" style="margin-bottom:12px;">大盘指数 + 金价 + 黄金ETF 实时参考（指数/金价经代理抓取，盘中为估算值）</div>
+    <div class="metric-grid gold-grid" id="marketOverviewGrid">
+      <div class="metric-tile idx-tile" id="idx_sh000300"><div class="metric-label">沪深300</div><div class="metric-value" id="idx_sh000300_price">—</div><div class="metric-change" id="idx_sh000300_chg">取数中…</div></div>
+      <div class="metric-tile idx-tile" id="idx_sz399006"><div class="metric-label">创业板指</div><div class="metric-value" id="idx_sz399006_price">—</div><div class="metric-change" id="idx_sz399006_chg">取数中…</div></div>
+      <div class="metric-tile idx-tile" id="idx_usIXIC"><div class="metric-label">纳斯达克</div><div class="metric-value" id="idx_usIXIC_price">—</div><div class="metric-change" id="idx_usIXIC_chg">取数中…</div></div>
+      <div class="metric-tile idx-tile" id="idx_hkHSI"><div class="metric-label">恒生指数</div><div class="metric-value" id="idx_hkHSI_price">—</div><div class="metric-change" id="idx_hkHSI_chg">取数中…</div></div>
+      <div class="metric-tile gold-tile" id="goldIntlTile"><div class="metric-label">国际金价 (USD/oz)</div><div class="metric-value" id="goldIntlPrice">—</div><div class="metric-change" id="goldIntlChg">取数中…</div></div>
+      <div class="metric-tile gold-tile" id="goldDomTile"><div class="metric-label" id="goldDomLabel" title="配置 Cloudflare Worker 代理后显示上金所真实 Au99.99；未配置时由 518880 ETF×100 近似（当前 ETF 折价约5%，仅供参考）">国内金价 (元/克) <span class="metric-suffix" id="goldDomSuffix">ETF×100 近似</span></div><div class="metric-value" id="goldDomPrice">—</div><div class="metric-change" id="goldDomChg">取数中…</div><div class="metric-manual"><input type="number" id="goldDomManualInput" placeholder="手动输入" step="0.01" min="0"><button type="button" onclick="saveDomGoldManual()">保存</button></div><div class="gold-proxy-row"><span class="gold-proxy-status" id="goldProxyStatus">代理：未配置</span><a class="gold-proxy-toggle" id="goldProxyToggle" onclick="toggleGoldProxyPanel()">⚙ 配置</a></div><div class="gold-proxy-panel" id="goldProxyPanel" style="display:none;"><label class="form-label">Cloudflare Worker URL</label><input type="text" id="goldProxyUrlInput" placeholder="https://xxx.workers.dev"><div class="gold-proxy-panel-btns"><button onclick="saveGoldProxy()">保存并刷新</button><button onclick="testGoldProxy()" class="ghost">🔍 测试代理</button><button onclick="clearGoldProxy()" class="ghost">清除</button></div><div class="gold-proxy-hint" id="goldProxyHint">未配置：纯前端无法绕过新浪 Referer 锁。部署 Cloudflare Worker 即可拿到实时 Au99.99。</div></div></div>
+      <div class="metric-tile gold-tile" id="goldEtfTile"><div class="metric-label">黄金 ETF (518880)</div><div class="metric-value" id="goldEtfPrice">—</div><div class="metric-change" id="goldEtfChg">取数中…</div></div>
+      <div class="metric-tile accent gold-mood-tile" id="goldMoodTile"><div class="metric-label">市场情绪</div><div class="metric-value" id="goldMoodMain">—</div><div class="metric-change" id="goldMoodSub">—</div></div>
     </div>
   </div>
 
-  <!-- Today's Featured News -->
+  <!-- B1. 科技股资讯 & 财报 -->
   <div class="card">
     <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
-      <span>今日资讯精选</span>
+      <span>科技股资讯 · 财报动态</span>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-        <span class="text-sm text-muted" id="newsUpdateTime">未加载</span>
-        <button class="btn btn-sm" id="newsRefreshBtn" onclick="fetchNews(true)">🔄 刷新资讯</button>
+        <span class="text-sm text-muted" id="techNewsUpdateTime">未加载</span>
+        <button class="btn btn-sm" id="techNewsRefreshBtn" onclick="fetchTechNews(true)">🔄 刷新</button>
       </div>
     </div>
-    <div class="section-desc" style="margin-bottom:12px;">利好 / 利空 / 中性 三维度实时热点 · 点击标题查看原文</div>
+    <div class="section-desc" style="margin-bottom:12px;">国内外科技公司动态 + 财报季要点（A股/美股/港股），关键词筛选 · 自动利好/利空判断</div>
     <div class="filter-bar">
       <span class="filter-label">筛选：</span>
-      <select id="newsFilterCat" onchange="newsPage=1;renderNews()">
-        <option value="">全部分类</option>
-        <option value="astock">A股 / 基金</option>
-        <option value="gold">黄金市场</option>
+      <select id="techNewsFilter" onchange="techNewsPage=1;renderTechNews()">
+        <option value="">全部</option>
+        <option value="earnings">财报/业绩</option>
+        <option value="ai">AI/算力</option>
+        <option value="semi">半导体/芯片</option>
+        <option value="ev">新能源车</option>
+        <option value="internet">中概/互联网</option>
       </select>
-      <select id="newsFilterTag" onchange="newsPage=1;renderNews()">
+      <select id="techNewsTag" onchange="techNewsPage=1;renderTechNews()">
         <option value="">全部标签</option>
         <option value="positive">利好</option>
         <option value="negative">利空</option>
         <option value="neutral">中性</option>
       </select>
-      <label class="filter-label" style="display:flex;align-items:center;gap:4px;cursor:pointer;">
-        <input type="checkbox" id="newsFavOnly" onchange="newsPage=1;renderNews()" style="width:auto;"> 仅看收藏
-      </label>
-      <label class="filter-label" style="display:flex;align-items:center;gap:4px;cursor:pointer;">
-        <input type="checkbox" id="newsAutoRefresh" onchange="toggleAutoRefresh()" style="width:auto;"> 自动刷新
-      </label>
+      <label class="filter-label" style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="techNewsFavOnly" onchange="techNewsPage=1;renderTechNews()" style="width:auto;"> 仅看收藏</label>
+      <label class="filter-label" style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="techNewsAutoRefresh" onchange="toggleTechAutoRefresh()" style="width:auto;"> 自动刷新</label>
     </div>
-    <div id="newsList"><div class="news-loading"><span class="spinner"></span>正在获取实时资讯...</div></div>
-    <div id="newsPager" class="pager"></div>
+    <div id="techNewsList"><div class="news-loading"><span class="spinner"></span>正在获取科技资讯...</div></div>
+    <div id="techNewsPager" class="pager"></div>
     <div class="manual-add-toggle">
-      <button class="toggle-btn" onclick="toggleManualAdd()">+ 手动补充资讯</button>
-      <div class="manual-add-form" id="manualAddForm">
+      <button class="toggle-btn" onclick="toggleTechManualAdd()">+ 手动补充资讯</button>
+      <div class="manual-add-form" id="techManualAddForm">
         <div class="form-row">
-          <div class="form-group auto">
-            <label class="form-label">分类</label>
-            <select id="newsCat">
-              <option value="astock">A股 / 基金</option>
-              <option value="gold">黄金市场</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">标题</label>
-            <input type="text" id="newsTitle" placeholder="资讯标题">
-          </div>
+          <div class="form-group"><label class="form-label">标题</label><input type="text" id="techNewsTitle" placeholder="资讯标题"></div>
+          <div class="form-group"><label class="form-label">摘要</label><input type="text" id="techNewsSummary" placeholder="一句话概括"></div>
         </div>
         <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">核心摘要</label>
-            <textarea id="newsSummary" rows="2" placeholder="一句话概括核心内容..."></textarea>
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group auto">
-            <label class="form-label">标签</label>
-            <select id="newsTag">
-              <option value="positive">利好</option>
-              <option value="negative">利空</option>
-              <option value="neutral">中性</option>
-            </select>
-          </div>
-          <div class="auto" style="padding-bottom:0;align-self:flex-end;"><button class="btn btn-primary btn-sm" onclick="addNews()">添加</button></div>
+          <div class="form-group auto"><label class="form-label">标签</label><select id="techNewsTagInput"><option value="positive">利好</option><option value="negative">利空</option><option value="neutral">中性</option></select></div>
+          <div class="auto" style="align-self:flex-end;"><button class="btn btn-primary btn-sm" onclick="addTechNews()">添加</button></div>
         </div>
       </div>
     </div>
-    <div class="quick-links" style="margin-top:14px;">
-      <a href="https://www.eastmoney.com/" target="_blank">东方财富</a>
-      <a href="https://www.10jqka.com.cn/" target="_blank">同花顺</a>
-      <a href="https://finance.sina.com.cn/" target="_blank">新浪财经</a>
-      <a href="https://www.sge.com.cn/" target="_blank">上海黄金交易所</a>
-      <a href="https://www.gold.org/" target="_blank">世界黄金协会</a>
-    </div>
   </div>
 
-  <!-- Section 2: Tracking -->
+  <!-- B2. 科技巨头自选 -->
   <div class="card">
-    <div class="card-title">分区二 · 自选跟踪清单</div>
+    <div class="card-title">科技巨头自选 · 实时报价</div>
+    <div class="section-desc" style="margin-bottom:10px;">添加你关注的国内外科技公司（美股 AAPL / 港股 00700 / A股 600519），一键查看实时涨跌</div>
     <div class="form-row">
-      <div class="form-group auto">
-        <label class="form-label">类型</label>
-        <select id="trackType">
-          <option value="fund">基金</option>
-          <option value="gold">黄金</option>
-          <option value="stock">股票</option>
-          <option value="other">其他</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">名称</label>
-        <input type="text" id="trackName" placeholder="如：沪深300ETF">
-      </div>
-      <div class="form-group auto">
-        <label class="form-label">代码</label>
-        <input type="text" id="trackCode" placeholder="如：510300">
-      </div>
-      <div class="form-group">
-        <label class="form-label">观测要点</label>
-        <input type="text" id="trackNote" placeholder="核心持仓赛道 / 关注逻辑">
-      </div>
-      <div class="auto" style="align-self:flex-end;"><button class="btn btn-primary btn-sm" onclick="addTracking()">添加</button></div>
+      <div class="form-group auto"><label class="form-label">市场</label><select id="watchMarket"><option value="us">美股</option><option value="hk">港股</option><option value="a">A股</option></select></div>
+      <div class="form-group auto"><label class="form-label">代码</label><input type="text" id="watchCode" placeholder="如 AAPL / 00700 / 600519"></div>
+      <div class="form-group"><label class="form-label">名称</label><input type="text" id="watchName" placeholder="如 苹果 / 腾讯"></div>
+      <div class="auto" style="align-self:flex-end;"><button class="btn btn-primary btn-sm" onclick="addWatch()">添加</button></div>
     </div>
-    <div id="trackList"></div>
+    <div id="watchList"></div>
   </div>
 
-  <!-- Section 3: Sentiment -->
+  <!-- B3. 财报关注日历 -->
   <div class="card">
-    <div class="card-title">分区三 · 市场情绪 & 逻辑复盘</div>
+    <div class="card-title">财报关注日历</div>
+    <div class="section-desc" style="margin-bottom:10px;">记录你关注公司的财报发布日与关注要点（也可从上方资讯流里挑出财报相关动态）</div>
     <div class="form-row">
-      <div class="form-group auto">
-        <label class="form-label">日期</label>
-        <input type="date" id="sentDate" onchange="loadSentiment()">
-      </div>
+      <div class="form-group auto"><label class="form-label">日期</label><input type="date" id="earnDate"></div>
+      <div class="form-group"><label class="form-label">公司</label><input type="text" id="earnCompany" placeholder="如 英伟达 / 腾讯"></div>
+      <div class="form-group"><label class="form-label">关注要点</label><input type="text" id="earnNote" placeholder="如 数据中心营收、毛利率"></div>
+      <div class="auto" style="align-self:flex-end;"><button class="btn btn-primary btn-sm" onclick="addEarning()">添加</button></div>
     </div>
-    <div class="form-group">
-      <label class="form-label">市场情绪</label>
-      <div class="radio-group" id="sentMoodGroup">
-        <span class="radio-item" data-val="bullish" onclick="selectMood(this)">多头偏强</span>
-        <span class="radio-item" data-val="neutral" onclick="selectMood(this)">震荡中性</span>
-        <span class="radio-item" data-val="bearish" onclick="selectMood(this)">空头偏弱</span>
-      </div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">关键驱动因素</label>
-      <textarea id="sentDrivers" rows="2" placeholder="当下影响市场的核心事件..."></textarea>
-    </div>
-    <div class="form-group">
-      <label class="form-label">风险提示</label>
-      <textarea id="sentRisks" rows="2" placeholder="潜在风险点..."></textarea>
-    </div>
-    <button class="btn btn-primary btn-sm" onclick="saveSentiment()">保存复盘</button>
+    <div id="earnList"></div>
   </div>
 
-  <!-- Section 4: Personal Notes -->
+  <!-- C. 我的基金诊断中心 -->
   <div class="card">
-    <div class="card-title">分区四 · 个人思考笔记库</div>
-    <div class="form-row">
-      <div class="form-group auto">
-        <label class="form-label">日期</label>
-        <input type="date" id="noteDate">
+    <div class="card-title">我的基金 · 诊断中心</div>
+    <div class="section-desc" style="margin-bottom:12px;">导入持仓 → 自动抓取每日估值 → 分类 / 盈亏 / 重合 / 优劣一键诊断</div>
+
+    <!-- 导入区 -->
+    <div class="fund-import">
+      <div class="import-tabs">
+        <button class="tab-btn active" data-mode="shot" onclick="switchFundImport('shot')">📷 截图识别</button>
+        <button class="tab-btn" data-mode="paste" onclick="switchFundImport('paste')">📋 批量粘贴</button>
+        <button class="tab-btn" data-mode="manual" onclick="switchFundImport('manual')">✏️ 手动添加</button>
       </div>
-      <div class="form-group auto">
-        <label class="form-label">笔记类型</label>
-        <select id="noteType">
-          <option value="thought">资讯感悟</option>
-          <option value="plan">计划记录</option>
-          <option value="review">结果回溯</option>
-        </select>
+      <div id="importShot" class="import-pane">
+        <p class="text-sm text-muted">上传券商 App 的持仓截图，通义千问自动识别基金代码 / 名称 / 份额 / 成本价（需已配置通义千问 Key）。</p>
+        <input type="file" id="fundScreenshotInput" accept="image/*" onchange="onFundScreenshot(this)">
+        <div id="fundShotHint" class="text-sm text-muted" style="margin-top:6px;"></div>
       </div>
+      <div id="importPaste" class="import-pane" style="display:none;">
+        <p class="text-sm text-muted">每行一只：<b>基金代码 持有份额 成本价</b>（空格或逗号分隔，名称可省略）。例：<br>110011 1000 3.21<br>005827 2000 2.05</p>
+        <textarea id="fundPasteArea" rows="5" placeholder="110011 1000 3.21&#10;005827 2000 2.05"></textarea>
+        <button class="btn btn-primary btn-sm" onclick="parseFundPaste()">解析并预览</button>
+      </div>
+      <div id="importManual" class="import-pane" style="display:none;">
+        <div class="form-row">
+          <div class="form-group auto"><label class="form-label">代码</label><input type="text" id="fundCode" placeholder="6位代码"></div>
+          <div class="form-group"><label class="form-label">名称</label><input type="text" id="fundName" placeholder="基金名称（用于自动分类）"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group auto"><label class="form-label">份额</label><input type="number" id="fundShares" placeholder="持有份额" step="0.01"></div>
+          <div class="form-group auto"><label class="form-label">成本价</label><input type="number" id="fundCost" placeholder="成本价(元/份)" step="0.0001"></div>
+          <div class="auto" style="align-self:flex-end;"><button class="btn btn-primary btn-sm" onclick="addFundManual()">添加</button></div>
+        </div>
+      </div>
+      <div id="fundImportPreview" class="import-preview"></div>
     </div>
-    <div class="form-group">
-      <textarea id="noteContent" rows="3" placeholder="写下你的判断、布局思路或复盘..."></textarea>
+
+    <!-- 总览仪表盘 -->
+    <div class="metric-grid" style="margin-top:16px;" id="fundOverviewGrid">
+      <div class="metric-tile"><div class="metric-label">基金数量</div><div class="metric-value mini-num" id="fFundCount">0</div></div>
+      <div class="metric-tile"><div class="metric-label">持仓市值</div><div class="metric-value mini-num" id="fTotalAsset">—</div></div>
+      <div class="metric-tile"><div class="metric-label">累计收益</div><div class="metric-value mini-num" id="fTotalProfit">—</div><div class="metric-change" id="fTotalPct">—</div></div>
+      <div class="metric-tile accent"><div class="metric-label">今日盈亏</div><div class="metric-value mini-num" id="fTodayProfit">—</div></div>
     </div>
-    <button class="btn btn-primary btn-sm" onclick="addNote()">保存笔记</button>
-    <div id="noteList" style="margin-top:16px;"></div>
+
+    <!-- 资产配置 -->
+    <div style="margin-top:16px;">
+      <div class="card-title" style="font-size:15px;">资产配置（按市值）</div>
+      <div id="fAllocType"></div>
+      <div id="fAllocTheme" style="margin-top:10px;"></div>
+    </div>
+
+    <!-- 基金列表 -->
+    <div style="margin-top:16px;overflow-x:auto;">
+      <div class="card-title" style="font-size:15px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <span>持仓明细</span>
+        <button class="btn btn-sm" onclick="refreshAllFundValuation()">🔄 刷新估值</button>
+        <button class="btn btn-sm" onclick="fetchFundOverlap()" id="fundOverlapBtn">🔗 分析持仓重合</button>
+      </div>
+      <table class="fund-tbl">
+        <thead><tr><th>基金</th><th>分类</th><th>份额</th><th>成本价</th><th>最新净值</th><th>市值</th><th>持有收益</th><th>收益率</th><th>今日</th><th>操作</th></tr></thead>
+        <tbody id="fundTableBody"></tbody>
+      </table>
+    </div>
+
+    <!-- 重合 & 合并 -->
+    <div id="fundOverlapResult" style="margin-top:14px;"></div>
+
+    <!-- 优劣对比 -->
+    <div style="margin-top:16px;">
+      <div class="card-title" style="font-size:15px;">优劣对比 · 谁在拖后腿</div>
+      <div id="fundCompareList"></div>
+    </div>
+
+    <!-- 投顾建议 -->
+    <div style="margin-top:16px;">
+      <div class="card-title" style="font-size:15px;">💡 投顾建议（自动生成）</div>
+      <div id="fundAdvisor" class="section-desc"></div>
+    </div>
   </div>
 </section>
 
@@ -2859,7 +2845,7 @@ var defaultDb = {
     recipeIdx: 0
   },
   words: { dailyRecords: {} },
-  market: { news: [], tracking: [], sentiment: {}, notes: [], favNewsIds: [], newsLastUpdate: '', gold: null },
+  market: { news: [], tracking: [], sentiment: {}, notes: [], favNewsIds: [], newsLastUpdate: '', gold: null, funds: [], techWatch: [], earnings: [], techManual: [], fundOverlap: null },
   python: {
     progress: { basics: false, functions: false, files: false, data: false, projects: false },
     goal: '',
@@ -5756,28 +5742,686 @@ function renderNotes(){
 }
 
 function renderMarket(){
-  renderTracking();
-  loadSentiment();
-  renderNotes();
-  var updEl = document.getElementById('newsUpdateTime');
-  if(updEl){
-    updEl.textContent = DB.market.newsLastUpdate ? ('最后更新 ' + DB.market.newsLastUpdate) : '未加载';
-  }
-  if(LIVE_NEWS.length > 0){
-    renderNews();
-  } else {
-    fetchNews(false);
-  }
-  /* Gold tiles — async refresh (5min cache) */
+  /* 市场全景：金价复用既有抓取，指数单独抓取 */
   var g = DB.market.gold;
   var stale = !g || !g.updatedAt || (Date.now() - g.updatedAt > 5 * 60 * 1000);
-  if(stale){
-    fetchGoldQuotes(false);
+  if(stale){ fetchGoldQuotes(false); } else { renderGoldTiles(); var gu = document.getElementById('goldUpdateTime'); if(gu && g.ts) gu.textContent = '金价 更新于 ' + g.ts; }
+  fetchIndexQuotes();
+  renderFunds();
+  renderWatchlist();
+  renderEarnings();
+  if(TECH_NEWS.length > 0){ renderTechNews(); } else { fetchTechNews(false); }
+}
+
+/* ============ 通用格式化 ============ */
+function setText(id, v){ var el = document.getElementById(id); if(el) el.textContent = v; }
+function fmtMoney(v){ if(v == null || isNaN(v)) return '—'; var s = Math.abs(v).toFixed(2); var p = s.split('.'); p[0] = p[0].replace(/\B(?=(\d{3})+(?!\d))/g, ','); return (v < 0 ? '-' : '') + '¥' + p.join('.'); }
+function fmtNum(v){ if(v == null || isNaN(v)) return '—'; var s = Math.abs(v).toFixed(2); var p = s.split('.'); p[0] = p[0].replace(/\B(?=(\d{3})+(?!\d))/g, ','); return (v < 0 ? '-' : '') + p.join('.'); }
+function fmtPct(v){ if(v == null || isNaN(v)) return '—'; return (v > 0 ? '+' : '') + v.toFixed(2) + '%'; }
+function clsOf(v){ return v > 0 ? 'pos' : (v < 0 ? 'neg' : ''); }
+
+/* ============ 基金分类 ============ */
+function classifyFund(name){
+  name = (name || '').toLowerCase();
+  var type = '股票型';
+  if(name.indexOf('指数') >= 0) type = '指数型';
+  else if(name.indexOf('联接') >= 0) type = 'ETF联接';
+  else if(name.indexOf('qdii') >= 0 || name.indexOf('纳斯达克') >= 0 || name.indexOf('标普') >= 0 || name.indexOf('美股') >= 0 || name.indexOf('海外') >= 0 || name.indexOf('恒生') >= 0 || name.indexOf('港股') >= 0 || name.indexOf('日本') >= 0 || name.indexOf('德国') >= 0) type = 'QDII';
+  else if(name.indexOf('债券') >= 0 || name.indexOf('债基') >= 0) type = '债券型';
+  else if(name.indexOf('货币') >= 0) type = '货币型';
+  else if(name.indexOf('混合') >= 0) type = '混合型';
+  var theme = '其他';
+  if(name.indexOf('科技') >= 0 || name.indexOf('半导体') >= 0 || name.indexOf('芯片') >= 0 || name.indexOf('人工智能') >= 0 || name.indexOf('ai') >= 0 || name.indexOf('电子') >= 0 || name.indexOf('通信') >= 0 || name.indexOf('计算机') >= 0 || name.indexOf('科创') >= 0 || name.indexOf('互联网') >= 0 || name.indexOf('信息') >= 0) theme = '科技';
+  else if(name.indexOf('医药') >= 0 || name.indexOf('医疗') >= 0 || name.indexOf('生物') >= 0 || name.indexOf('健康') >= 0) theme = '医药';
+  else if(name.indexOf('消费') >= 0 || name.indexOf('白酒') >= 0 || name.indexOf('食品') >= 0 || name.indexOf('饮料') >= 0 || name.indexOf('农业') >= 0) theme = '消费';
+  else if(name.indexOf('新能源') >= 0 || name.indexOf('光伏') >= 0 || name.indexOf('锂电') >= 0 || name.indexOf('碳中和') >= 0 || name.indexOf('环保') >= 0 || name.indexOf('汽车') >= 0) theme = '新能源';
+  else if(name.indexOf('军工') >= 0) theme = '军工';
+  else if(name.indexOf('金融') >= 0 || name.indexOf('银行') >= 0 || name.indexOf('证券') >= 0 || name.indexOf('保险') >= 0) theme = '金融';
+  else if(name.indexOf('美股') >= 0 || name.indexOf('纳斯达克') >= 0 || name.indexOf('标普') >= 0 || name.indexOf('恒生') >= 0 || name.indexOf('港股') >= 0) theme = '海外';
+  else if(name.indexOf('黄金') >= 0 || name.indexOf('有色') >= 0) theme = '黄金/有色';
+  else if(name.indexOf('沪深300') >= 0 || name.indexOf('中证') >= 0 || name.indexOf('上证') >= 0 || name.indexOf('红利') >= 0 || name.indexOf('宽基') >= 0) theme = '宽基';
+  return { type: type, theme: theme };
+}
+function normalizeFundCode(raw){
+  var d = String(raw || '').replace(/\D/g, '');
+  return d.slice(-6);
+}
+
+/* ============ 基金指标计算 ============ */
+function fundNav(f){ return f.navManual ? parseFloat(f.navManual) : (f.val && f.val.gsz ? parseFloat(f.val.gsz) : 0); }
+function computeFundMetrics(f){
+  var nav = fundNav(f);
+  var shares = parseFloat(f.shares) || 0;
+  var cost = parseFloat(f.cost) || 0;
+  var mv = nav * shares;
+  var ct = cost * shares;
+  var hp = mv - ct;
+  var hpPct = ct > 0 ? hp / ct * 100 : 0;
+  var dailyPct = f.val && f.val.gszzl != null ? parseFloat(f.val.gszzl) : 0;
+  var dailyProfit = mv * dailyPct / 100;
+  return { nav: nav, mv: mv, ct: ct, hp: hp, hpPct: hpPct, dailyPct: dailyPct, dailyProfit: dailyProfit };
+}
+
+/* ============ 渲染基金总览/配置/列表/对比/建议 ============ */
+function renderFunds(){
+  var funds = DB.market.funds || [];
+  var totals = { mv: 0, ct: 0, hp: 0, dailyProfit: 0 };
+  var metricsArr = {}; var typeMap = {}; var themeMap = {};
+  funds.forEach(function(f){
+    var m = computeFundMetrics(f); metricsArr[f.id] = m;
+    if(isNaN(m.mv)) m.mv = 0;
+    totals.mv += m.mv; totals.ct += m.ct; totals.hp += m.hp; totals.dailyProfit += m.dailyProfit;
+    typeMap[f.type] = (typeMap[f.type] || 0) + m.mv;
+    themeMap[f.theme] = (themeMap[f.theme] || 0) + m.mv;
+  });
+  totals.hpPct = totals.ct > 0 ? totals.hp / totals.ct * 100 : 0;
+
+  setText('fFundCount', funds.length);
+  setText('fTotalAsset', fmtMoney(totals.mv));
+  var tp = document.getElementById('fTotalProfit'); if(tp){ tp.textContent = fmtMoney(totals.hp); tp.className = 'metric-change ' + clsOf(totals.hp); }
+  var tpp = document.getElementById('fTotalPct'); if(tpp){ tpp.textContent = fmtPct(totals.hpPct); tpp.className = 'metric-change ' + clsOf(totals.hpPct); }
+  var tdp = document.getElementById('fTodayProfit'); if(tdp){ tdp.textContent = (totals.dailyProfit >= 0 ? '+' : '') + fmtMoney(totals.dailyProfit); tdp.className = 'metric-value mini-num ' + clsOf(totals.dailyProfit); }
+
+  renderAlloc('fAllocType', typeMap, totals.mv, '类型');
+  renderAlloc('fAllocTheme', themeMap, totals.mv, '主题');
+
+  var body = document.getElementById('fundTableBody'); if(!body) return;
+  if(!funds.length){
+    body.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#9aa;">还没有基金，用上方「截图识别 / 批量粘贴 / 手动添加」导入吧</td></tr>';
   } else {
-    renderGoldTiles();
-    var gUpdEl = document.getElementById('goldUpdateTime');
-    if(gUpdEl && g.ts) gUpdEl.textContent = '金价 更新于 ' + g.ts;
+    body.innerHTML = funds.map(function(f){
+      var m = metricsArr[f.id];
+      var navSrc = f.navManual ? '手动' : (m.nav ? (f.val && f.val.gztime ? '估算' : '—') : '—');
+      return '<tr>' +
+        '<td><b>' + escapeHtml(f.name) + '</b><br><span class="text-sm text-muted">' + f.code + '</span></td>' +
+        '<td><span class="chip">' + f.type + '</span><span class="chip theme">' + f.theme + '</span></td>' +
+        '<td>' + fmtNum(f.shares) + '</td>' +
+        '<td>' + fmtMoney(f.cost) + '</td>' +
+        '<td>' + fmtMoney(m.nav) + '<br><span class="text-sm text-muted">' + navSrc + '</span></td>' +
+        '<td>' + fmtMoney(m.mv) + '</td>' +
+        '<td class="' + clsOf(m.hp) + '">' + fmtMoney(m.hp) + '</td>' +
+        '<td class="' + clsOf(m.hpPct) + '">' + fmtPct(m.hpPct) + '</td>' +
+        '<td class="' + clsOf(m.dailyProfit) + '">' + (f.val && f.val.gszzl != null ? fmtPct(m.dailyPct) + '<br>' + fmtMoney(m.dailyProfit) : '—') + '</td>' +
+        '<td><button class="btn btn-sm" onclick="editFund(\'' + f.id + '\')">编辑</button> <button class="btn btn-sm" onclick="updateFundNavManual(\'' + f.id + '\')">净值</button> <button class="btn btn-sm" onclick="deleteFund(\'' + f.id + '\')">删</button></td>' +
+      '</tr>';
+    }).join('');
   }
+  renderFundCompare(funds, metricsArr);
+  generateAdvisor(funds, totals, metricsArr);
+}
+function renderAlloc(containerId, map, total, label){
+  var el = document.getElementById(containerId); if(!el) return;
+  var colors = ['#15A49B','#2E86C1','#E8A33D','#9B59B6','#E74C3C','#1E8E4E','#7F8C8D','#16A085','#C0392B','#34495E'];
+  var keys = Object.keys(map).filter(function(k){ return map[k] > 0; });
+  if(!keys.length){ el.innerHTML = '<div class="text-sm text-muted">' + label + '：暂无数据</div>'; return; }
+  var html = '<div class="alloc-bar">';
+  var legend = '<div class="alloc-legend">';
+  keys.forEach(function(k, i){
+    var pct = total > 0 ? map[k] / total * 100 : 0;
+    html += '<div class="alloc-seg" style="width:' + pct + '%;background:' + colors[i % colors.length] + '"></div>';
+    legend += '<span><i style="background:' + colors[i % colors.length] + '"></i>' + k + ' ' + pct.toFixed(1) + '%</span>';
+  });
+  html += '</div>'; legend += '</div>';
+  el.innerHTML = '<div class="text-sm text-muted" style="margin-bottom:2px;">按' + label + '</div>' + html + legend;
+}
+function renderFundCompare(funds, metricsArr){
+  var el = document.getElementById('fundCompareList'); if(!el) return;
+  if(!funds.length){ el.innerHTML = ''; return; }
+  var arr = funds.slice().sort(function(a, b){ return metricsArr[b.id].hpPct - metricsArr[a.id].hpPct; });
+  el.innerHTML = '<table class="fund-tbl"><thead><tr><th>排名</th><th>基金</th><th>收益率</th><th>持有收益</th><th>评价</th></tr></thead><tbody>' +
+    arr.map(function(f, i){
+      var m = metricsArr[f.id];
+      var badge = '';
+      if(i < 3 && m.hpPct >= 0) badge = '🏆 领先';
+      else if(i >= arr.length - 3 && m.hpPct < 0) badge = '⚠️ 偏弱';
+      else if(m.hpPct < 0) badge = '📉 亏损';
+      else badge = '✅ 稳健';
+      return '<tr><td>' + (i + 1) + '</td><td><b>' + escapeHtml(f.name) + '</b><br><span class="text-sm text-muted">' + f.type + '·' + f.theme + '</span></td><td class="' + clsOf(m.hpPct) + '">' + fmtPct(m.hpPct) + '</td><td class="' + clsOf(m.hp) + '">' + fmtMoney(m.hp) + '</td><td>' + badge + '</td></tr>';
+    }).join('') + '</tbody></table>';
+}
+function generateAdvisor(funds, totals, metricsArr){
+  var el = document.getElementById('fundAdvisor'); if(!el) return;
+  var tips = [];
+  if(!funds.length){ el.innerHTML = '<span class="text-muted">导入基金后，这里会自动生成专属诊断与配置建议。</span>'; return; }
+  tips.push('当前共持有 <b>' + funds.length + '</b> 只基金，持仓市值 <b>' + fmtMoney(totals.mv) + '</b>，累计' + (totals.hp >= 0 ? '盈利' : '亏损') + ' <b>' + fmtMoney(Math.abs(totals.hp)) + '</b>（' + fmtPct(totals.hpPct) + '），今日 ' + (totals.dailyProfit >= 0 ? '+' : '') + fmtMoney(totals.dailyProfit) + '。');
+  var maxW = 0, maxF = null;
+  funds.forEach(function(f){ var m = metricsArr[f.id]; var w = totals.mv > 0 ? m.mv / totals.mv : 0; if(w > maxW){ maxW = w; maxF = f; } });
+  if(maxF && maxW > 0.4) tips.push('⚠️ <b>集中度偏高</b>：' + escapeHtml(maxF.name) + ' 占组合 ' + (maxW * 100).toFixed(0) + '%，建议单只基金占比控制在 30% 以内以分散风险。');
+  var typeMap = {};
+  funds.forEach(function(f){ var m = metricsArr[f.id]; typeMap[f.type] = (typeMap[f.type] || 0) + m.mv; });
+  var equityTypes = { '股票型':1, '指数型':1, 'ETF联接':1, 'QDII':1, '混合型':0.6 };
+  var equity = 0;
+  Object.keys(typeMap).forEach(function(t){ equity += typeMap[t] * (equityTypes[t] != null ? equityTypes[t] : 0.5); });
+  if(totals.mv > 0 && equity / totals.mv > 0.9) tips.push('🛡️ 组合权益类占比约 <b>' + (equity / totals.mv * 100).toFixed(0) + '%</b>，缺乏债券 / 货币等防守仓，市场回调时波动较大，可考虑增配 10–20% 债基或货基作为缓冲。');
+  var neg = Object.keys(metricsArr).filter(function(id){ return metricsArr[id].hp < 0; }).sort(function(a, b){ return metricsArr[a].hpPct - metricsArr[b].hpPct; });
+  if(neg.length){
+    var nf = funds.find(function(f){ return f.id === neg[0]; });
+    tips.push('📉 当前 <b>' + neg.length + '</b> 只基金处于亏损，最深的是 ' + escapeHtml(nf ? nf.name : '') + '（' + fmtPct(metricsArr[neg[0]].hpPct) + '），可结合定投或基本面判断是否继续持有。');
+  }
+  if(DB.market.fundOverlap && DB.market.fundOverlap.pairs && DB.market.fundOverlap.pairs.length){
+    tips.push('🔗 检测到 <b>' + DB.market.fundOverlap.pairs.length + '</b> 对基金持仓高度重合，建议保留表现更优者、合并重复仓（见上方「持仓重合」）。');
+  } else {
+    tips.push('💡 点击「🔗 分析持仓重合」可检查是否有重复布局的基金，冗余持仓会增加管理成本、稀释收益。');
+  }
+  el.innerHTML = '<ul style="margin:0;padding-left:18px;line-height:1.9;">' + tips.map(function(t){ return '<li>' + t + '</li>'; }).join('') + '</ul>';
+}
+
+/* ============ 基金增删改 ============ */
+var editingFundId = null;
+function clearFundManualForm(){ document.getElementById('fundCode').value=''; document.getElementById('fundName').value=''; document.getElementById('fundShares').value=''; document.getElementById('fundCost').value=''; editingFundId = null; }
+function addFundManual(){
+  var code = normalizeFundCode(document.getElementById('fundCode').value);
+  var name = document.getElementById('fundName').value.trim();
+  var shares = parseFloat(document.getElementById('fundShares').value) || 0;
+  var cost = parseFloat(document.getElementById('fundCost').value) || 0;
+  if(!code){ toast('请输入基金代码'); return; }
+  if(editingFundId){
+    var f = DB.market.funds.find(function(x){ return x.id === editingFundId; });
+    if(f){ f.code = code; f.name = name || f.name; f.shares = shares; f.cost = cost; if(!f.name) f.name = code; }
+    editingFundId = null;
+  } else {
+    if(DB.market.funds.some(function(x){ return x.code === code; })){ toast('该代码已存在'); return; }
+    var cls = classifyFund(name || code);
+    DB.market.funds.push({ id: 'f' + Date.now() + Math.floor(Math.random()*1000), code: code, name: name || code, type: cls.type, theme: cls.theme, shares: shares, cost: cost, navManual: null, val: null, updatedAt: 0 });
+  }
+  saveDb(); clearFundManualForm(); renderFunds(); toast('已保存');
+}
+function editFund(id){
+  var f = DB.market.funds.find(function(x){ return x.id === id; }); if(!f) return;
+  document.getElementById('fundCode').value = f.code;
+  document.getElementById('fundName').value = f.name === f.code ? '' : f.name;
+  document.getElementById('fundShares').value = f.shares;
+  document.getElementById('fundCost').value = f.cost;
+  editingFundId = id;
+  switchFundImport('manual');
+  document.getElementById('importManual').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  toast('编辑中，改完点「添加」保存');
+}
+function deleteFund(id){
+  if(!confirm('确定删除该基金？')) return;
+  DB.market.funds = DB.market.funds.filter(function(x){ return x.id !== id; });
+  saveDb(); renderFunds(); toast('已删除');
+}
+function updateFundNavManual(id){
+  var f = DB.market.funds.find(function(x){ return x.id === id; }); if(!f) return;
+  var v = prompt('输入 ' + f.name + ' 最新净值(元/份)，留空则清除手动值恢复联网估值：');
+  if(v === null) return;
+  v = v.trim();
+  if(v === ''){ f.navManual = null; }
+  else { var n = parseFloat(v); if(isNaN(n)){ toast('数字无效'); return; } f.navManual = n; }
+  saveDb(); renderFunds(); toast('已更新');
+}
+
+/* ============ 导入：截图/粘贴/手动 ============ */
+var pendingImport = [];
+function switchFundImport(mode){
+  ['shot','paste','manual'].forEach(function(m){
+    var p = document.getElementById('import' + m.charAt(0).toUpperCase() + m.slice(1));
+    if(p) p.style.display = (m === mode) ? 'block' : 'none';
+  });
+  var btns = document.querySelectorAll('.import-tabs .tab-btn');
+  btns.forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-mode') === mode); });
+}
+function onFundScreenshot(input){
+  var file = input.files && input.files[0]; if(!file) return;
+  var hint = document.getElementById('fundShotHint');
+  hint.textContent = '识别中...';
+  compressImage(file, 1000, function(base64){
+    analyzeFundScreenshot(base64, function(err, list){
+      if(err){ hint.textContent = '识别失败：' + err + '（可改用「批量粘贴」）'; return; }
+      if(!list.length){ hint.textContent = '未在截图中识别到基金，可改用批量粘贴'; return; }
+      hint.textContent = '识别到 ' + list.length + ' 只基金，请核对后导入';
+      pendingImport = list;
+      renderImportPreview(list);
+    });
+  });
+}
+function analyzeFundScreenshot(base64, cb){
+  var key = getQwenKey();
+  if(!key){ cb('未配置通义千问 Key（设置 → AI 引擎）'); return; }
+  var prompt = '请识别这张基金或股票持仓截图，提取每一只基金的持仓信息。仅返回 JSON 数组，不要任何额外文字与符号。每条格式：{"code":"6位基金代码","name":"基金名称","shares":持有份额(数字),"cost":持仓成本价(数字,元每份)}。若某项缺失用0或空字符串。';
+  var modelIdx = 0;
+  function tryModel(){
+    if(modelIdx >= QWEN_MODELS.length){ cb('通义千问模型均不可用'); return; }
+    var model = QWEN_MODELS[modelIdx];
+    var url = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
+    var body = JSON.stringify({ model: model, messages: [{ role: 'user', content: [{ type: 'text', text: prompt }, { type: 'image_url', image_url: { url: 'data:image/jpeg;base64,' + base64 } }] }], temperature: 0.1 });
+    Promise.race([
+      fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key }, body: body }),
+      new Promise(function(_, r){ setTimeout(function(){ r(new Error('超时')); }, 25000); })
+    ]).then(function(res){ if(res.status === 401) throw new Error('Key 无效'); if(!res.ok) throw new Error('API ' + res.status); return res.json(); })
+    .then(function(data){
+      var t = data.choices && data.choices[0] && data.choices[0].message.content || '';
+      t = t.replace(/```json/g, '').replace(/```/g, '').trim();
+      var arr;
+      try { arr = JSON.parse(t); } catch(e){
+        if(modelIdx < QWEN_MODELS.length - 1){ modelIdx++; tryModel(); return; }
+        throw new Error('返回无法解析');
+      }
+      if(!Array.isArray(arr)) throw new Error('返回格式错误');
+      cb(null, arr.map(function(x){
+        return { code: normalizeFundCode(x.code), name: x.name || '', shares: parseFloat(x.shares) || 0, cost: parseFloat(x.cost) || 0 };
+      }).filter(function(x){ return x.code; }));
+    }).catch(function(err){ cb(err.message || '网络错误'); });
+  }
+  tryModel();
+}
+function parseFundPaste(){
+  var txt = document.getElementById('fundPasteArea').value.trim(); if(!txt){ toast('请先粘贴'); return; }
+  var list = [];
+  txt.split(/\n+/).forEach(function(line){
+    line = line.trim(); if(!line) return;
+    var toks = line.split(/[\s,，]+/);
+    var code = null, name = [], nums = [];
+    toks.forEach(function(t){
+      if(/^\d{6}$/.test(t)) code = t;
+      else if(/^\d+(\.\d+)?$/.test(t)) nums.push(parseFloat(t));
+      else name.push(t);
+    });
+    if(!code) return;
+    list.push({ code: code, name: name.join(' '), shares: nums[0] || 0, cost: nums[1] || 0 });
+  });
+  if(!list.length){ toast('未解析到有效基金（格式：代码 份额 成本价）'); return; }
+  pendingImport = list; renderImportPreview(list); toast('解析到 ' + list.length + ' 只，请核对');
+}
+function renderImportPreview(list){
+  var box = document.getElementById('fundImportPreview'); if(!box) return;
+  if(!list || !list.length){ box.innerHTML = ''; return; }
+  box.innerHTML = '<div class="card-title" style="font-size:14px;">识别预览（请核对，可修改后导入）</div>' +
+    '<table><thead><tr><th>导入</th><th>代码</th><th>名称</th><th>份额</th><th>成本价</th></tr></thead><tbody>' +
+    list.map(function(x, i){
+      return '<tr><td><input type="checkbox" data-i="' + i + '" checked></td><td>' + x.code + '</td>' +
+        '<td><input id="imp_name_' + i + '" value="' + escapeHtml(x.name) + '"></td>' +
+        '<td><input id="imp_shares_' + i + '" value="' + x.shares + '"></td>' +
+        '<td><input id="imp_cost_' + i + '" value="' + x.cost + '"></td></tr>';
+    }).join('') + '</tbody></table>' +
+    '<div style="margin-top:10px;display:flex;gap:10px;"><button class="btn btn-primary btn-sm" onclick="commitImportFunds()">确认导入</button><button class="btn btn-sm" onclick="clearImportPreview()">清空</button></div>';
+}
+function commitImportFunds(){
+  pendingImport.forEach(function(x, i){
+    var cb = document.querySelector('input[data-i="' + i + '"]'); if(cb && !cb.checked) return;
+    var name = (document.getElementById('imp_name_' + i).value || '').trim();
+    var shares = parseFloat(document.getElementById('imp_shares_' + i).value) || 0;
+    var cost = parseFloat(document.getElementById('imp_cost_' + i).value) || 0;
+    if(DB.market.funds.some(function(f){ return f.code === x.code; })) return;
+    var cls = classifyFund(name || x.code);
+    DB.market.funds.push({ id: 'f' + Date.now() + i, code: x.code, name: name || x.code, type: cls.type, theme: cls.theme, shares: shares, cost: cost, navManual: null, val: null, updatedAt: 0 });
+  });
+  saveDb(); clearImportPreview(); renderFunds(); toast('导入完成，记得点「刷新估值」');
+}
+function clearImportPreview(){ pendingImport = []; var box = document.getElementById('fundImportPreview'); if(box) box.innerHTML = ''; }
+
+/* ============ 天天基金估值抓取 ============ */
+function fetchFundValuation(code, cb){
+  var target = 'https://fundgz.1234567.com.cn/js/' + code + '.js';
+  var i = 0;
+  function next(){
+    if(i >= DCA_PROXIES.length){ cb(new Error('估值抓取失败')); return; }
+    var url = DCA_PROXIES[i++] + encodeURIComponent(target);
+    fetchTextWithTimeout(url, 12000).then(function(txt){
+      var m = txt.match(/jsonpgz\(([\s\S]*)\)/);
+      if(!m){ next(); return; }
+      try {
+        var d = JSON.parse(m[1]);
+        if(!d || !d.fundcode){ next(); return; }
+        cb(null, d);
+      } catch(e){ next(); }
+    }).catch(function(){ next(); });
+  }
+  next();
+}
+function refreshAllFundValuation(){
+  var fs = (DB.market.funds || []).filter(function(f){ return !f.navManual; });
+  if(!fs.length){ toast('全部为手动净值，无需联网更新'); return; }
+  toast('正在刷新 ' + fs.length + ' 只基金估值...');
+  function step(i){
+    if(i >= fs.length){ saveDb(); renderFunds(); toast('估值刷新完成'); return; }
+    fetchFundValuation(fs[i].code, function(err, d){
+      if(!err && d){
+        var f = DB.market.funds.find(function(x){ return x.code === fs[i].code; });
+        if(f){
+          f.val = { gsz: d.gsz, dwjz: d.dwjz, gszzl: d.gszzl, gztime: d.gztime, jzrq: d.jzrq };
+          if(!f.name || f.name === f.code) f.name = d.name || f.name;
+          f.updatedAt = Date.now();
+        }
+      }
+      step(i + 1);
+    });
+  }
+  step(0);
+}
+
+/* ============ 持仓重合 / 合并建议 ============ */
+function fetchFundHoldings(code, cb){
+  var target = 'https://fundf10.eastmoney.com/FundArchivesDatas.aspx?type=jjcc&code=' + code + '&topline=10&year=&month=';
+  var i = 0;
+  function next(){
+    if(i >= DCA_PROXIES.length){ cb(null, []); return; }
+    var url = DCA_PROXIES[i++] + encodeURIComponent(target);
+    fetchTextWithTimeout(url, 12000).then(function(txt){
+      var m = txt.match(/content:"([\s\S]*?)"/);
+      if(!m){ cb(null, []); return; }
+      var html = m[1].replace(/\\"/g, '"').replace(/\\r|\\n|\\t/g, '');
+      var names = [];
+      var re = /<td[^>]*>\s*<a[^>]*>([^<]+)<\/a>/g;
+      var mm;
+      while((mm = re.exec(html))){ names.push(mm[1].trim()); }
+      if(!names.length){
+        var re2 = /<td class="[^"]*">([^<]+)<\/td>/g;
+        while((mm = re2.exec(html))){ var s = mm[1].trim(); if(/[一-龥]/.test(s) && s.length <= 6) names.push(s); }
+      }
+      cb(null, names.slice(0, 10));
+    }).catch(function(){ next(); });
+  }
+  next();
+}
+function fetchFundOverlap(){
+  var fs = DB.market.funds || [];
+  if(fs.length < 2){ toast('至少需要 2 只基金'); return; }
+  var btn = document.getElementById('fundOverlapBtn');
+  var el = document.getElementById('fundOverlapResult');
+  if(btn) btn.textContent = '分析中...';
+  el.innerHTML = '<div class="news-loading"><span class="spinner"></span>正在抓取各基金前十大持仓并计算重合度...</div>';
+  var holdings = {}; var pending = fs.length;
+  fs.forEach(function(f){
+    fetchFundHoldings(f.code, function(err, names){
+      holdings[f.code] = names || [];
+      pending--;
+      if(pending === 0) finishOverlap(fs, holdings);
+    });
+  });
+}
+function finishOverlap(fs, holdings){
+  var btn = document.getElementById('fundOverlapBtn'); if(btn) btn.textContent = '🔗 分析持仓重合';
+  var pairs = [];
+  for(var i = 0; i < fs.length; i++){
+    for(var j = i + 1; j < fs.length; j++){
+      var a = holdings[fs[i].code] || [], b = holdings[fs[j].code] || [];
+      if(!a.length || !b.length) continue;
+      var shared = a.filter(function(n){ return b.indexOf(n) >= 0; });
+      var union = {}; a.concat(b).forEach(function(n){ union[n] = 1; }); var unionArr = Object.keys(union);
+      var ratio = unionArr.length ? shared.length / unionArr.length : 0;
+      var themeOverlap = (fs[i].theme === fs[j].theme);
+      if(shared.length >= 3 || (themeOverlap && shared.length >= 2)){
+        pairs.push({ a: fs[i], b: fs[j], shared: shared, themeOverlap: themeOverlap, ratio: ratio });
+      }
+    }
+  }
+  pairs.sort(function(x, y){ return y.shared.length - x.shared.length; });
+  DB.market.fundOverlap = { pairs: pairs, updatedAt: Date.now() };
+  saveDb();
+  var el = document.getElementById('fundOverlapResult');
+  if(!pairs.length){
+    el.innerHTML = '<div class="overlap-pair">✅ 未检测到高度重合的基金对（若部分基金持仓抓取失败可能漏判，也可按同主题自查）。</div>';
+    return;
+  }
+  el.innerHTML = '<div class="card-title" style="font-size:15px;">🔗 持仓重合 · 合并建议（' + pairs.length + ' 对）</div>' +
+    pairs.map(function(p){
+      return '<div class="overlap-pair"><b>' + escapeHtml(p.a.name) + '</b> ⇄ <b>' + escapeHtml(p.b.name) + '</b>' +
+        '<br>共同重仓：' + (p.shared.join('、') || '（同主题布局）') +
+        '<br><span class="text-sm text-muted">同主题重合' + (p.themeOverlap ? '（是）' : '（否）') + '，建议保留其一、合并另一，减少重复暴露与手续费。</span></div>';
+    }).join('');
+}
+
+/* ============ 大盘指数（腾讯财经） ============ */
+var INDEX_LIST = [ { code: 'sh000300', name: '沪深300' }, { code: 'sz399006', name: '创业板指' }, { code: 'usIXIC', name: '纳斯达克' }, { code: 'hkHSI', name: '恒生指数' } ];
+function fetchIndexQuotes(){
+  var target = 'https://qt.gtimg.cn/q=' + INDEX_LIST.map(function(x){ return x.code; }).join(',');
+  var i = 0;
+  function next(){
+    if(i >= DCA_PROXIES.length) return;
+    var url = DCA_PROXIES[i++] + encodeURIComponent(target);
+    fetchTextWithTimeout(url, 12000).then(function(txt){ parseIndex(txt); }).catch(function(){ next(); });
+  }
+  next();
+}
+function parseIndex(txt){
+  INDEX_LIST.forEach(function(idx){
+    var re = new RegExp('v_' + idx.code + '="([^"]*)"');
+    var m = txt.match(re); if(!m) return;
+    var parts = m[1].split('~');
+    var price = parseFloat(parts[3]); var prev = parseFloat(parts[4]);
+    if(isNaN(price)) return;
+    var chg = price - prev; var pct = prev > 0 ? chg / prev * 100 : 0;
+    var p = document.getElementById('idx_' + idx.code + '_price');
+    var c = document.getElementById('idx_' + idx.code + '_chg');
+    if(p) p.textContent = price.toFixed(2);
+    if(c){ c.textContent = (chg >= 0 ? '+' : '') + chg.toFixed(2) + ' (' + (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%)'; c.className = 'metric-change ' + clsOf(chg); }
+  });
+}
+
+/* ============ 科技资讯 ============ */
+var TECH_NEWS = [];
+var techNewsPage = 1;
+var TECH_PAGE_SIZE = 6;
+var techNewsFetching = false;
+var techRefreshTimer = null;
+var TECH_KW = ['科技','芯片','半导体','ai','人工智能','算力','大模型','英伟达','苹果','特斯拉','微软','谷歌','亚马逊','meta','腾讯','阿里','阿里巴巴','百度','小米','华为','字节','美团','京东','网易','快手','中芯','光伏','新能源','锂电','储能','机器人','自动驾驶','创新药','生物医药','互联网'];
+var EARNINGS_KW = ['财报','季报','年报','业绩','营收','净利润','超预期','指引','盈利预警','下修','上调'];
+function isEarnings(t){ var s = t.toLowerCase(); return EARNINGS_KW.some(function(k){ return s.indexOf(k.toLowerCase()) >= 0; }); }
+function isTech(t){ var s = t.toLowerCase(); return TECH_KW.some(function(k){ return s.indexOf(k.toLowerCase()) >= 0; }); }
+function fetchTechNews(manual){
+  if(techNewsFetching) return;
+  techNewsFetching = true;
+  var btn = document.getElementById('techNewsRefreshBtn'); if(btn) btn.textContent = '刷新中...';
+  if(manual || TECH_NEWS.length === 0){ var l = document.getElementById('techNewsList'); if(l) l.innerHTML = '<div class="news-loading"><span class="spinner"></span>正在获取科技资讯...</div>'; }
+  var src = 'https://feed.mix.sina.com.cn/api/roll/get?pageid=153&lid=1686&num=40&page=1';
+  fetchViaProxyPool(src, function(err, data){
+    techNewsFetching = false;
+    if(btn) btn.textContent = '🔄 刷新';
+    var l = document.getElementById('techNewsList');
+    if(err || !data || !data.result || !data.result.data){ if(l) l.innerHTML = '<div class="news-loading">暂无法获取资讯，请稍后重试或手动补充</div>'; return; }
+    var items = data.result.data;
+    var res = [];
+    items.forEach(function(it){
+      var title = it.title || ''; if(!title) return;
+      var summary = (it.intro || '').replace(/<[^>]+>/g, '').trim();
+      var all = (title + ' ' + summary).toLowerCase();
+      if(!isTech(all)) return;
+      var source = it.media_name || '新浪财经';
+      var ctime = String(it.ctime || '');
+      var ts = parseInt(ctime); var disp = '';
+      if(!isNaN(ts) && ts > 1000000000){ var d = new Date(ts * 1000); disp = (d.getMonth()+1) + '-' + d.getDate() + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'); }
+      var id = it.docid || (title + ctime);
+      res.push({ id: id, title: title, summary: summary, url: it.url || '', source: source, time: disp, cat: isEarnings(all) ? 'earnings' : 'tech', sentiment: analyzeSentiment(title, summary, 'tech'), fav: DB.market.favNewsIds.indexOf(id) >= 0 });
+    });
+    TECH_NEWS = res;
+    var now = new Date();
+    var ts2 = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+    DB.market.newsLastUpdate = ts2; saveDb();
+    var u = document.getElementById('techNewsUpdateTime'); if(u) u.textContent = '最后更新 ' + ts2;
+    techNewsPage = 1; renderTechNews();
+  });
+}
+function renderTechNews(){
+  var filterCat = document.getElementById('techNewsFilter').value;
+  var filterTag = document.getElementById('techNewsTag').value;
+  var favOnly = document.getElementById('techNewsFavOnly').checked;
+  function matchCat(n){
+    if(filterCat === 'earnings') return n.cat === 'earnings';
+    if(filterCat === 'ai') return /ai|人工智能|算力|大模型/.test(n.title.toLowerCase());
+    if(filterCat === 'semi') return /半导体|芯片/.test(n.title.toLowerCase());
+    if(filterCat === 'ev') return /新能源|光伏|锂电|储能|电动车|汽车/.test(n.title.toLowerCase());
+    if(filterCat === 'internet') return /腾讯|阿里|美团|京东|网易|快手|中概|百度|字节|小米|互联网/.test(n.title.toLowerCase());
+    return true;
+  }
+  var all = [];
+  TECH_NEWS.forEach(function(n){ all.push(Object.assign({}, n, { isManual: false })); });
+  (DB.market.techManual || []).forEach(function(n){ all.push(Object.assign({}, n, { isManual: true })); });
+  all = all.filter(function(n){
+    if(!matchCat(n)) return false;
+    if(filterTag && n.sentiment !== filterTag) return false;
+    if(favOnly){ var fv = n.isManual ? n.fav : (DB.market.favNewsIds.indexOf(n.id) >= 0); if(!fv) return false; }
+    return true;
+  });
+  all.sort(function(a, b){ return (b.time || '').localeCompare(a.time || ''); });
+  var total = all.length;
+  var pages = Math.max(1, Math.ceil(total / TECH_PAGE_SIZE));
+  if(techNewsPage > pages) techNewsPage = pages;
+  var slice = all.slice((techNewsPage - 1) * TECH_PAGE_SIZE, techNewsPage * TECH_PAGE_SIZE);
+  var el = document.getElementById('techNewsList'); if(!el) return;
+  if(!slice.length){
+    el.innerHTML = '<div class="news-loading">暂无符合条件的科技资讯，可手动补充或切换筛选。</div>';
+  } else {
+    el.innerHTML = slice.map(function(n){
+      var cls = n.sentiment === 'positive' ? 'pos' : (n.sentiment === 'negative' ? 'neg' : '');
+      var tagTxt = n.sentiment === 'positive' ? '利好' : n.sentiment === 'negative' ? '利空' : '中性';
+      var fv = n.isManual ? n.fav : (DB.market.favNewsIds.indexOf(n.id) >= 0);
+      var catTxt = n.cat === 'earnings' ? '财报' : '';
+      var tagStyle = cls === 'pos' ? 'background:#fdecea;color:#c0392b' : cls === 'neg' ? 'background:#eafaf0;color:#1e8e4e' : 'background:#eef3f6;color:#5a6b75';
+      return '<div class="news-item" style="border-left-color:' + (cls === 'pos' ? '#c0392b' : cls === 'neg' ? '#1e8e4e' : '#cfd8dd') + ';">' +
+        '<div style="display:flex;justify-content:space-between;gap:8px;"><a href="' + (n.url || '#') + '" target="_blank" style="color:#1f3b47;font-weight:600;text-decoration:none;">' + escapeHtml(n.title) + '</a>' +
+        '<span style="white-space:nowrap;cursor:pointer;" onclick="toggleTechFav(\'' + n.id + '\',' + n.isManual + ')">' + (fv ? '★' : '☆') + '</span></div>' +
+        (n.summary ? '<div class="text-sm text-muted" style="margin:4px 0;">' + escapeHtml(n.summary) + '</div>' : '') +
+        '<div class="text-sm" style="color:#8a99a0;">' + (catTxt ? '<span class="chip">' + catTxt + '</span>' : '') + '<span class="chip" style="' + tagStyle + '">' + tagTxt + '</span> ' + escapeHtml(n.source) + ' · ' + n.time + '</div>' +
+      '</div>';
+    }).join('');
+  }
+  var pager = document.getElementById('techNewsPager');
+  if(pager){
+    if(pages > 1){
+      pager.innerHTML = '';
+      for(var p = 1; p <= pages; p++){
+        (function(pp){
+          var b = document.createElement('button');
+          b.className = 'pager-btn' + (pp === techNewsPage ? ' active' : '');
+          b.textContent = pp;
+          b.style.cssText = 'margin:0 3px;padding:4px 10px;border:1px solid #d4e0e6;background:#fff;border-radius:12px;cursor:pointer;font-size:13px;';
+          if(pp === techNewsPage){ b.style.background = '#15A49B'; b.style.color = '#fff'; }
+          b.onclick = function(){ techNewsPage = pp; renderTechNews(); };
+          pager.appendChild(b);
+        })(p);
+      }
+    } else { pager.innerHTML = ''; }
+  }
+}
+function toggleTechManualAdd(){ document.getElementById('techManualAddForm').classList.toggle('show'); }
+function addTechNews(){
+  var title = document.getElementById('techNewsTitle').value.trim();
+  var summary = document.getElementById('techNewsSummary').value.trim();
+  var tag = document.getElementById('techNewsTagInput').value;
+  if(!title){ toast('请输入标题'); return; }
+  var id = 'manual_' + Date.now();
+  DB.market.techManual = DB.market.techManual || [];
+  DB.market.techManual.unshift({ id: id, title: title, summary: summary, url: '', source: '手动补充', time: today(), cat: isEarnings(title) ? 'earnings' : 'tech', sentiment: tag, fav: false });
+  saveDb();
+  document.getElementById('techNewsTitle').value = '';
+  document.getElementById('techNewsSummary').value = '';
+  document.getElementById('techManualAddForm').classList.remove('show');
+  techNewsPage = 1; renderTechNews(); toast('已补充');
+}
+function toggleTechFav(id, isManual){
+  if(isManual){
+    var n = (DB.market.techManual || []).find(function(x){ return x.id === id; });
+    if(n){ n.fav = !n.fav; saveDb(); }
+  } else {
+    var idx = DB.market.favNewsIds.indexOf(id);
+    if(idx >= 0) DB.market.favNewsIds.splice(idx, 1); else DB.market.favNewsIds.push(id);
+    saveDb();
+  }
+  renderTechNews();
+}
+function toggleTechAutoRefresh(){
+  var cb = document.getElementById('techNewsAutoRefresh');
+  if(cb.checked){
+    techRefreshTimer = setInterval(function(){ fetchTechNews(false); }, 300000);
+    toast('已开启自动刷新（每5分钟）');
+  } else {
+    if(techRefreshTimer){ clearInterval(techRefreshTimer); techRefreshTimer = null; }
+    toast('已关闭自动刷新');
+  }
+}
+
+/* ============ 科技巨头自选 ============ */
+var WATCH_QUOTE_MAP = {
+  us: function(c){ return 'us' + c.toUpperCase().replace(/[^A-Z]/g, ''); },
+  hk: function(c){ return 'hk' + c.replace(/\D/g, '').padStart(5, '0'); },
+  a: function(c){ var d = c.replace(/\D/g, ''); return (/^6/.test(d) ? 'sh' : 'sz') + d; }
+};
+function addWatch(){
+  var market = document.getElementById('watchMarket').value;
+  var code = document.getElementById('watchCode').value.trim();
+  var name = document.getElementById('watchName').value.trim();
+  if(!code){ toast('请输入代码'); return; }
+  DB.market.techWatch.push({ id: 'w' + Date.now(), market: market, code: code, name: name || code, quote: null });
+  saveDb();
+  document.getElementById('watchCode').value = '';
+  document.getElementById('watchName').value = '';
+  fetchWatchQuotes();
+}
+function renderWatchlist(){
+  var el = document.getElementById('watchList'); if(!el) return;
+  var w = DB.market.techWatch || [];
+  if(!w.length){ el.innerHTML = '<div class="text-sm text-muted">还没有关注的科技公司，添加后一键查看实时报价。</div>'; return; }
+  el.innerHTML = '<table class="fund-tbl"><thead><tr><th>名称</th><th>代码</th><th>市场</th><th>现价</th><th>涨跌</th><th>操作</th></tr></thead><tbody>' +
+    w.map(function(x){
+      var q = x.quote; var chg = q ? q.chg : null; var pct = q ? q.pct : null;
+      return '<tr><td><b>' + escapeHtml(x.name || x.code) + '</b></td><td>' + escapeHtml(x.code) + '</td><td>' + (x.market === 'us' ? '美股' : x.market === 'hk' ? '港股' : 'A股') + '</td>' +
+        '<td>' + (q ? q.price.toFixed(2) : '—') + '</td>' +
+        '<td class="' + clsOf(chg) + '">' + (q ? (chg >= 0 ? '+' : '') + chg.toFixed(2) + ' (' + (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%)' : '—') + '</td>' +
+        '<td><button class="btn btn-sm" onclick="deleteWatch(\'' + x.id + '\')">删</button></td></tr>';
+    }).join('') + '</tbody></table>';
+}
+function deleteWatch(id){
+  DB.market.techWatch = (DB.market.techWatch || []).filter(function(x){ return x.id !== id; });
+  saveDb(); renderWatchlist();
+}
+function fetchWatchQuotes(){
+  var w = DB.market.techWatch || [];
+  if(!w.length){ renderWatchlist(); return; }
+  var codes = w.map(function(x){ return (WATCH_QUOTE_MAP[x.market] || WATCH_QUOTE_MAP.a)(x.code); });
+  var target = 'https://qt.gtimg.cn/q=' + codes.join(',');
+  var i = 0;
+  function next(){
+    if(i >= DCA_PROXIES.length){ renderWatchlist(); return; }
+    var url = DCA_PROXIES[i++] + encodeURIComponent(target);
+    fetchTextWithTimeout(url, 12000).then(function(txt){ parseWatch(txt); }).catch(function(){ next(); });
+  }
+  next();
+}
+function parseWatch(txt){
+  var w = DB.market.techWatch || [];
+  txt.split(';').forEach(function(line){
+    var m = line.match(/v_(\w+)="([^"]*)"/); if(!m) return;
+    var qm = m[1]; var parts = m[2].split('~');
+    var price = parseFloat(parts[3]); var prev = parseFloat(parts[4]);
+    if(isNaN(price)) return;
+    var chg = price - prev; var pct = prev > 0 ? chg / prev * 100 : 0;
+    var wi = w.findIndex(function(x){ return (WATCH_QUOTE_MAP[x.market] || WATCH_QUOTE_MAP.a)(x.code) === qm; });
+    if(wi >= 0) w[wi].quote = { price: price, chg: chg, pct: pct };
+  });
+  saveDb(); renderWatchlist();
+}
+
+/* ============ 财报日历 ============ */
+function addEarning(){
+  var date = document.getElementById('earnDate').value;
+  var company = document.getElementById('earnCompany').value.trim();
+  var note = document.getElementById('earnNote').value.trim();
+  if(!company){ toast('请输入公司'); return; }
+  DB.market.earnings.push({ id: 'e' + Date.now(), date: date || '', company: company, note: note, done: false });
+  saveDb();
+  document.getElementById('earnCompany').value = '';
+  document.getElementById('earnNote').value = '';
+  renderEarnings();
+}
+function renderEarnings(){
+  var el = document.getElementById('earnList'); if(!el) return;
+  var e = (DB.market.earnings || []).slice().sort(function(a, b){ return (a.date || '0').localeCompare(b.date || '0'); });
+  if(!e.length){ el.innerHTML = '<div class="text-sm text-muted">还没有财报关注项。</div>'; return; }
+  el.innerHTML = e.map(function(x){
+    return '<div class="overlap-pair" style="display:flex;justify-content:space-between;align-items:center;gap:10px;">' +
+      '<div><b>' + (x.date || '待定') + '</b> · ' + escapeHtml(x.company) + (x.note ? ' — ' + escapeHtml(x.note) : '') + (x.done ? ' ✓' : '') + '</div>' +
+      '<div><button class="btn btn-sm" onclick="toggleEarn(\'' + x.id + '\')">' + (x.done ? '已发布' : '标记发布') + '</button> <button class="btn btn-sm" onclick="deleteEarn(\'' + x.id + '\')">删</button></div></div>';
+  }).join('');
+}
+function toggleEarn(id){
+  var x = (DB.market.earnings || []).find(function(y){ return y.id === id; });
+  if(x){ x.done = !x.done; saveDb(); renderEarnings(); }
+}
+function deleteEarn(id){
+  DB.market.earnings = (DB.market.earnings || []).filter(function(y){ return y.id !== id; });
+  saveDb(); renderEarnings();
 }
 
 /* --- Tab4: 实时金价 (国际/国内/ETF) + 自动情绪判断 --- */
