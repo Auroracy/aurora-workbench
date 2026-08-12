@@ -2160,15 +2160,13 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
         <button class="btn btn-sm" id="goldRefreshBtn" onclick="fetchGoldQuotes(true)">🔄 刷新</button>
       </div>
     </div>
-    <div class="section-desc" style="margin-bottom:12px;">大盘指数 + 金价 + 黄金ETF 实时参考（指数/金价经代理抓取，盘中为估算值）</div>
+    <div class="section-desc" style="margin-bottom:12px;">大盘指数 + 国内金价 + 市场情绪实时参考（指数/金价经代理抓取，盘中为估算值）</div>
     <div class="metric-grid gold-grid" id="marketOverviewGrid">
       <div class="metric-tile idx-tile" id="idx_sh000300"><div class="metric-label">沪深300</div><div class="metric-value" id="idx_sh000300_price">—</div><div class="metric-change" id="idx_sh000300_chg">取数中…</div></div>
       <div class="metric-tile idx-tile" id="idx_sz399006"><div class="metric-label">创业板指</div><div class="metric-value" id="idx_sz399006_price">—</div><div class="metric-change" id="idx_sz399006_chg">取数中…</div></div>
       <div class="metric-tile idx-tile" id="idx_usIXIC"><div class="metric-label">纳斯达克</div><div class="metric-value" id="idx_usIXIC_price">—</div><div class="metric-change" id="idx_usIXIC_chg">取数中…</div></div>
       <div class="metric-tile idx-tile" id="idx_hkHSI"><div class="metric-label">恒生指数</div><div class="metric-value" id="idx_hkHSI_price">—</div><div class="metric-change" id="idx_hkHSI_chg">取数中…</div></div>
-      <div class="metric-tile gold-tile" id="goldIntlTile"><div class="metric-label">国际金价 (USD/oz)</div><div class="metric-value" id="goldIntlPrice">—</div><div class="metric-change" id="goldIntlChg">取数中…</div></div>
       <div class="metric-tile gold-tile" id="goldDomTile"><div class="metric-label" id="goldDomLabel" title="配置 Cloudflare Worker 代理后显示上金所真实 Au99.99；未配置时由 518880 ETF×100 近似（当前 ETF 折价约5%，仅供参考）">国内金价 (元/克) <span class="metric-suffix" id="goldDomSuffix">ETF×100 近似</span></div><div class="metric-value" id="goldDomPrice">—</div><div class="metric-change" id="goldDomChg">取数中…</div><div class="metric-manual"><input type="number" id="goldDomManualInput" placeholder="手动输入" step="0.01" min="0"><button type="button" onclick="saveDomGoldManual()">保存</button></div><div class="gold-proxy-row"><span class="gold-proxy-status" id="goldProxyStatus">代理：未配置</span><a class="gold-proxy-toggle" id="goldProxyToggle" onclick="toggleGoldProxyPanel()">⚙ 配置</a></div><div class="gold-proxy-panel" id="goldProxyPanel" style="display:none;"><label class="form-label">Cloudflare Worker URL</label><input type="text" id="goldProxyUrlInput" placeholder="https://xxx.workers.dev"><div class="gold-proxy-panel-btns"><button onclick="saveGoldProxy()">保存并刷新</button><button onclick="testGoldProxy()" class="ghost">🔍 测试代理</button><button onclick="clearGoldProxy()" class="ghost">清除</button></div><div class="gold-proxy-hint" id="goldProxyHint">未配置：纯前端无法绕过新浪 Referer 锁。部署 Cloudflare Worker 即可拿到实时 Au99.99。</div></div></div>
-      <div class="metric-tile gold-tile" id="goldEtfTile"><div class="metric-label">黄金 ETF (518880)</div><div class="metric-value" id="goldEtfPrice">—</div><div class="metric-change" id="goldEtfChg">取数中…</div></div>
       <div class="metric-tile accent gold-mood-tile" id="goldMoodTile"><div class="metric-label">市场情绪</div><div class="metric-value" id="goldMoodMain">—</div><div class="metric-change" id="goldMoodSub">—</div></div>
     </div>
   </div>
@@ -6780,7 +6778,6 @@ function judgeGoldMood(intl, dom, etf){
 function renderGoldTiles(){
   var g = DB.market.gold;
   if(!g) return;
-  fillGoldTile('goldIntlPrice','goldIntlChg', g.intl);
   /* 国内金价：自动抓取失败时降级为手动输入值（纯前端无法绕开新浪 Referer 锁） */
   var domSrc = g.dom || (g.domManual ? { price: g.domManual.price, ts: g.domManual.ts, isManual: true } : null);
   fillGoldTile('goldDomPrice','goldDomChg', domSrc, '实时接口受限');
@@ -6792,7 +6789,7 @@ function renderGoldTiles(){
     else if(domSrc && domSrc.viaEtfApprox) suffix.textContent = 'ETF×100 近似';
     else suffix.textContent = '实时接口受限';
   }
-  fillGoldTile('goldEtfPrice','goldEtfChg', g.etf);
+  /* 市场情绪：仍用 g.intl / g.etf 做综合判断（虽不展示但数据已抓） */
   var mood = judgeGoldMood(g.intl, domSrc, g.etf);
   var mainEl = document.getElementById('goldMoodMain');
   var subEl = document.getElementById('goldMoodSub');
