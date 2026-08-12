@@ -5964,7 +5964,7 @@ function onFundScreenshot(input){
   var file = input.files && input.files[0]; if(!file) return;
   var hint = document.getElementById('fundShotHint');
   hint.textContent = '识别中...';
-  compressImage(file, 1000, function(base64){
+  compressImage(file, 800, function(base64){
     analyzeFundScreenshot(base64, function(err, list){
       if(err){ hint.textContent = '识别失败：' + err + '（可改用「批量粘贴」）'; return; }
       if(!list.length){ hint.textContent = '未在截图中识别到基金，可改用批量粘贴'; return; }
@@ -5979,28 +5979,75 @@ function analyzeFundScreenshot(base64, cb){
   if(!key){ cb('未配置通义千问 Key（设置 → AI 引擎）'); return; }
   var prompt = '请识别这张基金或股票持仓截图，提取每一只基金的持仓信息。仅返回 JSON 数组，不要任何额外文字与符号。每条格式：{"code":"6位基金代码","name":"基金名称","shares":持有份额(数字),"cost":持仓成本价(数字,元每份)}。若某项缺失用0或空字符串。';
   var modelIdx = 0;
+  /* 哪些错误应自动降级到下个模型：401/403 不降级（账号问题），其他都试一下下个模型 */
+  function shouldFallback(err, status){
+    if(status === 401 || status === 403) return false;
+    return true;
+  }
   function tryModel(){
-    if(modelIdx >= QWEN_MODELS.length){ cb('通义千问模型均不可用'); return; }
+    if(modelIdx >= QWEN_MODELS.length){ cb('通义千问全部模型都不可用（已试 ' + QWEN_MODELS.length + ' 个）'); return; }
     var model = QWEN_MODELS[modelIdx];
     var url = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
-    var body = JSON.stringify({ model: model, messages: [{ role: 'user', content: [{ type: 'text', text: prompt }, { type: 'image_url', image_url: { url: 'data:image/jpeg;base64,' + base64 } }] }], temperature: 0.1 });
+    var body = JSON.stringify({
+      model: model,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'text', text: prompt },
+          { type: 'image_url', image_url: { url: 'data:image/jpeg;base64,' + base64 } }
+        ]
+      }],
+      temperature: 0.1,
+      response_format: { type: 'json_object' }
+    });
     Promise.race([
       fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key }, body: body }),
       new Promise(function(_, r){ setTimeout(function(){ r(new Error('超时')); }, 25000); })
-    ]).then(function(res){ if(res.status === 401) throw new Error('Key 无效'); if(!res.ok) throw new Error('API ' + res.status); return res.json(); })
-    .then(function(data){
-      var t = data.choices && data.choices[0] && data.choices[0].message.content || '';
-      t = t.replace(/```json/g, '').replace(/```/g, '').trim();
-      var arr;
-      try { arr = JSON.parse(t); } catch(e){
-        if(modelIdx < QWEN_MODELS.length - 1){ modelIdx++; tryModel(); return; }
-        throw new Error('返回无法解析');
+    ]).then(function(res){
+      return res.text().then(function(text){
+        if(res.status === 401 || res.status === 403){
+          throw new Error('Key 无效或无权限（' + res.status + '）');
+        }
+        if(!res.ok){
+          var msg = text ? (text.length > 200 ? text.slice(0, 200) + '…' : text) : ('API ' + res.status);
+          if(shouldFallback(null, res.status) && modelIdx < QWEN_MODELS.length - 1){
+            console.warn('Model', model, 'returned', res.status, '— fallback. body:', text);
+            modelIdx++;
+            tryModel();
+            return;
+          }
+          throw new Error('API ' + res.status + ' · ' + msg);
+        }
+        var data; try { data = JSON.parse(text); } catch(e){ throw new Error('返回非 JSON：' + text.slice(0, 100)); }
+        var content = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content || '';
+        if(typeof content !== 'string' || !content){
+          if(modelIdx < QWEN_MODELS.length - 1){ modelIdx++; tryModel(); return; }
+          throw new Error('返回内容为空');
+        }
+        /* 宽容解析：纯 JSON / ```json ...``` / 带前后注释 都尽量容忍 */
+        var stripped = content.replace(/```json/gi, '').replace(/```/g, '').trim();
+        var arr;
+        try {
+          var parsed = JSON.parse(stripped);
+          arr = Array.isArray(parsed) ? parsed : (parsed.funds || parsed.list || parsed.items || parsed.data || null);
+        } catch(e){
+          if(modelIdx < QWEN_MODELS.length - 1){ modelIdx++; tryModel(); return; }
+          throw new Error('返回无法解析为 JSON：' + stripped.slice(0, 120));
+        }
+        if(!Array.isArray(arr)){
+          if(modelIdx < QWEN_MODELS.length - 1){ modelIdx++; tryModel(); return; }
+          throw new Error('返回非数组（顶层应为数组或 {funds/list/items/data:[]}）');
+        }
+        cb(null, arr.map(function(x){
+          return { code: normalizeFundCode(x.code), name: x.name || '', shares: parseFloat(x.shares) || 0, cost: parseFloat(x.cost) || 0 };
+        }).filter(function(x){ return x.code; }));
+      });
+    }).catch(function(err){
+      if(err && /超时|AbortError/i.test(err.message || '') && modelIdx < QWEN_MODELS.length - 1){
+        modelIdx++; tryModel(); return;
       }
-      if(!Array.isArray(arr)) throw new Error('返回格式错误');
-      cb(null, arr.map(function(x){
-        return { code: normalizeFundCode(x.code), name: x.name || '', shares: parseFloat(x.shares) || 0, cost: parseFloat(x.cost) || 0 };
-      }).filter(function(x){ return x.code; }));
-    }).catch(function(err){ cb(err.message || '网络错误'); });
+      cb(err.message || '网络错误');
+    });
   }
   tryModel();
 }
