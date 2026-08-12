@@ -70,36 +70,52 @@ function fallbackSummary(titles){
   };
 }
 
-function parseTitles(html){
-  /* CCTV 栏目页结构：<a href="...VIDEXXXXXX260810.shtml">标题</a>
-     注意：栏目页 URL 是「当前节目日」，未必是 date；若 date 不匹配需提示用户 */
-  const titles = [];
-  const seen = {};
-  const re = /<a[^>]+href="[^"]*?(\d{6})\.shtml[^"]*"[^>]*>([^<]+)<\/a>/g;
-  let m;
-  while((m = re.exec(html)) !== null){
-    const yymmdd = m[1];
-    const t = m[2].replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
-    if(t && !seen[t]){ seen[t] = true; titles.push({ yymmdd, title: t }); }
-  }
-  return titles;
+/* 通用：带超时的 GET 文本抓取 */
+function fetchText(url, label, timeoutMs){
+  console.log('🌐 抓取' + label + ':', url);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(new Error(label + ' timeout ' + (timeoutMs/1000) + 's')), timeoutMs);
+  return fetch(url, {
+    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Aurora-Workbench/1.0)' },
+    signal: controller.signal,
+  }).then(res => {
+    if(!res.ok) throw new Error(label + ' HTTP ' + res.status);
+    return res.text();
+  }).finally(() => clearTimeout(timer));
 }
 
-async function fetchCctv(){
-  const url = 'https://tv.cctv.com/lm/xwlb/';
-  console.log('🌐 抓取 CCTV 栏目首页:', url);
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(new Error('CCTV timeout 30s')), 30000);
-  try {
-    const res = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Aurora-Workbench/1.0)' },
-      signal: controller.signal,
-    });
-    if(!res.ok) throw new Error('CCTV HTTP ' + res.status);
-    return await res.text();
-  } finally {
-    clearTimeout(timer);
+/* 阶段1：从栏目首页定位当天那期新闻联播详情页链接。
+   CCTV 改版后：栏目首页只有视频列表（<a> 内嵌 <img>/<i>），
+   节目单（"本期节目主要内容"）在当期详情页里，故需先定位详情页 URL。
+   详情页链接形如 .../2026/08/12/VIDE...<YYMMDD>.shtml */
+function findTodayEpisode(html, yymmdd){
+  const re = /href="([^"]*?(\d{6})\.shtml)"/g;
+  let m;
+  while((m = re.exec(html)) !== null){
+    if(m[2] === yymmdd){
+      let link = m[1];
+      if(link.startsWith('//')) link = 'https:' + link;
+      else if(link.startsWith('/')) link = 'https://tv.cctv.com' + link;
+      return link;
+    }
   }
+  return null;
+}
+
+/* 阶段2：从详情页提取「本期节目主要内容」节目单文字，按顶层序号(1. 2. 3.)分割为条目 */
+function parseDetail(html){
+  // 终止标记：节目单真实结尾是 "（《新闻联播》 YYYYMMDD HH:MM）"，其后紧接 HTML/JS 代码，必须在此截断
+  const m = html.match(/本期节目主要内容[:：]([\s\S]*?)(?:（《新闻联播》|栏目信息|责任编辑|相关推荐|"\s*>|"\s*<\/|$)/);
+  if(!m) return [];
+  const body = m[1].replace(/<[^>]+>/g, '').replace(/&[a-z#0-9]+;/gi, ' ');
+  const items = [];
+  const re = /(\d+)\.\s*([\s\S]*?)(?=\s*\d+\.|$)/g;
+  let mm;
+  while((mm = re.exec(body)) !== null){
+    const t = mm[2].replace(/\s+/g, ' ').trim();
+    if(t) items.push(t);
+  }
+  return items;
 }
 
 async function callQwen(titles){
@@ -135,19 +151,23 @@ async function callQwen(titles){
 
 (async () => {
   try {
-    /* 1. 抓 CCTV 栏目页 */
-    const html = await fetchCctv();
-    const all = parseTitles(html);
-
-    /* 2. 过滤出目标日期的条目（date YYYY-MM-DD → yymmdd）*/
+    /* 1. 抓栏目首页 → 定位当天那期详情页 → 抓详情页 → 提取节目单 */
     const m = date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
     if(!m) throw new Error('bad date format: ' + date);
     const yymmdd = m[1].slice(2) + m[2] + m[3];
-    const titles = all.filter(t => t.yymmdd === yymmdd).map(t => t.title);
-    const pageDate = all[0] ? all[0].yymmdd : null;
+
+    const columnHtml = await fetchText('https://tv.cctv.com/lm/xwlb/', 'CCTV 栏目首页', 30000);
+    const epLink = findTodayEpisode(columnHtml, yymmdd);
+    if(!epLink){
+      throw new Error(`栏目首页没找到 ${date} (${yymmdd}) 那期新闻联播。CCTV 栏目页只保留当日节目，无法抓历史日期；如需补录请用 Tab9「手动粘贴节目单」。`);
+    }
+    console.log('🔗 当期详情页:', epLink);
+
+    const detailHtml = await fetchText(epLink, 'CCTV 当期详情页', 30000);
+    const titles = parseDetail(detailHtml);
 
     if(!titles.length){
-      throw new Error(`CCTV 栏目页没找到 ${date} 的节目（当前栏目页日期=${pageDate || '未知'}）。CCTV 栏目页只保留当日节目，无法抓历史日期；如需补录请用 Tab9「手动粘贴节目单」。`);
+      throw new Error(`详情页没解析到 ${date} 的节目单（可能当日新闻联播尚未更新，或页面结构再次变更）。如需补录请用 Tab9「手动粘贴节目单」。`);
     }
     console.log(`📋 抓到 ${titles.length} 条 ${date} 节目:`);
     titles.forEach((t, i) => console.log(`  ${i+1}. ${t}`));
