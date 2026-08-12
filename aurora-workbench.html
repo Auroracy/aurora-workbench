@@ -1623,6 +1623,51 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
 @media(max-width:560px){
   .invest-card-head{flex-direction:column;align-items:flex-start;gap:4px;}
 }
+/* ====== Tab 10: 梦想金库 · 财富启蒙 ====== */
+.dream-tip{font-size:13px;color:var(--text-2);line-height:1.6;background:var(--input-bg);border-left:3px solid var(--accent);padding:8px 12px;border-radius:6px;margin:10px 0 14px;}
+.dream-list{display:flex;flex-direction:column;gap:10px;}
+.dream-item{display:flex;align-items:flex-start;gap:10px;background:var(--input-bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;transition:border-color .2s,background .2s;}
+.dream-item.core{border-color:var(--amber,#E8A33D);background:#FFF8EC;box-shadow:0 0 0 1px var(--amber,#E8A33D) inset;}
+.dream-no{flex:0 0 auto;width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;}
+.dream-item.core .dream-no{background:var(--amber,#E8A33D);}
+.dream-item textarea{flex:1 1 auto;border:none;background:transparent;resize:vertical;min-height:22px;font-size:14px;line-height:1.5;color:var(--text);outline:none;font-family:inherit;}
+.dream-core-btn{flex:0 0 auto;align-self:center;cursor:pointer;border:1px solid var(--border);background:#fff;border-radius:20px;padding:5px 10px;font-size:12px;color:var(--text-2);white-space:nowrap;transition:all .2s;}
+.dream-core-btn.on{background:var(--amber,#E8A33D);border-color:var(--amber,#E8A33D);color:#fff;}
+.dream-del{flex:0 0 auto;align-self:center;cursor:pointer;border:none;background:transparent;color:var(--text-2);font-size:16px;padding:2px 6px;}
+.dream-del:hover{color:#e25b5b;}
+.album-wrap,.piggy-wrap{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;}
+.album-card,.piggy-card{background:var(--input-bg);border:1px solid var(--border);border-radius:12px;padding:14px;}
+.album-card h4,.piggy-card h4{margin:0 0 4px;font-size:14px;color:var(--text);font-weight:600;}
+.album-card .sub,.piggy-card .sub{font-size:12px;color:var(--text-2);}
+.album-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:8px;margin-top:10px;}
+.album-photo{position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;background:#ddd;}
+.album-photo img{width:100%;height:100%;object-fit:cover;display:block;}
+.album-photo .del{position:absolute;top:2px;right:2px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;border:none;font-size:11px;line-height:18px;text-align:center;cursor:pointer;}
+.album-empty{font-size:12px;color:var(--text-2);margin-top:8px;grid-column:1/-1;}
+.piggy-goal{display:flex;gap:8px;align-items:center;margin:10px 0;}
+.piggy-goal input{width:130px;}
+.piggy-bar{height:10px;border-radius:6px;background:#e3e9ed;overflow:hidden;margin:8px 0 4px;}
+.piggy-fill{height:100%;background:var(--accent);border-radius:6px;transition:width .3s;}
+.piggy-stat{font-size:13px;color:var(--text);margin-bottom:8px;}
+.piggy-stat b{color:var(--accent);}
+.piggy-deposit{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
+.piggy-deposit input.amt{width:110px;}
+.piggy-deposit input.note{flex:1 1 auto;min-width:100px;}
+.piggy-records{display:flex;flex-direction:column;gap:6px;}
+.piggy-rec{display:flex;align-items:center;gap:8px;font-size:13px;background:#fff;border:1px solid var(--border);border-radius:8px;padding:6px 10px;}
+.piggy-rec .amt{font-weight:600;color:var(--accent);}
+.piggy-rec .note{color:var(--text-2);flex:1 1 auto;}
+.piggy-rec .ts{color:var(--text-2);font-size:11px;}
+.piggy-rec .del{cursor:pointer;border:none;background:transparent;color:var(--text-2);}
+.diary-nav{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 0 14px;}
+.diary-date{font-weight:600;color:var(--text);font-size:14px;}
+.diary-entries{display:flex;flex-direction:column;gap:8px;}
+.diary-entry{display:flex;align-items:flex-start;gap:8px;background:var(--input-bg);border:1px solid var(--border);border-radius:8px;padding:8px 10px;}
+.diary-entry .no{flex:0 0 auto;width:22px;height:22px;border-radius:50%;background:var(--blue,#2E86C1);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;}
+.diary-entry input{flex:1 1 auto;border:none;background:transparent;font-size:14px;color:var(--text);outline:none;font-family:inherit;}
+.diary-entry .del{cursor:pointer;border:none;background:transparent;color:var(--text-2);}
+.diary-empty{font-size:13px;color:var(--text-2);}
+
 </style>
 </head>
 <body>
@@ -1689,6 +1734,10 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     <button class="nav-item" data-tab="9" onclick="switchTab(9)">
       <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M4 5h16v12H4z"/><path d="M8 21h8M12 17v4"/></svg></span>
       <span class="nav-num">09</span><span class="nav-text">新闻联播 · 每日总结</span>
+    </button>
+    <button class="nav-item" data-tab="10" onclick="switchTab(10)">
+      <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 2l2.9 6.3 6.9.7-5.2 4.6 1.5 6.8L12 17.8 5.9 20.4l1.5-6.8L2.2 9l6.9-.7z"/></svg></span>
+      <span class="nav-num">10</span><span class="nav-text">梦想金库 · 财富启蒙</span>
     </button>
   </nav>
   <div class="sidebar-footer" id="footerDate">
@@ -2615,6 +2664,60 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
   </div>
 </section>
 
+<!-- ========== Tab 10: 梦想金库 · 财富启蒙 ========== -->
+<section id="tab10" class="tab-section">
+  <div class="section-header">
+    <div class="section-title">梦想金库 · 财富启蒙</div>
+    <div class="section-desc">源自《小狗钱钱》· 梦想清单 → 相册 → 储蓄罐 → 成功日记</div>
+  </div>
+
+  <!-- 模块1：梦想清单（10→3 核心） -->
+  <div class="card">
+    <div class="card-title-row">
+      <span class="card-title">🌟 梦想清单 · 我必须变有钱的 10 个理由</span>
+      <span class="sub" id="dreamCoreCount">已选 0 / 3 核心梦想</span>
+    </div>
+    <div class="dream-tip">写下 10 个你想变有钱的理由或梦想，再从中选出 <b>3 个最想实现的</b>作为核心梦想（⭐）。这 3 个会自动生成「梦想相册」与「梦想储蓄罐」。</div>
+    <div id="dreamList" class="dream-list"></div>
+    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-primary btn-sm" onclick="addDream()">＋ 添加一条理由</button>
+      <button class="btn btn-ghost btn-sm" onclick="fillDreamTemplate()">📝 用示例填满 10 条</button>
+    </div>
+  </div>
+
+  <!-- 模块2：梦想相册 -->
+  <div class="card">
+    <div class="card-title">🖼️ 梦想相册</div>
+    <div class="dream-tip">为每个核心梦想收集视觉化的照片，让目标看得见、感受得到。</div>
+    <div id="albumWrap" class="album-wrap"></div>
+  </div>
+
+  <!-- 模块3：梦想储蓄罐 -->
+  <div class="card">
+    <div class="card-title">🐷 梦想储蓄罐</div>
+    <div class="dream-tip">为每个核心梦想单独存钱，设定目标金额，积少成多。</div>
+    <div id="piggyWrap" class="piggy-wrap"></div>
+  </div>
+
+  <!-- 模块4：成功日记 -->
+  <div class="card">
+    <div class="card-title-row">
+      <span class="card-title">📔 成功日记</span>
+      <span class="sub" id="diaryStreak"></span>
+    </div>
+    <div class="dream-tip">每天记录 <b>5 件你做成的事</b>，哪怕很小。坚持下去，自信心会肉眼可见地增长。</div>
+    <div class="diary-nav">
+      <button class="btn btn-ghost btn-sm" onclick="diaryPrev()">前一天</button>
+      <span class="diary-date" id="diaryDate">—</span>
+      <button class="btn btn-ghost btn-sm" onclick="diaryToday()">今天</button>
+      <button class="btn btn-ghost btn-sm" onclick="diaryNext()">后一天</button>
+      <span class="sub" id="diaryProgress" style="margin-left:auto;"></span>
+    </div>
+    <div id="diaryEntries" class="diary-entries"></div>
+    <button class="btn btn-ghost btn-sm" style="margin-top:10px;" onclick="addDiaryEntry()">＋ 加一条</button>
+  </div>
+</section>
+
 </main>
 </div>
 
@@ -2702,6 +2805,12 @@ var defaultDb = {
   },
   invest: {
     cache: {} // 按日期归档投资方向分析：{ 'YYYY-MM-DD': {date, themes:[{key,reason,level}], generatedAt, source} }
+  },
+  wealth: {
+    dreamList: [],     // [{id, text, core}] 最多10条理由/梦想，core 最多3个
+    albums: {},        // { [dreamId]: [base64,...] } 梦想相册图片
+    piggy: {},         // { [dreamId]: { goal:number, deposits:[{ts,amount,note}] } } 梦想储蓄罐
+    successDiary: {}   // { 'YYYY-MM-DD': [str,...] } 成功日记（每日5条）
   }
 };
 
@@ -2767,7 +2876,271 @@ function switchTab(n){
   if(n === 7) renderBooks();
   if(n === 8) initDca();
   if(n === 9) initXwlb();
+  if(n === 10) initWealth();
   closeMobileSidebar();
+}
+
+/* ====== Tab 10: 梦想金库 · 财富启蒙 ====== */
+var WEALTH_DREAM_MAX = 10;
+var WEALTH_CORE_MAX = 3;
+var wealthDiaryDate = null;
+
+function pad2(n){ return n < 10 ? '0' + n : '' + n; }
+function toDateStr(d){ return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+function wealth(){ return DB.wealth; }
+
+function initWealth(){
+  if(!DB.wealth) DB.wealth = { dreamList: [], albums: {}, piggy: {}, successDiary: {} };
+  if(!DB.wealth.dreamList) DB.wealth.dreamList = [];
+  if(!DB.wealth.albums) DB.wealth.albums = {};
+  if(!DB.wealth.piggy) DB.wealth.piggy = {};
+  if(!DB.wealth.successDiary) DB.wealth.successDiary = {};
+  if(wealthDiaryDate === null) wealthDiaryDate = today();
+  renderDreamList();
+  renderAlbums();
+  renderPiggy();
+  renderSuccessDiary();
+}
+
+/* ---- 模块1：梦想清单（10→3 核心） ---- */
+function renderDreamList(){
+  var list = wealth().dreamList;
+  var coreCount = list.filter(function(d){ return d.core; }).length;
+  document.getElementById('dreamCoreCount').textContent = '已选 ' + coreCount + ' / ' + WEALTH_CORE_MAX + ' 核心梦想';
+  var box = document.getElementById('dreamList');
+  box.innerHTML = '';
+  list.forEach(function(d, i){
+    var item = document.createElement('div');
+    item.className = 'dream-item' + (d.core ? ' core' : '');
+    var no = document.createElement('div'); no.className = 'dream-no'; no.textContent = (i + 1);
+    var ta = document.createElement('textarea');
+    ta.rows = 1; ta.placeholder = '第 ' + (i + 1) + ' 个理由 / 梦想…';
+    ta.value = d.text || '';
+    ta.oninput = function(){ d.text = ta.value; saveDb(); };
+    var core = document.createElement('button');
+    core.className = 'dream-core-btn' + (d.core ? ' on' : '');
+    core.textContent = d.core ? '⭐ 核心' : '☆ 设为核心';
+    core.onclick = function(){ toggleCore(d.id); };
+    var del = document.createElement('button');
+    del.className = 'dream-del'; del.textContent = '✕'; del.title = '删除';
+    del.onclick = function(){ delDream(d.id); };
+    item.appendChild(no); item.appendChild(ta); item.appendChild(core); item.appendChild(del);
+    box.appendChild(item);
+  });
+  renderAlbums();
+  renderPiggy();
+}
+function addDream(){
+  var list = wealth().dreamList;
+  if(list.length >= WEALTH_DREAM_MAX){ alert('最多写 ' + WEALTH_DREAM_MAX + ' 条理由哦'); return; }
+  list.push({ id: 'd' + Date.now() + Math.floor(Math.random() * 1000), text: '', core: false });
+  saveDb(); renderDreamList();
+}
+function delDream(id){
+  var list = wealth().dreamList;
+  var d = null;
+  for(var i=0;i<list.length;i++){ if(list[i].id === id){ d = list[i]; break; } }
+  if(d && d.core) delete wealth().albums[id];
+  if(wealth().piggy[id]) delete wealth().piggy[id];
+  wealth().dreamList = list.filter(function(x){ return x.id !== id; });
+  saveDb(); renderDreamList();
+}
+function toggleCore(id){
+  var list = wealth().dreamList;
+  var d = null;
+  for(var i=0;i<list.length;i++){ if(list[i].id === id){ d = list[i]; break; } }
+  if(!d) return;
+  if(!d.core){
+    var coreCount = list.filter(function(x){ return x.core; }).length;
+    if(coreCount >= WEALTH_CORE_MAX){ alert('核心梦想最多 ' + WEALTH_CORE_MAX + ' 个，先取消一个再选'); return; }
+    d.core = true;
+  } else { d.core = false; }
+  saveDb(); renderDreamList();
+}
+function fillDreamTemplate(){
+  var tpl = [
+    '让家人过上不必为钱发愁的生活',
+    '送父母一次说走就走的旅行',
+    '给孩子最好的教育与成长环境',
+    '拥有一套自己真正喜欢的家',
+    '实现财务自由，不再被工作绑架',
+    '每年去一个从未去过的国家',
+    '有能力在朋友遇到困难时伸出援手',
+    '从容应对突发的意外与疾病',
+    '支持自己热爱却不一定赚钱的事',
+    '提早退休，把时间还给自己'
+  ];
+  var list = wealth().dreamList;
+  for(var i=0;i<WEALTH_DREAM_MAX;i++){
+    if(list[i]){ if(!list[i].text) list[i].text = tpl[i]; }
+    else { list.push({ id: 'd' + Date.now() + i, text: tpl[i], core: false }); }
+  }
+  wealth().dreamList = list.slice(0, WEALTH_DREAM_MAX);
+  saveDb(); renderDreamList();
+}
+function coreDreams(){
+  return wealth().dreamList.filter(function(d){ return d.core && d.text; });
+}
+
+/* ---- 模块2：梦想相册 ---- */
+function renderAlbums(){
+  var wrap = document.getElementById('albumWrap');
+  var cores = coreDreams();
+  wrap.innerHTML = '';
+  if(!cores.length){
+    wrap.innerHTML = '<div class="album-empty">先在上方「梦想清单」里选出 3 个⭐核心梦想，这里会自动出现对应的相册。</div>';
+    return;
+  }
+  cores.forEach(function(d){
+    var card = document.createElement('div'); card.className = 'album-card';
+    var h = document.createElement('h4'); h.textContent = d.text; card.appendChild(h);
+    var sub = document.createElement('div'); sub.className = 'sub'; sub.textContent = '收集这个梦想的视觉照片'; card.appendChild(sub);
+    var grid = document.createElement('div'); grid.className = 'album-grid';
+    var photos = wealth().albums[d.id] || [];
+    photos.forEach(function(src, idx){
+      var ph = document.createElement('div'); ph.className = 'album-photo';
+      var img = document.createElement('img'); img.src = src; ph.appendChild(img);
+      var del = document.createElement('button'); del.className = 'del'; del.textContent = '✕';
+      del.onclick = function(){ delAlbumPhoto(d.id, idx); };
+      ph.appendChild(del); grid.appendChild(ph);
+    });
+    card.appendChild(grid);
+    var up = document.createElement('button'); up.className = 'btn btn-ghost btn-sm'; up.style.marginTop = '8px';
+    up.textContent = '＋ 上传图片';
+    up.onclick = function(){ albumUpload(d.id); };
+    card.appendChild(up);
+    wrap.appendChild(card);
+  });
+}
+function albumUpload(dreamId){
+  var input = document.createElement('input');
+  input.type = 'file'; input.accept = 'image/*';
+  input.onchange = function(){
+    if(!input.files || !input.files[0]) return;
+    compressImage(input.files[0], 500, function(b64){
+      if(!wealth().albums[dreamId]) wealth().albums[dreamId] = [];
+      wealth().albums[dreamId].push(b64);
+      saveDb(); renderAlbums();
+    });
+  };
+  input.click();
+}
+function delAlbumPhoto(dreamId, idx){
+  if(!confirm('删除这张照片？')) return;
+  wealth().albums[dreamId].splice(idx, 1);
+  saveDb(); renderAlbums();
+}
+
+/* ---- 模块3：梦想储蓄罐 ---- */
+function renderPiggy(){
+  var wrap = document.getElementById('piggyWrap');
+  var cores = coreDreams();
+  wrap.innerHTML = '';
+  if(!cores.length){
+    wrap.innerHTML = '<div class="album-empty">先在上方「梦想清单」里选出 3 个⭐核心梦想，这里会自动出现对应的储蓄罐。</div>';
+    return;
+  }
+  cores.forEach(function(d){
+    if(!wealth().piggy[d.id]) wealth().piggy[d.id] = { goal: 0, deposits: [] };
+    var p = wealth().piggy[d.id];
+    var total = p.deposits.reduce(function(s, x){ return s + (Number(x.amount) || 0); }, 0);
+    var card = document.createElement('div'); card.className = 'piggy-card';
+    var h = document.createElement('h4'); h.textContent = d.text; card.appendChild(h);
+    var goalRow = document.createElement('div'); goalRow.className = 'piggy-goal';
+    var gl = document.createElement('span'); gl.className = 'sub'; gl.textContent = '目标 ¥';
+    var gi = document.createElement('input'); gi.type = 'number'; gi.className = 'form-input'; gi.value = p.goal || ''; gi.placeholder = '目标金额';
+    gi.oninput = function(){ p.goal = Number(gi.value) || 0; saveDb(); renderPiggy(); };
+    goalRow.appendChild(gl); goalRow.appendChild(gi);
+    card.appendChild(goalRow);
+    var pct = p.goal > 0 ? Math.min(100, total / p.goal * 100) : 0;
+    var bar = document.createElement('div'); bar.className = 'piggy-bar';
+    var fill = document.createElement('div'); fill.className = 'piggy-fill'; fill.style.width = pct + '%'; bar.appendChild(fill);
+    card.appendChild(bar);
+    var stat = document.createElement('div'); stat.className = 'piggy-stat';
+    stat.innerHTML = '已存 <b>¥' + total.toLocaleString() + '</b> / 目标 ¥' + (p.goal || 0).toLocaleString() + '（' + pct.toFixed(0) + '%）';
+    card.appendChild(stat);
+    var dep = document.createElement('div'); dep.className = 'piggy-deposit';
+    var ai = document.createElement('input'); ai.type = 'number'; ai.className = 'form-input amt'; ai.placeholder = '金额';
+    var ni = document.createElement('input'); ni.type = 'text'; ni.className = 'form-input note'; ni.placeholder = '备注（可选）';
+    var btn = document.createElement('button'); btn.className = 'btn btn-primary btn-sm'; btn.textContent = '存入';
+    btn.onclick = function(){
+      var amt = Number(ai.value);
+      if(!amt || amt <= 0){ alert('请输入有效金额'); return; }
+      p.deposits.push({ ts: Date.now(), amount: amt, note: ni.value.trim() });
+      saveDb(); renderPiggy();
+    };
+    dep.appendChild(ai); dep.appendChild(ni); dep.appendChild(btn);
+    card.appendChild(dep);
+    var rec = document.createElement('div'); rec.className = 'piggy-records';
+    p.deposits.slice().reverse().forEach(function(x, ri){
+      var realIdx = p.deposits.length - 1 - ri;
+      var row = document.createElement('div'); row.className = 'piggy-rec';
+      var a = document.createElement('span'); a.className = 'amt'; a.textContent = '+¥' + Number(x.amount).toLocaleString();
+      var n = document.createElement('span'); n.className = 'note'; n.textContent = x.note || '存入';
+      var t = document.createElement('span'); t.className = 'ts'; t.textContent = new Date(x.ts).toLocaleDateString();
+      var dl = document.createElement('button'); dl.className = 'del'; dl.textContent = '✕';
+      dl.onclick = function(){ p.deposits.splice(realIdx, 1); saveDb(); renderPiggy(); };
+      row.appendChild(a); row.appendChild(n); row.appendChild(t); row.appendChild(dl);
+      rec.appendChild(row);
+    });
+    card.appendChild(rec);
+    wrap.appendChild(card);
+  });
+}
+
+/* ---- 模块4：成功日记 ---- */
+function renderSuccessDiary(){
+  var date = wealthDiaryDate;
+  document.getElementById('diaryDate').textContent = date;
+  var entries = wealth().successDiary[date] ? wealth().successDiary[date].slice() : [];
+  if(!entries.length){ for(var k=0;k<5;k++) entries.push(''); }
+  var box = document.getElementById('diaryEntries');
+  box.innerHTML = '';
+  entries.forEach(function(txt, i){
+    var row = document.createElement('div'); row.className = 'diary-entry';
+    var no = document.createElement('div'); no.className = 'no'; no.textContent = (i + 1);
+    var inp = document.createElement('input'); inp.type = 'text'; inp.placeholder = '今天做成的一件事…'; inp.value = txt || '';
+    inp.oninput = function(){ entries[i] = inp.value; saveDiary(date, entries); };
+    var del = document.createElement('button'); del.className = 'del'; del.textContent = '✕';
+    del.onclick = function(){ entries.splice(i, 1); saveDiary(date, entries); renderSuccessDiary(); };
+    row.appendChild(no); row.appendChild(inp); row.appendChild(del);
+    box.appendChild(row);
+  });
+  var filled = entries.filter(function(x){ return x && x.trim(); }).length;
+  document.getElementById('diaryProgress').textContent = '今日 ' + filled + ' / 5';
+  document.getElementById('diaryStreak').textContent = '连续打卡 ' + diaryStreak() + ' 天';
+}
+function saveDiary(date, entries){
+  var clean = entries.slice();
+  while(clean.length && !clean[clean.length - 1].trim()) clean.pop();
+  if(clean.length) wealth().successDiary[date] = clean;
+  else delete wealth().successDiary[date];
+  saveDb();
+}
+function addDiaryEntry(){
+  var date = wealthDiaryDate;
+  if(!wealth().successDiary[date]) wealth().successDiary[date] = [];
+  wealth().successDiary[date].push('');
+  saveDb(); renderSuccessDiary();
+}
+function diaryPrev(){ var d = new Date(wealthDiaryDate); d.setDate(d.getDate() - 1); wealthDiaryDate = toDateStr(d); renderSuccessDiary(); }
+function diaryNext(){
+  var nd = new Date(wealthDiaryDate); nd.setDate(nd.getDate() + 1);
+  var ns = toDateStr(nd);
+  if(ns > today()) return;
+  wealthDiaryDate = ns; renderSuccessDiary();
+}
+function diaryToday(){ wealthDiaryDate = today(); renderSuccessDiary(); }
+function diaryStreak(){
+  var s = wealth().successDiary;
+  var d = new Date();
+  var streak = 0;
+  for(;;){
+    var ds = toDateStr(d);
+    if(s[ds] && s[ds].length){ streak++; d.setDate(d.getDate() - 1); }
+    else break;
+  }
+  return streak;
 }
 
 /* ====== Tab 9: 新闻联播每日总结 ====== */
