@@ -1225,6 +1225,35 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 .manual-add-form{display:none;margin-top:10px;padding:14px;border:1px dashed var(--line);border-radius:var(--radius-sm);}
 .manual-add-form.show{display:block;}
 
+/* ===== 财报日历 ===== */
+.earn-stats{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+.earn-stat{flex:0 0 auto;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:500;background:var(--glass-bg);border:1px solid var(--glass-border);backdrop-filter:blur(6px);color:var(--text-mid);}
+.earn-stat .count{color:var(--accent);font-weight:600;margin-left:4px;}
+.earn-stat.fail{color:var(--red);border-color:var(--red-bg);}
+.earn-day-group{margin-bottom:14px;}
+.earn-day-hd{font-size:12px;color:var(--text-mid);font-weight:600;padding:4px 0;display:flex;align-items:center;gap:8px;}
+.earn-day-hd:before{content:"";display:inline-block;width:4px;height:14px;border-radius:2px;background:var(--accent-grad);}
+.earn-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 12px;margin:6px 0;border-radius:var(--radius-sm);background:var(--glass-bg);border:1px solid var(--glass-border);backdrop-filter:blur(6px);transition:all .18s ease;}
+.earn-row:hover{transform:translateY(-1px);box-shadow:var(--glass-shadow-sm);border-color:var(--accent);}
+.earn-row-main{flex:1;min-width:0;}
+.earn-row-co{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.earn-row-co b{font-size:14px;color:var(--text);}
+.earn-row-code{font-size:11px;color:var(--text-mid);font-family:monospace;}
+.earn-row-title{font-size:12px;color:var(--text-mid);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.earn-row-tag{flex:0 0 auto;padding:3px 9px;border-radius:6px;font-size:11px;font-weight:500;white-space:nowrap;}
+.earn-row-tag.annual{background:var(--accent-bg);color:var(--accent);}
+.earn-row-tag.half{background:var(--green-bg);color:var(--green);}
+.earn-row-tag.q1{background:var(--blue-bg);color:var(--blue);}
+.earn-row-tag.q3{background:var(--amber-bg);color:var(--amber);}
+.earn-row-tag.express{background:var(--accent-bg);color:var(--accent);}
+.earn-row-tag.forecast{background:var(--blue-bg);color:var(--blue);}
+.earn-row-tag.up{background:var(--red-bg);color:var(--red);}
+.earn-row-tag.down{background:var(--green-bg);color:var(--green);}
+.earn-row-tag.turn{background:var(--amber-bg);color:var(--amber);}
+.earn-row-tag.other{background:var(--glass-bg);color:var(--text-mid);}
+.earn-manual-toggle{margin-top:10px;text-align:right;}
+.earn-manual-form{margin-top:8px;padding:10px 14px;border:1px dashed var(--line);border-radius:var(--radius-sm);background:var(--glass-bg);}
+
 /* ====== Tab5: Python ====== */
 .stepper{
   display:flex;
@@ -2259,17 +2288,56 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     <div id="watchList"></div>
   </div>
 
-  <!-- B3. 财报关注日历 -->
+  <!-- B3. 财报关注日历（自动抓取） -->
   <div class="card">
     <div class="card-title">财报关注日历</div>
-    <div class="section-desc" style="margin-bottom:10px;">记录你关注公司的财报发布日与关注要点（也可从上方资讯流里挑出财报相关动态）</div>
-    <div class="form-row">
-      <div class="form-group auto"><label class="form-label">日期</label><input type="date" id="earnDate"></div>
-      <div class="form-group"><label class="form-label">公司</label><input type="text" id="earnCompany" placeholder="如 英伟达 / 腾讯"></div>
-      <div class="form-group"><label class="form-label">关注要点</label><input type="text" id="earnNote" placeholder="如 数据中心营收、毛利率"></div>
-      <div class="auto" style="align-self:flex-end;"><button class="btn btn-primary btn-sm" onclick="addEarning()">添加</button></div>
+    <div class="section-desc" style="margin-bottom:10px;">自动抓取近 30 天 A 股科技公司财报/业绩预告/业绩快报（东方财富公告接口直连 + 代理兜底），按报告期分类展示</div>
+    <div class="form-row" style="margin-bottom:10px;">
+      <div class="form-group auto"><label class="form-label">范围</label>
+        <select id="earnRangeSel" onchange="fetchEarnings()">
+          <option value="14">近 14 天</option>
+          <option value="30" selected>近 30 天</option>
+          <option value="60">近 60 天</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">市场</label>
+        <select id="earnMarketSel" onchange="fetchEarnings()">
+          <option value="A" selected>沪深全市场</option>
+          <option value="SHA">沪市主板</option>
+          <option value="SZA">深市主板</option>
+          <option value="CYB">创业板</option>
+          <option value="BJA">北交所</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">报告类型</label>
+        <select id="earnTypeSel" onchange="renderEarningsList()">
+          <option value="all" selected>全部</option>
+          <option value="年报">年报</option>
+          <option value="半年报">半年报</option>
+          <option value="一季报">一季报</option>
+          <option value="三季报">三季报</option>
+          <option value="业绩快报">业绩快报</option>
+          <option value="业绩预告">业绩预告</option>
+          <option value="业绩预增">业绩预增</option>
+          <option value="业绩预减">业绩预减</option>
+          <option value="扭亏">扭亏</option>
+        </select>
+      </div>
+      <div class="auto" style="align-self:flex-end;"><button class="btn btn-primary btn-sm" onclick="fetchEarnings()">🔄 刷新财报</button></div>
     </div>
+    <div id="earnStats" class="earn-stats"></div>
     <div id="earnList"></div>
+    <div class="earn-manual-toggle">
+      <a class="form-link" onclick="toggleEarnManual()">⚙ 手动添加自定义项（折叠）</a>
+    </div>
+    <div id="earnManualForm" class="earn-manual-form" style="display:none;">
+      <div class="form-row">
+        <div class="form-group auto"><label class="form-label">日期</label><input type="date" id="earnDate"></div>
+        <div class="form-group"><label class="form-label">公司</label><input type="text" id="earnCompany" placeholder="如 英伟达 / 腾讯"></div>
+        <div class="form-group"><label class="form-label">关注要点</label><input type="text" id="earnNote" placeholder="如 数据中心营收、毛利率"></div>
+        <div class="auto" style="align-self:flex-end;"><button class="btn btn-sm" onclick="addEarning()">添加</button></div>
+      </div>
+    </div>
   </div>
 
   <!-- C. 我的基金诊断中心 -->
@@ -5776,7 +5844,14 @@ function renderMarket(){
   fetchIndexQuotes();
   renderFunds();
   renderWatchlist();
-  renderEarnings();
+  /* 财报日历：30 分钟内已抓取复用 + 统计区渲染 */
+  var stats = document.getElementById('earnStats');
+  if(EARNINGS_FETCHED.length && (Date.now() - EARNINGS_FETCHED_TS < 30 * 60 * 1000)){
+    if(stats) stats.innerHTML = computeEarnStats(EARNINGS_FETCHED);
+    renderEarningsList();
+  } else {
+    fetchEarnings();
+  }
   if(TECH_NEWS.length > 0){ renderTechNews(); } else { fetchTechNews(false); }
 }
 
@@ -6504,7 +6579,212 @@ function parseWatch(txt){
   saveDb(); renderWatchlist();
 }
 
-/* ============ 财报日历 ============ */
+/* ============ 财报日历（自动抓取东方财富公告）+ 手动补充 ============ */
+var EARNINGS_FETCHED = []; // 抓取的原始财报公告
+var EARNINGS_FETCHED_TS = 0;
+/* 报告类型分类 + 标签样式与中文显示 */
+var EARN_TYPE_MAP = {
+  '半年度报告摘要':{key:'半年报', cls:'half'},
+  '半年度报告全文':{key:'半年报', cls:'half'},
+  '中期报告':{key:'半年报', cls:'half'},
+  '年度报告':{key:'年报', cls:'annual'},
+  '年度报告摘要':{key:'年报', cls:'annual'},
+  '年度报告全文':{key:'年报', cls:'annual'},
+  '一季度报告':{key:'一季报', cls:'q1'},
+  '第一季度报告':{key:'一季报', cls:'q1'},
+  '三季度报告':{key:'三季报', cls:'q3'},
+  '业绩快报':{key:'业绩快报', cls:'express'},
+  '业绩预告':{key:'业绩预告', cls:'forecast'},
+  '业绩预增':{key:'业绩预增', cls:'up'},
+  '业绩预减':{key:'业绩预减', cls:'down'},
+  '扭亏':{key:'扭亏', cls:'turn'}
+};
+/* 非财报公告关键词（即使 companyName 命中科技词，也不算"财报"） */
+var NON_EARN_KW = ['权益分派','利润分配','分红派息','分配方案','股东大会决议','董事会决议公告','关联交易','股份转让','控制权','增减持','股份减持','股份增持','股份回购','回购股份','股票交易异常','停牌','复牌','风险警示','摘牌','问询函','回复函','临时公告','合并召开','募集资金','可转债','发行股份','中签','上市公告','发行公告','收购','出售资产','股权过户','注册地址','经营地址变更','章程修订','关联交易公告','补充法律意见','审计报告','法律意见','保荐','补充','说明会','换届','股票期权','激励计划','延期','取消','作废','进展公告','停牌公告','复牌公告','澄清','关联交易公告','关联交易','补充','进展','中介机构','中介','持续督导','保荐机构','保荐代表人','签字','签注','股东大会召开','法律意见书','法律意见','股东会议','股东大会决议'];
+function classifyEarning(cols, title){
+  if(!cols || !cols.length) return {key:'其他', cls:'other'};
+  for(var i=0;i<cols.length;i++){
+    var cn = cols[i].column_name || '';
+    if(EARN_TYPE_MAP[cn]) return EARN_TYPE_MAP[cn];
+  }
+  /* 标题兜底（按词边界，年报不能误匹配半年报） */
+  if(/年的年度报告|年报全文|年度报告全文/.test(title)) return EARN_TYPE_MAP['年度报告'];
+  if(/半年度报告|半年报全文|中期报告/.test(title)) return EARN_TYPE_MAP['半年度报告摘要'];
+  if(/一季度报告|第一季报|一季报/.test(title)) return EARN_TYPE_MAP['一季度报告'];
+  if(/三季度报告|三季报/.test(title)) return EARN_TYPE_MAP['三季度报告'];
+  if(/业绩快报/.test(title)) return EARN_TYPE_MAP['业绩快报'];
+  if(/业绩预增/.test(title)) return EARN_TYPE_MAP['业绩预增'];
+  if(/业绩预减|预亏/.test(title)) return EARN_TYPE_MAP['业绩预减'];
+  if(/业绩预告/.test(title)) return EARN_TYPE_MAP['业绩预告'];
+  if(/扭亏/.test(title)) return EARN_TYPE_MAP['扭亏'];
+  return {key:'其他', cls:'other'};
+}
+function isEarnItem(item){
+  /* 是否真正的财报/业绩公告（非分配/股东大会/会议等） */
+  var t = item.title || '';
+  for(var i=0;i<NON_EARN_KW.length;i++){ if(t.indexOf(NON_EARN_KW[i]) >= 0) return false; }
+  var cols = item.columns || [];
+  for(var i=0;i<cols.length;i++){ if(EARN_TYPE_MAP[cols[i].column_name]) return true; }
+  /* 标题兜底 */
+  if(/半年度报告|年度报告|一季度报告|三季度报告|一季度|三季度|业绩快报|业绩预告|业绩预增|业绩预减|预亏|扭亏/.test(t)) return true;
+  return false;
+}
+function isTechEarning(title, codes){
+  var t = (title || '').toLowerCase();
+  var KW = ['科技','半导体','芯片','集成电路','电子','软件','信息','网络','通信','光电','激光','传感','智能','AI','人工','机器人','新能源','锂电','电池','光伏','储能','汽车','比亚迪','蔚来','理想','小鹏','宁德','隆基','阳光','医药','生物','海康','商汤','科大','讯飞','恒瑞','片仔','金山','用友','广联达','宝信','紫光','联想','中兴','烽火','小米','京东方','TCL','三安','韦尔','卓胜','蓝思','立讯','歌尔','长电','通富','华天','汇顶','兆易','北方','中际','新易','深南','胜宏','生益','沪电','景嘉','数据','云','算力','服务器','虹软','澜起','柏楚','宏发','汇川','埃斯顿','拓普','三花','传音','闻泰','欧菲','舜宇','丘钛','瑞声','国瓷','凯赛','万华','神鹰','光威','中简','光启','金发','普利','特变','中天','亨通','长飞','永鼎','东方','综艺','联创','天孚','博创','剑桥','明泰','海亮','金田','博威','精艺'];
+  for(var i=0;i<KW.length;i++){ if(title.indexOf(KW[i]) >= 0) return true; }
+  return false;
+}
+function fmtEarningsDate(s){
+  if(!s) return '';
+  var m = String(s).match(/(\d{4})-(\d{2})-(\d{2})/);
+  if(!m) return s;
+  var d = new Date(m[1], parseInt(m[2])-1, parseInt(m[3]));
+  var wk = ['日','一','二','三','四','五','六'][d.getDay()];
+  return m[1] + '/' + m[2] + '/' + m[3] + ' · 周' + wk;
+}
+function todayBJ(){
+  var now = new Date();
+  var bj = new Date(now.getTime() + 8 * 3600 * 1000);
+  return bj.toISOString().slice(0,10);
+}
+function fetchEarnings(){
+  var hint = document.getElementById('earnStats');
+  if(hint) hint.innerHTML = '<span class="earn-stat">抓取中…</span>';
+  var days = parseInt((document.getElementById('earnRangeSel')||{}).value || '30');
+  var market = (document.getElementById('earnMarketSel')||{}).value || 'A';
+  var annType = market === 'A' ? 'SHA,CYB,SZA,BJA' : market;
+  var start = todayBJ();
+  var endDate = new Date(Date.now() + days * 86400 * 1000 + 8 * 3600 * 1000);
+  var end = endDate.toISOString().slice(0,10);
+  var page = 1;
+  var all = [];
+  function fetchPage(){
+    var url = 'https://np-anotice-stock.eastmoney.com/api/security/ann?sr=-1&page_size=100&page_index=' + page +
+      '&ann_type=' + encodeURIComponent(annType) +
+      '&client_source=web&f_node=1&s_node=0' +
+      '&begin_time=' + start + '&end_time=' + end;
+    var i = 0;
+    function next(){
+      if(i >= DCA_PROXIES.length + 1){ renderEarningsFail(); return; }
+      var realUrl = i === 0 ? url : (DCA_PROXIES[i-1] + encodeURIComponent(url));
+      fetchTextWithTimeout(realUrl, 12000).then(function(txt){
+        var json = null;
+        try { json = JSON.parse(txt); } catch(e){ i++; next(); return; }
+        if(!json.success || !json.data || !json.data.list){ i++; next(); return; }
+        var list = json.data.list || [];
+        all = all.concat(list);
+        if(list.length >= 100 && page < 4){ page++; fetchPage(); } else { done(); }
+      }).catch(function(){ i++; next(); });
+    }
+    next();
+  }
+  function done(){
+    EARNINGS_FETCHED = all;
+    EARNINGS_FETCHED_TS = Date.now();
+    var stats = computeEarnStats(all);
+    if(hint) hint.innerHTML = stats;
+    renderEarningsList();
+  }
+  fetchPage();
+}
+function renderEarningsFail(){
+  var hint = document.getElementById('earnStats');
+  if(hint) hint.innerHTML = '<span class="earn-stat fail">拉取失败，请稍后重试</span>';
+  if(EARNINGS_FETCHED.length){ renderEarningsList(); }
+}
+function computeEarnStats(list){
+  var stats = { total: 0, tech: 0, byType: {} };
+  var allItems = list.filter(function(it){ return isEarnItem(it); });
+  stats.total = allItems.length;
+  allItems.forEach(function(it){
+    var t = it.title || '';
+    var type = classifyEarning(it.columns, t);
+    stats.byType[type.key] = (stats.byType[type.key] || 0) + 1;
+    if(isTechEarning(t, it.codes)) stats.tech++;
+  });
+  (DB.market.earnings || []).forEach(function(x){
+    stats.total++; stats.tech++;
+    stats.byType['自定义'] = (stats.byType['自定义'] || 0) + 1;
+  });
+  var order = ['年报','半年报','一季报','三季报','业绩快报','业绩预告','业绩预增','业绩预减','扭亏','自定义'];
+  var html = '<span class="earn-stat">财报 <span class="count">' + stats.total + '</span></span>';
+  html += '<span class="earn-stat">科技相关 <span class="count">' + stats.tech + '</span></span>';
+  order.forEach(function(k){ if(stats.byType[k]){ html += '<span class="earn-stat">' + k + ' <span class="count">' + stats.byType[k] + '</span></span>'; } });
+  html += '<span class="earn-stat">更新 ' + fmtHHMM(EARNINGS_FETCHED_TS) + '</span>';
+  return html;
+}
+function fmtHHMM(ts){
+  if(!ts) return '--:--';
+  var d = new Date(ts);
+  var hh = String(d.getHours()).padStart(2,'0');
+  var mm = String(d.getMinutes()).padStart(2,'0');
+  return hh + ':' + mm;
+}
+function renderEarningsList(){
+  var el = document.getElementById('earnList'); if(!el) return;
+  var filterType = (document.getElementById('earnTypeSel')||{}).value || 'all';
+  var items = EARNINGS_FETCHED.filter(function(it){ return isEarnItem(it); }).map(function(it){
+    var type = classifyEarning(it.columns, it.title);
+    var code = (it.codes && it.codes[0]) ? it.codes[0].stock_code : '';
+    var name = (it.codes && it.codes[0]) ? it.codes[0].short_name : '';
+    return { date: (it.notice_date || '').slice(0,10), sortDate: (it.sort_date || it.notice_date || '').slice(0,10), title: it.title || '', type: type, code: code, name: name, art: it.art_code || '' };
+  });
+  /* 合并手动添加的自定义项 */
+  (DB.market.earnings || []).forEach(function(x){
+    items.push({ date: x.date || '', sortDate: x.date || '9999-12-31', title: x.company + (x.note ? ' — ' + x.note : ''), type: {key:'自定义', cls:'other'}, code: '', name: x.company, art: '', isManual: true, mid: x.id });
+  });
+  /* 过滤：科技关键词 */
+  items = items.filter(function(it){
+    if(it.isManual) return true;
+    return isTechEarning(it.title, it.codes);
+  });
+  /* 按报告类型筛选 */
+  if(filterType !== 'all'){
+    items = items.filter(function(it){
+      if(it.isManual) return filterType === '自定义';
+      return it.type.key === filterType;
+    });
+  }
+  if(!items.length){
+    el.innerHTML = '<div class="text-sm text-muted">该条件下没有数据' + (EARNINGS_FETCHED.length ? '' : '（请先点「🔄 刷新财报」）') + '</div>';
+    return;
+  }
+  /* 按日期分组排序 */
+  items.sort(function(a, b){ return (a.sortDate || '').localeCompare(b.sortDate || ''); });
+  var groups = {};
+  items.forEach(function(it){
+    var k = it.date || '待定';
+    groups[k] = groups[k] || [];
+    groups[k].push(it);
+  });
+  var html = '';
+  Object.keys(groups).forEach(function(day){
+    html += '<div class="earn-day-group">';
+    html += '<div class="earn-day-hd">' + fmtEarningsDate(day) + ' · ' + groups[day].length + ' 条</div>';
+    groups[day].forEach(function(it){
+      var tagCls = it.type.cls;
+      var tagKey = it.type.key;
+      var co = it.name || (it.isManual ? '' : '—');
+      var code = it.code ? '<span class="earn-row-code">' + escapeHtml(it.code) + '</span>' : '';
+      var manualDel = it.isManual ? ' <button class="btn btn-sm" onclick="deleteEarn(\'' + it.mid + '\')">删</button>' : '';
+      var toggleBtn = it.isManual ? ' <button class="btn btn-sm" onclick="toggleEarn(\'' + it.mid + '\')">' + ((DB.market.earnings.find(function(x){return x.id===it.mid;})||{}).done ? '已发布' : '标记发布') + '</button>' : '';
+      html += '<div class="earn-row">' +
+        '<div class="earn-row-main">' +
+          '<div class="earn-row-co"><b>' + escapeHtml(co) + '</b>' + code + '<span class="earn-row-tag ' + tagCls + '">' + tagKey + '</span></div>' +
+          '<div class="earn-row-title">' + escapeHtml(it.title) + '</div>' +
+        '</div>' +
+        '<div class="auto">' + toggleBtn + manualDel + '</div>' +
+      '</div>';
+    });
+    html += '</div>';
+  });
+  el.innerHTML = html;
+}
+function toggleEarnManual(){
+  var f = document.getElementById('earnManualForm');
+  if(f) f.style.display = (f.style.display === 'none' ? 'block' : 'none');
+}
 function addEarning(){
   var date = document.getElementById('earnDate').value;
   var company = document.getElementById('earnCompany').value.trim();
@@ -6514,25 +6794,20 @@ function addEarning(){
   saveDb();
   document.getElementById('earnCompany').value = '';
   document.getElementById('earnNote').value = '';
-  renderEarnings();
-}
-function renderEarnings(){
-  var el = document.getElementById('earnList'); if(!el) return;
-  var e = (DB.market.earnings || []).slice().sort(function(a, b){ return (a.date || '0').localeCompare(b.date || '0'); });
-  if(!e.length){ el.innerHTML = '<div class="text-sm text-muted">还没有财报关注项。</div>'; return; }
-  el.innerHTML = e.map(function(x){
-    return '<div class="overlap-pair" style="display:flex;justify-content:space-between;align-items:center;gap:10px;">' +
-      '<div><b>' + (x.date || '待定') + '</b> · ' + escapeHtml(x.company) + (x.note ? ' — ' + escapeHtml(x.note) : '') + (x.done ? ' ✓' : '') + '</div>' +
-      '<div><button class="btn btn-sm" onclick="toggleEarn(\'' + x.id + '\')">' + (x.done ? '已发布' : '标记发布') + '</button> <button class="btn btn-sm" onclick="deleteEarn(\'' + x.id + '\')">删</button></div></div>';
-  }).join('');
+  renderEarningsList();
+  /* 同步统计区 */
+  var hint = document.getElementById('earnStats');
+  if(hint) hint.innerHTML = computeEarnStats(EARNINGS_FETCHED);
 }
 function toggleEarn(id){
   var x = (DB.market.earnings || []).find(function(y){ return y.id === id; });
-  if(x){ x.done = !x.done; saveDb(); renderEarnings(); }
+  if(x){ x.done = !x.done; saveDb(); renderEarningsList(); }
 }
 function deleteEarn(id){
   DB.market.earnings = (DB.market.earnings || []).filter(function(y){ return y.id !== id; });
-  saveDb(); renderEarnings();
+  saveDb(); renderEarningsList();
+  var hint = document.getElementById('earnStats');
+  if(hint) hint.innerHTML = computeEarnStats(EARNINGS_FETCHED);
 }
 
 /* --- Tab4: 实时金价 (国际/国内/ETF) + 自动情绪判断 --- */
