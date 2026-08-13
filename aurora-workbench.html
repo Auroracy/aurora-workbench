@@ -6276,10 +6276,10 @@ function parseIndex(txt){
 /* ============ 科技资讯 ============ */
 var TECH_NEWS = [];
 var techNewsPage = 1;
-var TECH_PAGE_SIZE = 6;
+var TECH_PAGE_SIZE = 5;
 var techNewsFetching = false;
 var techRefreshTimer = null;
-var TECH_KW = ['科技','芯片','半导体','ai','人工智能','算力','大模型','英伟达','苹果','特斯拉','微软','谷歌','亚马逊','meta','腾讯','阿里','阿里巴巴','百度','小米','华为','字节','美团','京东','网易','快手','中芯','光伏','新能源','锂电','储能','机器人','自动驾驶','创新药','生物医药','互联网'];
+var TECH_KW = ['科技','芯片','半导体','ai','人工智能','算力','大模型','英伟达','苹果','特斯拉','微软','谷歌','亚马逊','meta','腾讯','阿里','阿里巴巴','百度','小米','华为','字节','美团','京东','网易','快手','中芯','光伏','新能源','锂电','储能','机器人','自动驾驶','创新药','生物医药','互联网','台积电','tsmc','高通','比亚迪','byd','理想','小鹏','蔚来','宁德','宁王','隆基','科大讯飞','海康','商汤','旷视','寒武纪','地平线','拼多多','bilibili','b站','游戏','手游','5g','pcb','面板','oled','云','saas','gpu','cpu','soc','电动车','碳中和','卫星','无人机','区块链','web3','量子','折叠屏'];
 var EARNINGS_KW = ['财报','季报','年报','业绩','营收','净利润','超预期','指引','盈利预警','下修','上调'];
 function isEarnings(t){ var s = t.toLowerCase(); return EARNINGS_KW.some(function(k){ return s.indexOf(k.toLowerCase()) >= 0; }); }
 function isTech(t){ var s = t.toLowerCase(); return TECH_KW.some(function(k){ return s.indexOf(k.toLowerCase()) >= 0; }); }
@@ -6287,33 +6287,52 @@ function fetchTechNews(manual){
   if(techNewsFetching) return;
   techNewsFetching = true;
   var btn = document.getElementById('techNewsRefreshBtn'); if(btn) btn.textContent = '刷新中...';
-  if(manual || TECH_NEWS.length === 0){ var l = document.getElementById('techNewsList'); if(l) l.innerHTML = '<div class="news-loading"><span class="spinner"></span>正在获取科技资讯...</div>'; }
-  var src = 'https://feed.mix.sina.com.cn/api/roll/get?pageid=153&lid=1686&num=40&page=1';
-  fetchViaProxyPool(src, function(err, data){
-    techNewsFetching = false;
-    if(btn) btn.textContent = '🔄 刷新';
-    var l = document.getElementById('techNewsList');
-    if(err || !data || !data.result || !data.result.data){ if(l) l.innerHTML = '<div class="news-loading">暂无法获取资讯，请稍后重试或手动补充</div>'; return; }
-    var items = data.result.data;
-    var res = [];
-    items.forEach(function(it){
-      var title = it.title || ''; if(!title) return;
-      var summary = (it.intro || '').replace(/<[^>]+>/g, '').trim();
-      var all = (title + ' ' + summary).toLowerCase();
-      if(!isTech(all)) return;
-      var source = it.media_name || '新浪财经';
-      var ctime = String(it.ctime || '');
-      var ts = parseInt(ctime); var disp = '';
-      if(!isNaN(ts) && ts > 1000000000){ var d = new Date(ts * 1000); disp = (d.getMonth()+1) + '-' + d.getDate() + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'); }
-      var id = it.docid || (title + ctime);
-      res.push({ id: id, title: title, summary: summary, url: it.url || '', source: source, time: disp, cat: isEarnings(all) ? 'earnings' : 'tech', sentiment: analyzeSentiment(title, summary, 'tech'), fav: DB.market.favNewsIds.indexOf(id) >= 0 });
+  if(manual || TECH_NEWS.length === 0){ var l = document.getElementById('techNewsList'); if(l) l.innerHTML = '<div class="news-loading"><span class="spinner"></span>正在获取科技资讯（A 股+美股+港股 多源并行）...</div>'; }
+  // 新浪财经三个 lid 并行抓取：A 股 1686、美股 1688、港股 1687
+  var sources = [
+    'https://feed.mix.sina.com.cn/api/roll/get?pageid=153&lid=1686&num=30&page=1',
+    'https://feed.mix.sina.com.cn/api/roll/get?pageid=153&lid=1688&num=30&page=1',
+    'https://feed.mix.sina.com.cn/api/roll/get?pageid=153&lid=1687&num=30&page=1'
+  ];
+  var collected = {};
+  var pending = sources.length;
+  var anyOk = false;
+  sources.forEach(function(src){
+    fetchViaProxyPool(src, function(err, data){
+      pending--;
+      if(!err && data && data.result && data.result.data){
+        anyOk = true;
+        data.result.data.forEach(function(it){
+          var k = it.docid || it.title;
+          if(k && !collected[k]) collected[k] = it;
+        });
+      }
+      if(pending === 0){
+        techNewsFetching = false;
+        if(btn) btn.textContent = '🔄 刷新';
+        var items = Object.values(collected);
+        var res = [];
+        items.forEach(function(it){
+          var title = it.title || ''; if(!title) return;
+          var summary = (it.intro || '').replace(/<[^>]+>/g, '').trim();
+          var all = (title + ' ' + summary).toLowerCase();
+          if(!isTech(all)) return;
+          var source = it.media_name || '新浪财经';
+          var ctime = String(it.ctime || '');
+          var ts = parseInt(ctime); var disp = '';
+          if(!isNaN(ts) && ts > 1000000000){ var d = new Date(ts * 1000); disp = (d.getMonth()+1) + '-' + d.getDate() + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'); }
+          var id = it.docid || (title + ctime);
+          res.push({ id: id, title: title, summary: summary, url: it.url || '', source: source, time: disp, cat: isEarnings(all) ? 'earnings' : 'tech', sentiment: analyzeSentiment(title, summary, 'tech'), fav: DB.market.favNewsIds.indexOf(id) >= 0 });
+        });
+        TECH_NEWS = res;
+        var now = new Date();
+        var ts2 = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+        DB.market.newsLastUpdate = ts2; saveDb();
+        var u = document.getElementById('techNewsUpdateTime');
+        if(u) u.textContent = anyOk ? ('最后更新 ' + ts2) : ('更新失败 ' + ts2 + '（已用本地缓存）');
+        techNewsPage = 1; renderTechNews();
+      }
     });
-    TECH_NEWS = res;
-    var now = new Date();
-    var ts2 = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
-    DB.market.newsLastUpdate = ts2; saveDb();
-    var u = document.getElementById('techNewsUpdateTime'); if(u) u.textContent = '最后更新 ' + ts2;
-    techNewsPage = 1; renderTechNews();
   });
 }
 function renderTechNews(){
