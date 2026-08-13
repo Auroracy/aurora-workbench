@@ -1224,6 +1224,13 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 .manual-add-toggle .toggle-btn:hover{border-color:var(--blue);color:var(--blue);}
 .manual-add-form{display:none;margin-top:10px;padding:14px;border:1px dashed var(--line);border-radius:var(--radius-sm);}
 .manual-add-form.show{display:block;}
+/* 批量粘贴格式说明玻璃样式 */
+.paste-format-help{background:var(--glass-bg);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid var(--glass-border);border-radius:var(--radius-sm);padding:8px 12px;margin-bottom:10px;font-size:13px;}
+.paste-format-help summary{cursor:pointer;font-weight:600;color:var(--accent);user-select:none;}
+.paste-format-help[open] summary{margin-bottom:6px;}
+.paste-format-body p{margin:6px 0;}
+.paste-format-body pre{background:rgba(255,255,255,.55);border:1px solid var(--glass-border);padding:8px;border-radius:var(--radius-sm);font-size:12px;line-height:1.55;overflow-x:auto;margin:4px 0;}
+.paste-format-body code{background:rgba(255,255,255,.65);padding:1px 5px;border-radius:4px;font-size:12px;}
 
 /* ===== 财报日历 ===== */
 .earn-stats{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
@@ -2358,9 +2365,32 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
         <div id="fundShotHint" class="text-sm text-muted" style="margin-top:6px;"></div>
       </div>
       <div id="importPaste" class="import-pane" style="display:none;">
-        <p class="text-sm text-muted">每行一只：<b>基金代码 持有份额 成本价</b>（空格或逗号分隔，名称可省略）。例：<br>110011 1000 3.21<br>005827 2000 2.05</p>
-        <textarea id="fundPasteArea" rows="5" placeholder="110011 1000 3.21&#10;005827 2000 2.05"></textarea>
-        <button class="btn btn-primary btn-sm" onclick="parseFundPaste()">解析并预览</button>
+        <details class="paste-format-help">
+          <summary>📖 导入格式说明（点开看示例）</summary>
+          <div class="paste-format-body">
+            <p><b>一行一只基金</b>，字段之间用 <b>空格 / Tab / 逗号(中英文均可) / 分号 / |</b> 分隔：</p>
+            <pre>代码  名称(可省)  份额  成本价
+005827  易方达蓝筹精选  2000  2.05
+110011  易方达中小盘    1000  3.21</pre>
+            <p>也支持纯 3 列：</p>
+            <pre>005827 2000 2.05
+110011 1000 3.21</pre>
+            <p>或逗号分隔：</p>
+            <pre>005827,易方达蓝筹精选,2000,2.05
+110011,1000,3.21</pre>
+            <p>JSON 整段贴也支持：<code>[{"code":"005827","shares":2000,"cost":2.05}]</code></p>
+            <p>直接复制券商 App 截图识别出来的「代码+名称+份额+成本」一行一条记录粘进来即可。</p>
+          </div>
+        </details>
+        <textarea id="fundPasteArea" rows="6" placeholder="一行一条，空格/逗号分隔：
+005827 易方达蓝筹精选 2000 2.05
+110011 易方达中小盘 1000 3.21"></textarea>
+        <div class="paste-toolbar" style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap;">
+          <button class="btn btn-primary btn-sm" onclick="parseFundPaste()">🔍 解析并预览</button>
+          <button class="btn btn-sm" onclick="fillFundPasteDemo()">📋 一键填入示例</button>
+          <button class="btn btn-sm" onclick="document.getElementById('fundPasteArea').value='';document.getElementById('fundPasteHint').textContent=''">🧹 清空</button>
+          <span id="fundPasteHint" class="text-sm text-muted" style="margin-left:auto;flex:1;min-width:200px;text-align:right;"></span>
+        </div>
       </div>
       <div id="importManual" class="import-pane" style="display:none;">
         <div class="form-row">
@@ -2911,6 +2941,12 @@ function toast(msg){
   document.body.appendChild(t);
   setTimeout(function(){ t.classList.add('show'); }, 10);
   setTimeout(function(){ t.classList.remove('show'); setTimeout(function(){ t.remove(); }, 300); }, 1800);
+}
+/* 去掉 base64 字符串里可能的 data:image/...;base64, 前缀，保证发给服务端的总是干净 base64 */
+function stripBase64Prefix(s){
+  if(!s) return '';
+  var m = String(s).match(/^data:image\/[a-zA-Z]+;base64,(.+)$/i);
+  return m ? m[1] : String(s);
 }
 function compressImage(file, maxW, cb){
   if(!file){ cb(''); return; }
@@ -4739,7 +4775,7 @@ function analyzeMealPhotoQwen(base64, key, cb){
         role: 'user',
         content: [
           { type: 'text', text: promptText },
-          { type: 'image_url', image_url: { url: 'data:image/jpeg;base64,' + base64 } }
+          { type: 'image_url', image_url: { url: 'data:image/jpeg;base64,' + stripBase64Prefix(base64) } }
         ]
       }],
       temperature: 0.1
@@ -6098,7 +6134,7 @@ function analyzeFundScreenshot(base64, cb){
         role: 'user',
         content: [
           { type: 'text', text: prompt },
-          { type: 'image_url', image_url: { url: 'data:image/jpeg;base64,' + base64 } }
+          { type: 'image_url', image_url: { url: 'data:image/jpeg;base64,' + stripBase64Prefix(base64) } }
         ]
       }],
       temperature: 0.1,
@@ -6111,6 +6147,11 @@ function analyzeFundScreenshot(base64, cb){
       return res.text().then(function(text){
         if(res.status === 401 || res.status === 403){
           throw new Error('Key 无效或无权限（' + res.status + '）');
+        }
+        /* 400/422/415 都是请求格式错误，换模型也救不回来，直接抛出 */
+        if(res.status === 400 || res.status === 415 || res.status === 422){
+          var msg400 = text ? (text.length > 220 ? text.slice(0, 220) + '…' : text) : ('API ' + res.status);
+          throw new Error('请求格式被服务端拒绝 (API ' + res.status + ') · ' + msg400 + ' | 提示：请确认 Key 是否已开通 VL 多模态权限');
         }
         if(!res.ok){
           var msg = text ? (text.length > 200 ? text.slice(0, 200) + '…' : text) : ('API ' + res.status);
@@ -6155,23 +6196,50 @@ function analyzeFundScreenshot(base64, cb){
   }
   tryModel();
 }
+function fillFundPasteDemo(){
+  var area = document.getElementById('fundPasteArea');
+  area.value = '005827 易方达蓝筹精选 2000 2.05\n110011 易方达中小盘 1000 3.21\n161725 招商中证白酒 5000 1.05\n012414 招商中证电池 3000 1.18';
+  area.focus();
+}
 function parseFundPaste(){
-  var txt = document.getElementById('fundPasteArea').value.trim(); if(!txt){ toast('请先粘贴'); return; }
+  var txt = document.getElementById('fundPasteArea').value.trim();
+  var hint = document.getElementById('fundPasteHint');
+  if(!txt){ hint.innerHTML = '⚠️ 内容为空，请先粘贴你的持仓数据'; return; }
+  var list = parseFundPasteText(txt);
+  if(!list.length){
+    hint.innerHTML = '⚠️ 未识别到任何基金代码（需 6 位数字）。可用「一键填入示例」先试一遍。';
+    return;
+  }
+  hint.innerHTML = '✓ 识别到 <b style="color:var(--accent);">' + list.length + '</b> 条（含代码 ' + Array.from(new Set(list.map(function(x){return x.code;}))).join(', ') + '），请核对后导入';
+  pendingImport = list;
+  renderImportPreview(list);
+}
+function parseFundPasteText(txt){
   var list = [];
-  txt.split(/\n+/).forEach(function(line){
-    line = line.trim(); if(!line) return;
-    var toks = line.split(/[\s,，]+/);
+  if(/^\s*[\[\{]/.test(txt)){
+    try {
+      var obj = JSON.parse(txt);
+      var arr = Array.isArray(obj) ? obj : (obj.funds || obj.list || obj.items || []);
+      arr.forEach(function(x){
+        var code = String(x.code || x.fundCode || '').match(/\d{6}/);
+        if(!code) return;
+        list.push({ code: code[0], name: x.name || x.fundName || '', shares: parseFloat(x.shares || x.share) || 0, cost: parseFloat(x.cost || x.costPrice) || 0 });
+      });
+      if(list.length) return list;
+    } catch(e){ }
+  }
+  txt.split(/\r?\n+/).forEach(function(line){
+    line = line.trim().replace(/^[•·\-\d]+\.?\s*/, '');
+    if(!line) return;
+    var toks = line.split(/[\s,,，;；\|\t]+/).filter(Boolean);
+    if(!toks.length) return;
     var code = null, name = [], nums = [];
-    toks.forEach(function(t){
-      if(/^\d{6}$/.test(t)) code = t;
-      else if(/^\d+(\.\d+)?$/.test(t)) nums.push(parseFloat(t));
-      else name.push(t);
-    });
+    toks.forEach(function(t){ t = t.replace(/['"]/g, ''); if(/^\d{6}$/.test(t)) code = t; else if(/^[\-\+]?\d+(\.\d+)?%?$/.test(t)) nums.push(parseFloat(t)); else name.push(t); });
     if(!code) return;
-    list.push({ code: code, name: name.join(' '), shares: nums[0] || 0, cost: nums[1] || 0 });
+    var nm = name.join(' ').replace(/^[-:：]+/, '').trim();
+    list.push({ code: code, name: nm, shares: nums[0] || 0, cost: nums[1] || 0 });
   });
-  if(!list.length){ toast('未解析到有效基金（格式：代码 份额 成本价）'); return; }
-  pendingImport = list; renderImportPreview(list); toast('解析到 ' + list.length + ' 只，请核对');
+  return list;
 }
 function renderImportPreview(list){
   var box = document.getElementById('fundImportPreview'); if(!box) return;
