@@ -783,6 +783,12 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 .cloud-step-text{font-size:12px;color:var(--text-2);line-height:1.6;}
 .cloud-step-text a{color:var(--accent);text-decoration:underline;}
 .cloud-actions{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;}
+.server-sync-box{background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:6px;backdrop-filter:blur(6px);}
+.server-sync-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:4px;}
+.server-sync-status{font-size:12px;padding:4px 10px;border-radius:6px;font-weight:500;}
+.server-sync-status.ok{background:var(--green-bg);color:var(--green);}
+.server-sync-status.fail{background:var(--red-bg);color:var(--red);}
+.server-sync-status:not(.ok):not(.fail){background:var(--glass-bg);color:var(--text-mid);}
 .cloud-actions button{padding:8px 14px;border-radius:var(--radius-sm);border:1px solid var(--line);background:var(--card);cursor:pointer;font-family:inherit;font-size:13px;color:var(--text);transition:all 0.2s;display:flex;align-items:center;gap:5px;}
 .cloud-actions button:hover{background:var(--input-bg);}
 .cloud-actions button.primary{background:var(--accent);color:#fff;border-color:var(--accent);}
@@ -2938,6 +2944,8 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
 /* ====== Global Utilities ====== */
 var DB = {};
 var DB_KEY = 'aurora_workbench_v2';
+var DB_SERVER_KEY = 'aurora_server_url';   // 服务器基址（留空=不走服务器同步）
+var DB_SERVER_TOKEN = 'aurora_server_token'; // 服务器访问 token
 var pyodide = null;
 var pyLoading = false;
 var currentWordOffset = 0;
@@ -3035,6 +3043,11 @@ var defaultDb = {
   }
 };
 
+function serverBase(){
+  var u = (localStorage.getItem(DB_SERVER_KEY) || '').trim();
+  if(!u) return '';
+  return u.replace(/\/+$/, '');
+}
 function loadDb(){
   try {
     var raw = localStorage.getItem(DB_KEY);
@@ -3051,6 +3064,59 @@ function loadDb(){
     DB = JSON.parse(JSON.stringify(defaultDb));
   }
   migrateDcaHistory();
+  pullFromServer(); // 从服务器拉取最新全量数据（异步覆盖）
+}
+function pullFromServer(){
+  var base = serverBase();
+  if(!base) return;
+  var token = (localStorage.getItem(DB_SERVER_TOKEN) || '').trim();
+  var url = base + '/api/db' + (token ? ('?token=' + encodeURIComponent(token)) : '');
+  fetch(url, { headers: token ? { 'x-aurora-token': token } : {} })
+    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); })
+    .then(function(txt){
+      if(!txt || txt === '{}') return;
+      var remote = JSON.parse(txt);
+      if(remote && typeof remote === 'object'){
+        // 合并：远程覆盖本地（远程为准），但保留本地新增字段
+        for(var k in defaultDb){ if(!(k in remote)) remote[k] = DB[k] || defaultDb[k]; }
+        DB = remote;
+        localStorage.setItem(DB_KEY, JSON.stringify(DB));
+        migrateDcaHistory();
+        showServerStatus('已同步服务器数据 ✓', 'ok');
+        if(typeof renderAllOnSync === 'function') renderAllOnSync();
+      }
+    })
+    .catch(function(err){ showServerStatus('服务器拉取失败：' + err.message + '（用本地数据）', 'fail'); });
+}
+function saveDb(){
+  localStorage.setItem(DB_KEY, JSON.stringify(DB));
+  scheduleAutoSync();
+  pushToServer();
+}
+var _pushTimer = null;
+function pushToServer(){
+  var base = serverBase();
+  if(!base) return;
+  var token = (localStorage.getItem(DB_SERVER_TOKEN) || '').trim();
+  if(_pushTimer) clearTimeout(_pushTimer);
+  _pushTimer = setTimeout(function(){
+    var url = base + '/api/db' + (token ? ('?token=' + encodeURIComponent(token)) : '');
+    fetch(url, {
+      method: 'POST',
+      headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { 'x-aurora-token': token } : {}),
+      body: JSON.stringify(DB)
+    })
+    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .then(function(){ showServerStatus('已保存到服务器 ✓', 'ok'); })
+    .catch(function(err){ showServerStatus('服务器保存失败：' + err.message, 'fail'); });
+  }, 600); // 600ms 防抖，避免频繁写入
+}
+function showServerStatus(msg, kind){
+  var el = document.getElementById('serverSyncStatus');
+  if(!el) return;
+  el.textContent = msg;
+  el.className = 'server-sync-status ' + (kind || '');
+  el.style.display = 'inline-block';
 }
 
 function migrateDcaHistory(){
@@ -8534,12 +8600,90 @@ function openCloudModal(){
   if(toggle) toggle.classList.toggle('on', !!cfg.autoSync);
   var ptoggle = document.getElementById('cloudProxyToggle');
   if(ptoggle) ptoggle.classList.toggle('on', !!cfg.useProxy);
+  loadServerConfigUI();
   syncAiSettingsUI();
   updateCloudStatus();
   document.getElementById('cloudOverlay').classList.add('show');
 }
 function closeCloudModal(){
   document.getElementById('cloudOverlay').classList.remove('show');
+}
+// ---------- 服务器同步配置 ----------
+function saveServerConfig(){
+  var url = (document.getElementById('serverUrl')||{}).value || '';
+  var token = (document.getElementById('serverToken')||{}).value || '';
+  localStorage.setItem(DB_SERVER_KEY, url.trim());
+  localStorage.setItem(DB_SERVER_TOKEN, token.trim());
+  showServerStatus(url ? '配置已保存 ✓' : '已关闭服务器同步', 'ok');
+}
+function loadServerConfigUI(){
+  var url = (localStorage.getItem(DB_SERVER_KEY) || '').trim();
+  var token = (localStorage.getItem(DB_SERVER_TOKEN) || '').trim();
+  var u = document.getElementById('serverUrl'); if(u) u.value = url;
+  var t = document.getElementById('serverToken'); if(t) t.value = token;
+}
+function testServerSync(){
+  var url = (localStorage.getItem(DB_SERVER_KEY) || '').trim();
+  if(!url){ showServerStatus('请先填写服务器地址', 'fail'); return; }
+  var token = (localStorage.getItem(DB_SERVER_TOKEN) || '').trim();
+  showServerStatus('连接测试中…', '');
+  fetch(url.replace(/\/+$/, '') + '/health', { headers: token ? { 'x-aurora-token': token } : {} })
+    .then(function(r){ return r.json().then(function(j){ return { ok: r.ok, j: j }; }); })
+    .then(function(o){
+      if(o.ok && o.j && o.j.ok){
+        showServerStatus('✓ 服务器在线（存储：' + (o.j.store || '未知') + '）', 'ok');
+      } else {
+        showServerStatus('连接成功但响应异常（' + (o.j && o.j.error || 'unknown') + '）', 'fail');
+      }
+    })
+    .catch(function(err){ showServerStatus('✗ 无法连接：' + err.message, 'fail'); });
+}
+function forcePushToServer(){
+  var url = (localStorage.getItem(DB_SERVER_KEY) || '').trim();
+  if(!url){ showServerStatus('请先填写服务器地址', 'fail'); return; }
+  var token = (localStorage.getItem(DB_SERVER_TOKEN) || '').trim();
+  showServerStatus('上传中…', '');
+  fetch(url.replace(/\/+$/, '') + '/api/db' + (token ? ('?token=' + encodeURIComponent(token)) : ''), {
+    method: 'POST',
+    headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { 'x-aurora-token': token } : {}),
+    body: JSON.stringify(DB)
+  })
+  .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+  .then(function(){ showServerStatus('✓ 已上传到服务器', 'ok'); })
+  .catch(function(err){ showServerStatus('✗ 上传失败：' + err.message, 'fail'); });
+}
+function forcePullFromServer(){
+  var url = (localStorage.getItem(DB_SERVER_KEY) || '').trim();
+  if(!url){ showServerStatus('请先填写服务器地址', 'fail'); return; }
+  var token = (localStorage.getItem(DB_SERVER_TOKEN) || '').trim();
+  showServerStatus('拉取中…', '');
+  fetch(url.replace(/\/+$/, '') + '/api/db' + (token ? ('?token=' + encodeURIComponent(token)) : ''), {
+    headers: token ? { 'x-aurora-token': token } : {}
+  })
+  .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); })
+  .then(function(txt){
+    if(!txt || txt === '{}'){ showServerStatus('服务器无数据', 'fail'); return; }
+    var remote = JSON.parse(txt);
+    for(var k in defaultDb){ if(!(k in remote)) remote[k] = DB[k] || defaultDb[k]; }
+    DB = remote;
+    localStorage.setItem(DB_KEY, JSON.stringify(DB));
+    migrateDcaHistory();
+    showServerStatus('✓ 已用服务器数据覆盖本地', 'ok');
+    if(typeof renderAllOnSync === 'function') renderAllOnSync();
+  })
+  .catch(function(err){ showServerStatus('✗ 拉取失败：' + err.message, 'fail'); });
+}
+function renderAllOnSync(){
+  // 拉取/覆盖后重渲染当前可见 Tab
+  try {
+    if(typeof renderEarlyEd === 'function' && currentTabNum === 1) renderEarlyEd();
+    if(typeof renderFitness === 'function' && currentTabNum === 2) renderFitness();
+    if(typeof renderWords === 'function' && currentTabNum === 3) renderWords();
+    if(typeof renderMarket === 'function' && currentTabNum === 4) renderMarket();
+    if(typeof renderPython === 'function' && currentTabNum === 5) renderPython();
+    if(typeof renderRecipes === 'function' && currentTabNum === 6){ renderRecipeHero(); renderRecipes(); }
+    if(typeof renderBooks === 'function' && currentTabNum === 7) renderBooks();
+  } catch(e){}
 }
 async function cloudPush(){
   var cfg = getCloudConfig();
@@ -8787,6 +8931,21 @@ window.addEventListener('DOMContentLoaded', init);
       <div class="cloud-auto-row" onclick="toggleCloudProxy()">
         <div class="cloud-toggle" id="cloudProxyToggle"></div>
         <span>使用网络代理（直连失败时自动启用，可手动切换）</span>
+      </div>
+
+      <div class="cloud-divider"><span>🖥 服务器同步（自托管 Redis / 文件）</span></div>
+      <div class="server-sync-box">
+        <div class="section-desc" style="margin-bottom:8px;">把数据保存到你的服务器（Redis 或 JSON 文件），多设备共享、断网不丢。留空则不走服务器。</div>
+        <label class="form-label">服务器地址</label>
+        <input type="text" id="serverUrl" placeholder="http://你的服务器IP:9000" onblur="saveServerConfig()">
+        <label class="form-label">访问 Token（服务器设了 DB_TOKEN 才需要）</label>
+        <input type="password" id="serverToken" placeholder="与服务器 DB_TOKEN 一致，没设则留空" onblur="saveServerConfig()">
+        <div class="server-sync-actions">
+          <button class="btn btn-sm" onclick="testServerSync()">🔗 测试连接</button>
+          <button class="btn btn-sm" onclick="forcePushToServer()">⬆ 立即上传</button>
+          <button class="btn btn-sm" onclick="forcePullFromServer()">⬇ 拉取覆盖</button>
+          <span class="server-sync-status" id="serverSyncStatus" style="display:none;"></span>
+        </div>
       </div>
 
       <div class="cloud-divider"><span>🤖 AI 引擎配置</span></div>

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 /*
- * Aurora 工作台 · 自托管服务器（零依赖，纯 Node 内置模块）
+ * Aurora 工作台 · 自托管服务器（纯 Node 内置模块 + 可选 redis）
  * ---------------------------------------------------------------
  * 功能：
  *   1) 托管 aurora-workbench.html（及同目录静态文件）
@@ -13,12 +13,19 @@
  *        /api/fundgz         天天基金实时估值
  *        /api/ifzq           腾讯月线（定投30月均线 / 黄金ETF）
  *        /api/qt             腾讯行情（指数/自选，直连也行，留作兜底）
+ *   3) 提供 /api/db 全量数据读写（Redis 优先，未配则降级 JSON 文件）
+ *        GET  /api/db     拉取全量数据（需 token）
+ *        POST /api/db     保存全量数据（需 token，Content-Type: application/json）
+ *        token 通过 ?token= 或 Header 'x-aurora-token' 传递；
+ *        DB_TOKEN 环境变量设置，为空则视为「公开」（仅建议内网/测试）
  *
  * 启动： node server.js            （默认 8080 端口）
  *        PORT=80 node server.js    （用 80 端口，需 root）
  *        HOST=127.0.0.1 node server.js （仅本机访问）
+ *        DB_TOKEN=xxxx node server.js （设置访问令牌）
+ *        REDIS_URL=redis://127.0.0.1:6379 node server.js （启用 Redis；不设置则降级 JSON 文件）
  *
- * 安全：仅转发白名单域名；只读 GET；CORS *；无任何密钥。
+ * 依赖：redis（可选，npm install redis）；未安装时自动降级为本地 JSON 文件 data/db.json
  */
 
 const http = require('http');
@@ -30,6 +37,10 @@ const zlib = require('zlib');
 const PORT = parseInt(process.env.PORT || '8080', 10);
 const HOST = process.env.HOST || '0.0.0.0';
 const ROOT = __dirname;
+const DB_TOKEN = process.env.DB_TOKEN || '';          // 空 = 公开（仅建议内网）
+const REDIS_URL = process.env.REDIS_URL || '';        // 空 = 降级 JSON 文件
+const DB_FILE = path.join(ROOT, 'data', 'db.json');   // JSON 降级存储路径
+const DATA_KEY = 'aurora:workbench:db';               // Redis key
 
 // 允许被代理的东方财富/天天基金域名白名单（防止被当作开放代理滥用）
 const EASTMONEY_HOSTS = [
@@ -43,9 +54,73 @@ const FUNDGZ_HOST = 'fundgz.1234567.com.cn';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, x-aurora-token',
 };
+
+// ---------- 数据持久化层（Redis 优先，未配则降级 JSON 文件） ----------
+let redisClient = null;
+let redisMode = false;
+let fsMode = false;
+
+function initStore() {
+  if (REDIS_URL) {
+    try {
+      const redis = require('redis');
+      redisClient = redis.createClient({ url: REDIS_URL });
+      redisClient.on('error', function (e) { console.error('[redis] error:', e.message); });
+      redisClient.connect().then(function () {
+        redisMode = true;
+        console.log('[store] Redis 已连接：', REDIS_URL);
+      }).catch(function (e) {
+        console.warn('[store] Redis 连接失败，降级 JSON 文件：', e.message);
+        redisClient = null;
+        ensureFs();
+      });
+    } catch (e) {
+      console.warn('[store] 未安装 redis 模块，降级 JSON 文件：', e.message);
+      ensureFs();
+    }
+  } else {
+    console.log('[store] 未设置 REDIS_URL，使用本地 JSON 文件存储：', DB_FILE);
+    ensureFs();
+  }
+}
+
+function ensureFs() {
+  fsMode = true;
+  try {
+    if (!fs.existsSync(path.join(ROOT, 'data'))) fs.mkdirSync(path.join(ROOT, 'data'), { recursive: true });
+    if (!fs.existsSync(DB_FILE)) fs.writeFileSync(DB_FILE, '{}', 'utf8');
+  } catch (e) { console.error('[store] 数据目录创建失败：', e.message); }
+}
+
+async function dbGet() {
+  if (redisMode && redisClient && redisClient.isReady) {
+    const raw = await redisClient.get(DATA_KEY);
+    return raw ? raw : '';
+  }
+  // 文件兜底（同步读）
+  try { return fs.readFileSync(DB_FILE, 'utf8'); } catch (e) { return ''; }
+}
+
+async function dbSet(dataStr) {
+  if (redisMode && redisClient && redisClient.isReady) {
+    await redisClient.set(DATA_KEY, dataStr);
+    return;
+  }
+  try {
+    if (!fs.existsSync(path.join(ROOT, 'data'))) fs.mkdirSync(path.join(ROOT, 'data'), { recursive: true });
+    fs.writeFileSync(DB_FILE, dataStr, 'utf8');
+  } catch (e) { throw new Error('写文件失败：' + e.message); }
+}
+
+function checkToken(req, qsObj) {
+  if (!DB_TOKEN) return true; // 未设令牌 = 公开
+  const fromQuery = qsObj.token;
+  const fromHeader = req.headers['x-aurora-token'];
+  return String(fromQuery || '') === DB_TOKEN || String(fromHeader || '') === DB_TOKEN;
+}
 
 function sendJSON(res, status, obj, extra) {
   const body = JSON.stringify(obj);
@@ -183,7 +258,33 @@ const server = http.createServer(function (req, res) {
   if (req.method === 'OPTIONS') { res.writeHead(204, CORS); return res.end(); }
 
   if (pathname === '/health') {
-    return sendJSON(res, 200, { ok: true, ts: Date.now(), routes: ['/api/sge', '/api/sina', '/api/eastmoney/ann', '/api/eastmoney/proxy', '/api/fundgz', '/api/ifzq', '/api/qt'] });
+    return sendJSON(res, 200, { ok: true, ts: Date.now(), routes: ['/api/sge', '/api/sina', '/api/eastmoney/ann', '/api/eastmoney/proxy', '/api/fundgz', '/api/ifzq', '/api/qt', '/api/db'], store: redisMode ? 'redis' : 'json-file' });
+  }
+
+  // 全量数据读写（Redis 优先 / JSON 文件兜底）
+  if (pathname === '/api/db') {
+    const q = Object.fromEntries(new URLSearchParams(qs));
+    if (!checkToken(req, q)) return sendJSON(res, 401, { error: 'invalid or missing token' });
+    if (req.method === 'GET') {
+      return dbGet().then(function (raw) {
+        res.writeHead(200, Object.assign({}, CORS, { 'Content-Type': 'application/json; charset=utf-8' }));
+        res.end(raw || '{}');
+      }).catch(function (e) { sendJSON(res, 500, { error: String(e && e.message || e) }); });
+    }
+    if (req.method === 'POST') {
+      let body = '';
+      req.on('data', function (c) { body += c; if (body.length > 32 * 1024 * 1024) req.destroy(); });
+      req.on('end', function () {
+        if (!body) return sendJSON(res, 400, { error: 'empty body' });
+        let parsed;
+        try { parsed = JSON.parse(body); } catch (e) { return sendJSON(res, 400, { error: 'invalid JSON' }); }
+        dbSet(JSON.stringify(parsed)).then(function () {
+          sendJSON(res, 200, { ok: true, bytes: body.length, ts: Date.now() });
+        }).catch(function (e) { sendJSON(res, 500, { error: String(e && e.message || e) }); });
+      });
+      return;
+    }
+    return sendJSON(res, 405, { error: 'method not allowed' });
   }
 
   if (pathname.startsWith('/api/')) {
@@ -214,4 +315,6 @@ const server = http.createServer(function (req, res) {
 
 server.listen(PORT, HOST, function () {
   console.log('Aurora 工作台已启动： http://' + (HOST === '0.0.0.0' ? 'localhost' : HOST) + ':' + PORT + '   (CTRL+C 退出)');
+  console.log('数据安全：' + (DB_TOKEN ? '已启用 token 保护（DB_TOKEN 已设置）' : '⚠️ 未设 DB_TOKEN，/api/db 公开可写（仅建议内网/测试）'));
+  initStore();
 });
