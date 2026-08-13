@@ -1259,6 +1259,10 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 .earn-row-tag.turn{background:var(--amber-bg);color:var(--amber);}
 .earn-row-tag.other{background:var(--glass-bg);color:var(--text-mid);}
 .earn-row-date{font-size:11px;color:var(--text-mid);font-family:monospace;background:var(--glass-bg);padding:2px 7px;border-radius:4px;border:1px solid var(--glass-border);white-space:nowrap;}
+.earn-exp{flex:0 0 auto;padding:3px 9px;border-radius:6px;font-size:11px;font-weight:600;white-space:nowrap;margin-left:2px;}
+.earn-exp.beat{background:var(--red-bg);color:var(--red);}      /* 超预期（红，A股涨色） */
+.earn-exp.miss{background:var(--green-bg);color:var(--green);}  /* 不及预期（绿，A股跌色） */
+.earn-exp.pending{background:var(--amber-bg);color:var(--amber);} /* 待分析 */
 .earn-pager{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 0;margin:6px 0 14px;}
 .earn-pager-simple{font-size:12px;color:var(--text-mid);}
 .earn-pager-info{font-size:12px;color:var(--text-mid);}
@@ -6887,6 +6891,31 @@ function fmtHHMM(ts){
   var mm = String(d.getMinutes()).padStart(2,'0');
   return hh + ':' + mm;
 }
+function analyzeExpectation(item){
+  /* 从公告标题/类型语义判断业绩方向（数据源无"一致预期"，纯文本推断） */
+  var t = (item.title || '').toLowerCase();
+  var typeKey = (item.type && item.type.key) || '';
+  /* 正向：预增 / 预盈 / 扭亏 / 大幅上升 / 超预期字眼 */
+  if(/预增|预盈|扭亏|大幅上升|超预期|增长超预期|业绩超预期|盈利预增|净利润预增|同比增速|大幅预增|高增|净利预增/.test(t)) return {key:'超预期', cls:'beat'};
+  /* 负向：预减 / 预亏 / 下降 / 下滑 / 不及预期 / 暴雷 */
+  if(/预减|预亏|业绩下滑|净利润下滑|同比下降|不及预期|低于.*预期|业绩下修|亏损扩大|由盈转亏|大幅下滑|净利预减|盈利预警|下修/.test(t)) return {key:'不及预期', cls:'miss'};
+  /* 扭亏（已含正向，但单独标更准）：标题明确"扭亏" */
+  if(/扭亏/.test(t)) return {key:'扭亏为盈', cls:'beat'};
+  /* 业绩快报 / 预告 但标题无方向词：尝试从数字/百分号判断 */
+  var pct = t.match(/([+-]?\d+(\.\d+)?)\s*%/);
+  if(pct){
+    var v = parseFloat(pct[1]);
+    if(v >= 0) return {key:'超预期', cls:'beat'};
+    if(v < 0) return {key:'不及预期', cls:'miss'};
+  }
+  /* 纯定期报告（年报/半年报/季报，无增减方向词）：无法判断，标"待分析" */
+  if(typeKey.indexOf('报告') >= 0 || /年报|半年报|季报|一季报|三季报|中报/.test(t)){
+    return {key:'待分析', cls:'pending'};
+  }
+  /* 其余业绩类（快报/预告且无方向）：待分析 */
+  if(/业绩|盈利|营收/.test(t)) return {key:'待分析', cls:'pending'};
+  return null; // 非业绩类不标注
+}
 function renderEarningsList(){
   var el = document.getElementById('earnList'); if(!el);
   if(!el) return;
@@ -6895,7 +6924,9 @@ function renderEarningsList(){
     var type = classifyEarning(it.columns, it.title);
     var code = (it.codes && it.codes[0]) ? it.codes[0].stock_code : '';
     var name = (it.codes && it.codes[0]) ? it.codes[0].short_name : '';
-    return { date: (it.notice_date || '').slice(0,10), sortDate: (it.sort_date || it.notice_date || '').slice(0,10), title: it.title || '', type: type, code: code, name: name, art: it.art_code || '' };
+    var obj = { date: (it.notice_date || '').slice(0,10), sortDate: (it.sort_date || it.notice_date || '').slice(0,10), title: it.title || '', type: type, code: code, name: name, art: it.art_code || '' };
+    obj.exp = analyzeExpectation(obj);
+    return obj;
   });
   /* 合并手动添加的自定义项 */
   (DB.market.earnings || []).forEach(function(x){
@@ -6941,9 +6972,11 @@ function renderEarningsList(){
     var manualDel = it.isManual ? ' <button class="btn btn-sm" onclick="deleteEarn(\'' + it.mid + '\')">删</button>' : '';
     var toggleBtn = it.isManual ? ' <button class="btn btn-sm" onclick="toggleEarn(\'' + it.mid + '\')">' + ((DB.market.earnings.find(function(x){return x.id===it.mid;})||{}).done ? '已发布' : '标记发布') + '</button>' : '';
     var dateTag = '<span class="earn-row-date">' + (fmtEarningsDate(it.date) || '待定') + '</span>';
+    var exp = it.exp;
+    var expTag = exp ? '<span class="earn-exp ' + exp.cls + '">' + exp.key + '</span>' : '';
     html += '<div class="earn-row">' +
       '<div class="earn-row-main">' +
-        '<div class="earn-row-co"><b>' + escapeHtml(co) + '</b>' + code + '<span class="earn-row-tag ' + tagCls + '">' + tagKey + '</span>' + dateTag + '</div>' +
+        '<div class="earn-row-co"><b>' + escapeHtml(co) + '</b>' + code + '<span class="earn-row-tag ' + tagCls + '">' + tagKey + '</span>' + expTag + dateTag + '</div>' +
         '<div class="earn-row-title">' + escapeHtml(it.title) + '</div>' +
       '</div>' +
       '<div class="auto">' + toggleBtn + manualDel + '</div>' +
