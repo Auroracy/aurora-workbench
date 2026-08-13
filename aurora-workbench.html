@@ -3048,6 +3048,16 @@ function serverBase(){
   return u.replace(/\/+$/, '');
 }
 function loadDb(){
+  if(serverBase()){
+    // 配置了服务器：直接以服务器 Redis 为唯一数据源，本地仅作离线兜底
+    loadFromServerAsPrimary();
+  } else {
+    // 未配置服务器：沿用本地 localStorage
+    loadFromLocal();
+  }
+}
+// 仅从本地 localStorage 读取（无服务器时）
+function loadFromLocal(){
   try {
     var raw = localStorage.getItem(DB_KEY);
     DB = raw ? JSON.parse(raw) : JSON.parse(JSON.stringify(defaultDb));
@@ -3063,7 +3073,28 @@ function loadDb(){
     DB = JSON.parse(JSON.stringify(defaultDb));
   }
   migrateDcaHistory();
-  pullFromServer(); // 从服务器拉取最新全量数据（异步覆盖）
+}
+// 以服务器 Redis 为数据源：先直读，失败再用本地缓存兜底
+function loadFromServerAsPrimary(){
+  // 先用本地缓存即时渲染（避免白屏），随后被服务器数据刷新
+  loadFromLocal();
+  var url = serverBase() + '/api/db';
+  fetch(url)
+    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); })
+    .then(function(txt){
+      if(!txt || txt === '{}'){ showServerStatus('服务器暂无数据（用本地缓存）', ''); return; }
+      var remote = JSON.parse(txt);
+      if(remote && typeof remote === 'object'){
+        DB = remote;                 // 直接用服务器数据，不做合并覆盖
+        localStorage.setItem(DB_KEY, JSON.stringify(DB)); // 仅作离线缓存
+        migrateDcaHistory();
+        showServerStatus('已直读服务器数据 ✓', 'ok');
+        if(typeof renderAllOnSync === 'function') renderAllOnSync();
+      }
+    })
+    .catch(function(err){
+      showServerStatus('服务器读取失败，使用本地缓存：' + err.message, 'fail');
+    });
 }
 function pullFromServer(){
   var base = serverBase();
@@ -3075,9 +3106,7 @@ function pullFromServer(){
       if(!txt || txt === '{}') return;
       var remote = JSON.parse(txt);
       if(remote && typeof remote === 'object'){
-        // 合并：远程覆盖本地（远程为准），但保留本地新增字段
-        for(var k in defaultDb){ if(!(k in remote)) remote[k] = DB[k] || defaultDb[k]; }
-        DB = remote;
+        DB = remote;                  // 直接用服务器数据
         localStorage.setItem(DB_KEY, JSON.stringify(DB));
         migrateDcaHistory();
         showServerStatus('已同步服务器数据 ✓', 'ok');
