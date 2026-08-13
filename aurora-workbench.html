@@ -6286,10 +6286,13 @@ function clearImportPreview(){ pendingImport = []; var box = document.getElement
 /* ============ 天天基金估值抓取 ============ */
 function fetchFundValuation(code, cb){
   var target = 'https://fundgz.1234567.com.cn/js/' + code + '.js';
+  var sources = [];
+  if(hasSameOriginApi()) sources.push(apiUrl('/api/fundgz?code=' + code));
+  DCA_PROXIES.forEach(function(p){ sources.push(p + encodeURIComponent(target)); });
   var i = 0;
   function next(){
-    if(i >= DCA_PROXIES.length){ cb(new Error('估值抓取失败')); return; }
-    var url = DCA_PROXIES[i++] + encodeURIComponent(target);
+    if(i >= sources.length){ cb(new Error('估值抓取失败')); return; }
+    var url = sources[i++];
     fetchTextWithTimeout(url, 12000).then(function(txt){
       var m = txt.match(/jsonpgz\(([\s\S]*)\)/);
       if(!m){ next(); return; }
@@ -6325,14 +6328,17 @@ function refreshAllFundValuation(){
 
 /* ============ 持仓重合 / 合并建议 ============ */
 function fetchFundHoldings(code, cb){
-  var target = 'https://fundf10.eastmoney.com/FundArchivesDatas.aspx?type=jjcc&code=' + code + '&topline=10&year=&month=';
+  var target = 'https://fundf10.eastmoney.com/FundArchivesDatas.aspx?type=jjcc&code=' + code + '&topline=10&year=&month=&ax=1';
+  var sources = [];
+  if(hasSameOriginApi()) sources.push(apiUrl('/api/eastmoney/proxy?url=' + encodeURIComponent(target)));
+  DCA_PROXIES.forEach(function(p){ sources.push(p + encodeURIComponent(target)); });
   var i = 0;
   function next(){
-    if(i >= DCA_PROXIES.length){ cb(null, []); return; }
-    var url = DCA_PROXIES[i++] + encodeURIComponent(target);
+    if(i >= sources.length){ cb(null, []); return; }
+    var url = sources[i++];
     fetchTextWithTimeout(url, 12000).then(function(txt){
       var m = txt.match(/content:"([\s\S]*?)"/);
-      if(!m){ cb(null, []); return; }
+      if(!m){ next(); return; }
       var html = m[1].replace(/\\"/g, '"').replace(/\\r|\\n|\\t/g, '');
       var names = [];
       var re = /<td[^>]*>\s*<a[^>]*>([^<]+)<\/a>/g;
@@ -6342,6 +6348,7 @@ function fetchFundHoldings(code, cb){
         var re2 = /<td class="[^"]*">([^<]+)<\/td>/g;
         while((mm = re2.exec(html))){ var s = mm[1].trim(); if(/[一-龥]/.test(s) && s.length <= 6) names.push(s); }
       }
+      if(!names.length){ next(); return; }
       cb(null, names.slice(0, 10));
     }).catch(function(){ next(); });
   }
@@ -6399,22 +6406,21 @@ function finishOverlap(fs, holdings){
 var INDEX_LIST = [ { code: 'sh000300', name: '沪深300' }, { code: 'sz399006', name: '创业板指' }, { code: 'usIXIC', name: '纳斯达克' }, { code: 'hkHSI', name: '恒生指数' } ];
 function fetchIndexQuotes(){
   var target = 'https://qt.gtimg.cn/q=' + INDEX_LIST.map(function(x){ return x.code; }).join(',');
-  /* 直连优先：qt.gtimg.cn 带 CORS 头，无须代理 */
-  fetchTextWithTimeout(target, 8000).then(function(txt){
-    if(txt && txt.indexOf('v_') >= 0){ parseIndex(txt); return; }
-    throw new Error('no v_');
-  }).catch(function(){
-    var i = 0;
-    function next(){
-      if(i >= DCA_PROXIES.length) return;
-      var url = DCA_PROXIES[i++] + encodeURIComponent(target);
-      fetchTextWithTimeout(url, 12000).then(function(txt){
-        if(txt && txt.indexOf('v_') >= 0) parseIndex(txt);
-        else next();
-      }).catch(function(){ next(); });
-    }
-    next();
-  });
+  /* 优先级：①同源 /api/qt ②qt.gtimg.cn 直连(CORS*) ③公共代理池 */
+  var sources = [];
+  if(hasSameOriginApi()) sources.push(apiUrl('/api/qt?q=' + encodeURIComponent(INDEX_LIST.map(function(x){ return x.code; }).join(','))));
+  sources.push(target);
+  DCA_PROXIES.forEach(function(p){ sources.push(p + encodeURIComponent(target)); });
+  var i = 0;
+  function next(){
+    if(i >= sources.length) return;
+    var url = sources[i++];
+    fetchTextWithTimeout(url, 12000).then(function(txt){
+      if(txt && txt.indexOf('v_') >= 0) parseIndex(txt);
+      else next();
+    }).catch(function(){ next(); });
+  }
+  next();
 }
 function parseIndex(txt){
   INDEX_LIST.forEach(function(idx){
@@ -6448,49 +6454,57 @@ function fetchTechNews(manual){
   if(manual || TECH_NEWS.length === 0){ var l = document.getElementById('techNewsList'); if(l) l.innerHTML = '<div class="news-loading"><span class="spinner"></span>正在获取科技资讯（科技+财经 多源并行）...</div>'; }
   /* 新浪财经双源并行抓取：2515=科技频道（含 AI/芯片/新能源/公司动态），2516=财经要闻（含美股/港股/A股/财报/全球宏观）
      注：1686/1687/1688 旧 A股/美股/港股专属 ID 已失效（返回"列表和页面没有经过注册"），改用现行 2515/2516 后关键词过滤替代 */
-  var sources = [
+  var apiSources = hasSameOriginApi() ? [
+    apiUrl('/api/sina?pageid=153&lid=2515&num=40&page=1'),
+    apiUrl('/api/sina?pageid=153&lid=2516&num=40&page=1')
+  ] : [];
+  var proxySources = [
     'https://feed.mix.sina.com.cn/api/roll/get?pageid=153&lid=2515&num=40&page=1',
     'https://feed.mix.sina.com.cn/api/roll/get?pageid=153&lid=2516&num=40&page=1'
   ];
   var collected = {};
-  var pending = sources.length;
+  var pending = apiSources.length + proxySources.length;
   var anyOk = false;
-  sources.forEach(function(src){
-    fetchViaProxyPool(src, function(err, data){
-      pending--;
-      if(!err && data && data.result && data.result.data){
-        anyOk = true;
-        data.result.data.forEach(function(it){
-          var k = it.docid || it.title;
-          if(k && !collected[k]) collected[k] = it;
-        });
-      }
-      if(pending === 0){
-        techNewsFetching = false;
-        if(btn) btn.textContent = '🔄 刷新';
-        var items = Object.values(collected);
-        var res = [];
-        items.forEach(function(it){
-          var title = it.title || ''; if(!title) return;
-          var summary = (it.intro || '').replace(/<[^>]+>/g, '').trim();
-          var all = (title + ' ' + summary).toLowerCase();
-          if(!isTech(all)) return;
-          var source = it.media_name || '新浪财经';
-          var ctime = String(it.ctime || '');
-          var ts = parseInt(ctime); var disp = '';
-          if(!isNaN(ts) && ts > 1000000000){ var d = new Date(ts * 1000); disp = (d.getMonth()+1) + '-' + d.getDate() + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'); }
-          var id = it.docid || (title + ctime);
-          res.push({ id: id, title: title, summary: summary, url: it.url || '', source: source, time: disp, cat: isEarnings(all) ? 'earnings' : 'tech', sentiment: analyzeSentiment(title, summary, 'tech'), fav: DB.market.favNewsIds.indexOf(id) >= 0 });
-        });
-        TECH_NEWS = res;
-        var now = new Date();
-        var ts2 = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
-        DB.market.newsLastUpdate = ts2; saveDb();
-        var u = document.getElementById('techNewsUpdateTime');
-        if(u) u.textContent = anyOk ? ('最后更新 ' + ts2) : ('更新失败 ' + ts2 + '（已用本地缓存）');
-        techNewsPage = 1; renderTechNews();
-      }
+  function handle(data){
+    if(data && data.result && data.result.data){
+      anyOk = true;
+      data.result.data.forEach(function(it){
+        var k = it.docid || it.title;
+        if(k && !collected[k]) collected[k] = it;
+      });
+    }
+  }
+  function finalize(){
+    techNewsFetching = false;
+    if(btn) btn.textContent = '🔄 刷新';
+    var items = Object.values(collected);
+    var res = [];
+    items.forEach(function(it){
+      var title = it.title || ''; if(!title) return;
+      var summary = (it.intro || '').replace(/<[^>]+>/g, '').trim();
+      var all = (title + ' ' + summary).toLowerCase();
+      if(!isTech(all)) return;
+      var source = it.media_name || '新浪财经';
+      var ctime = String(it.ctime || '');
+      var ts = parseInt(ctime); var disp = '';
+      if(!isNaN(ts) && ts > 1000000000){ var d = new Date(ts * 1000); disp = (d.getMonth()+1) + '-' + d.getDate() + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'); }
+      var id = it.docid || (title + ctime);
+      res.push({ id: id, title: title, summary: summary, url: it.url || '', source: source, time: disp, cat: isEarnings(all) ? 'earnings' : 'tech', sentiment: analyzeSentiment(title, summary, 'tech'), fav: DB.market.favNewsIds.indexOf(id) >= 0 });
     });
+    TECH_NEWS = res;
+    var now = new Date();
+    var ts2 = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+    DB.market.newsLastUpdate = ts2; saveDb();
+    var u = document.getElementById('techNewsUpdateTime');
+    if(u) u.textContent = anyOk ? ('最后更新 ' + ts2) : ('更新失败 ' + ts2 + '（已用本地缓存）');
+    techNewsPage = 1; renderTechNews();
+  }
+  function done(){ pending--; if(pending <= 0) finalize(); }
+  apiSources.forEach(function(src){
+    fetchTextWithTimeout(src, 12000).then(function(txt){ try { handle(JSON.parse(txt)); } catch(e){} }).catch(function(){}).then(done);
+  });
+  proxySources.forEach(function(src){
+    fetchViaProxyPool(src, function(err, data){ handle(data); done(); });
   });
 }
 function renderTechNews(){
@@ -6632,23 +6646,21 @@ function fetchWatchQuotes(manual){
   var btn = document.getElementById('watchRefreshBtn'); if(btn && manual) btn.textContent = '刷新中...';
   var codes = w.map(function(x){ return (WATCH_QUOTE_MAP[x.market] || WATCH_QUOTE_MAP.a)(x.code); });
   var target = 'https://qt.gtimg.cn/q=' + codes.join(',');
-  /* qt.gtimg.cn 自带 Access-Control-Allow-Origin: *，可直接调用；失败才走代理池 */
-  fetchTextWithTimeout(target, 8000).then(function(txt){
-    if(txt && txt.indexOf('v_') >= 0){ parseWatch(txt); return; }
-    throw new Error('no v_');
-  }).catch(function(){
-    var i = 0;
-    function next(){
-      if(i >= DCA_PROXIES.length){ if(btn) btn.textContent = '🔄 刷新'; renderWatchlist(); return; }
-      var url = DCA_PROXIES[i++] + encodeURIComponent(target);
-      fetchTextWithTimeout(url, 12000).then(function(txt){
-        /* 检查代理是否返回了登录页/错误页而非真实数据 */
-        if(txt && txt.indexOf('v_') >= 0) parseWatch(txt);
-        else next();
-      }).catch(function(){ next(); });
-    }
-    next();
-  });
+  /* 优先级：①同源 /api/qt ②qt.gtimg.cn 直连(CORS*) ③公共代理池 */
+  var sources = [];
+  if(hasSameOriginApi()) sources.push(apiUrl('/api/qt?q=' + encodeURIComponent(codes.join(','))));
+  sources.push(target);
+  DCA_PROXIES.forEach(function(p){ sources.push(p + encodeURIComponent(target)); });
+  var i = 0;
+  function next(){
+    if(i >= sources.length){ if(btn) btn.textContent = '🔄 刷新'; renderWatchlist(); return; }
+    var url = sources[i++];
+    fetchTextWithTimeout(url, 12000).then(function(txt){
+      if(txt && txt.indexOf('v_') >= 0){ parseWatch(txt); }
+      else { next(); }
+    }).catch(function(){ next(); });
+  }
+  next();
 }
 function parseWatch(txt){
   var w = DB.market.techWatch || [];
@@ -6778,23 +6790,28 @@ function fetchEarnings(){
       '&begin_time=' + start + '&end_time=' + end; }
   function buildSources(){
     var srcs = [];
+    /* ①同源 /api/eastmoney/ann（自托管，最稳） ②Cloudflare Worker /eastmoney/ann ③直连(必失败,触发回退) ④公共代理池 */
+    if(hasSameOriginApi()){
+      srcs.push({ kind:'static', url: apiUrl('/api/eastmoney/ann?sr=-1&page_size=100&page_index=__P__&ann_type=' + encodeURIComponent(annType) + '&client_source=web&f_node=1&s_node=0&begin_time=' + start + '&end_time=' + end) });
+    }
     var workerUrl = (typeof getGoldProxyUrl === 'function') ? getGoldProxyUrl() : '';
     if(workerUrl){
-      srcs.push(workerUrl.replace(/\/+$/, '') + '/eastmoney/ann?sr=-1&page_size=100&page_index=__P__&ann_type=' + encodeURIComponent(annType) + '&client_source=web&f_node=1&s_node=0&begin_time=' + start + '&end_time=' + end);
+      srcs.push({ kind:'static', url: workerUrl.replace(/\/+$/, '') + '/eastmoney/ann?sr=-1&page_size=100&page_index=__P__&ann_type=' + encodeURIComponent(annType) + '&client_source=web&f_node=1&s_node=0&begin_time=' + start + '&end_time=' + end });
     }
-    srcs.push('__DIRECT__'); // 直连（浏览器 CORS 几乎必失败，触发回退）
-    DCA_PROXIES.forEach(function(p){ srcs.push(p); });
+    srcs.push({ kind:'direct' }); // 直连（浏览器 CORS 必失败，触发回退）
+    DCA_PROXIES.forEach(function(p){ srcs.push({ kind:'proxy', base: p }); });
     return srcs;
   }
   var sources = buildSources();
   function fetchPage(){
-    var srcIdx = 0; // 当前尝试的源下标（0=Worker 转发，1=直连，2..=公共代理）
+    var srcIdx = 0; // 当前尝试的源下标
     function next(){
       if(srcIdx >= sources.length){ renderEarningsFail(); return; }
-      var tmpl = sources[srcIdx];
+      var s = sources[srcIdx];
       var url;
-      if(tmpl === '__DIRECT__'){ url = directUrl(page); }
-      else { url = tmpl.replace('__P__', String(page)); }
+      if(s.kind === 'direct'){ url = directUrl(page); }
+      else if(s.kind === 'proxy'){ url = s.base + encodeURIComponent(directUrl(page)); }
+      else { url = s.url.replace('__P__', String(page)); } // static（同源 / Worker）
       fetchTextWithTimeout(url, 12000).then(function(txt){
         var json = null;
         try { json = JSON.parse(txt); } catch(e){ srcIdx++; next(); return; }
@@ -6952,6 +6969,12 @@ var GOLD_PROXIES = [
   function(u){ return 'https://corsproxy.io/?' + encodeURIComponent(u); }
 ];
 
+/* 自托管 API 基地址（部署到自己的服务器后留空即可走同源 /api/ 代理，无需 Cloudflare Worker）
+   file:// 直接打开或显式留空时自动回退到 Worker/公共代理；如服务器挂在子路径可在此配置，例如 '/app' */
+var API_BASE = (function(){ try { return (localStorage.getItem('aurora_api_base') || '').trim(); } catch(e){ return ''; } })();
+function apiUrl(p){ return (API_BASE || '') + p; }
+function hasSameOriginApi(){ return !!API_BASE || (location.protocol === 'http:' || location.protocol === 'https:'); }
+
 function tryFetchOnce(url, charset){
   /* charset: 'utf-8' (默认) | 'gbk' | 'gb18030' — 新浪/腾讯接口返回 GBK/GB18030 */
   var decoder;
@@ -7026,21 +7049,25 @@ function parseSinaSge(text){
 }
 
 function tryFetchDomGold(){
-  /* 优先走 Cloudflare Worker 代理（绕过新浪 Referer 锁），未配置时退回直连 */
+  /* 优先级：①同源 /api/sge（自托管） ②Cloudflare Worker /sge ③新浪直连 */
+  var seq = [];
+  if(hasSameOriginApi()) seq.push({ url: apiUrl('/api/sge'), json: true });
   var proxy = getGoldProxyUrl();
-  if(proxy){
-    var url = proxy.replace(/\/+$/, '') + '/sge';
-    return tryFetchOnce(url, 'utf-8')
-      .then(function(text){
-        var j; try { j = JSON.parse(text); } catch(e){ return null; }
-        if(!j || j.error || !isFinite(j.price) || j.price <= 0) return null;
-        return { price: j.price, prev: j.prev, chg: j.chg, chgPct: j.chgPct, ts: j.ts || Date.now(), viaProxy: true };
-      })
-      .catch(function(){ return null; });
-  }
-  return tryFetchSequence([
-    'https://hq.sinajs.cn/list=SGE_AU9999'
-  ], parseSinaSge, 'gb18030');
+  if(proxy) seq.push({ url: proxy.replace(/\/+$/, '') + '/sge', json: true });
+  seq.push({ url: 'https://hq.sinajs.cn/list=SGE_AU9999', json: false, enc: 'gb18030' });
+  return seq.reduce(function(p, s){
+    return p.then(function(prev){
+      if(prev) return prev;
+      return tryFetchOnce(s.url, s.enc || 'utf-8').then(function(text){
+        if(s.json){
+          var j; try { j = JSON.parse(text); } catch(e){ return null; }
+          if(!j || j.error || !isFinite(j.price) || j.price <= 0) return null;
+          return { price: j.price, prev: j.prev, chg: j.chg, chgPct: j.chgPct, ts: j.ts || Date.now(), viaProxy: true };
+        }
+        return parseSinaSge(text);
+      }).catch(function(){ return null; });
+    });
+  }, Promise.resolve(null));
 }
 
 /* === 黄金 ETF 518880 — ifzq appstock fqkline ===
@@ -7064,9 +7091,10 @@ function parseIfzqEtf(text){
 }
 
 function tryFetchEtfGold(){
-  return tryFetchSequence([
-    'https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=sh518880,day,,,5,qfq'
-  ], parseIfzqEtf);
+  var seq = [];
+  if(hasSameOriginApi()) seq.push(apiUrl('/api/ifzq?param=' + encodeURIComponent('sh518880,day,,,5,qfq')));
+  seq.push('https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=sh518880,day,,,5,qfq');
+  return tryFetchSequence(seq, parseIfzqEtf);
 }
 
 async function fetchGoldQuotes(manual){
@@ -7805,43 +7833,50 @@ function fetchViaProxyPool(target, cb){
 //   - 当前点位 = 最新一条月线（当月）的开盘价 x[1]（每月1号附近的开价）→ DB.dca.current
 function fetchDcaAverages(done){
   var pending = DCA_ITEMS.length, okCount = 0;
+  function saveIfOk(){ if(okCount > 0) saveDb(); }
+  function finish(){ if(pending === 0){ saveIfOk(); if(done) done(okCount >= DCA_ITEMS.length); } }
   DCA_ITEMS.forEach(function(it){
     var target = 'https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=' + it.sym + ',month,,,40,qfq';
-    fetchViaProxyPool(target, function(err, data){
-      pending--;
-      if(!err && data && data.data){
-        var k = data.data[Object.keys(data.data)[0]];
-        var arr = k ? (k.month || k.qfqmonth) : null;
-        if(arr && arr.length){
-          var ymNow = new Date().getFullYear() + '-' + ('0' + (new Date().getMonth() + 1)).slice(-2);
-          // 30月均线：排除进行中的当月，仅取最近30个完整月收盘价算术平均
-          var closes = arr.filter(function(x){ return x[0] && x[0].slice(0,7) !== ymNow; })
-            .slice(-30).map(function(x){ return parseFloat(x[2]); })
-            .filter(function(v){ return !isNaN(v) && v > 0 && v < 1e7; });
-          if(closes.length){
-            var avg = closes.reduce(function(s, v){ return s + v; }, 0) / closes.length;
-            DB.dca.avgs[it.key] = Math.round(avg * 100) / 100;
-            okCount++;
-          }
-          // 当前点位：当月（最新一条）月线开盘价 x[1] = 月初首个交易日开价（"每月1号"）
-          // 注：腾讯美股当月的盘中收可能脏值（如 nasdaq 当月收 12.81），但开盘价始终是月初稳态
-          var last = arr[arr.length - 1];
-          if(last && last[1]){
-            var open = parseFloat(last[1]);
-            if(!isNaN(open) && open > 0 && open < 1e7){
-              DB.dca.current[it.key] = String(open);
+    var sources = [];
+    if(hasSameOriginApi()) sources.push(apiUrl('/api/ifzq?param=' + encodeURIComponent(it.sym + ',month,,,40,qfq')));
+    DCA_PROXIES.forEach(function(p){ sources.push(p + encodeURIComponent(target)); });
+    var i = 0;
+    function tryNext(){
+      if(i >= sources.length){ pending--; finish(); return; }
+      var url = sources[i++];
+      fetchTextWithTimeout(url, 12000).then(function(txt){
+        var data = null; try { data = JSON.parse(txt); } catch(e){}
+        if(data && data.data){
+          var k = data.data[Object.keys(data.data)[0]];
+          var arr = k ? (k.month || k.qfqmonth) : null;
+          if(arr && arr.length){
+            var ymNow = new Date().getFullYear() + '-' + ('0' + (new Date().getMonth() + 1)).slice(-2);
+            // 30月均线：排除进行中的当月，仅取最近30个完整月收盘价算术平均
+            var closes = arr.filter(function(x){ return x[0] && x[0].slice(0,7) !== ymNow; })
+              .slice(-30).map(function(x){ return parseFloat(x[2]); })
+              .filter(function(v){ return !isNaN(v) && v > 0 && v < 1e7; });
+            if(closes.length){
+              var avg = closes.reduce(function(s, v){ return s + v; }, 0) / closes.length;
+              DB.dca.avgs[it.key] = Math.round(avg * 100) / 100;
               okCount++;
             }
+            // 当前点位：当月（最新一条）月线开盘价 x[1] = 月初首个交易日开价（"每月1号"）
+            // 注：腾讯美股当月的盘中收可能脏值（如 nasdaq 当月收 12.81），但开盘价始终是月初稳态
+            var last = arr[arr.length - 1];
+            if(last && last[1]){
+              var open = parseFloat(last[1]);
+              if(!isNaN(open) && open > 0 && open < 1e7){
+                DB.dca.current[it.key] = String(open);
+                okCount++;
+              }
+            }
+            pending--; finish(); return;
           }
         }
-      }
-      if(pending === 0){
-        if(okCount > 0){
-          saveDb();
-        }
-        if(done) done(okCount >= DCA_ITEMS.length);
-      }
-    });
+        tryNext();
+      }).catch(function(){ tryNext(); });
+    }
+    tryNext();
   });
 }
 // 显示用格式化：黄金ETF场内 0.01元/份 → ×100 以"分"展示；其余品种原值；三品种统一四舍五入到整数位

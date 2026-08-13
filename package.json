@@ -1,0 +1,13 @@
+{
+  "name": "aurora-workbench-server",
+  "version": "1.0.0",
+  "description": "Aurora 工作台自托管服务器：静态托管 aurora-workbench.html + 同源 CORS 代理（金价/资讯/财报/基金/月线）",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=14"
+  },
+  "license": "MIT"
+}
