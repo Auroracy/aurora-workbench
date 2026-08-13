@@ -2189,13 +2189,13 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
         <button class="btn btn-sm" id="goldRefreshBtn" onclick="fetchGoldQuotes(true)">🔄 刷新</button>
       </div>
     </div>
-    <div class="section-desc" style="margin-bottom:12px;">大盘指数 + 国际金价 + 市场情绪实时参考（指数/金价经代理抓取，盘中为估算值）</div>
+    <div class="section-desc" style="margin-bottom:12px;">大盘指数 + 伦敦金价 + 市场情绪实时参考（指数/金价经代理抓取，盘中为估算值）</div>
     <div class="metric-grid gold-grid" id="marketOverviewGrid">
       <div class="metric-tile idx-tile" id="idx_sh000300"><div class="metric-label">沪深300</div><div class="metric-value" id="idx_sh000300_price">—</div><div class="metric-change" id="idx_sh000300_chg">取数中…</div></div>
       <div class="metric-tile idx-tile" id="idx_sz399006"><div class="metric-label">创业板指</div><div class="metric-value" id="idx_sz399006_price">—</div><div class="metric-change" id="idx_sz399006_chg">取数中…</div></div>
       <div class="metric-tile idx-tile" id="idx_usIXIC"><div class="metric-label">纳斯达克</div><div class="metric-value" id="idx_usIXIC_price">—</div><div class="metric-change" id="idx_usIXIC_chg">取数中…</div></div>
       <div class="metric-tile idx-tile" id="idx_hkHSI"><div class="metric-label">恒生指数</div><div class="metric-value" id="idx_hkHSI_price">—</div><div class="metric-change" id="idx_hkHSI_chg">取数中…</div></div>
-      <div class="metric-tile gold-tile" id="goldIntlTile"><div class="metric-label">国际金价 (USD/oz)</div><div class="metric-value" id="goldIntlPrice">—</div><div class="metric-change" id="goldIntlChg">取数中…</div></div>
+      <div class="metric-tile gold-tile" id="goldIntlTile"><div class="metric-label">伦敦金价 (USD/oz)</div><div class="metric-value" id="goldIntlPrice">—</div><div class="metric-change" id="goldIntlChg">取数中…</div></div>
       <div class="metric-tile accent gold-mood-tile" id="goldMoodTile"><div class="metric-label">市场情绪</div><div class="metric-value" id="goldMoodMain">—</div><div class="metric-change" id="goldMoodSub">—</div></div>
     </div>
   </div>
@@ -6572,7 +6572,7 @@ function tryFetchSequence(urls, parser, charset){
   }, Promise.resolve(null));
 }
 
-/* === 国际金价 (USD/oz) — qt.gtimg.cn q=hf_GC ===
+/* === 伦敦金价 (USD/oz) — qt.gtimg.cn q=hf_GC（COMEX金与伦敦现货金价同基准） ===
    字段: price,chg,buy,sell,hi,lo,time,prevSettle,volume,... */
 function parseHqIntl(text){
   var m = text.match(/="([^"]*)"/);
@@ -6891,9 +6891,9 @@ function judgeGoldMood(intl, dom, etf){
 function renderGoldTiles(){
   var g = DB.market.gold;
   if(!g) return;
-  /* 仅展示国际金价；国内金价/ETF 已不展示，但数据仍抓取用于情绪判断 */
+  /* 仅展示伦敦金价；国内金价/ETF 已不展示，但数据仍抓取用于情绪判断 */
   fillGoldTile('goldIntlPrice','goldIntlChg', g.intl);
-  /* 市场情绪：国际金价 + 黄金ETF 综合判断（国内金价已移除面板） */
+  /* 市场情绪：伦敦金价 + 黄金ETF 综合判断（国内金价已移除面板） */
   var mood = judgeGoldMood(g.intl, null, g.etf);
   var mainEl = document.getElementById('goldMoodMain');
   var subEl = document.getElementById('goldMoodSub');
