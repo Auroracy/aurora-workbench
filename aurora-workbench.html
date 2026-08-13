@@ -6769,23 +6769,40 @@ function fetchEarnings(){
   var end = endDate.toISOString().slice(0,10);
   var page = 1;
   var all = [];
-  function fetchPage(){
-    var url = 'https://np-anotice-stock.eastmoney.com/api/security/ann?sr=-1&page_size=100&page_index=' + page +
+  /* 构造各源 URL（含查询串）：
+     - 源 0：Cloudflare Worker /eastmoney/ann 转发（如果用户配置过 aurora_gold_proxy，零 CORS + 准出 IP 是 CF 边缘）
+     - 源 1+：DCA_PROXIES 公共代理兜底（已知对东方财富不稳） */
+  function directUrl(p){ return 'https://np-anotice-stock.eastmoney.com/api/security/ann?sr=-1&page_size=100&page_index=' + p +
       '&ann_type=' + encodeURIComponent(annType) +
       '&client_source=web&f_node=1&s_node=0' +
-      '&begin_time=' + start + '&end_time=' + end;
-    var i = 0;
+      '&begin_time=' + start + '&end_time=' + end; }
+  function buildSources(){
+    var srcs = [];
+    var workerUrl = (typeof getGoldProxyUrl === 'function') ? getGoldProxyUrl() : '';
+    if(workerUrl){
+      srcs.push(workerUrl.replace(/\/+$/, '') + '/eastmoney/ann?sr=-1&page_size=100&page_index=__P__&ann_type=' + encodeURIComponent(annType) + '&client_source=web&f_node=1&s_node=0&begin_time=' + start + '&end_time=' + end);
+    }
+    srcs.push('__DIRECT__'); // 直连（浏览器 CORS 几乎必失败，触发回退）
+    DCA_PROXIES.forEach(function(p){ srcs.push(p); });
+    return srcs;
+  }
+  var sources = buildSources();
+  function fetchPage(){
+    var srcIdx = 0; // 当前尝试的源下标（0=Worker 转发，1=直连，2..=公共代理）
     function next(){
-      if(i >= DCA_PROXIES.length + 1){ renderEarningsFail(); return; }
-      var realUrl = i === 0 ? url : (DCA_PROXIES[i-1] + encodeURIComponent(url));
-      fetchTextWithTimeout(realUrl, 12000).then(function(txt){
+      if(srcIdx >= sources.length){ renderEarningsFail(); return; }
+      var tmpl = sources[srcIdx];
+      var url;
+      if(tmpl === '__DIRECT__'){ url = directUrl(page); }
+      else { url = tmpl.replace('__P__', String(page)); }
+      fetchTextWithTimeout(url, 12000).then(function(txt){
         var json = null;
-        try { json = JSON.parse(txt); } catch(e){ i++; next(); return; }
-        if(!json.success || !json.data || !json.data.list){ i++; next(); return; }
+        try { json = JSON.parse(txt); } catch(e){ srcIdx++; next(); return; }
+        if(!json.success || !json.data || !json.data.list){ srcIdx++; next(); return; }
         var list = json.data.list || [];
         all = all.concat(list);
         if(list.length >= 100 && page < 4){ page++; fetchPage(); } else { done(); }
-      }).catch(function(){ i++; next(); });
+      }).catch(function(){ srcIdx++; next(); });
     }
     next();
   }
@@ -6800,7 +6817,13 @@ function fetchEarnings(){
 }
 function renderEarningsFail(){
   var hint = document.getElementById('earnStats');
-  if(hint) hint.innerHTML = '<span class="earn-stat fail">拉取失败，请稍后重试</span>';
+  var hasProxy = (typeof getGoldProxyUrl === 'function') && getGoldProxyUrl();
+  var msg = '<span class="earn-stat fail">拉取失败，请稍后重试</span>';
+  if(!hasProxy){
+    msg += ' <a class="form-link" onclick="toggleGoldProxyPanel()" style="margin-left:6px;">⚙ 配置代理</a>';
+    msg += ' <span class="text-sm text-muted">（东方财富接口需经 Cloudflare Worker 转发 → 国内金价瓦片「⚙ 代理」按钮 → 粘贴 Worker URL）</span>';
+  }
+  if(hint) hint.innerHTML = msg;
   if(EARNINGS_FETCHED.length){ renderEarningsList(); }
 }
 function computeEarnStats(list){
