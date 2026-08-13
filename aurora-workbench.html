@@ -2945,7 +2945,6 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
 var DB = {};
 var DB_KEY = 'aurora_workbench_v2';
 var DB_SERVER_KEY = 'aurora_server_url';   // 服务器基址（留空=不走服务器同步）
-var DB_SERVER_TOKEN = 'aurora_server_token'; // 服务器访问 token
 var pyodide = null;
 var pyLoading = false;
 var currentWordOffset = 0;
@@ -3069,9 +3068,8 @@ function loadDb(){
 function pullFromServer(){
   var base = serverBase();
   if(!base) return;
-  var token = (localStorage.getItem(DB_SERVER_TOKEN) || '').trim();
-  var url = base + '/api/db' + (token ? ('?token=' + encodeURIComponent(token)) : '');
-  fetch(url, { headers: token ? { 'x-aurora-token': token } : {} })
+  var url = base + '/api/db';
+  fetch(url)
     .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); })
     .then(function(txt){
       if(!txt || txt === '{}') return;
@@ -3097,13 +3095,12 @@ var _pushTimer = null;
 function pushToServer(){
   var base = serverBase();
   if(!base) return;
-  var token = (localStorage.getItem(DB_SERVER_TOKEN) || '').trim();
   if(_pushTimer) clearTimeout(_pushTimer);
   _pushTimer = setTimeout(function(){
-    var url = base + '/api/db' + (token ? ('?token=' + encodeURIComponent(token)) : '');
+    var url = base + '/api/db';
     fetch(url, {
       method: 'POST',
-      headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { 'x-aurora-token': token } : {}),
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(DB)
     })
     .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
@@ -8611,23 +8608,18 @@ function closeCloudModal(){
 // ---------- 服务器同步配置 ----------
 function saveServerConfig(){
   var url = (document.getElementById('serverUrl')||{}).value || '';
-  var token = (document.getElementById('serverToken')||{}).value || '';
   localStorage.setItem(DB_SERVER_KEY, url.trim());
-  localStorage.setItem(DB_SERVER_TOKEN, token.trim());
   showServerStatus(url ? '配置已保存 ✓' : '已关闭服务器同步', 'ok');
 }
 function loadServerConfigUI(){
   var url = (localStorage.getItem(DB_SERVER_KEY) || '').trim();
-  var token = (localStorage.getItem(DB_SERVER_TOKEN) || '').trim();
   var u = document.getElementById('serverUrl'); if(u) u.value = url;
-  var t = document.getElementById('serverToken'); if(t) t.value = token;
 }
 function testServerSync(){
   var url = (localStorage.getItem(DB_SERVER_KEY) || '').trim();
   if(!url){ showServerStatus('请先填写服务器地址', 'fail'); return; }
-  var token = (localStorage.getItem(DB_SERVER_TOKEN) || '').trim();
   showServerStatus('连接测试中…', '');
-  fetch(url.replace(/\/+$/, '') + '/health', { headers: token ? { 'x-aurora-token': token } : {} })
+  fetch(url.replace(/\/+$/, '') + '/health')
     .then(function(r){ return r.json().then(function(j){ return { ok: r.ok, j: j }; }); })
     .then(function(o){
       if(o.ok && o.j && o.j.ok){
@@ -8641,11 +8633,10 @@ function testServerSync(){
 function forcePushToServer(){
   var url = (localStorage.getItem(DB_SERVER_KEY) || '').trim();
   if(!url){ showServerStatus('请先填写服务器地址', 'fail'); return; }
-  var token = (localStorage.getItem(DB_SERVER_TOKEN) || '').trim();
   showServerStatus('上传中…', '');
-  fetch(url.replace(/\/+$/, '') + '/api/db' + (token ? ('?token=' + encodeURIComponent(token)) : ''), {
+  fetch(url.replace(/\/+$/, '') + '/api/db', {
     method: 'POST',
-    headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { 'x-aurora-token': token } : {}),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(DB)
   })
   .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
@@ -8655,11 +8646,8 @@ function forcePushToServer(){
 function forcePullFromServer(){
   var url = (localStorage.getItem(DB_SERVER_KEY) || '').trim();
   if(!url){ showServerStatus('请先填写服务器地址', 'fail'); return; }
-  var token = (localStorage.getItem(DB_SERVER_TOKEN) || '').trim();
   showServerStatus('拉取中…', '');
-  fetch(url.replace(/\/+$/, '') + '/api/db' + (token ? ('?token=' + encodeURIComponent(token)) : ''), {
-    headers: token ? { 'x-aurora-token': token } : {}
-  })
+  fetch(url.replace(/\/+$/, '') + '/api/db')
   .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); })
   .then(function(txt){
     if(!txt || txt === '{}'){ showServerStatus('服务器无数据', 'fail'); return; }
@@ -8938,8 +8926,6 @@ window.addEventListener('DOMContentLoaded', init);
         <div class="section-desc" style="margin-bottom:8px;">把数据保存到你的服务器（Redis 或 JSON 文件），多设备共享、断网不丢。留空则不走服务器。</div>
         <label class="form-label">服务器地址</label>
         <input type="text" id="serverUrl" placeholder="http://你的服务器IP:9000" onblur="saveServerConfig()">
-        <label class="form-label">访问 Token（服务器设了 DB_TOKEN 才需要）</label>
-        <input type="password" id="serverToken" placeholder="与服务器 DB_TOKEN 一致，没设则留空" onblur="saveServerConfig()">
         <div class="server-sync-actions">
           <button class="btn btn-sm" onclick="testServerSync()">🔗 测试连接</button>
           <button class="btn btn-sm" onclick="forcePushToServer()">⬆ 立即上传</button>
