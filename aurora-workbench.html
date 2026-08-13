@@ -1258,6 +1258,18 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 .earn-row-tag.down{background:var(--green-bg);color:var(--green);}
 .earn-row-tag.turn{background:var(--amber-bg);color:var(--amber);}
 .earn-row-tag.other{background:var(--glass-bg);color:var(--text-mid);}
+.earn-row-date{font-size:11px;color:var(--text-mid);font-family:monospace;background:var(--glass-bg);padding:2px 7px;border-radius:4px;border:1px solid var(--glass-border);white-space:nowrap;}
+.earn-pager{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 0;margin:6px 0 14px;}
+.earn-pager-simple{font-size:12px;color:var(--text-mid);}
+.earn-pager-info{font-size:12px;color:var(--text-mid);}
+.earn-pager-info b{color:var(--text);font-weight:600;}
+.earn-pager-pages{display:inline-flex;gap:4px;flex-wrap:wrap;}
+.earn-pager-pages .earn-page-cur{background:var(--accent);color:#fff;border-color:var(--accent);cursor:default;}
+.earn-pager-pages .earn-page-btn{font-variant-numeric:tabular-nums;min-width:2em;}
+.earn-pager-pages .earn-page-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent);}
+.earn-pager-jump{font-size:12px;color:var(--text-mid);margin-left:auto;}
+.earn-page-jump{width:3.6em;text-align:center;padding:4px 6px;border:1px solid var(--glass-border);border-radius:6px;background:var(--glass-bg);font-size:12px;font-variant-numeric:tabular-nums;margin-left:4px;}
+.earn-page-jump:focus{outline:none;border-color:var(--accent);}
 .earn-manual-toggle{margin-top:10px;text-align:right;}
 .earn-manual-form{margin-top:8px;padding:10px 14px;border:1px dashed var(--line);border-radius:var(--radius-sm);background:var(--glass-bg);}
 
@@ -2324,7 +2336,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
         </select>
       </div>
       <div class="form-group"><label class="form-label">报告类型</label>
-        <select id="earnTypeSel" onchange="renderEarningsList()">
+        <select id="earnTypeSel" onchange="EARN_PAGE_IDX=1;renderEarningsList()">
           <option value="all" selected>全部</option>
           <option value="年报">年报</option>
           <option value="半年报">半年报</option>
@@ -6704,6 +6716,9 @@ function stopWatchAutoRefresh(){
 /* ============ 财报日历（自动抓取东方财富公告）+ 手动补充 ============ */
 var EARNINGS_FETCHED = []; // 抓取的原始财报公告
 var EARNINGS_FETCHED_TS = 0;
+var EARN_PAGE_SIZE = 10;   // 财报每页条数
+var EARN_PAGE_IDX = 1;     // 财报当前页（1-based）
+var EARN_PAGE_TOTAL = 0;   // 财报当前过滤后总条数
 /* 报告类型分类 + 标签样式与中文显示 */
 var EARN_TYPE_MAP = {
   '半年度报告摘要':{key:'半年报', cls:'half'},
@@ -6826,6 +6841,7 @@ function fetchEarnings(){
   function done(){
     EARNINGS_FETCHED = all;
     EARNINGS_FETCHED_TS = Date.now();
+    EARN_PAGE_IDX = 1; // 刷新后回到第 1 页
     var stats = computeEarnStats(all);
     if(hint) hint.innerHTML = stats;
     renderEarningsList();
@@ -6872,7 +6888,8 @@ function fmtHHMM(ts){
   return hh + ':' + mm;
 }
 function renderEarningsList(){
-  var el = document.getElementById('earnList'); if(!el) return;
+  var el = document.getElementById('earnList'); if(!el);
+  if(!el) return;
   var filterType = (document.getElementById('earnTypeSel')||{}).value || 'all';
   var items = EARNINGS_FETCHED.filter(function(it){ return isEarnItem(it); }).map(function(it){
     var type = classifyEarning(it.columns, it.title);
@@ -6897,39 +6914,79 @@ function renderEarningsList(){
     });
   }
   if(!items.length){
+    EARN_PAGE_TOTAL = 0;
     el.innerHTML = '<div class="text-sm text-muted">该条件下没有数据' + (EARNINGS_FETCHED.length ? '' : '（请先点「🔄 刷新财报」）') + '</div>';
     return;
   }
-  /* 按日期分组排序 */
-  items.sort(function(a, b){ return (a.sortDate || '').localeCompare(b.sortDate || ''); });
-  var groups = {};
-  items.forEach(function(it){
-    var k = it.date || '待定';
-    groups[k] = groups[k] || [];
-    groups[k].push(it);
-  });
+  /* 按发布日期升序排序（即将发布的在前） */
+  items.sort(function(a, b){ return (a.sortDate || '9999-99-99').localeCompare(b.sortDate || '9999-99-99'); });
+  var total = items.length;
+  var pageSize = EARN_PAGE_SIZE;
+  var totalPages = Math.max(1, Math.ceil(total / pageSize));
+  if(EARN_PAGE_IDX > totalPages) EARN_PAGE_IDX = totalPages;
+  if(EARN_PAGE_IDX < 1) EARN_PAGE_IDX = 1;
+  var startIdx = (EARN_PAGE_IDX - 1) * pageSize;
+  var pageItems = items.slice(startIdx, startIdx + pageSize);
+  EARN_PAGE_TOTAL = total;
+
   var html = '';
-  Object.keys(groups).forEach(function(day){
-    html += '<div class="earn-day-group">';
-    html += '<div class="earn-day-hd">' + fmtEarningsDate(day) + ' · ' + groups[day].length + ' 条</div>';
-    groups[day].forEach(function(it){
-      var tagCls = it.type.cls;
-      var tagKey = it.type.key;
-      var co = it.name || (it.isManual ? '' : '—');
-      var code = it.code ? '<span class="earn-row-code">' + escapeHtml(it.code) + '</span>' : '';
-      var manualDel = it.isManual ? ' <button class="btn btn-sm" onclick="deleteEarn(\'' + it.mid + '\')">删</button>' : '';
-      var toggleBtn = it.isManual ? ' <button class="btn btn-sm" onclick="toggleEarn(\'' + it.mid + '\')">' + ((DB.market.earnings.find(function(x){return x.id===it.mid;})||{}).done ? '已发布' : '标记发布') + '</button>' : '';
-      html += '<div class="earn-row">' +
-        '<div class="earn-row-main">' +
-          '<div class="earn-row-co"><b>' + escapeHtml(co) + '</b>' + code + '<span class="earn-row-tag ' + tagCls + '">' + tagKey + '</span></div>' +
-          '<div class="earn-row-title">' + escapeHtml(it.title) + '</div>' +
-        '</div>' +
-        '<div class="auto">' + toggleBtn + manualDel + '</div>' +
-      '</div>';
-    });
-    html += '</div>';
+  /* 顶部翻页条 */
+  html += renderEarnPager(EARN_PAGE_IDX, totalPages, total);
+  /* 扁平列表（保留日期在每条 row 内显示） */
+  pageItems.forEach(function(it){
+    var tagCls = it.type.cls;
+    var tagKey = it.type.key;
+    var co = it.name || (it.isManual ? '' : '—');
+    var code = it.code ? '<span class="earn-row-code">' + escapeHtml(it.code) + '</span>' : '';
+    var manualDel = it.isManual ? ' <button class="btn btn-sm" onclick="deleteEarn(\'' + it.mid + '\')">删</button>' : '';
+    var toggleBtn = it.isManual ? ' <button class="btn btn-sm" onclick="toggleEarn(\'' + it.mid + '\')">' + ((DB.market.earnings.find(function(x){return x.id===it.mid;})||{}).done ? '已发布' : '标记发布') + '</button>' : '';
+    var dateTag = '<span class="earn-row-date">' + (fmtEarningsDate(it.date) || '待定') + '</span>';
+    html += '<div class="earn-row">' +
+      '<div class="earn-row-main">' +
+        '<div class="earn-row-co"><b>' + escapeHtml(co) + '</b>' + code + '<span class="earn-row-tag ' + tagCls + '">' + tagKey + '</span>' + dateTag + '</div>' +
+        '<div class="earn-row-title">' + escapeHtml(it.title) + '</div>' +
+      '</div>' +
+      '<div class="auto">' + toggleBtn + manualDel + '</div>' +
+    '</div>';
   });
+  /* 底部翻页条 */
+  html += renderEarnPager(EARN_PAGE_IDX, totalPages, total);
   el.innerHTML = html;
+}
+function renderEarnPager(page, totalPages, total){
+  if(totalPages <= 1){
+    return '<div class="earn-pager earn-pager-simple">共 <b>' + total + '</b> 条</div>';
+  }
+  var prev = page > 1 ? '<button class="btn btn-sm" onclick="earnPageGo(' + (page-1) + ')">‹ 上一页</button>' : '<button class="btn btn-sm" disabled>‹ 上一页</button>';
+  var next = page < totalPages ? '<button class="btn btn-sm" onclick="earnPageGo(' + (page+1) + ')">下一页 ›</button>' : '<button class="btn btn-sm" disabled>下一页 ›</button>';
+  /* 页码胶囊：首末页 + 当前页前后 2 页 */
+  var pages = [1];
+  for(var p = page-2; p <= page+2; p++){ if(p > 1 && p < totalPages) pages.push(p); }
+  if(totalPages > 1) pages.push(totalPages);
+  var pageBtns = pages.map(function(p){
+    return p === page
+      ? '<button class="btn btn-sm earn-page-cur">' + p + '</button>'
+      : '<button class="btn btn-sm earn-page-btn" onclick="earnPageGo(' + p + ')">' + p + '</button>';
+  }).join('');
+  return '<div class="earn-pager">' +
+    prev +
+    '<span class="earn-pager-info">第 <b>' + page + '</b> / ' + totalPages + ' 页 · 共 <b>' + total + '</b> 条</span>' +
+    '<span class="earn-pager-pages">' + pageBtns + '</span>' +
+    next +
+    '<span class="earn-pager-jump">跳到 <input type="number" min="1" max="' + totalPages + '" value="' + page + '" class="earn-page-jump" onchange="earnPageGo(parseInt(this.value||1))" /></span>' +
+  '</div>';
+}
+function earnPageGo(p){
+  if(isNaN(p)) return;
+  if(p < 1) p = 1;
+  if(p > EARN_PAGE_TOTAL && EARN_PAGE_TOTAL > 0){
+    p = Math.ceil(EARN_PAGE_TOTAL / EARN_PAGE_SIZE) || 1;
+  }
+  EARN_PAGE_IDX = p;
+  renderEarningsList();
+  /* 滚动到列表顶部 */
+  var hd = document.getElementById('earnList');
+  if(hd){ hd.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
 }
 function toggleEarnManual(){
   var f = document.getElementById('earnManualForm');
