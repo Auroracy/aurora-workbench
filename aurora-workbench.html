@@ -2972,6 +2972,25 @@ function toast(msg){
   setTimeout(function(){ t.classList.add('show'); }, 10);
   setTimeout(function(){ t.classList.remove('show'); setTimeout(function(){ t.remove(); }, 300); }, 1800);
 }
+/* 判断通义千问错误响应是否为「余额不足 / 免费额度耗尽」类（避免自动重试把真问题掩盖） */
+function isQwenBalanceError(text){
+  if(!text) return false;
+  return /(insufficient\s*balance|余额不足|free\s*tier|额度|quota|balance\s*insufficient|AccountNotEnoughBalance|BalanceInsufficient|ResourcePack|free.?tier.?exhausted)/i.test(text);
+}
+/* 顶部全局红色横幅：余额不足时持久提示，不依赖 toast 自动消失 */
+function showQwenBalanceWarn(){
+  var box = document.getElementById('qwenBalanceWarn');
+  if(!box){
+    box = document.createElement('div');
+    box.id = 'qwenBalanceWarn';
+    box.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#c0392b;color:#fff;font-size:13px;line-height:1.5;padding:10px 14px;display:flex;align-items:center;gap:10px;box-shadow:0 2px 8px rgba(0,0,0,.3);';
+    document.body.appendChild(box);
+  }
+  box.innerHTML = '⚠ 通义千问 <b>余额不足</b> 或免费额度已用完，AI 识别功能将不可用。请到百炼控制台充值，或在「☁ 云同步」弹窗替换新的 API Key。' +
+    '<a href="https://bailian.console.aliyun.com/" target="_blank" style="color:#fff;text-decoration:underline;margin-left:6px;white-space:nowrap;">去充值 ↗</a>' +
+    '<button onclick="this.parentNode.remove()" style="margin-left:auto;background:rgba(255,255,255,.22);border:none;color:#fff;padding:5px 12px;border-radius:6px;cursor:pointer;white-space:nowrap;">关闭</button>';
+  box.style.display = 'flex';
+}
 /* 去掉 base64 字符串里可能的 data:image/...;base64, 前缀，保证发给服务端的总是干净 base64 */
 function stripBase64Prefix(s){
   if(!s) return '';
@@ -3845,7 +3864,14 @@ function callQwenText(userPrompt, sysPrompt, model){
     }),
     new Promise(function(_, reject){ setTimeout(function(){ reject(new Error('请求超时（20s）')); }, 20000); })
   ]).then(function(resp){
-    if(!resp.ok) throw new Error('HTTP ' + resp.status);
+    if(!resp.ok){
+      return resp.text().then(function(t){
+        if(isQwenBalanceError(t)){ showQwenBalanceWarn(); }
+        var msg = 'HTTP ' + resp.status;
+        try { msg += '：' + (JSON.parse(t).error.message || t); } catch(e){ if(t) msg += '：' + t; }
+        throw new Error(msg);
+      });
+    }
     return resp.json();
   }).then(function(data){
     if(data.error) throw new Error(data.error.message || 'API 错误');
@@ -4709,6 +4735,15 @@ async function testQwenKey(){
       return;
     }
     if(resp.status === 429){
+      var t429 = '';
+      try { t429 = (await resp.json()).error.message || ''; } catch(e){}
+      if(isQwenBalanceError(t429)){
+        showQwenBalanceWarn();
+        hint.textContent = '✗ 通义千问余额不足或免费额度已用完，请到百炼控制台充值后重试。';
+        hint.style.color = '#c0392b';
+        hint.classList.add('show');
+        return;
+      }
       hint.textContent = '✓ Key 有效，但触发限流（429）。稍后再试或检查额度。';
       hint.style.color = '#15A49B';
       hint.classList.add('show');
@@ -4717,6 +4752,13 @@ async function testQwenKey(){
     if(!resp.ok){
       var errBody = '';
       try { errBody = (await resp.json()).error.message || ''; } catch(e){}
+      if(isQwenBalanceError(errBody)){
+        showQwenBalanceWarn();
+        hint.textContent = '✗ 通义千问余额不足或免费额度已用完，请到百炼控制台充值后重试。';
+        hint.style.color = '#c0392b';
+        hint.classList.add('show');
+        return;
+      }
       hint.textContent = '⚠ API 返回 ' + resp.status + (errBody ? '：' + errBody : '');
       hint.style.color = '#c0392b';
       hint.classList.add('show');
@@ -4908,21 +4950,31 @@ function analyzeMealPhotoQwen(base64, key, cb){
         body: reqBody
       }),
       new Promise(function(_, reject){ setTimeout(function(){ reject(new Error('请求超时（25s）')); }, 25000); })
-    ]).then(function(res){
+    ]    ).then(function(res){
       if(res.status === 401){
         throw new Error('通义千问密钥无效');
       }
+      if(res.status === 429){
+        return res.text().then(function(t){
+          if(isQwenBalanceError(t)){ showQwenBalanceWarn(); throw new Error('通义千问额度/余额不足'); }
+          if(modelIdx < QWEN_MODELS.length - 1){ modelIdx++; tryModel(); return; }
+          throw new Error('通义千问限流（429），请稍后再试');
+        });
+      }
       if(res.status === 404 || res.status === 400 || res.status === 403){
-        /* Model not available / no permission, try next */
-        var errText = '';
-        try { errText = (res.json().error || {}).message || ''; } catch(e){}
-        if(modelIdx < QWEN_MODELS.length - 1){
-          console.log('[Qwen] ' + model + ' 返回 ' + res.status + '：' + (errText || '') + '，自动尝试下一模型');
-          modelIdx++;
-          tryModel();
-          return;
-        }
-        throw new Error('通义千问所有模型 403/404 无权限访问。请到百炼平台「模型体验」开通视觉模型服务。');
+        /* Model not available / no permission / 余额不足，先判读错误体 */
+        return res.text().then(function(t){
+          if(isQwenBalanceError(t)){ showQwenBalanceWarn(); throw new Error('通义千问余额不足或免费额度已用完'); }
+          var errText = '';
+          try { errText = JSON.parse(t).error.message || ''; } catch(e){ errText = t; }
+          if(modelIdx < QWEN_MODELS.length - 1){
+            console.log('[Qwen] ' + model + ' 返回 ' + res.status + '：' + (errText || '') + '，自动尝试下一模型');
+            modelIdx++;
+            tryModel();
+            return;
+          }
+          throw new Error('通义千问所有模型 403/404 无权限访问。请到百炼平台「模型体验」开通视觉模型服务。');
+        });
       }
       if(!res.ok){
         throw new Error('通义千问 API 返回 ' + res.status + '（模型 ' + model + '）');
