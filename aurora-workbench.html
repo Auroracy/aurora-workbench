@@ -6935,10 +6935,20 @@ function fetchEarnings(){
     next();
   }
   function done(){
-    EARNINGS_FETCHED = all;
+    /* 去重：ann_type=A 跨 SHA/CYB/SZA/BJA 时东方财富会重复列出同一公告，art_code 相同；
+       若 art_code 缺失再用 title+code+date 兜底 */
+    var seen = {};
+    var uniq = [];
+    for(var i = 0; i < all.length; i++){
+      var it = all[i];
+      var code = (it.codes && it.codes[0]) ? it.codes[0].stock_code : '';
+      var key = (it.art_code || '') + '|' + (it.title || '') + '|' + code + '|' + (it.notice_date || '');
+      if(!seen[key]){ seen[key] = 1; uniq.push(it); }
+    }
+    EARNINGS_FETCHED = uniq;
     EARNINGS_FETCHED_TS = Date.now();
     EARN_PAGE_IDX = 1; // 刷新后回到第 1 页
-    var stats = computeEarnStats(all);
+    var stats = computeEarnStats(EARNINGS_FETCHED);
     if(hint) hint.innerHTML = stats;
     renderEarningsList();
   }
@@ -7230,16 +7240,34 @@ function parseSinaSge(text){
   };
 }
 
+function fetchSameOriginJson(url){
+  /* 同源直连（不走公共 CORS 代理），用于自托管 server.js 的 /api 路由 */
+  return new Promise(function(resolve, reject){
+    var ctrl = ('AbortController' in window) ? new AbortController() : null;
+    var t = setTimeout(function(){ if(ctrl) ctrl.abort(); reject(new Error('timeout')); }, 12000);
+    var opt = ctrl ? { signal: ctrl.signal } : {};
+    fetch(url, opt).then(function(r){ if(!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+      .then(function(txt){ clearTimeout(t); resolve(txt); })
+      .catch(function(e){ clearTimeout(t); reject(e); });
+  });
+}
 function tryFetchDomGold(){
-  /* 优先级：①同源 /api/sge（自托管） ②Cloudflare Worker /sge ③新浪直连 */
+  /* 优先级：①同源 /api/sge（自托管，直连） ②Cloudflare Worker /sge ③新浪直连 */
   var seq = [];
-  if(hasSameOriginApi()) seq.push({ url: apiUrl('/api/sge'), json: true });
+  if(hasSameOriginApi()) seq.push({ url: apiUrl('/api/sge'), json: true, sameOrigin: true });
   var proxy = getGoldProxyUrl();
   if(proxy) seq.push({ url: proxy.replace(/\/+$/, '') + '/sge', json: true });
   seq.push({ url: 'https://hq.sinajs.cn/list=SGE_AU9999', json: false, enc: 'gb18030' });
   return seq.reduce(function(p, s){
     return p.then(function(prev){
       if(prev) return prev;
+      if(s.sameOrigin){
+        return fetchSameOriginJson(s.url).then(function(text){
+          var j; try { j = JSON.parse(text); } catch(e){ return null; }
+          if(!j || j.error || !isFinite(j.price) || j.price <= 0) return null;
+          return { price: j.price, prev: j.prev, chg: j.chg, chgPct: j.chgPct, ts: j.ts || Date.now(), viaProxy: true };
+        }).catch(function(){ return null; });
+      }
       return tryFetchOnce(s.url, s.enc || 'utf-8').then(function(text){
         if(s.json){
           var j; try { j = JSON.parse(text); } catch(e){ return null; }
@@ -7274,9 +7302,15 @@ function parseIfzqEtf(text){
 
 function tryFetchEtfGold(){
   var seq = [];
-  if(hasSameOriginApi()) seq.push(apiUrl('/api/ifzq?param=' + encodeURIComponent('sh518880,day,,,5,qfq')));
+  if(hasSameOriginApi()) seq.push({ url: apiUrl('/api/ifzq?param=' + encodeURIComponent('sh518880,day,,,5,qfq')), sameOrigin: true });
   seq.push('https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=sh518880,day,,,5,qfq');
-  return tryFetchSequence(seq, parseIfzqEtf);
+  return seq.reduce(function(p, s){
+    return p.then(function(prev){
+      if(prev) return prev;
+      if(s && s.sameOrigin) return fetchSameOriginJson(s.url).then(parseIfzqEtf).catch(function(){ return null; });
+      return tryFetchSequence([s], parseIfzqEtf);
+    });
+  }, Promise.resolve(null));
 }
 
 async function fetchGoldQuotes(manual){
