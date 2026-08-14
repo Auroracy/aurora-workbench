@@ -5996,9 +5996,9 @@ function renderMarket(){
   if(stale){ fetchGoldQuotes(false); } else { renderGoldTiles(); var gu = document.getElementById('goldUpdateTime'); if(gu && g.ts) gu.textContent = '金价 更新于 ' + g.ts; }
   fetchIndexQuotes();
   renderFunds();
-  /* 自选报价：进入 Tab 即拉一次实时数据（不依赖 renderWatchlist 旧缓存），并按复选框启动 60s 自动刷新 */
-  var needFetch = (DB.market.techWatch || []).some(function(x){ return !x.quote; });
-  if(needFetch){ fetchWatchQuotes(false); } else { renderWatchlist(); }
+  /* 自选报价：进入 Tab 总是用本地/Redis 现有 quote 立即渲染防白屏，并主动拉一次实时数据覆盖陈旧缓存 */
+  renderWatchlist();
+  fetchWatchQuotes(false);
   var wcb = document.getElementById('watchAutoRefresh');
   if(wcb && wcb.checked && !watchRefreshTimer){
     watchRefreshTimer = setInterval(function(){ fetchWatchQuotes(false); }, 60000);
