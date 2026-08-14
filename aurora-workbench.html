@@ -2972,25 +2972,27 @@ function toast(msg){
   setTimeout(function(){ t.classList.add('show'); }, 10);
   setTimeout(function(){ t.classList.remove('show'); setTimeout(function(){ t.remove(); }, 300); }, 1800);
 }
-/* 判断通义千问错误响应是否为「余额不足 / 免费额度耗尽」类（避免自动重试把真问题掩盖） */
-function isQwenBalanceError(text){
+/* 判断 AI 错误响应是否为「余额不足 / 免费额度耗尽」类（通义/智谱/DeepSeek/豆包通用） */
+function isAiBalanceError(text){
   if(!text) return false;
-  return /(insufficient\s*balance|余额不足|free\s*tier|额度|quota|balance\s*insufficient|AccountNotEnoughBalance|BalanceInsufficient|ResourcePack|free.?tier.?exhausted)/i.test(text);
+  return /(insufficient\s*balance|余额不足|免费额度|额度|quota|balance\s*insufficient|AccountNotEnoughBalance|BalanceInsufficient|ResourcePack|free.?tier.?exhausted|balance_not_enough|insufficient_balance|ArkRipResource|资源包|account balance)/i.test(text);
 }
+function isQwenBalanceError(text){ return isAiBalanceError(text); } /* 兼容别名 */
 /* 顶部全局红色横幅：余额不足时持久提示，不依赖 toast 自动消失 */
-function showQwenBalanceWarn(){
-  var box = document.getElementById('qwenBalanceWarn');
+function showAiBalanceWarn(){
+  var box = document.getElementById('aiBalanceWarn');
   if(!box){
     box = document.createElement('div');
-    box.id = 'qwenBalanceWarn';
+    box.id = 'aiBalanceWarn';
     box.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#c0392b;color:#fff;font-size:13px;line-height:1.5;padding:10px 14px;display:flex;align-items:center;gap:10px;box-shadow:0 2px 8px rgba(0,0,0,.3);';
     document.body.appendChild(box);
   }
-  box.innerHTML = '⚠ 通义千问 <b>余额不足</b> 或免费额度已用完，AI 识别功能将不可用。请到百炼控制台充值，或在「☁ 云同步」弹窗替换新的 API Key。' +
+  box.innerHTML = '⚠ AI 视觉服务 <b>余额不足</b> 或免费额度已用完，AI 识别功能将不可用。请到对应平台（百炼 / 智谱 / DeepSeek / 火山方舟）充值，或在「☁ 云同步」弹窗替换 API Key。' +
     '<a href="https://bailian.console.aliyun.com/" target="_blank" style="color:#fff;text-decoration:underline;margin-left:6px;white-space:nowrap;">去充值 ↗</a>' +
     '<button onclick="this.parentNode.remove()" style="margin-left:auto;background:rgba(255,255,255,.22);border:none;color:#fff;padding:5px 12px;border-radius:6px;cursor:pointer;white-space:nowrap;">关闭</button>';
   box.style.display = 'flex';
 }
+function showQwenBalanceWarn(){ showAiBalanceWarn(); } /* 兼容别名 */
 /* 去掉 base64 字符串里可能的 data:image/...;base64, 前缀，保证发给服务端的总是干净 base64 */
 function stripBase64Prefix(s){
   if(!s) return '';
@@ -3731,8 +3733,8 @@ function fetchXwlbDirect(date){
         document.getElementById('xwlbFallback').style.display = 'block';
         return;
       }
-      setXwlbStatus('⏳ 已抓到 ' + titles.length + ' 条，通义千问生成总结中…', 'loading');
-      callQwenText(titles.join('\n'), XWLB_SYS_PROMPT, 'qwen-plus').then(function(summary){
+      setXwlbStatus('⏳ 已抓到 ' + titles.length + ' 条，AI 生成总结中…', 'loading');
+      callText(titles.join('\n'), XWLB_SYS_PROMPT, 'qwen-plus').then(function(summary){
         var d = { date: date, titles: titles, summary: summary, generatedAt: new Date().toISOString(), note: '前端自动抓取 + 通义千问' };
         saveXwlbCache(d); renderXwlb(d, '前端自动'); renderXwlbHistory();
       }).catch(function(err){
@@ -3817,11 +3819,10 @@ function summarizeXwlbManual(date){
   var ta = document.getElementById('xwlbManualInput');
   var text = (ta.value || '').trim();
   if(!text){ toast('请先粘贴节目单'); return; }
-  var key = getQwenKey();
-  if(!key){ toast('请先在「☁ 云同步 → 🤖 AI 引擎配置」配置通义千问 Key'); return; }
+  if(!configuredEngines().length){ toast('请先在「☁ 云同步 → 🤖 AI 引擎配置」配置任一 AI Key'); return; }
   var btn = document.getElementById('xwlbManualBtn');
   if(btn){ btn.disabled = true; btn.textContent = '⏳ 生成中…'; }
-  callQwenText(text,
+  callText(text,
     '你是资深新闻编辑，把以下《新闻联播》节目单整理成结构化每日总结，严格只输出如下 JSON（不要任何额外文字）：{"lead":"一句话导语（20字以内）","groups":[{"category":"分类名（如：国内要闻/经济发展/国际动态/社会民生/其他）","items":[{"title":"原标题","point":"一句话要点（30字以内）"}]}]}',
     'qwen-plus')
     .then(function(summary){
@@ -4025,8 +4026,8 @@ function generateXwlbInvest(){
   var themeList = Object.keys(THEME_FUNDS).map(function(k){ return k + '=' + THEME_FUNDS[k].label; }).join('；');
   var sys = '你是宏观策略分析师。根据下方《新闻联播》每日总结，判断其中蕴含的可投资方向，并为每个方向写一句话投资逻辑。严格只输出如下 JSON（不要任何额外文字）：{"themes":[{"key":"<必须且只能从上述主题列表的key中选一个>","reason":"一句话投资逻辑（30字以内）","level":"高/中/低"}]}';
   var user = '可选主题列表（key=标签）：' + themeList + '\n\n《新闻联播》每日总结：\n' + text;
-  setXwlbInvestStatus('⏳ 通义千问分析中…', 'loading');
-  callQwenText(user, sys, 'qwen-plus').then(function(out){
+  setXwlbInvestStatus('⏳ AI 分析中…', 'loading');
+  callText(user, sys, 'qwen-plus').then(function(out){
     var themes = ((out && out.themes) || []).map(function(t){
       var k = normalizeThemeKey(t.key);
       return { key: k, reason: t.reason || '', level: t.level || '中' };
@@ -4663,6 +4664,31 @@ function getGeminiKey(){
 function getQwenKey(){
   return localStorage.getItem('aurora_qwen_key') || '';
 }
+/* 多引擎配置：qwen / 智谱 GLM / DeepSeek / 豆包 / Gemini（前四个为 OpenAI 兼容协议，gemini 走独立协议） */
+var AI_ENGINES = {
+  qwen:     { label:'通义千问 VL', tag:'国内推荐', textModel:'qwen-plus',            visionModel:'qwen3-vl-flash', url:'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', keyStore:'aurora_qwen_key' },
+  zhipu:    { label:'智谱 GLM',    tag:'国内',     textModel:'glm-4-flash',          visionModel:'glm-4v-flash',   url:'https://open.bigmodel.cn/api/paas/v4/chat/completions',            keyStore:'aurora_zhipu_key' },
+  deepseek: { label:'DeepSeek',    tag:'国内',     textModel:'deepseek-chat',        visionModel:'deepseek-vl2',   url:'https://api.deepseek.com/v1/chat/completions',                     keyStore:'aurora_deepseek_key' },
+  doubao:   { label:'豆包',        tag:'国内',     textModel:'doubao-seed-1.6-32k',  visionModel:'doubao-seed-1.6-vision', url:'https://ark.cn-beijing.volces.com/api/v3/chat/completions', keyStore:'aurora_doubao_key' },
+  gemini:   { label:'Gemini Vision', tag:'需访问 Google', url:null, keyStore:'aurora_gemini_key' }
+};
+var ENGINE_ORDER = ['qwen','zhipu','deepseek','doubao','gemini'];
+function getEngineKey(eng){
+  var ks = (AI_ENGINES[eng] || {}).keyStore;
+  return ks ? (localStorage.getItem(ks) || '') : '';
+}
+function saveEngineKey(eng, key){
+  var ks = (AI_ENGINES[eng] || {}).keyStore;
+  if(ks){
+    localStorage.setItem(ks, key);
+    updateAiSettingsStatus();
+    toast(key ? (AI_ENGINES[eng].label + ' 密钥已保存') : (AI_ENGINES[eng].label + ' 密钥已清除'));
+  }
+}
+/* 已配置（有 key）的引擎，按 ENGINE_ORDER 顺序 */
+function configuredEngines(){
+  return ENGINE_ORDER.filter(function(e){ return getEngineKey(e); });
+}
 function saveGeminiKey(){
   var key = document.getElementById('geminiKey').value.trim();
   localStorage.setItem('aurora_gemini_key', key);
@@ -4677,23 +4703,23 @@ function saveQwenKey(){
 }
 function switchAiEngine(eng){
   setAiEngine(eng);
-  document.getElementById('qwenKeyBox').style.display = eng === 'qwen' ? 'block' : 'none';
-  document.getElementById('geminiKeyBox').style.display = eng === 'gemini' ? 'block' : 'none';
+  ENGINE_ORDER.forEach(function(e){
+    var box = document.getElementById(e + 'KeyBox');
+    if(box) box.style.display = (e === eng) ? 'block' : 'none';
+  });
   updateAiSettingsStatus();
-  toast(eng === 'qwen' ? '已切换到通义千问 VL' : '已切换到 Gemini Vision');
+  toast('已切换到 ' + (AI_ENGINES[eng] ? AI_ENGINES[eng].label : eng));
 }
 function syncAiSettingsUI(){
   var eng = getAiEngine();
   var engRadio = document.querySelector('input[name="aiEngine"][value="' + eng + '"]');
   if(engRadio) engRadio.checked = true;
-  var qwenBox = document.getElementById('qwenKeyBox');
-  var geminiBox = document.getElementById('geminiKeyBox');
-  if(qwenBox) qwenBox.style.display = eng === 'qwen' ? 'block' : 'none';
-  if(geminiBox) geminiBox.style.display = eng === 'gemini' ? 'block' : 'none';
-  var qwenInput = document.getElementById('qwenKey');
-  if(qwenInput) qwenInput.value = getQwenKey();
-  var geminiInput = document.getElementById('geminiKey');
-  if(geminiInput) geminiInput.value = getGeminiKey();
+  ENGINE_ORDER.forEach(function(e){
+    var box = document.getElementById(e + 'KeyBox');
+    if(box) box.style.display = (e === eng) ? 'block' : 'none';
+    var inp = document.getElementById(e + 'Key');
+    if(inp) inp.value = getEngineKey(e);
+  });
   updateAiSettingsStatus();
 }
 async function testQwenKey(){
@@ -4780,10 +4806,70 @@ async function testQwenKey(){
     btn.textContent = '🔍 测试通义千问 Key';
   }
 }
+/* 通用 OpenAI 兼容引擎 Key 测试（智谱 / DeepSeek / 豆包） */
+async function testOpenAIKey(eng){
+  var cfg = AI_ENGINES[eng];
+  if(!cfg) return;
+  var keyInput = document.getElementById(eng + 'Key');
+  var key = keyInput ? (keyInput.value || '').trim() : '';
+  if(!key){ toast('请先输入 ' + cfg.label + ' API Key'); return; }
+  localStorage.setItem(cfg.keyStore, key);
+  updateAiSettingsStatus();
+  var btn = document.getElementById(eng + 'TestBtn');
+  var hint = document.getElementById(eng + 'TestHint');
+  if(btn){ btn.disabled = true; btn.textContent = '测试中...'; }
+  if(hint){ hint.classList.remove('show'); }
+  try {
+    var resp = await Promise.race([
+      fetch(cfg.url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+        body: JSON.stringify({ model: cfg.textModel, messages: [{ role: 'user', content: 'hi' }], max_tokens: 5 })
+      }),
+      new Promise(function(_, reject){ setTimeout(function(){ reject(new Error('请求超时（15s）')); }, 15000); })
+    ]);
+    if(resp.status === 401){
+      hint.textContent = '✗ Key 无效：认证失败（401）。请检查 Key 是否完整、有无多余空格。';
+      hint.style.color = '#c0392b'; hint.classList.add('show'); return;
+    }
+    if(resp.status === 429){
+      var t429 = '';
+      try { t429 = (await resp.json()).error.message || ''; } catch(e){}
+      if(isAiBalanceError(t429)){
+        showAiBalanceWarn();
+        hint.textContent = '✗ ' + cfg.label + ' 余额不足或免费额度已用完，请到对应平台充值后重试。';
+      } else {
+        hint.textContent = '✓ Key 有效，但触发限流（429）。稍后再试或检查额度。';
+        hint.style.color = '#15A49B';
+      }
+      hint.classList.add('show'); return;
+    }
+    if(!resp.ok){
+      var errBody = '';
+      try { errBody = (await resp.json()).error.message || ''; } catch(e){}
+      if(isAiBalanceError(errBody)){
+        showAiBalanceWarn();
+        hint.textContent = '✗ ' + cfg.label + ' 余额不足或免费额度已用完，请到对应平台充值后重试。';
+      } else {
+        hint.textContent = '⚠ API 返回 ' + resp.status + (errBody ? '：' + errBody : '');
+      }
+      hint.style.color = '#c0392b'; hint.classList.add('show'); return;
+    }
+    var data = await resp.json();
+    hint.innerHTML = '✓ <b>Key 有效</b>！模型 ' + (data.model || cfg.textModel) + ' 调用成功。';
+    hint.style.color = 'var(--accent)'; hint.classList.add('show');
+    toast('✓ ' + cfg.label + ' Key 验证成功');
+  } catch(err){
+    hint.textContent = '✗ 网络错误：' + (err.message || '未知') + '。可能需要检查网络或代理设置。';
+    hint.style.color = '#c0392b'; hint.classList.add('show');
+  } finally {
+    if(btn){ btn.disabled = false; btn.textContent = '🔍 测试 ' + cfg.label + ' Key'; }
+  }
+}
 function updateAiSettingsStatus(){
   var eng = getAiEngine();
-  var key = eng === 'qwen' ? getQwenKey() : getGeminiKey();
-  var label = eng === 'qwen' ? '通义千问' : 'Gemini';
+  var key = getEngineKey(eng);
+  var label = (AI_ENGINES[eng] || {}).label || eng;
   var el = document.getElementById('aiSettingsStatus');
   if(el) el.textContent = key ? '\u2713 ' + label + ' 已配置' : '点击配置';
 }
@@ -4826,19 +4912,24 @@ function onMealPhotoSelected(input){
   };
   reader.readAsDataURL(file);
 
-  /* 2. AI analysis (optional — photo still shows if no key) */
-  var eng = getAiEngine();
-  var key = eng === 'qwen' ? getQwenKey() : getGeminiKey();
-  if(!key){
-    toast('照片已上传，未配置 AI 密钥 — 可在「☁ 云同步 → 🤖 AI 引擎配置」填写，或手动填写食物和卡路里');
+  /* 2. AI analysis (optional — photo still shows if no key) — 多引擎链：主引擎优先，失败自动回退其他已配置引擎 */
+  var primary = getAiEngine();
+  var configured = configuredEngines();
+  if(!configured.length){
+    toast('照片已上传，未配置任何 AI 密钥 — 可在「☁ 云同步 → 🤖 AI 引擎配置」填写，或手动填写食物和卡路里');
     openCloudModal();
     return;
   }
+  /* 主引擎排前，其余有 key 引擎按固定顺序跟进（去重） */
+  var chain = [];
+  if(configured.indexOf(primary) >= 0) chain.push(primary);
+  configured.forEach(function(e){ if(chain.indexOf(e) < 0) chain.push(e); });
+
   var loading = document.getElementById('aiLoading');
   var loadingText = document.getElementById('aiLoadingText');
   var resultHint = document.getElementById('aiResultHint');
   loading.classList.add('show');
-  loadingText.textContent = (eng === 'qwen' ? '通义千问' : 'Gemini') + ' AI 识别中...';
+  loadingText.textContent = (AI_ENGINES[chain[0]] ? AI_ENGINES[chain[0]].label : chain[0]) + ' AI 识别中...';
   resultHint.classList.remove('show');
   resultHint.style.color = 'var(--text-3)';
 
@@ -4850,29 +4941,36 @@ function onMealPhotoSelected(input){
       return;
     }
     var base64 = dataUrl.split(',')[1];
-    var primaryFn = eng === 'qwen' ? analyzeMealPhotoQwen : analyzeMealPhotoGemini;
 
-    function tryAnalyze(fn, keyArg, engineLabel, isFallback){
-      fn(base64, keyArg, function(err, result){
-        if(!err){ onSuccess(result, engineLabel); return; }
-
-        /* If primary engine failed (NOT user-fixable like bad key), auto-fallback to the other engine */
-        var fallbackEngine = eng === 'qwen' ? 'gemini' : 'qwen';
-        var fallbackKey = fallbackEngine === 'gemini' ? getGeminiKey() : getQwenKey();
-        if(!isFallback && fallbackKey && err.indexOf('密钥') < 0 && err.indexOf('Key') < 0){
-          var fbFn = fallbackEngine === 'gemini' ? analyzeMealPhotoGemini : analyzeMealPhotoQwen;
-          var fbLabel = fallbackEngine === 'qwen' ? '通义千问' : 'Gemini';
-          loadingText.textContent = '主引擎(' + engineLabel + ')失败，自动切换 ' + fbLabel + ' 重试...';
-          toast('自动切换 ' + fbLabel + ' 重试');
-          tryAnalyze(fbFn, fallbackKey, fbLabel, true);
-          return;
-        }
-
+    function tryEngineChain(idx){
+      if(idx >= chain.length){
         loading.classList.remove('show');
-        resultHint.textContent = '⚠ ' + err + (isFallback ? '（已尝试双引擎）' : '');
+        resultHint.textContent = '⚠ 所有已配置 AI 引擎均失败（已尝试：' + chain.map(function(e){ return (AI_ENGINES[e]||{}).label||e; }).join(' / ') + '），请手动填写';
         resultHint.style.color = '#c0392b';
         resultHint.classList.add('show');
         toast('AI 分析失败，请手动填写');
+        return;
+      }
+      var eng = chain[idx];
+      var label = (AI_ENGINES[eng] || {}).label || eng;
+      if(idx > 0){
+        loadingText.textContent = '切换 ' + label + ' 重试中...';
+        toast('主引擎失败，自动切换 ' + label + ' 重试');
+      }
+      analyzeMealPhoto(base64, eng, function(err, result){
+        if(!err){ onSuccess(result, label); return; }
+        /* 密钥类错误是用户侧问题，不再继续尝试 */
+        if(err.indexOf('密钥') >= 0 || err.indexOf('Key') >= 0 || err.indexOf('认证') >= 0){
+          if(idx === chain.length - 1){
+            loading.classList.remove('show');
+            resultHint.textContent = '⚠ ' + err;
+            resultHint.style.color = '#c0392b';
+            resultHint.classList.add('show');
+            toast('AI 分析失败，请手动填写');
+            return;
+          }
+        }
+        tryEngineChain(idx + 1);
       });
     }
 
@@ -4890,7 +4988,7 @@ function onMealPhotoSelected(input){
       toast('AI 识别完成，请确认后保存');
     }
 
-    tryAnalyze(primaryFn, key, eng === 'qwen' ? '通义千问' : 'Gemini', false);
+    tryEngineChain(0);
   });
 }
 
@@ -5047,6 +5145,123 @@ function analyzeMealPhotoGemini(base64, key, cb){
     });
   }
   tryModel();
+}
+
+/* --- OpenAI 兼容视觉模型（智谱 / DeepSeek / 豆包 通用） --- */
+function analyzeMealPhotoOpenAI(base64, key, cb, apiUrl, model){
+  var promptText = getMealPrompt();
+  var url = apiUrl;
+  var body = JSON.stringify({
+    model: model,
+    messages: [{
+      role: 'user',
+      content: [
+        { type: 'text', text: promptText },
+        { type: 'image_url', image_url: { url: 'data:image/jpeg;base64,' + stripBase64Prefix(base64) } }
+      ]
+    }],
+    temperature: 0.1
+  });
+  Promise.race([
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+      body: body
+    }),
+    new Promise(function(_, reject){ setTimeout(function(){ reject(new Error('请求超时（25s）')); }, 25000); })
+  ]).then(function(res){
+    if(res.status === 401) throw new Error('密钥无效');
+    if(res.status === 429){
+      return res.text().then(function(t){
+        if(isAiBalanceError(t)){ showAiBalanceWarn(); throw new Error('额度/余额不足'); }
+        throw new Error('限流（429），请稍后再试');
+      });
+    }
+    if(!res.ok){
+      return res.text().then(function(t){
+        if(isAiBalanceError(t)){ showAiBalanceWarn(); throw new Error('余额不足或免费额度已用完'); }
+        var msg = 'API 返回 ' + res.status;
+        try { msg += '：' + (JSON.parse(t).error.message || t); } catch(e){ if(t) msg += '：' + t; }
+        throw new Error(msg);
+      });
+    }
+    return res.json();
+  }).then(function(data){
+    if(!data || !data.choices || !data.choices[0]) throw new Error('未返回结果');
+    var text = data.choices[0].message.content || '';
+    text = text.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
+    cb(null, parseMealResult(text));
+  }).catch(function(err){
+    cb(err.message || '网络错误');
+  });
+}
+
+/* --- 引擎路由（视觉） --- */
+function analyzeMealPhoto(base64, eng, cb){
+  var key = getEngineKey(eng);
+  if(eng === 'qwen') return analyzeMealPhotoQwen(base64, key, cb);
+  if(eng === 'gemini') return analyzeMealPhotoGemini(base64, key, cb);
+  var cfg = AI_ENGINES[eng];
+  if(cfg && cfg.url) return analyzeMealPhotoOpenAI(base64, key, cb, cfg.url, cfg.visionModel);
+  cb('未支持的引擎：' + eng);
+}
+
+/* --- OpenAI 兼容文本调用（智谱 / DeepSeek / 豆包） --- */
+function callTextOpenAI(userPrompt, sysPrompt, key, apiUrl, model){
+  if(!key) return Promise.reject(new Error('未配置密钥'));
+  return Promise.race([
+    fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+      body: JSON.stringify({
+        model: model,
+        messages: [
+          { role: 'system', content: sysPrompt || '你是新闻编辑。' },
+          { role: 'user', content: userPrompt }
+        ],
+        temperature: 0.3,
+        response_format: { type: 'json_object' }
+      })
+    }),
+    new Promise(function(_, reject){ setTimeout(function(){ reject(new Error('请求超时（20s）')); }, 20000); })
+  ]).then(function(resp){
+    if(!resp.ok){
+      return resp.text().then(function(t){
+        if(isAiBalanceError(t)){ showAiBalanceWarn(); }
+        var msg = 'HTTP ' + resp.status;
+        try { msg += '：' + (JSON.parse(t).error.message || t); } catch(e){ if(t) msg += '：' + t; }
+        throw new Error(msg);
+      });
+    }
+    return resp.json();
+  }).then(function(data){
+    if(data.error) throw new Error(data.error.message || 'API 错误');
+    return JSON.parse(data.choices[0].message.content);
+  });
+}
+
+/* --- 文本调用统一入口（含多引擎回退，不含 gemini 文本协议） --- */
+function callText(userPrompt, sysPrompt, model){
+  var primary = getAiEngine();
+  var configured = configuredEngines().filter(function(e){ return e !== 'gemini'; });
+  if(!configured.length) return Promise.reject(new Error('未配置任何可用 AI 文本引擎 Key'));
+  var chain = [];
+  if(configured.indexOf(primary) >= 0) chain.push(primary);
+  configured.forEach(function(e){ if(chain.indexOf(e) < 0) chain.push(e); });
+  function step(idx){
+    var eng = chain[idx];
+    var p;
+    if(eng === 'qwen') p = callQwenText(userPrompt, sysPrompt, model || 'qwen-plus');
+    else { var cfg = AI_ENGINES[eng]; p = callTextOpenAI(userPrompt, sysPrompt, getEngineKey(eng), cfg.url, model || cfg.textModel); }
+    return p.catch(function(err){
+      if(idx < chain.length - 1){
+        console.log('[AI text] ' + eng + ' 失败：' + (err.message || err) + '，切换下一引擎');
+        return step(idx + 1);
+      }
+      throw err;
+    });
+  }
+  return step(0);
 }
 
 /* Local food calorie DB for quick reference (fallback) */
@@ -9062,9 +9277,21 @@ window.addEventListener('DOMContentLoaded', init);
               <input type="radio" name="aiEngine" value="qwen" onchange="switchAiEngine('qwen')">
               <span>通义千问 VL<span class="ai-engine-tag">国内推荐</span></span>
             </label>
+            <label class="ai-engine-opt" id="engineOptZhipu">
+              <input type="radio" name="aiEngine" value="zhipu" onchange="switchAiEngine('zhipu')">
+              <span>智谱 GLM<span class="ai-engine-tag">国内</span></span>
+            </label>
+            <label class="ai-engine-opt" id="engineOptDeepseek">
+              <input type="radio" name="aiEngine" value="deepseek" onchange="switchAiEngine('deepseek')">
+              <span>DeepSeek<span class="ai-engine-tag">国内</span></span>
+            </label>
+            <label class="ai-engine-opt" id="engineOptDoubao">
+              <input type="radio" name="aiEngine" value="doubao" onchange="switchAiEngine('doubao')">
+              <span>豆包<span class="ai-engine-tag">国内</span></span>
+            </label>
             <label class="ai-engine-opt" id="engineOptGemini">
               <input type="radio" name="aiEngine" value="gemini" onchange="switchAiEngine('gemini')">
-              <span>Gemini Vision</span>
+              <span>Gemini Vision<span class="ai-engine-tag">需访问 Google</span></span>
             </label>
           </div>
 
@@ -9091,6 +9318,45 @@ window.addEventListener('DOMContentLoaded', init);
               1. 打开 <a href="https://aistudio.google.com/apikey" target="_blank">Google AI Studio</a> 免费获取密钥<br>
               2. 粘贴到上方输入框，点击空白处即自动保存<br>
               3. 需要能访问 Google 服务
+            </div>
+          </div>
+
+          <!-- 智谱 GLM Key -->
+          <div id="zhipuKeyBox" style="display:none;">
+            <label class="form-label">智谱 GLM API Key（bigmodel）</label>
+            <input type="password" id="zhipuKey" placeholder="粘贴你的智谱 API Key" onblur="saveEngineKey('zhipu', (this.value||'').trim())">
+            <button class="ai-test-btn" onclick="testOpenAIKey('zhipu')" id="zhipuTestBtn">🔍 测试智谱 GLM Key</button>
+            <div class="ai-test-hint" id="zhipuTestHint"></div>
+            <div class="ai-help">
+              1. 打开 <a href="https://open.bigmodel.cn/usercenter/apikeys" target="_blank">智谱开放平台</a> 创建 API Key<br>
+              2. 粘贴到上方输入框，点空白处自动保存<br>
+              3. 视觉模型默认 glm-4v-flash，文本默认 glm-4-flash
+            </div>
+          </div>
+
+          <!-- DeepSeek Key -->
+          <div id="deepseekKeyBox" style="display:none;">
+            <label class="form-label">DeepSeek API Key</label>
+            <input type="password" id="deepseekKey" placeholder="粘贴你的 DeepSeek API Key" onblur="saveEngineKey('deepseek', (this.value||'').trim())">
+            <button class="ai-test-btn" onclick="testOpenAIKey('deepseek')" id="deepseekTestBtn">🔍 测试 DeepSeek Key</button>
+            <div class="ai-test-hint" id="deepseekTestHint"></div>
+            <div class="ai-help">
+              1. 打开 <a href="https://platform.deepseek.com/api_keys" target="_blank">DeepSeek 平台</a> 创建 API Key<br>
+              2. 粘贴到上方输入框，点空白处自动保存<br>
+              3. 视觉模型默认 deepseek-vl2，文本默认 deepseek-chat
+            </div>
+          </div>
+
+          <!-- 豆包 Key -->
+          <div id="doubaoKeyBox" style="display:none;">
+            <label class="form-label">豆包 API Key（火山方舟）</label>
+            <input type="password" id="doubaoKey" placeholder="粘贴你的豆包 API Key" onblur="saveEngineKey('doubao', (this.value||'').trim())">
+            <button class="ai-test-btn" onclick="testOpenAIKey('doubao')" id="doubaoTestBtn">🔍 测试豆包 Key</button>
+            <div class="ai-test-hint" id="doubaoTestHint"></div>
+            <div class="ai-help">
+              1. 打开 <a href="https://console.volcengine.com/ark" target="_blank">火山方舟控制台</a> 创建 API Key<br>
+              2. 粘贴到上方输入框，点空白处自动保存<br>
+              3. 视觉模型默认 doubao-seed-1.6-vision，文本默认 doubao-seed-1.6-32k
             </div>
           </div>
         </div>
