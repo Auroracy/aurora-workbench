@@ -31,6 +31,14 @@ const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
 
+// 进程级异常兜底：单请求抛错不再拖垮整个服务（仅记录，不退出）
+process.on('uncaughtException', function (e) {
+  console.error('[uncaughtException] 已捕获，进程继续运行：', (e && e.stack) || e);
+});
+process.on('unhandledRejection', function (reason) {
+  console.error('[unhandledRejection] 已捕获：', (reason && reason.stack) || reason);
+});
+
 const PORT = parseInt(process.env.PORT || '8080', 10);
 const HOST = process.env.HOST || '0.0.0.0';
 const ROOT = __dirname;
