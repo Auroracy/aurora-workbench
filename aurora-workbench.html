@@ -1710,48 +1710,38 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
 @media(max-width:560px){
   .invest-card-head{flex-direction:column;align-items:flex-start;gap:4px;}
 }
-/* ====== Tab 10: 梦想金库 · 财富启蒙 ====== */
+/* ====== 梦想清单：行内编辑（永不展开） ====== */
 .dream-tip{font-size:13px;color:var(--text-2);line-height:1.6;background:var(--input-bg);border-left:3px solid var(--accent);padding:8px 12px;border-radius:6px;margin:10px 0 14px;}
-.dream-list{display:flex;flex-direction:column;gap:8px;}
-
-/* ---- 紧凑列表视图（默认） ---- */
-.dream-item{display:flex;align-items:center;gap:8px;background:var(--input-bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;transition:all .2s;cursor:pointer;position:relative;}
+.dream-list{display:flex;flex-direction:column;gap:6px;}
+.dream-item{display:flex;align-items:center;gap:8px;background:var(--input-bg);border:1px solid var(--border);border-radius:10px;padding:8px 10px;transition:border-color .2s;}
 .dream-item:hover{border-color:var(--accent);}
 .dream-item.core{border-color:var(--amber,#E8A33D);background:#FFF8EC;}
-.dream-item.editing{cursor:default;flex-direction:column;align-items:stretch;gap:10px;}
-.dream-no{flex:0 0 auto;width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;shrink:0;}
+.dream-no{flex:0 0 auto;width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;shrink:0;}
 .dream-item.core .dream-no{background:var(--amber,#E8A33D);}
 
-/* 梦想文字行 */
-.dream-text-row{flex:1 1 auto;display:flex;align-items:center;gap:8px;min-width:0;overflow:hidden;}
-.dream-text{flex:1 1 auto;font-size:14px;line-height:1.4;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
-.dream-text.empty{color:var(--text-3,#bbb);font-style:italic;}
-.dream-item.editing .dream-text{display:none;}
+/* 文字区：默认显示文字，点击后原地变输入框 */
+.dream-text-cell{flex:1 1 auto;display:flex;align-items:center;min-width:0;overflow:hidden;}
+.dream-text-label{flex:1 1 auto;font-size:14px;line-height:1.4;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:text;min-width:0;padding:2px 4px;border-radius:4px;transition:background .15s;}
+.dream-text-label:hover{background:rgba(0,0,0,.04);}
+.dream-text-label.empty{color:var(--text-3,#bbb);font-style:italic;}
+.dream-text-input{flex:1 1 auto;border:1px solid var(--accent);background:#fff;font-size:14px;line-height:1.4;color:var(--text);outline:none;font-family:inherit;border-radius:6px;padding:3px 6px;min-width:0;display:none;}
+.dream-text-input.active{display:block;}
 
-/* 分类标签（紧凑模式显示为 tag） */
-.dream-cat-tag{flex:0 0 auto;font-size:11px;padding:2px 8px;border-radius:20px;background:rgba(46,134,193,.08);color:var(--accent);white-space:nowrap;shrink:0;font-weight:500;}
+/* 分类标签：点击循环切换 */
+.dream-cat-tag{flex:0 0 auto;font-size:11px;padding:2px 7px;border-radius:20px;white-space:nowrap;shrink:0;font-weight:500;cursor:pointer;transition:opacity .15s;user-select:none;}
+.dream-cat-tag:hover{opacity:.75;}
 .dream-cat-tag.cat-成长{background:rgba(46,134,193,.08);color:#2E86C1;}
 .dream-cat-tag.cat-物质{background:rgba(232,163,61,.1);color:#B8860B;}
 .dream-cat-tag.cat-体验{background:rgba(155,89,182,.08);color:#9B59B6;}
 .dream-cat-tag.cat-关系{background:rgba(231,76,60,.08);color:#E74C3C;}
 .dream-cat-tag.cat-财务{background:rgba(39,174,96,.08);color:#27AE60;}
-.dream-item.editing .dream-cat-tag{display:none;}
 
-/* 操作按钮区 */
-.dream-actions{flex:0 0 auto;display:flex;align-items:center;gap:4px;shrink:0;}
-.dream-core-btn{cursor:pointer;border:1px solid var(--border);background:#fff;border-radius:16px;padding:3px 8px;font-size:11px;color:var(--text-2);white-space:nowrap;transition:all .2s;line-height:1.4;}
+/* 操作按钮 */
+.dream-actions{flex:0 0 auto;display:flex;align-items:center;gap:2px;shrink:0;}
+.dream-core-btn{cursor:pointer;border:1px solid var(--border);background:#fff;border-radius:16px;padding:3px 7px;font-size:11px;color:var(--text-2);white-space:nowrap;transition:all .2s;line-height:1.4;}
 .dream-core-btn.on{background:var(--amber,#E8A33D);border-color:var(--amber,#E8A33D);color:#fff;}
-.dream-del{cursor:pointer;border:none;background:transparent;color:var(--text-2);font-size:15px;padding:2px 4px;line-height:1;opacity:.5;transition:opacity .2s;}
+.dream-del{cursor:pointer;border:none;background:transparent;color:var(--text-2);font-size:15px;padding:2px 4px;line-height:1;opacity:.45;transition:opacity .15s;}
 .dream-del:hover{opacity:1;color:#e25b5b;}
-
-/* ---- 展开编辑模式 ---- */
-.dream-edit-body{display:none;width:100%;}
-.dream-item.editing .dream-edit-body{display:block;}
-.dream-edit-main{display:flex;align-items:flex-start;gap:8px;width:100%;}
-.dream-edit-main textarea{flex:1 1 auto;border:1px solid var(--border);background:#fff;resize:vertical;min-height:22px;font-size:14px;line-height:1.5;color:var(--text);outline:none;font-family:inherit;border-radius:6px;padding:6px 8px;}
-.dream-edit-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;width:100%;margin-top:6px;}
-.dream-edit-meta select{font-size:12px;padding:4px 6px;border-radius:6px;}
-.dream-edit-meta input{flex:1 1 auto;min-width:0;font-size:12px;padding:4px 8px;border-radius:6px;}
 
 /* 空状态 */
 .dream-empty-state{text-align:center;padding:28px 16px;color:var(--text-2);}
@@ -3397,8 +3387,7 @@ function initWealth(){
   renderSuccessDiary();
 }
 
-/* ---- 模块1：梦想清单（紧凑列表 + 点击展开编辑） ---- */
-var _editingDreamId = null;  // 当前正在编辑的 dream id（同时只展开一个）
+/* ---- 模块1：梦想清单（行内编辑，永不展开） ---- */
 function renderDreamList(){
   var list = wealth().dreamList;
   var coreCount = list.filter(function(d){ return d.core; }).length;
@@ -3416,30 +3405,66 @@ function renderDreamList(){
     return;
   }
 
+  var catCycle = WEALTH_CATEGORIES.slice(); // 分类循环列表
   var coreSeq = 0;
   list.forEach(function(d, i){
     if(d.core) coreSeq++;
-    var isEditing = (_editingDreamId === d.id);
     var item = document.createElement('div');
-    item.className = 'dream-item' + (d.core ? ' core' : '') + (isEditing ? ' editing' : '');
+    item.className = 'dream-item' + (d.core ? ' core' : '');
 
-    /* --- 紧凑行（默认显示） --- */
-    var row = document.createElement('div');
-    row.className = 'dream-text-row';
-
+    /* 序号 */
     var no = document.createElement('div'); no.className = 'dream-no'; no.textContent = (i + 1);
+    item.appendChild(no);
 
-    var text = document.createElement('div'); text.className = 'dream-text' + (d.text ? '' : ' empty');
-    text.textContent = d.text || ('第 ' + (i + 1) + ' 个理由…');
+    /* 文字单元格：label（显示态）+ input（编辑态，原地切换） */
+    var textCell = document.createElement('div'); textCell.className = 'dream-text-cell';
 
+    var label = document.createElement('div');
+    label.className = 'dream-text-label' + (d.text ? '' : ' empty');
+    label.textContent = d.text || ('第 ' + (i + 1) + ' 个理由…');
+
+    var inp = document.createElement('input');
+    inp.type = 'text'; inp.className = 'dream-text-input';
+    inp.placeholder = '写下你的梦想…';
+    inp.value = d.text || '';
+
+    /* 点击文字 → 切换为输入框 */
+    label.onclick = function(){
+      label.style.display = 'none';
+      inp.classList.add('active');
+      inp.focus(); inp.select();
+    };
+    /* 输入框失焦或回车 → 切回文字 */
+    inp.onblur = finishEdit;
+    inp.onkeydown = function(e){ if(e.key === 'Enter'){ e.preventDefault(); inp.blur(); } };
+    function finishEdit(){
+      d.text = inp.value.trim();
+      saveDb();
+      label.textContent = d.text || ('第 ' + (list.indexOf(d) + 1) + ' 个理由…');
+      label.className = 'dream-text-label' + (d.text ? '' : ' empty');
+      label.style.display = '';
+      inp.classList.remove('active');
+    }
+
+    textCell.appendChild(label); textCell.appendChild(inp);
+    item.appendChild(textCell);
+
+    /* 分类标签：点击循环切换 */
     var catTag = document.createElement('span');
+    var catIdx = Math.max(0, catCycle.indexOf(d.category));
     catTag.className = 'dream-cat-tag cat-' + (d.category ? d.category.replace(/^[^\s]+\s/,'') : '');
     catTag.textContent = d.category || '未分类';
+    catTag.onclick = function(){
+      catIdx = (catIdx + 1) % catCycle.length;
+      d.category = catCycle[catIdx];
+      saveDb();
+      catTag.textContent = d.category;
+      catTag.className = 'dream-cat-tag cat-' + (d.category.replace(/^[^\s]+\s/,''));
+    };
 
-    row.appendChild(no); row.appendChild(text); row.appendChild(catTag);
-    item.appendChild(row);
+    item.appendChild(catTag);
 
-    /* --- 操作按钮 --- */
+    /* 操作按钮 */
     var actions = document.createElement('div'); actions.className = 'dream-actions';
     var coreBtn = document.createElement('button');
     coreBtn.className = 'dream-core-btn' + (d.core ? ' on' : '');
@@ -3454,51 +3479,6 @@ function renderDreamList(){
     actions.appendChild(coreBtn); actions.appendChild(del);
     item.appendChild(actions);
 
-    /* --- 展开编辑区（默认隐藏） --- */
-    var editBody = document.createElement('div'); editBody.className = 'dream-edit-body';
-    var editMain = document.createElement('div'); editMain.className = 'dream-edit-main';
-    var ta = document.createElement('textarea');
-    ta.rows = 2; ta.placeholder = '写下你的梦想…';
-    ta.value = d.text || '';
-    ta.oninput = function(){ d.text = ta.value; saveDb();
-      /* 同步更新紧凑行文字 */
-      text.textContent = d.text || ('第 ' + (list.indexOf(d) + 1) + ' 个理由…');
-      text.className = 'dream-text' + (d.text ? '' : ' empty');
-    };
-    editMain.appendChild(ta);
-    editBody.appendChild(editMain);
-
-    var meta = document.createElement('div'); meta.className = 'dream-edit-meta';
-    var cat = document.createElement('select'); cat.className = 'form-input dream-cat-edit';
-    WEALTH_CATEGORIES.forEach(function(c){
-      var o = document.createElement('option'); o.value = c; o.textContent = c;
-      if((d.category || '') === c) o.selected = true;
-      cat.appendChild(o);
-    });
-    cat.onchange = function(){ d.category = cat.value; saveDb();
-      catTag.textContent = d.category;
-      catTag.className = 'dream-cat-tag cat-' + (d.category ? d.category.replace(/^[^\s]+\s/,'') : '');
-    };
-    var why = document.createElement('input'); why.type = 'text'; why.className = 'form-input dream-why-edit';
-    why.placeholder = '为什么想要？（具体画面）';
-    why.value = d.reason || '';
-    why.oninput = function(){ d.reason = why.value; saveDb(); };
-    meta.appendChild(cat); meta.appendChild(why);
-    editBody.appendChild(meta);
-    item.appendChild(editBody);
-
-    /* 点击切换编辑模式 */
-    item.onclick = function(e){
-      if(e.target.closest('.dream-core-btn') || e.target.closest('.dream-del')) return;
-      if(_editingDreamId === d.id){ _editingDreamId = null; }
-      else { _editingDreamId = d.id; }
-      renderDreamList();
-      /* 如果刚展开编辑，聚焦 textarea */
-      if(_editingDreamId === d.id){
-        setTimeout(function(){ ta.focus(); }, 50);
-      }
-    };
-
     box.appendChild(item);
   });
   renderAlbums(); renderPiggy(); renderWealthOverview();
@@ -3508,8 +3488,12 @@ function addDream(){
   if(list.length >= WEALTH_DREAM_MAX){ alert('最多写 ' + WEALTH_DREAM_MAX + ' 条理由哦'); return; }
   var nd = { id: 'd' + Date.now() + Math.floor(Math.random() * 1000), text: '', core: false };
   list.push(nd);
-  _editingDreamId = nd.id;   // 自动展开新条目
   saveDb(); renderDreamList();
+  /* 新增后自动聚焦该条目的输入框 */
+  setTimeout(function(){
+    var inputs = document.querySelectorAll('.dream-text-input');
+    if(inputs.length) { var last = inputs[inputs.length - 1]; last.classList.add('active'); last.focus(); last.previousElementSibling.style.display = 'none'; }
+  }, 80);
 }
 function delDream(id){
   var list = wealth().dreamList;
