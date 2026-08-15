@@ -76,6 +76,8 @@ function initStore() {
       redisClient.connect().then(function () {
         redisMode = true;
         console.log('[store] Redis 已连接：', REDIS_URL);
+        /* 自动迁移：如果 Redis 为空但 JSON 文件有数据，则导入 */
+        migrateJsonToRedis();
       }).catch(function (e) {
         console.warn('[store] Redis 连接失败，降级 JSON 文件：', e.message);
         redisClient = null;
@@ -117,6 +119,27 @@ async function dbSet(dataStr) {
     if (!fs.existsSync(path.join(ROOT, 'data'))) fs.mkdirSync(path.join(ROOT, 'data'), { recursive: true });
     fs.writeFileSync(DB_FILE, dataStr, 'utf8');
   } catch (e) { throw new Error('写文件失败：' + e.message); }
+}
+
+/* 启动时自动迁移：Redis 空但 JSON 文件有数据 → 导入 Redis */
+async function migrateJsonToRedis() {
+  if (!redisMode || !redisClient || !redisClient.isReady) return;
+  try {
+    const redisData = await redisClient.get(DATA_KEY);
+    if (redisData) { console.log('[migrate] Redis 已有数据，跳过迁移'); return; }
+    /* Redis 为空，检查 JSON 文件 */
+    let jsonData = '';
+    try { jsonData = fs.readFileSync(DB_FILE, 'utf8'); } catch (e) { /* 文件不存在 */ }
+    if (!jsonData || jsonData === '{}' || jsonData.trim() === '') {
+      console.log('[migrate] JSON 文件也为空，无需迁移');
+      return;
+    }
+    /* 有旧数据 → 写入 Redis */
+    await redisClient.set(DATA_KEY, jsonData);
+    console.log('[migrate] ✓ 已将 JSON 文件数据迁移到 Redis（', (jsonData.length / 1024).toFixed(1), 'KB ）');
+  } catch (e) {
+    console.error('[migrate] 迁移失败（不影响启动）:', e.message);
+  }
 }
 
 function sendJSON(res, status, obj, extra) {
