@@ -36,42 +36,45 @@ export default {
       return new Response(null, { headers: corsHeaders });
     }
 
-    // === /sge 上金所 Au99.99 ===
+    // === /sge 上金所 Au99.99 国内基准金价 ===
+    //   数据源：东方财富行情接口（push2delay 主用，push2 兜底），免鉴权、实时
+    //   secid 118.AU9999 = 上海黄金交易所现货频道 Au99.99，单位「元/克」，接口编码 ×100
     if (url.pathname === '/sge') {
       try {
-        const upstream = await fetch('https://hq.sinajs.cn/list=SGE_AU9999', {
-          headers: {
-            'Referer': 'https://finance.sina.com.cn/',
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
-          },
-        });
-        if (!upstream.ok) {
-          return json({ error: 'SGE upstream HTTP ' + upstream.status }, 502, corsHeaders);
+        const SECID = '118.AU9999';
+        const HOSTS = ['push2delay.eastmoney.com', 'push2.eastmoney.com'];
+        let lastErr = null;
+        for (const host of HOSTS) {
+          try {
+            const target = 'https://' + host +
+              '/api/qt/stock/get?secid=' + SECID +
+              '&fields=f43,f44,f45,f60,f86,f169,f170,f58';
+            const upstream = await fetch(target, {
+              headers: { 'Referer': 'https://quote.eastmoney.com/' },
+            });
+            if (!upstream.ok) { lastErr = 'HTTP ' + upstream.status; continue; }
+            const j = await upstream.json();
+            const d = j && j.data;
+            if (!d || d.f43 == null) { lastErr = 'empty data'; continue; }
+            const price = d.f43 / 100;   // 元/克
+            const prev = d.f60 / 100;    // 昨收 元/克
+            const chg = d.f169 / 100;    // 涨跌额 元/克
+            const chgPct = d.f170 / 100; // 涨跌幅 %
+            return json({
+              price: round2(price),
+              prev: round2(prev),
+              chg: round2(chg),
+              chgPct: round2(chgPct),
+              name: d.f58 || 'SGE Au99.99',
+              unit: '元/克',
+              high: round2((d.f44 || 0) / 100),
+              low: round2((d.f45 || 0) / 100),
+              time: d.f86 || '',
+              ts: Date.now(),
+            }, 200, corsHeaders);
+          } catch (e) { lastErr = String(e && e.message || e); }
         }
-        const buf = await upstream.arrayBuffer();
-        const text = new TextDecoder('gb18030').decode(buf);
-        const m = text.match(/="([^"]*)"/);
-        if (!m) {
-          return json({ error: 'parse failed', raw: text.slice(0, 200) }, 502, corsHeaders);
-        }
-        const parts = m[1].split(',');
-        const price = parseFloat(parts[3]);
-        const chgPct = parseFloat(String(parts[17] || '').replace('%', '').trim());
-        if (!isFinite(price) || price <= 0) {
-          return json({ error: 'invalid price', parts: parts.slice(0, 20) }, 502, corsHeaders);
-        }
-        const chg = isFinite(chgPct) ? (price * chgPct / 100) : 0;
-        const prev = price - chg;
-        return json({
-          price: round2(price),
-          prev: round2(prev),
-          chg: round2(chg),
-          chgPct: isFinite(chgPct) ? round2(chgPct) : 0,
-          name: parts[1] || 'SGE Au99.99',
-          unit: '元/克',
-          time: parts[16] || '',
-          ts: Date.now(),
-        }, 200, corsHeaders);
+        return json({ error: 'SGE 上游全部失败', detail: lastErr }, 502, corsHeaders);
       } catch (e) {
         return json({ error: String(e && e.message || e) }, 500, corsHeaders);
       }

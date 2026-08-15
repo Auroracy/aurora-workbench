@@ -2,3 +2,4 @@
 chenqingning-workbench.html
 *.tmp
 .DS_Store
+data/

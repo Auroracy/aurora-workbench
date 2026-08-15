@@ -1712,16 +1712,52 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
 }
 /* ====== Tab 10: 梦想金库 · 财富启蒙 ====== */
 .dream-tip{font-size:13px;color:var(--text-2);line-height:1.6;background:var(--input-bg);border-left:3px solid var(--accent);padding:8px 12px;border-radius:6px;margin:10px 0 14px;}
-.dream-list{display:flex;flex-direction:column;gap:10px;}
-.dream-item{display:flex;align-items:flex-start;gap:10px;background:var(--input-bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;transition:border-color .2s,background .2s;}
-.dream-item.core{border-color:var(--amber,#E8A33D);background:#FFF8EC;box-shadow:0 0 0 1px var(--amber,#E8A33D) inset;}
-.dream-no{flex:0 0 auto;width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;}
+.dream-list{display:flex;flex-direction:column;gap:8px;}
+
+/* ---- 紧凑列表视图（默认） ---- */
+.dream-item{display:flex;align-items:center;gap:8px;background:var(--input-bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;transition:all .2s;cursor:pointer;position:relative;}
+.dream-item:hover{border-color:var(--accent);}
+.dream-item.core{border-color:var(--amber,#E8A33D);background:#FFF8EC;}
+.dream-item.editing{cursor:default;flex-direction:column;align-items:stretch;gap:10px;}
+.dream-no{flex:0 0 auto;width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;shrink:0;}
 .dream-item.core .dream-no{background:var(--amber,#E8A33D);}
-.dream-item textarea{flex:1 1 auto;border:none;background:transparent;resize:vertical;min-height:22px;font-size:14px;line-height:1.5;color:var(--text);outline:none;font-family:inherit;}
-.dream-core-btn{flex:0 0 auto;align-self:center;cursor:pointer;border:1px solid var(--border);background:#fff;border-radius:20px;padding:5px 10px;font-size:12px;color:var(--text-2);white-space:nowrap;transition:all .2s;}
+
+/* 梦想文字行 */
+.dream-text-row{flex:1 1 auto;display:flex;align-items:center;gap:8px;min-width:0;overflow:hidden;}
+.dream-text{flex:1 1 auto;font-size:14px;line-height:1.4;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
+.dream-text.empty{color:var(--text-3,#bbb);font-style:italic;}
+.dream-item.editing .dream-text{display:none;}
+
+/* 分类标签（紧凑模式显示为 tag） */
+.dream-cat-tag{flex:0 0 auto;font-size:11px;padding:2px 8px;border-radius:20px;background:rgba(46,134,193,.08);color:var(--accent);white-space:nowrap;shrink:0;font-weight:500;}
+.dream-cat-tag.cat-成长{background:rgba(46,134,193,.08);color:#2E86C1;}
+.dream-cat-tag.cat-物质{background:rgba(232,163,61,.1);color:#B8860B;}
+.dream-cat-tag.cat-体验{background:rgba(155,89,182,.08);color:#9B59B6;}
+.dream-cat-tag.cat-关系{background:rgba(231,76,60,.08);color:#E74C3C;}
+.dream-cat-tag.cat-财务{background:rgba(39,174,96,.08);color:#27AE60;}
+.dream-item.editing .dream-cat-tag{display:none;}
+
+/* 操作按钮区 */
+.dream-actions{flex:0 0 auto;display:flex;align-items:center;gap:4px;shrink:0;}
+.dream-core-btn{cursor:pointer;border:1px solid var(--border);background:#fff;border-radius:16px;padding:3px 8px;font-size:11px;color:var(--text-2);white-space:nowrap;transition:all .2s;line-height:1.4;}
 .dream-core-btn.on{background:var(--amber,#E8A33D);border-color:var(--amber,#E8A33D);color:#fff;}
-.dream-del{flex:0 0 auto;align-self:center;cursor:pointer;border:none;background:transparent;color:var(--text-2);font-size:16px;padding:2px 6px;}
-.dream-del:hover{color:#e25b5b;}
+.dream-del{cursor:pointer;border:none;background:transparent;color:var(--text-2);font-size:15px;padding:2px 4px;line-height:1;opacity:.5;transition:opacity .2s;}
+.dream-del:hover{opacity:1;color:#e25b5b;}
+
+/* ---- 展开编辑模式 ---- */
+.dream-edit-body{display:none;width:100%;}
+.dream-item.editing .dream-edit-body{display:block;}
+.dream-edit-main{display:flex;align-items:flex-start;gap:8px;width:100%;}
+.dream-edit-main textarea{flex:1 1 auto;border:1px solid var(--border);background:#fff;resize:vertical;min-height:22px;font-size:14px;line-height:1.5;color:var(--text);outline:none;font-family:inherit;border-radius:6px;padding:6px 8px;}
+.dream-edit-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;width:100%;margin-top:6px;}
+.dream-edit-meta select{font-size:12px;padding:4px 6px;border-radius:6px;}
+.dream-edit-meta input{flex:1 1 auto;min-width:0;font-size:12px;padding:4px 8px;border-radius:6px;}
+
+/* 空状态 */
+.dream-empty-state{text-align:center;padding:28px 16px;color:var(--text-2);}
+.dream-empty-icon{font-size:40px;margin-bottom:8px;}
+.dream-empty-title{font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px;}
+.dream-empty-hint{font-size:12px;color:var(--text-3,#aaa);}
 .album-wrap,.piggy-wrap{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;}
 .album-card,.piggy-card{background:var(--input-bg);border:1px solid var(--border);border-radius:12px;padding:14px;}
 .album-card h4,.piggy-card h4{margin:0 0 4px;font-size:14px;color:var(--text);font-weight:600;}
@@ -1764,12 +1800,27 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
 .overview-cell .ov-label{font-size:12px;color:var(--text-2);margin-top:4px;}
 .overview-quote{font-size:13px;color:var(--text-2);line-height:1.6;background:#FFF8EC;border-left:3px solid var(--amber,#E8A33D);padding:8px 12px;border-radius:6px;}
 
-/* 梦想清单：两行布局 */
-.dream-item{display:flex;flex-direction:column;gap:8px;}
-.dream-main{display:flex;align-items:flex-start;gap:10px;}
-.dream-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding-left:36px;}
-.dream-cat{width:auto;min-width:104px;font-size:12px;}
-.dream-why{flex:1 1 auto;min-width:160px;font-size:13px;}
+/* 梦想清单：编辑模式内部布局 */
+.dream-item.editing .dream-main{display:flex;align-items:flex-start;gap:8px;}
+.dream-item.editing .dream-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding-left:32px;margin-top:6px;}
+.dream-cat-edit{width:auto;min-width:90px;font-size:12px;}
+.dream-why-edit{flex:1 1 auto;min-width:120px;font-size:12px;}
+
+/* ---- 移动端梦想清单适配 ---- */
+@media(max-width:600px){
+  .dream-item{padding:8px 10px;gap:6px;border-radius:8px;}
+  .dream-no{width:20px;height:20px;font-size:11px;}
+  .dream-text{font-size:13px;}
+  .dream-cat-tag{font-size:10px;padding:1px 6px;}
+  .dream-core-btn{font-size:10px;padding:2px 6px;border-radius:12px;}
+  .dream-del{font-size:14px;padding:1px 2px;}
+  .dream-actions{gap:2px;}
+  .dream-edit-main textarea{font-size:13px;min-height:20px;}
+  .dream-edit-meta{flex-direction:column;align-items:stretch;gap:6px;}
+  .dream-edit-meta select,.dream-edit-meta input{width:100%;box-sizing:border-box;font-size:13px;}
+  .dream-item.editing{padding:10px;}
+  .dream-tip{font-size:12px;padding:6px 10px;}
+}
 
 /* 金鹅账户 */
 .goose-ratio{margin:8px 0 4px;}
@@ -2247,13 +2298,14 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
         <button class="btn btn-sm" id="goldRefreshBtn" onclick="fetchGoldQuotes(true)">🔄 刷新</button>
       </div>
     </div>
-    <div class="section-desc" style="margin-bottom:12px;">大盘指数 + 伦敦金价 + 市场情绪实时参考（指数/金价经代理抓取，盘中为估算值）</div>
+    <div class="section-desc" style="margin-bottom:12px;">大盘指数 + 国内金价（SGE Au99.99 元/克）+ 伦敦金价 + 市场情绪实时参考（国内金价以「上海黄金交易所 Au99.99」为准）</div>
     <div class="metric-grid gold-grid" id="marketOverviewGrid">
       <div class="metric-tile idx-tile" id="idx_sh000300"><div class="metric-label">沪深300</div><div class="metric-value" id="idx_sh000300_price">—</div><div class="metric-change" id="idx_sh000300_chg">取数中…</div></div>
       <div class="metric-tile idx-tile" id="idx_sz399006"><div class="metric-label">创业板指</div><div class="metric-value" id="idx_sz399006_price">—</div><div class="metric-change" id="idx_sz399006_chg">取数中…</div></div>
       <div class="metric-tile idx-tile" id="idx_usIXIC"><div class="metric-label">纳斯达克</div><div class="metric-value" id="idx_usIXIC_price">—</div><div class="metric-change" id="idx_usIXIC_chg">取数中…</div></div>
       <div class="metric-tile idx-tile" id="idx_hkHSI"><div class="metric-label">恒生指数</div><div class="metric-value" id="idx_hkHSI_price">—</div><div class="metric-change" id="idx_hkHSI_chg">取数中…</div></div>
       <div class="metric-tile gold-tile" id="goldIntlTile"><div class="metric-label">伦敦金价 (USD/oz)</div><div class="metric-value" id="goldIntlPrice">—</div><div class="metric-change" id="goldIntlChg">取数中…</div></div>
+      <div class="metric-tile gold-tile" id="goldDomTile"><div class="metric-label">国内金价 (元/克)</div><div class="metric-value" id="goldDomPrice">—</div><div class="metric-change" id="goldDomChg">取数中…</div></div>
       <div class="metric-tile accent gold-mood-tile" id="goldMoodTile"><div class="metric-label">市场情绪</div><div class="metric-value" id="goldMoodMain">—</div><div class="metric-change" id="goldMoodSub">—</div></div>
     </div>
   </div>
@@ -2860,14 +2912,14 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
   <!-- 模块1：梦想清单（10→3 核心） -->
   <div class="card">
     <div class="card-title-row">
-      <span class="card-title">🌟 梦想清单 · 我必须变有钱的 10 个理由</span>
+      <span class="card-title">🌟 梦想清单</span>
       <span class="sub" id="dreamCoreCount">已选 0 / 3 核心梦想</span>
     </div>
-    <div class="dream-tip">写下 10 个你想变有钱的理由或梦想，给每条标上<b>分类</b>、写清<b>为什么想要</b>（画面越具体越好），再选出 <b>3 个最想实现的</b>作为核心梦想（⭐）。这 3 个会自动生成「梦想相册」「梦想储蓄罐」，并按 ①②③ 排定优先级。</div>
+    <div class="dream-tip">写下你想变有钱的理由，选 <b>3 个核心梦想</b>（⭐）。点击条目可展开编辑分类和理由详情。核心梦想会自动生成「相册」和「储蓄罐」。</div>
     <div id="dreamList" class="dream-list"></div>
-    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
-      <button class="btn btn-primary btn-sm" onclick="addDream()">＋ 添加一条理由</button>
-      <button class="btn btn-ghost btn-sm" onclick="fillDreamTemplate()">📝 用示例填满 10 条</button>
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-primary btn-sm" onclick="addDream()">＋ 添加一条</button>
+      <button class="btn btn-ghost btn-sm" onclick="fillDreamTemplate()">📝 填充示例 10 条</button>
     </div>
   </div>
 
@@ -3209,6 +3261,48 @@ function showServerStatus(msg, kind){
   el.style.display = 'inline-block';
 }
 
+/* ---- 定期从服务器拉取新数据（跨设备同步核心） ---- */
+var _autoPullTimer = null;
+var _lastPullTs = 0;   // 避免重复处理同一时间戳的数据
+function startAutoPull(){
+  stopAutoPull();
+  if(!serverBase()) return;
+  _autoPullTimer = setInterval(function(){
+    if(!serverBase()) { stopAutoPull(); return; }
+    silentPullFromServer();
+  }, 20000);  // 每 20 秒静默检查一次
+}
+function stopAutoPull(){
+  if(_autoPullTimer){ clearInterval(_autoPullTimer); _autoPullTimer = null; }
+}
+function silentPullFromServer(){
+  var base = serverBase();
+  if(!base) return;
+  fetch(base + '/api/db', { signal: AbortSignal.timeout(8000) })
+    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); })
+    .then(function(txt){
+      if(!txt || txt === '{}' || txt === 'null') return;
+      var remote = JSON.parse(txt);
+      if(!remote || !remote._lastModified) return;
+      /* 如果服务器数据时间戳比我们上次拉取的更新，且比本地新 → 合并 */
+      if(remote._lastModified > _lastPullTs && remote._lastModified > (DB._lastModified || 0)){
+        _lastPullTs = remote._lastModified;
+        DB = remote;
+        localStorage.setItem(DB_KEY, JSON.stringify(DB));
+        migrateDcaHistory();
+        showServerStatus('已同步最新数据 ✓', 'ok');
+        if(typeof renderAllOnSync === 'function') renderAllOnSync();
+      }
+    })
+    .catch(function(){ /* 静默失败，不打扰用户 */ });
+}
+/* 页面可见性变化时（切回标签页）立即拉取一次 */
+document.addEventListener('visibilitychange', function(){
+  if(!document.hidden && serverBase()){
+    silentPullFromServer();
+  }
+});
+
 function migrateDcaHistory(){
   // 用户实际从 2026-08 开始定投，清除 demo / 早期历史中的 2026-06 / 2026-07
   if(!DB.dca || !Array.isArray(DB.dca.history)) return;
@@ -3287,57 +3381,118 @@ function initWealth(){
   renderSuccessDiary();
 }
 
-/* ---- 模块1：梦想清单（10→3 核心） ---- */
+/* ---- 模块1：梦想清单（紧凑列表 + 点击展开编辑） ---- */
+var _editingDreamId = null;  // 当前正在编辑的 dream id（同时只展开一个）
 function renderDreamList(){
   var list = wealth().dreamList;
   var coreCount = list.filter(function(d){ return d.core; }).length;
   document.getElementById('dreamCoreCount').textContent = '已选 ' + coreCount + ' / ' + WEALTH_CORE_MAX + ' 核心梦想';
   var box = document.getElementById('dreamList');
   box.innerHTML = '';
+
+  if(!list.length){
+    box.innerHTML = '<div class="dream-empty-state">'+
+      '<div class="dream-empty-icon">✨</div>'+
+      '<div class="dream-empty-title">还没有写下梦想</div>'+
+      '<div class="dream-empty-hint">点击下方按钮，写下第一个让你变有钱的理由</div>'+
+      '</div>';
+    renderAlbums(); renderPiggy(); renderWealthOverview();
+    return;
+  }
+
   var coreSeq = 0;
   list.forEach(function(d, i){
     if(d.core) coreSeq++;
+    var isEditing = (_editingDreamId === d.id);
     var item = document.createElement('div');
-    item.className = 'dream-item' + (d.core ? ' core' : '');
-    var main = document.createElement('div'); main.className = 'dream-main';
+    item.className = 'dream-item' + (d.core ? ' core' : '') + (isEditing ? ' editing' : '');
+
+    /* --- 紧凑行（默认显示） --- */
+    var row = document.createElement('div');
+    row.className = 'dream-text-row';
+
     var no = document.createElement('div'); no.className = 'dream-no'; no.textContent = (i + 1);
-    var ta = document.createElement('textarea');
-    ta.rows = 1; ta.placeholder = '第 ' + (i + 1) + ' 个理由 / 梦想…';
-    ta.value = d.text || '';
-    ta.oninput = function(){ d.text = ta.value; saveDb(); };
-    var core = document.createElement('button');
-    core.className = 'dream-core-btn' + (d.core ? ' on' : '');
-    core.textContent = d.core ? ('⭐ ' + coreSeq + ' 核心') : '☆ 设为核心';
-    core.onclick = function(){ toggleCore(d.id); };
+
+    var text = document.createElement('div'); text.className = 'dream-text' + (d.text ? '' : ' empty');
+    text.textContent = d.text || ('第 ' + (i + 1) + ' 个理由…');
+
+    var catTag = document.createElement('span');
+    catTag.className = 'dream-cat-tag cat-' + (d.category ? d.category.replace(/^[^\s]+\s/,'') : '');
+    catTag.textContent = d.category || '未分类';
+
+    row.appendChild(no); row.appendChild(text); row.appendChild(catTag);
+    item.appendChild(row);
+
+    /* --- 操作按钮 --- */
+    var actions = document.createElement('div'); actions.className = 'dream-actions';
+    var coreBtn = document.createElement('button');
+    coreBtn.className = 'dream-core-btn' + (d.core ? ' on' : '');
+    coreBtn.textContent = d.core ? ('⭐' + coreSeq) : '☆';
+    coreBtn.title = d.core ? '取消核心' : '设为核心梦想';
+    coreBtn.onclick = function(e){ e.stopPropagation(); toggleCore(d.id); };
+
     var del = document.createElement('button');
-    del.className = 'dream-del'; del.textContent = '✕'; del.title = '删除';
-    del.onclick = function(){ delDream(d.id); };
-    main.appendChild(no); main.appendChild(ta); main.appendChild(core); main.appendChild(del);
-    item.appendChild(main);
-    var meta = document.createElement('div'); meta.className = 'dream-meta';
-    var cat = document.createElement('select'); cat.className = 'form-input dream-cat';
+    del.className = 'dream-del'; del.textContent = '✕'; del.title = '删除这条';
+    del.onclick = function(e){ e.stopPropagation(); delDream(d.id); };
+
+    actions.appendChild(coreBtn); actions.appendChild(del);
+    item.appendChild(actions);
+
+    /* --- 展开编辑区（默认隐藏） --- */
+    var editBody = document.createElement('div'); editBody.className = 'dream-edit-body';
+    var editMain = document.createElement('div'); editMain.className = 'dream-edit-main';
+    var ta = document.createElement('textarea');
+    ta.rows = 2; ta.placeholder = '写下你的梦想…';
+    ta.value = d.text || '';
+    ta.oninput = function(){ d.text = ta.value; saveDb();
+      /* 同步更新紧凑行文字 */
+      text.textContent = d.text || ('第 ' + (list.indexOf(d) + 1) + ' 个理由…');
+      text.className = 'dream-text' + (d.text ? '' : ' empty');
+    };
+    editMain.appendChild(ta);
+    editBody.appendChild(editMain);
+
+    var meta = document.createElement('div'); meta.className = 'dream-edit-meta';
+    var cat = document.createElement('select'); cat.className = 'form-input dream-cat-edit';
     WEALTH_CATEGORIES.forEach(function(c){
       var o = document.createElement('option'); o.value = c; o.textContent = c;
       if((d.category || '') === c) o.selected = true;
       cat.appendChild(o);
     });
-    cat.onchange = function(){ d.category = cat.value; saveDb(); };
-    var why = document.createElement('input'); why.type = 'text'; why.className = 'form-input dream-why';
-    why.placeholder = '为什么想要它？（写下具体的画面）';
+    cat.onchange = function(){ d.category = cat.value; saveDb();
+      catTag.textContent = d.category;
+      catTag.className = 'dream-cat-tag cat-' + (d.category ? d.category.replace(/^[^\s]+\s/,'') : '');
+    };
+    var why = document.createElement('input'); why.type = 'text'; why.className = 'form-input dream-why-edit';
+    why.placeholder = '为什么想要？（具体画面）';
     why.value = d.reason || '';
     why.oninput = function(){ d.reason = why.value; saveDb(); };
     meta.appendChild(cat); meta.appendChild(why);
-    item.appendChild(meta);
+    editBody.appendChild(meta);
+    item.appendChild(editBody);
+
+    /* 点击切换编辑模式 */
+    item.onclick = function(e){
+      if(e.target.closest('.dream-core-btn') || e.target.closest('.dream-del')) return;
+      if(_editingDreamId === d.id){ _editingDreamId = null; }
+      else { _editingDreamId = d.id; }
+      renderDreamList();
+      /* 如果刚展开编辑，聚焦 textarea */
+      if(_editingDreamId === d.id){
+        setTimeout(function(){ ta.focus(); }, 50);
+      }
+    };
+
     box.appendChild(item);
   });
-  renderAlbums();
-  renderPiggy();
-  renderWealthOverview();
+  renderAlbums(); renderPiggy(); renderWealthOverview();
 }
 function addDream(){
   var list = wealth().dreamList;
   if(list.length >= WEALTH_DREAM_MAX){ alert('最多写 ' + WEALTH_DREAM_MAX + ' 条理由哦'); return; }
-  list.push({ id: 'd' + Date.now() + Math.floor(Math.random() * 1000), text: '', core: false });
+  var nd = { id: 'd' + Date.now() + Math.floor(Math.random() * 1000), text: '', core: false };
+  list.push(nd);
+  _editingDreamId = nd.id;   // 自动展开新条目
   saveDb(); renderDreamList();
 }
 function delDream(id){
@@ -7853,10 +8008,11 @@ function judgeGoldMood(intl, dom, etf){
 function renderGoldTiles(){
   var g = DB.market.gold;
   if(!g) return;
-  /* 仅展示伦敦金价；国内金价/ETF 已不展示，但数据仍抓取用于情绪判断 */
+  /* 展示伦敦金价 + 国内金价（SGE Au99.99 元/克）；ETF 仍抓取用于情绪判断 */
   fillGoldTile('goldIntlPrice','goldIntlChg', g.intl);
-  /* 市场情绪：伦敦金价 + 黄金ETF 综合判断（国内金价已移除面板） */
-  var mood = judgeGoldMood(g.intl, null, g.etf);
+  fillGoldTile('goldDomPrice','goldDomChg', g.dom);
+  /* 市场情绪：伦敦金价 + 国内金价 + 黄金ETF 综合判断 */
+  var mood = judgeGoldMood(g.intl, g.dom, g.etf);
   var mainEl = document.getElementById('goldMoodMain');
   var subEl = document.getElementById('goldMoodSub');
   if(mainEl) mainEl.textContent = mood.main;
@@ -8983,6 +9139,7 @@ function saveServerConfig(){
   var url = (document.getElementById('serverUrl')||{}).value || '';
   localStorage.setItem(DB_SERVER_KEY, url.trim());
   showServerStatus(url ? '配置已保存 ✓' : '已关闭服务器同步', 'ok');
+  if(url.trim()) startAutoPull(); else stopAutoPull();
 }
 function loadServerConfigUI(){
   var url = (localStorage.getItem(DB_SERVER_KEY) || '').trim();
@@ -8997,6 +9154,7 @@ function testServerSync(){
     .then(function(o){
       if(o.ok && o.j && o.j.ok){
         showServerStatus('✓ 服务器在线（存储：' + (o.j.store || '未知') + '）', 'ok');
+        startAutoPull();  // 连接成功，启动定期同步
       } else {
         showServerStatus('连接成功但响应异常（' + (o.j && o.j.error || 'unknown') + '）', 'fail');
       }
@@ -9044,6 +9202,8 @@ function renderAllOnSync(){
     if(typeof renderPython === 'function' && currentTabNum === 5) renderPython();
     if(typeof renderRecipes === 'function' && currentTabNum === 6){ renderRecipeHero(); renderRecipes(); }
     if(typeof renderBooks === 'function' && currentTabNum === 7) renderBooks();
+    if(typeof initWealth === 'function' && currentTabNum === 10){ initWealth(); }
+    /* 梦想金库 Tab 10 需要完整重初始化（因为涉及多个子模块） */
   } catch(e){}
 }
 async function cloudPush(){
@@ -9238,6 +9398,8 @@ function importBackup(){
    ============================================================ */
 function init(){
   loadDb();
+  /* 启动服务器定期同步（如果配置了服务器地址） */
+  startAutoPull();
   // Set default dates
   var todayStr = today();
   var dateIds = ['eeDate','fitDate','weightDate','noteDate','sentDate','pyDate','errDate','bStartDate','bFinishDate'];

@@ -162,30 +162,49 @@ function proxyRaw(target, referer, res) {
   });
 }
 
-// 上金所 Au99.99 — 复用 Cloudflare Worker /sge 的解析逻辑
+// 上金所 Au99.99 国内基准金价
+//   数据源：东方财富行情接口（push2delay 主用，push2 兜底），免鉴权、实时
+//   secid 118.AU9999 = 上海黄金交易所现货频道 Au99.99，单位「元/克」，接口编码 ×100
+//   字段：f43 最新价 f60 昨收 f169 涨跌额 f170 涨跌幅(%) f44 最高 f45 最低 f86 时间 f58 名称
+//   返回结构与前版一致，前端 fetchGoldQuotes 无需改动即可消费
 function handleSge(res) {
-  upstreamGet('https://hq.sinajs.cn/list=SGE_AU9999', { 'Referer': 'https://finance.sina.com.cn/' }, function (err, status, buf) {
-    if (err) { return sendJSON(res, 502, { error: String(err && err.message || err) }); }
-    const text = new TextDecoder('gb18030').decode(buf); // 新浪返回 GBK/GB18030
-    const m = text.match(/="([^"]*)"/);
-    if (!m) { return sendJSON(res, 502, { error: 'parse failed', raw: text.slice(0, 200) }); }
-    const parts = m[1].split(',');
-    const price = parseFloat(parts[3]);
-    const chgPct = parseFloat(String(parts[17] || '').replace('%', '').trim());
-    if (!isFinite(price) || price <= 0) { return sendJSON(res, 502, { error: 'invalid price', parts: parts.slice(0, 20) }); }
-    const chg = isFinite(chgPct) ? (price * chgPct / 100) : 0;
-    const prev = price - chg;
-    sendJSON(res, 200, {
-      price: Math.round(price * 100) / 100,
-      prev: Math.round(prev * 100) / 100,
-      chg: Math.round(chg * 100) / 100,
-      chgPct: isFinite(chgPct) ? Math.round(chgPct * 100) / 100 : 0,
-      name: parts[1] || 'SGE Au99.99',
-      unit: '元/克',
-      time: parts[16] || '',
-      ts: Date.now(),
+  const SECID = '118.AU9999';
+  const HOSTS = ['push2delay.eastmoney.com', 'push2.eastmoney.com'];
+  let idx = 0;
+  const r2 = function (n) { return Math.round(n * 100) / 100; };
+  const attempt = function () {
+    if (idx >= HOSTS.length) {
+      return sendJSON(res, 502, { error: 'SGE 上游全部失败（Eastmoney Au99.99）' });
+    }
+    const host = HOSTS[idx++];
+    const target = 'https://' + host +
+      '/api/qt/stock/get?secid=' + SECID +
+      '&fields=f43,f44,f45,f46,f57,f58,f60,f86,f168,f169,f170';
+    upstreamGet(target, { 'Referer': 'https://quote.eastmoney.com/' }, function (err, status, buf) {
+      if (err) { return attempt(); }
+      let j;
+      try { j = JSON.parse(buf.toString('utf-8')); } catch (e) { return attempt(); }
+      const d = j && j.data;
+      if (!d || d.f43 == null) { return attempt(); }
+      const price = d.f43 / 100;   // 元/克
+      const prev = d.f60 / 100;    // 昨收 元/克
+      const chg = d.f169 / 100;    // 涨跌额 元/克
+      const chgPct = d.f170 / 100; // 涨跌幅 %
+      sendJSON(res, 200, {
+        price: r2(price),
+        prev: r2(prev),
+        chg: r2(chg),
+        chgPct: r2(chgPct),
+        name: d.f58 || 'SGE Au99.99',
+        unit: '元/克',
+        high: r2((d.f44 || 0) / 100),
+        low: r2((d.f45 || 0) / 100),
+        time: d.f86 || '',
+        ts: Date.now(),
+      });
     });
-  });
+  };
+  attempt();
 }
 
 function handleSina(res, qs) {
