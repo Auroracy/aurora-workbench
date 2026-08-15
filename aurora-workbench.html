@@ -3095,7 +3095,7 @@ function loadFromLocal(){
   }
   migrateDcaHistory();
 }
-// 以服务器 Redis 为数据源：先直读，失败再用本地缓存兜底
+// 以服务器 Redis 为数据源：先直读；按 _lastModified 时间戳合并（避免被服务器旧数据覆盖）
 function loadFromServerAsPrimary(){
   // 先用本地缓存即时渲染（避免白屏），随后被服务器数据刷新
   loadFromLocal();
@@ -3103,14 +3103,40 @@ function loadFromServerAsPrimary(){
   fetch(url)
     .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); })
     .then(function(txt){
-      if(!txt || txt === '{}'){ showServerStatus('服务器暂无数据（用本地缓存）', ''); return; }
+      if(!txt || txt === '{}' || txt === 'null'){
+        // 服务器空/不存在：保留本地，并把本地数据推上去（首次连接时同步）
+        if(DB._lastModified){
+          showServerStatus('服务器暂无数据，正在推送本地数据…', '');
+          pushToServerNow();
+        } else {
+          showServerStatus('服务器暂无数据（用本地缓存）', '');
+        }
+        return;
+      }
       var remote = JSON.parse(txt);
       if(remote && typeof remote === 'object'){
-        DB = remote;                 // 直接用服务器数据，不做合并覆盖
-        localStorage.setItem(DB_KEY, JSON.stringify(DB)); // 仅作离线缓存
-        migrateDcaHistory();
-        showServerStatus('已直读服务器数据 ✓', 'ok');
-        if(typeof renderAllOnSync === 'function') renderAllOnSync();
+        var remoteTime = remote._lastModified || 0;
+        var localTime = DB._lastModified || 0;
+        if(remoteTime > localTime){
+          // 服务器比本地新 → 用服务器（安全）
+          DB = remote;
+          localStorage.setItem(DB_KEY, JSON.stringify(DB));
+          migrateDcaHistory();
+          showServerStatus('已直读服务器数据 ✓', 'ok');
+          if(typeof renderAllOnSync === 'function') renderAllOnSync();
+        } else if(remoteTime === localTime && remoteTime === 0){
+          // 双方都无时间戳（旧数据）→ 仍以服务器为准，但推送本地时间戳
+          DB = remote;
+          localStorage.setItem(DB_KEY, JSON.stringify(DB));
+          migrateDcaHistory();
+          DB._lastModified = Date.now();
+          pushToServerNow();
+          if(typeof renderAllOnSync === 'function') renderAllOnSync();
+        } else {
+          // 本地比服务器新（用户在另一标签/设备刚修改过，还未来得及推送）→ 保留本地并立即重推
+          showServerStatus('本地数据较新，已自动覆盖服务器…', '');
+          pushToServerNow();
+        }
       }
     })
     .catch(function(err){
@@ -3137,6 +3163,7 @@ function pullFromServer(){
     .catch(function(err){ showServerStatus('服务器拉取失败：' + err.message + '（用本地数据）', 'fail'); });
 }
 function saveDb(){
+  DB._lastModified = Date.now();
   localStorage.setItem(DB_KEY, JSON.stringify(DB));
   scheduleAutoSync();
   pushToServer();
@@ -3147,6 +3174,7 @@ function pushToServer(){
   if(!base) return;
   if(_pushTimer) clearTimeout(_pushTimer);
   _pushTimer = setTimeout(function(){
+    _pushTimer = null;
     var url = base + '/api/db';
     fetch(url, {
       method: 'POST',
@@ -3156,7 +3184,22 @@ function pushToServer(){
     .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
     .then(function(){ showServerStatus('已保存到服务器 ✓', 'ok'); })
     .catch(function(err){ showServerStatus('服务器保存失败：' + err.message, 'fail'); });
-  }, 600); // 600ms 防抖，避免频繁写入
+  }, 50); // 50ms 极短防抖，仅合并同帧内的多次写入；保证刷新时服务器已是最新
+}
+// 立即推送（不等防抖，用于时间戳比较后强制覆盖服务器）
+function pushToServerNow(){
+  var base = serverBase();
+  if(!base) return;
+  if(_pushTimer){ clearTimeout(_pushTimer); _pushTimer = null; }
+  var url = base + '/api/db';
+  fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(DB)
+  })
+  .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+  .then(function(){ showServerStatus('已强制保存到服务器 ✓', 'ok'); })
+  .catch(function(err){ showServerStatus('服务器保存失败：' + err.message, 'fail'); });
 }
 function showServerStatus(msg, kind){
   var el = document.getElementById('serverSyncStatus');

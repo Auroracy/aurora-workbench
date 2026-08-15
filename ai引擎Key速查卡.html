@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 引擎 Key 速查卡</title>
+<style>
+  :root{
+    --bg:#EEF3F6; --accent:#15A49B; --blue:#2E86C1;
+    --card:#ffffff; --text:#2c3e50; --text-3:#7f8c9a;
+    --line:#e3ebf0;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    padding:28px 16px 48px; line-height:1.6;
+  }
+  .wrap{max-width:860px;margin:0 auto;}
+  header{text-align:center;margin-bottom:26px;}
+  header h1{font-size:22px;color:var(--accent);letter-spacing:.5px;}
+  header p{font-size:13px;color:var(--text-3);margin-top:6px;}
+  .tip{
+    background:#eafaf8;border:1px solid #bfe9e4;color:#0e7c73;
+    border-radius:10px;padding:12px 14px;font-size:13px;margin-bottom:22px;
+  }
+  .engine{
+    background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:16px 18px;margin-bottom:14px;box-shadow:0 2px 10px rgba(46,134,193,.05);
+  }
+  .engine .top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
+  .engine .name{font-size:16px;font-weight:700;}
+  .engine .badge{
+    font-size:11px;padding:2px 9px;border-radius:999px;font-weight:600;
+  }
+  .badge.rec{background:#e7f6ee;color:#1e8a5a;}
+  .badge.opt{background:#fdf3e3;color:#b9770e;}
+  .badge.alt{background:#eef4fb;color:var(--blue);}
+  .row{display:grid;grid-template-columns:96px 1fr;gap:6px 12px;font-size:13px;}
+  .row .k{color:var(--text-3);}
+  .row .v{color:var(--text);word-break:break-all;}
+  .row a{color:var(--blue);text-decoration:none;}
+  .row a:hover{text-decoration:underline;}
+  .code{background:#f4f8fa;border:1px solid var(--line);border-radius:6px;padding:2px 6px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:#333;}
+  footer{text-align:center;font-size:12px;color:var(--text-3);margin-top:24px;}
+  @media(max-width:520px){
+    .row{grid-template-columns:84px 1fr;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🤖 AI 引擎 Key 速查卡</h1>
+    <p>工作台「☁ 云同步 → 🤖 AI 引擎配置」可填多家，额度耗尽自动回退</p>
+  </header>
+
+  <div class="tip">
+    💡 建议至少填 <b>2 家</b> 引擎的 Key（如 智谱 + DeepSeek）。当主引擎额度用尽，工作台会自动无缝切到另一家，AI 识图 / 新闻总结不会中断。
+  </div>
+
+  <!-- 通义千问 -->
+  <div class="engine">
+    <div class="top">
+      <span class="name">通义千问（阿里百炼）</span>
+      <span class="badge rec">原主引擎</span>
+    </div>
+    <div class="row">
+      <div class="k">申请地址</div>
+      <div class="v"><a href="https://bailian.console.aliyun.com/" target="_blank">bailian.console.aliyun.com</a> → API-Key 管理 → 创建 Key</div>
+      <div class="k">视觉模型</div>
+      <div class="v">qwen3-vl-plus / qwen-vl-max-latest（自动降级链）</div>
+      <div class="k">文本模型</div>
+      <div class="v">qwen-plus</div>
+      <div class="k">注意</div>
+      <div class="v">免费额度用完请开「用完即停」防扣费；余额告警看手机短信</div>
+    </div>
+  </div>
+
+  <!-- 智谱 GLM -->
+  <div class="engine">
+    <div class="top">
+      <span class="name">智谱 GLM（Zhipu）</span>
+      <span class="badge alt">推荐回退</span>
+    </div>
+    <div class="row">
+      <div class="k">申请地址</div>
+      <div class="v"><a href="https://open.bigmodel.cn/usercenter/apikeys" target="_blank">open.bigmodel.cn/usercenter/apikeys</a> → 新建 API Key</div>
+      <div class="k">Base URL</div>
+      <div class="v"><span class="code">https://open.bigmodel.cn/api/paas/v4</span></div>
+      <div class="k">视觉模型</div>
+      <div class="v">glm-4v-flash（免费）</div>
+      <div class="k">文本模型</div>
+      <div class="v">glm-4-flash（免费）</div>
+    </div>
+  </div>
+
+  <!-- DeepSeek -->
+  <div class="engine">
+    <div class="top">
+      <span class="name">DeepSeek</span>
+      <span class="badge alt">推荐回退</span>
+    </div>
+    <div class="row">
+      <div class="k">申请地址</div>
+      <div class="v"><a href="https://platform.deepseek.com/api_keys" target="_blank">platform.deepseek.com/api_keys</a> → 创建 API Key</div>
+      <div class="k">Base URL</div>
+      <div class="v"><span class="code">https://api.deepseek.com</span></div>
+      <div class="k">视觉模型</div>
+      <div class="v">deepseek-vl2</div>
+      <div class="k">文本模型</div>
+      <div class="v">deepseek-chat</div>
+    </div>
+  </div>
+
+  <!-- 豆包 -->
+  <div class="engine">
+    <div class="top">
+      <span class="name">豆包（火山方舟）</span>
+      <span class="badge alt">可回退</span>
+    </div>
+    <div class="row">
+      <div class="k">申请地址</div>
+      <div class="v"><a href="https://console.volcengine.com/ark" target="_blank">console.volcengine.com/ark</a> → 开通模型 → 创建 API Key → 获取 Endpoint ID</div>
+      <div class="k">Base URL</div>
+      <div class="v"><span class="code">https://ark.cn-beijing.volces.com/api/v3</span></div>
+      <div class="k">视觉模型</div>
+      <div class="v">doubao-seed-1.6-vision</div>
+      <div class="k">文本模型</div>
+      <div class="v">doubao-seed-1.6-32k</div>
+      <div class="k">注意</div>
+      <div class="v">豆包需要填入「推理接入点 Endpoint ID」而非模型名，视觉得分高</div>
+    </div>
+  </div>
+
+  <!-- Gemini -->
+  <div class="engine">
+    <div class="top">
+      <span class="name">Gemini Vision（Google）</span>
+      <span class="badge opt">需访问 Google</span>
+    </div>
+    <div class="row">
+      <div class="k">申请地址</div>
+      <div class="v"><a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a> → 免费生成 Key</div>
+      <div class="k">视觉模型</div>
+      <div class="v">gemini-2.0-flash（降级到 1.5-flash）</div>
+      <div class="k">注意</div>
+      <div class="v">国内网络通常无法直连，仅作可选兜底；填了也大概率用不上</div>
+    </div>
+  </div>
+
+  <footer>绿蓝冷色调 · 与 Aurora 工作台同源配色 · 申请到 Key 后粘进「☁ 云同步 → 🤖 AI 引擎配置」即可</footer>
+</div>
+</body>
+</html>
