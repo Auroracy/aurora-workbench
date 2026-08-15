@@ -237,6 +237,10 @@ const MIME = {
 };
 function serveStatic(res, pathname) {
   let rel = pathname === '/' ? '/aurora-workbench.html' : pathname;
+  // 解码中文/带空格等 URL 编码字符（只 decode 一次，防双重解码绕过穿越校验）
+  let decoded;
+  try { decoded = decodeURIComponent(rel); } catch (e) { decoded = rel; }
+  rel = decoded;
   const filePath = path.normalize(path.join(ROOT, rel));
   if (!filePath.startsWith(ROOT)) { res.writeHead(403); res.end('forbidden'); return; }
   fs.readFile(filePath, function (err, data) {

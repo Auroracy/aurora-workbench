@@ -22,26 +22,37 @@
   header p{font-size:13px;color:var(--text-3);margin-top:6px;}
   .tip{
     background:#eafaf8;border:1px solid #bfe9e4;color:#0e7c73;
-    border-radius:10px;padding:12px 14px;font-size:13px;margin-bottom:22px;
+    border-radius:10px;padding:12px 14px;font-size:13px;margin-bottom:18px;
   }
+  .tip b{color:#0a6b63;}
+  /* 价格徽章 */
+  .badge{
+    font-size:11px;padding:2px 9px;border-radius:999px;font-weight:600;white-space:nowrap;
+  }
+  .badge.free{background:#e3f9ec;color:#1e8a5a;}      /* 永久免费 */
+  .badge.tired{background:#fde8e8;color:#c0392b;}     /* 额度耗尽 */
+  .badge.mixed{background:#fdf3e3;color:#b9770e;}     /* 新用户免费/付费 */
+  .badge.opt{background:#eef4fb;color:var(--blue);}   /* 需访问 Google */
   .engine{
     background:var(--card);border:1px solid var(--line);border-radius:14px;
     padding:16px 18px;margin-bottom:14px;box-shadow:0 2px 10px rgba(46,134,193,.05);
   }
   .engine .top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
   .engine .name{font-size:16px;font-weight:700;}
-  .engine .badge{
-    font-size:11px;padding:2px 9px;border-radius:999px;font-weight:600;
+  /* 智谱高亮推荐横幅 */
+  .engine.best{border:1.5px solid #1e8a5a;box-shadow:0 4px 16px rgba(30,138,90,.12);}
+  .best-banner{
+    background:linear-gradient(90deg,#1e8a5a,#15A49B);color:#fff;border-radius:8px;
+    padding:8px 12px;font-size:13px;font-weight:600;margin-bottom:12px;
+    display:flex;align-items:center;gap:8px;
   }
-  .badge.rec{background:#e7f6ee;color:#1e8a5a;}
-  .badge.opt{background:#fdf3e3;color:#b9770e;}
-  .badge.alt{background:#eef4fb;color:var(--blue);}
   .row{display:grid;grid-template-columns:96px 1fr;gap:6px 12px;font-size:13px;}
   .row .k{color:var(--text-3);}
   .row .v{color:var(--text);word-break:break-all;}
   .row a{color:var(--blue);text-decoration:none;}
   .row a:hover{text-decoration:underline;}
   .code{background:#f4f8fa;border:1px solid var(--line);border-radius:6px;padding:2px 6px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:#333;}
+  .price-note{font-size:12px;color:var(--text-3);margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);}
   footer{text-align:center;font-size:12px;color:var(--text-3);margin-top:24px;}
   @media(max-width:520px){
     .row{grid-template-columns:84px 1fr;}
@@ -56,14 +67,36 @@
   </header>
 
   <div class="tip">
-    💡 建议至少填 <b>2 家</b> 引擎的 Key（如 智谱 + DeepSeek）。当主引擎额度用尽，工作台会自动无缝切到另一家，AI 识图 / 新闻总结不会中断。
+    💡 <b>价格速览：</b>绿标 = 永久免费；黄标 = 新用户送额度 / 之后付费（很便宜）；红标 = 额度已耗尽。<br>
+    建议至少填 <b>2 家</b>（如 智谱 + DeepSeek）。主引擎额度用尽时，工作台自动无缝切到另一家，AI 识图 / 新闻总结不中断。
   </div>
 
-  <!-- 通义千问 -->
+  <!-- 智谱 GLM（永久免费 · 主推） -->
+  <div class="engine best">
+    <div class="best-banner">★ 首推主引擎 · 永久免费 · 无限额度 · 注册即用</div>
+    <div class="top">
+      <span class="name">智谱 GLM（Zhipu）</span>
+      <span class="badge free">永久免费</span>
+    </div>
+    <div class="row">
+      <div class="k">申请地址</div>
+      <div class="v"><a href="https://open.bigmodel.cn/usercenter/apikeys" target="_blank">open.bigmodel.cn/usercenter/apikeys</a> → 新建 API Key（复制后只显示一次）</div>
+      <div class="k">Base URL</div>
+      <div class="v"><span class="code">https://open.bigmodel.cn/api/paas/v4</span></div>
+      <div class="k">视觉模型</div>
+      <div class="v">glm-4v-flash <span class="badge free">免费</span>（工作台默认用这个）</div>
+      <div class="k">文本模型</div>
+      <div class="v">glm-4-flash <span class="badge free">免费</span></div>
+      <div class="k">优点</div>
+      <div class="v">国内直连稳定、零成本、无限调用 —— 通义千问额度耗尽后的最优替代</div>
+    </div>
+  </div>
+
+  <!-- 通义千问（额度已耗尽） -->
   <div class="engine">
     <div class="top">
       <span class="name">通义千问（阿里百炼）</span>
-      <span class="badge rec">原主引擎</span>
+      <span class="badge tired">额度已耗尽</span>
     </div>
     <div class="row">
       <div class="k">申请地址</div>
@@ -73,25 +106,7 @@
       <div class="k">文本模型</div>
       <div class="v">qwen-plus</div>
       <div class="k">注意</div>
-      <div class="v">免费额度用完请开「用完即停」防扣费；余额告警看手机短信</div>
-    </div>
-  </div>
-
-  <!-- 智谱 GLM -->
-  <div class="engine">
-    <div class="top">
-      <span class="name">智谱 GLM（Zhipu）</span>
-      <span class="badge alt">推荐回退</span>
-    </div>
-    <div class="row">
-      <div class="k">申请地址</div>
-      <div class="v"><a href="https://open.bigmodel.cn/usercenter/apikeys" target="_blank">open.bigmodel.cn/usercenter/apikeys</a> → 新建 API Key</div>
-      <div class="k">Base URL</div>
-      <div class="v"><span class="code">https://open.bigmodel.cn/api/paas/v4</span></div>
-      <div class="k">视觉模型</div>
-      <div class="v">glm-4v-flash（免费）</div>
-      <div class="k">文本模型</div>
-      <div class="v">glm-4-flash（免费）</div>
+      <div class="v">免费额度已用完，需充值或开通「用完即停」防扣费；余额告警看手机短信</div>
     </div>
   </div>
 
@@ -99,11 +114,11 @@
   <div class="engine">
     <div class="top">
       <span class="name">DeepSeek</span>
-      <span class="badge alt">推荐回退</span>
+      <span class="badge mixed">新用户免费 · 之后极便宜</span>
     </div>
     <div class="row">
       <div class="k">申请地址</div>
-      <div class="v"><a href="https://platform.deepseek.com/api_keys" target="_blank">platform.deepseek.com/api_keys</a> → 创建 API Key</div>
+      <div class="v"><a href="https://platform.deepseek.com/api_keys" target="_blank">platform.deepseek.com/api_keys</a> → 创建 API Key（sk- 开头，只显示一次）</div>
       <div class="k">Base URL</div>
       <div class="v"><span class="code">https://api.deepseek.com</span></div>
       <div class="k">视觉模型</div>
@@ -111,13 +126,14 @@
       <div class="k">文本模型</div>
       <div class="v">deepseek-chat</div>
     </div>
+    <div class="price-note">新用户送 ¥5~10 试用额度，按量约 ¥1~2 / 百万 tokens，日常用量极便宜。</div>
   </div>
 
   <!-- 豆包 -->
   <div class="engine">
     <div class="top">
       <span class="name">豆包（火山方舟）</span>
-      <span class="badge alt">可回退</span>
+      <span class="badge mixed">新用户 50万 tokens 免费</span>
     </div>
     <div class="row">
       <div class="k">申请地址</div>
@@ -129,8 +145,9 @@
       <div class="k">文本模型</div>
       <div class="v">doubao-seed-1.6-32k</div>
       <div class="k">注意</div>
-      <div class="v">豆包需要填入「推理接入点 Endpoint ID」而非模型名，视觉得分高</div>
+      <div class="v">豆包需填入「推理接入点 Endpoint ID」而非模型名，视觉得分高</div>
     </div>
+    <div class="price-note">新用户 50 万 tokens 6 个月免费，之后按量付费（较便宜）。</div>
   </div>
 
   <!-- Gemini -->
@@ -145,7 +162,7 @@
       <div class="k">视觉模型</div>
       <div class="v">gemini-2.0-flash（降级到 1.5-flash）</div>
       <div class="k">注意</div>
-      <div class="v">国内网络通常无法直连，仅作可选兜底；填了也大概率用不上</div>
+      <div class="v">海外免费，但国内网络通常无法直连，仅作可选兜底；填了也大概率用不上</div>
     </div>
   </div>
 
