@@ -1784,12 +1784,28 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
 .piggy-rec .del{cursor:pointer;border:none;background:transparent;color:var(--text-2);}
 .diary-nav{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 0 14px;}
 .diary-date{font-weight:600;color:var(--text);font-size:14px;}
-.diary-entries{display:flex;flex-direction:column;gap:8px;}
-.diary-entry{display:flex;align-items:flex-start;gap:8px;background:var(--input-bg);border:1px solid var(--border);border-radius:8px;padding:8px 10px;}
-.diary-entry .no{flex:0 0 auto;width:22px;height:22px;border-radius:50%;background:var(--blue,#2E86C1);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;}
-.diary-entry input{flex:1 1 auto;border:none;background:transparent;font-size:14px;color:var(--text);outline:none;font-family:inherit;}
-.diary-entry .del{cursor:pointer;border:none;background:transparent;color:var(--text-2);}
-.diary-empty{font-size:13px;color:var(--text-2);}
+.diary-entries{display:flex;flex-direction:column;gap:6px;}
+.diary-entry{display:flex;align-items:center;gap:8px;background:var(--input-bg);border:1px solid var(--border);border-radius:10px;padding:7px 10px;transition:border-color .2s;}
+.diary-entry:hover,.diary-entry:focus-within{border-color:var(--accent);}
+.diary-entry .no{flex:0 0 auto;width:22px;height:22px;border-radius:50%;background:var(--blue,#2E86C1);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;}
+.diary-entry input{flex:1 1 auto;border:none;background:transparent;font-size:14px;color:var(--text);outline:none;font-family:inherit;min-width:0;}
+.diary-entry .del{cursor:pointer;border:none;background:transparent;color:var(--text-2);font-size:15px;padding:2px 4px;flex-shrink:0;opacity:.5;transition:opacity .2s;}
+.diary-entry .del:hover{opacity:1;}
+.diary-empty{text-align:center;padding:20px 0;font-size:13px;color:var(--text-2);}
+.diary-add-row{display:flex;align-items:center;gap:8px;margin-top:4px;}
+.diary-add-row input{flex:1;border:1px dashed var(--border);background:transparent;border-radius:10px;padding:7px 10px;font-size:14px;color:var(--text);outline:none;font-family:inherit;transition:border-color .2s;}
+.diary-add-row input:focus{border-color:var(--accent);border-style:solid;}
+.diary-add-row .btn-add{flex:0 0 auto;cursor:pointer;border:1px solid var(--accent);background:transparent;color:var(--accent);border-radius:50%;width:28px;height:28px;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .2s;}
+.diary-add-row .btn-add:hover{background:var(--accent);color:#fff;}
+
+/* 移动端日记适配 */
+@media(max-width:600px){
+  .diary-entry{padding:6px 8px;gap:6px;border-radius:8px;}
+  .diary-entry .no{width:18px;height:18px;font-size:11px;}
+  .diary-entry input{font-size:13px;}
+  .diary-add-row input{font-size:13px;padding:6px 8px;}
+  .diary-stats{font-size:12px !important;}
+}
 
 /* 财富总览仪表盘 */
 .overview-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin:6px 0 12px;}
@@ -3766,29 +3782,52 @@ function gooseAutoSave(){
   toast('已按本月比例存入 ¥' + Math.round(monthly).toLocaleString());
 }
 
-/* ---- 模块4：成功日记 ---- */
+/* ---- 模块4：成功日记（紧凑模式） ---- */
 function renderSuccessDiary(){
   var date = wealthDiaryDate;
   document.getElementById('diaryDate').textContent = date;
   var entries = wealth().successDiary[date] ? wealth().successDiary[date].slice() : [];
-  if(!entries.length){ for(var k=0;k<5;k++) entries.push(''); }
   var box = document.getElementById('diaryEntries');
   box.innerHTML = '';
-  entries.forEach(function(txt, i){
-    var row = document.createElement('div'); row.className = 'diary-entry';
-    var no = document.createElement('div'); no.className = 'no'; no.textContent = (i + 1);
-    var inp = document.createElement('input'); inp.type = 'text'; inp.placeholder = '今天做成的一件事…'; inp.value = txt || '';
-    inp.oninput = function(){ entries[i] = inp.value; saveDiary(date, entries); };
-    var del = document.createElement('button'); del.className = 'del'; del.textContent = '✕';
-    del.onclick = function(){ entries.splice(i, 1); saveDiary(date, entries); renderSuccessDiary(); };
-    row.appendChild(no); row.appendChild(inp); row.appendChild(del);
-    box.appendChild(row);
-  });
+  /* 只渲染已填写的条目，不强制铺开 5 个空框 */
+  if(!entries.length){
+    box.innerHTML = '<div class="diary-empty">✨ 今天还没记录，写下第一件做成的事吧</div>';
+  } else {
+    entries.forEach(function(txt, i){
+      if(!txt || !txt.trim()) return; /* 跳过空条目 */
+      var row = document.createElement('div'); row.className = 'diary-entry';
+      var no = document.createElement('div'); no.className = 'no'; no.textContent = (i + 1);
+      var inp = document.createElement('input'); inp.type = 'text'; inp.value = txt;
+      inp.oninput = function(){ entries[i] = inp.value; saveDiary(date, entries); };
+      var del = document.createElement('button'); del.className = 'del'; del.textContent = '✕';
+      del.onclick = function(){ entries.splice(i, 1); saveDiary(date, entries); renderSuccessDiary(); };
+      row.appendChild(no); row.appendChild(inp); row.appendChild(del);
+      box.appendChild(row);
+    });
+  }
+  /* 底部：一行"添加新条目"输入 */
+  var addRow = document.createElement('div'); addRow.className = 'diary-add-row';
+  var addInp = document.createElement('input'); addInp.type = 'text';
+  addInp.placeholder = '今天做成的一件事…（回车添加）';
+  addInp.onkeydown = function(e){ if(e.key === 'Enter' && addInp.value.trim()){ addDiaryEntryText(addInp.value.trim()); addInp.value = ''; } };
+  var addBtn = document.createElement('button'); addBtn.className = 'btn-add'; addBtn.textContent = '+';
+  addBtn.onclick = function(){ if(addInp.value.trim()){ addDiaryEntryText(addInp.value.trim()); addInp.value = ''; } };
+  addRow.appendChild(addInp); addRow.appendChild(addBtn);
+  box.appendChild(addRow);
+  /* 统计 */
   var filled = entries.filter(function(x){ return x && x.trim(); }).length;
-  document.getElementById('diaryProgress').textContent = '今日 ' + filled + ' / 5';
+  document.getElementById('diaryProgress').textContent = '今日 ' + filled + ' / ' + Math.max(filled, entries.length);
   document.getElementById('diaryStreak').textContent = '连续打卡 ' + diaryStreak() + ' 天';
   renderDiaryStats();
   renderDiaryHeat();
+}
+/* 新增一条日记（带文字，自动聚焦下一条输入） */
+function addDiaryEntryText(text){
+  var date = wealthDiaryDate;
+  if(!wealth().successDiary[date]) wealth().successDiary[date] = [];
+  wealth().successDiary[date].push(text);
+  saveDb();
+  renderSuccessDiary();
 }
 function saveDiary(date, entries){
   var clean = entries.slice();
@@ -3798,10 +3837,9 @@ function saveDiary(date, entries){
   saveDb();
 }
 function addDiaryEntry(){
-  var date = wealthDiaryDate;
-  if(!wealth().successDiary[date]) wealth().successDiary[date] = [];
-  wealth().successDiary[date].push('');
-  saveDb(); renderSuccessDiary();
+  /* 兼容旧按钮：聚焦到底部新增输入框 */
+  var inp = document.querySelector('.diary-add-row input');
+  if(inp){ inp.focus(); inp.select(); }
 }
 function diaryPrev(){ var d = new Date(wealthDiaryDate); d.setDate(d.getDate() - 1); wealthDiaryDate = toDateStr(d); renderSuccessDiary(); }
 function diaryNext(){
