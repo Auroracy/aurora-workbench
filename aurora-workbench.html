@@ -6573,6 +6573,7 @@ function computeFundMetrics(f){
 
 /* ============ 渲染基金总览/配置/列表/对比/建议 ============ */
 var fundCurrentPage = 1;
+var compareCurrentPage = 1;
 var FUND_PAGE_SIZE = 10;
 function renderFunds(){
   var funds = DB.market.funds || [];
@@ -6665,19 +6666,40 @@ function renderFundCompare(funds, metricsArr){
   if(!funds.length){ el.innerHTML = ''; return; }
   var arr = funds.slice().sort(function(a, b){ return metricsArr[b.id].hpPct - metricsArr[a.id].hpPct; });
   var hasAnyNav = arr.some(function(f){ return (metricsArr[f.id]||{}).nav > 0; });
-  el.innerHTML = '<table class="fund-tbl"><thead><tr><th>排名</th><th>基金</th>' + (hasAnyNav ? '<th>收益率</th><th class="hide-mobile">持有收益</th>' : '') + '<th>评价</th></tr></thead><tbody>' +
-    arr.map(function(f, i){
-      var m = metricsArr[f.id];
-      var badge = '';
-      if(i < 3 && m.hpPct >= 0) badge = '🏆 领先';
-      else if(i >= arr.length - 3 && m.hpPct < 0) badge = '⚠️ 偏弱';
-      else if(m.hpPct < 0) badge = '📉 亏损';
-      else badge = '✅ 稳健';
-      var navOk = m.nav > 0;
-      return '<tr><td>' + (i + 1) + '</td><td><b>' + escapeHtml(f.name) + '</b><br><span class="text-sm text-muted">' + f.type + '·' + f.theme + '</span></td>' +
-        (hasAnyNav ? '<td class="' + (navOk ? clsOf(m.hpPct) : '') + '">' + (navOk ? fmtPct(m.hpPct) : '<span class="text-muted">待估值</span>') + '</td><td class="hide-mobile ' + (navOk ? clsOf(m.hp) : '') + '">' + (navOk ? fmtMoney(m.hp) : '<span class="text-muted">—</span>') + '</td>' : '') +
-        '<td>' + badge + '</td></tr>';
-    }).join('') + '</tbody></table>';
+  var totalPages = Math.ceil(arr.length / FUND_PAGE_SIZE);
+  if(compareCurrentPage > totalPages) compareCurrentPage = totalPages;
+  if(compareCurrentPage < 1) compareCurrentPage = 1;
+  var start = (compareCurrentPage - 1) * FUND_PAGE_SIZE;
+  var pageArr = arr.slice(start, start + FUND_PAGE_SIZE);
+  var rows = pageArr.map(function(f, j){
+    var i = start + j; // 全局排名序号（跨页连续）
+    var m = metricsArr[f.id];
+    var badge = '';
+    if(i < 3 && m.hpPct >= 0) badge = '🏆 领先';
+    else if(i >= arr.length - 3 && m.hpPct < 0) badge = '⚠️ 偏弱';
+    else if(m.hpPct < 0) badge = '📉 亏损';
+    else badge = '✅ 稳健';
+    var navOk = m.nav > 0;
+    return '<tr><td>' + (i + 1) + '</td><td><b>' + escapeHtml(f.name) + '</b><br><span class="text-sm text-muted">' + f.type + '·' + f.theme + '</span></td>' +
+      (hasAnyNav ? '<td class="' + (navOk ? clsOf(m.hpPct) : '') + '">' + (navOk ? fmtPct(m.hpPct) : '<span class="text-muted">待估值</span>') + '</td><td class="hide-mobile ' + (navOk ? clsOf(m.hp) : '') + '">' + (navOk ? fmtMoney(m.hp) : '<span class="text-muted">—</span>') + '</td>' : '') +
+      '<td>' + badge + '</td></tr>';
+  }).join('');
+  var html = '<table class="fund-tbl"><thead><tr><th>排名</th><th>基金</th>' + (hasAnyNav ? '<th>收益率</th><th class="hide-mobile">持有收益</th>' : '') + '<th>评价</th></tr></thead><tbody>' + rows + '</tbody></table>';
+  if(totalPages > 1){
+    html += '<div class="pager" style="display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:12px;font-size:13px;">' +
+      '<button class="btn btn-sm" ' + (compareCurrentPage <= 1 ? 'disabled style="opacity:.5;"' : 'onclick="compareGoPage(' + (compareCurrentPage - 1) + ')"') + '>‹ 上一页</button>' +
+      '<span class="pager-info" style="color:var(--text-2);">第 ' + compareCurrentPage + ' / ' + totalPages + ' 页（共 ' + arr.length + ' 只）</span>' +
+      '<button class="btn btn-sm" ' + (compareCurrentPage >= totalPages ? 'disabled style="opacity:.5;"' : 'onclick="compareGoPage(' + (compareCurrentPage + 1) + ')"') + '>下一页 ›</button>' +
+      '</div>';
+  }
+  el.innerHTML = html;
+}
+function compareGoPage(p){
+  compareCurrentPage = p;
+  var el = document.getElementById('fundCompareList');
+  if(el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  // 重新渲染对比表（保持已有的 funds/metrics 不可得，这里仅滚动后由 renderFunds 重建）
+  if(typeof renderFunds === 'function') renderFunds();
 }
 function generateAdvisor(funds, totals, metricsArr){
   var el = document.getElementById('fundAdvisor'); if(!el) return;
