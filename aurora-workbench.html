@@ -6973,6 +6973,31 @@ function parseFundPasteText(txt){
   });
   return list;
 }
+/* 判断两只基金是否为同一只（名称模糊匹配） */
+function fundNameSimilar(a, b){
+  if(!a || !b) return false;
+  a = sanitizeText(a).replace(/[CAB\s]/g, ''); /* 去掉后缀 C/A/B 和空格 */
+  b = sanitizeText(b).replace(/[CAB\s]/g, '');
+  if(a === b) return true;
+  /* 一方包含另一方（去掉后缀后） */
+  if(a.indexOf(b) >= 0 || b.indexOf(a) >= 0) return true;
+  /* 编辑距离：长度差不超过2且相似度>80% */
+  var la = a.length, lb = b.length;
+  if(Math.abs(la - lb) > 3) return false;
+  var maxLen = Math.max(la, lb);
+  var same = 0;
+  for(var i = 0; i < Math.min(la, lb); i++){ if(a.charAt(i) === b.charAt(i)) same++; }
+  return (same / maxLen > 0.8);
+}
+/* 在已有持仓中按名称查找基金索引 */
+function findFundByName(name){
+  var list = DB.market.funds || [];
+  for(var i = 0; i < list.length; i++){
+    if(fundNameSimilar(name, list[i].name)) return i;
+  }
+  return -1;
+}
+
 function renderImportPreview(list){
   var box = document.getElementById('fundImportPreview'); if(!box) return;
   if(!list || !list.length){ box.innerHTML = ''; return; }
@@ -6984,13 +7009,35 @@ function renderImportPreview(list){
   /* 检测与已有持仓重复的代码 */
   var existingCodes = (DB.market.funds || []).map(function(f){ return f.code; });
   var dupWithExisting = list.filter(function(x){ return existingCodes.indexOf(x.code) >= 0; }).map(function(x){ return x.code; });
+  /* 检测与已有持仓名称重复但代码不同（AI识别错误） */
+  var nameDupWithExisting = [];
+  list.forEach(function(x){
+    if(existingCodes.indexOf(x.code) >= 0) return; /* 已按代码匹配的不算 */
+    if(findFundByName(x.name || '') >= 0) nameDupWithExisting.push(x.code + '(' + x.name + ')');
+  });
+  /* 检测预览内名称重复但代码不同 */
+  var nameDupInPreview = [];
+  for(var ni = 0; ni < list.length; ni++){
+    for(var nj = ni + 1; nj < list.length; nj++){
+      if(list[ni].code === list[nj].code) continue; /* 已按代码检测 */
+      if(fundNameSimilar(list[ni].name, list[nj].name)){
+        nameDupInPreview.push(list[ni].code + ' vs ' + list[nj].code);
+      }
+    }
+  }
 
   var hintHtml = '';
   if(dupInPreview.length){
     hintHtml += '<div style="font-size:12px;color:var(--amber);margin-bottom:6px;">⚠ 预览内重复代码（将合并更新）：' + dupInPreview.join('、') + '</div>';
   }
   if(dupWithExisting.length){
-    hintHtml += '<div style="font-size:12px;color:var(--blue);margin-bottom:6px;">ℹ 与已有持仓重复（将更新数据）：' + dupWithExisting.join('、') + '</div>';
+    hintHtml += '<div style="font-size:12px;color:var(--blue);margin-bottom:6px;">ℹ 与已有持仓代码重复（将更新数据）：' + dupWithExisting.join('、') + '</div>';
+  }
+  if(nameDupWithExisting.length){
+    hintHtml += '<div style="font-size:12px;color:var(--red);margin-bottom:6px;background:var(--red-bg);padding:6px 8px;border-radius:4px;">🔴 名称与已有基金相同但代码不同（AI可能识别错误，将合并到已有基金）：<br>' + nameDupWithExisting.join('<br>') + '</div>';
+  }
+  if(nameDupInPreview.length){
+    hintHtml += '<div style="font-size:12px;color:var(--amber);margin-bottom:6px;background:var(--amber-bg);padding:6px 8px;border-radius:4px;">⚠️ 预览内名称相同但代码不同（AI识别不一致，建议手动核对后只保留一只）：<br>' + nameDupInPreview.join('<br>') + '</div>';
   }
   box.innerHTML = '<div class="card-title" style="font-size:14px;">识别预览（请核对，可修改后导入）</div>' +
     hintHtml +
@@ -6998,8 +7045,13 @@ function renderImportPreview(list){
     list.map(function(x, i){
       var isDup = codeCount[x.code] > 1;
       var isExist = existingCodes.indexOf(x.code) >= 0;
-      var rowStyle = isDup ? 'background:var(--amber-bg);' : (isExist ? 'background:var(--blue-bg);' : '');
-      return '<tr style="' + rowStyle + '"><td><input type="checkbox" data-i="' + i + '" checked></td><td>' + x.code + (isDup ? ' <span style="font-size:10px;color:var(--amber);">重</span>' : '') + (isExist ? ' <span style="font-size:10px;color:var(--blue);">旧</span>' : '') + '</td>' +
+      var isNameDupExist = (existingCodes.indexOf(x.code) < 0) && (findFundByName(x.name || '') >= 0);
+      var rowStyle = isDup ? 'background:var(--amber-bg);' : (isExist ? 'background:var(--blue-bg);' : (isNameDupExist ? 'background:var(--red-bg);' : ''));
+      var tagHtml = '';
+      if(isDup) tagHtml += ' <span style="font-size:10px;color:var(--amber);">重</span>';
+      if(isExist) tagHtml += ' <span style="font-size:10px;color:var(--blue);">旧</span>';
+      if(isNameDupExist) tagHtml += ' <span style="font-size:10px;color:var(--red);font-weight:bold;">名重</span>';
+      return '<tr style="' + rowStyle + '"><td><input type="checkbox" data-i="' + i + '" checked></td><td>' + x.code + tagHtml + '</td>' +
         '<td><input id="imp_name_' + i + '" value="' + escapeHtml(x.name) + '"></td>' +
         '<td><input id="imp_shares_' + i + '" value="' + x.shares + '"></td>' +
         '<td><input id="imp_cost_' + i + '" value="' + x.cost + '"></td>' +
@@ -7018,6 +7070,8 @@ function commitImportFunds(){
     var hp = parseFloat(document.getElementById('imp_hp_' + i).value) || null;
     var hpPct = parseFloat(document.getElementById('imp_hpPct_' + i).value) || null;
     var existingIdx = DB.market.funds.findIndex(function(f){ return f.code === x.code; });
+    /* 代码没匹配到，再按名称模糊匹配（AI识别代码错误时兜底） */
+    if(existingIdx < 0) existingIdx = findFundByName(name || x.name);
     if(existingIdx >= 0){
       /* 已存在 → 更新份额、成本价、收益数据 */
       var ef = DB.market.funds[existingIdx];
@@ -7037,6 +7091,7 @@ function commitImportFunds(){
   saveDb(); clearImportPreview(); renderFunds();
   var msg = '导入完成：新增 ' + added + ' 只';
   if(updated > 0) msg += '，更新 ' + updated + ' 只（' + dupCodes.join('、') + '）';
+  if(skipped.length > 0) msg += '，跳过 ' + skipped.length + ' 只（' + skipped.join('、') + '）';
   msg += '，记得点「刷新估值」';
   toast(msg);
 }
