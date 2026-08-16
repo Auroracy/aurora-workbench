@@ -7043,13 +7043,27 @@ function fetchFundHoldings(code, cb){
       var m = txt.match(/content:"([\s\S]*?)"/);
       if(!m){ next(); return; }
       var html = m[1].replace(/\\"/g, '"').replace(/\\r|\\n|\\t/g, '');
-      var names = [];
-      var re = /<td[^>]*>\s*<a[^>]*>([^<]+)<\/a>/g;
-      var mm;
-      while((mm = re.exec(html))){ names.push(mm[1].trim()); }
+      /* 逐行解析：每行 <a> 里既有股票代码、股票名，也有「股吧」「行情」噪声链接。
+         只保留真正的股票名：含中文、非噪声词、非纯数字代码。 */
+      var rows = html.match(/<tr>([\s\S]*?)<\/tr>/g) || [];
+      var set = {};
+      rows.forEach(function(row){
+        var links = row.match(/<a[^>]*>([^<]+)<\/a>/g) || [];
+        links.forEach(function(a){
+          var t = (a.match(/<a[^>]*>([^<]+)<\/a>/) || [,''])[1].trim();
+          if(!t) return;
+          if(/^\d+$/.test(t)) return;               // 跳过股票代码（纯数字）
+          if(t === '股吧' || t === '行情') return;   // 跳过每行固定的噪声链接
+          if(/详情|更多|查看/.test(t)) return;       // 跳过「变动详情」「查看更多」等页脚链接
+          if(!/[一-龥]/.test(t)) return;             // 必须是中文股票名
+          set[t] = 1;
+        });
+      });
+      var names = Object.keys(set);
       if(!names.length){
         var re2 = /<td class="[^"]*">([^<]+)<\/td>/g;
-        while((mm = re2.exec(html))){ var s = mm[1].trim(); if(/[一-龥]/.test(s) && s.length <= 6) names.push(s); }
+        var mm;
+        while((mm = re2.exec(html))){ var s = mm[1].trim(); if(/[一-龥]/.test(s) && s !== '股吧' && s !== '行情' && !/详情|更多|查看/.test(s)) names.push(s); }
       }
       if(!names.length){ next(); return; }
       cb(null, names.slice(0, 10));
@@ -7089,7 +7103,7 @@ function finishOverlap(fs, holdings){
       }
     }
   }
-  pairs.sort(function(x, y){ return y.shared.length - x.shared.length; });
+  pairs.sort(function(x, y){ return y.ratio - x.ratio; });
   DB.market.fundOverlap = { pairs: pairs, updatedAt: Date.now() };
   saveDb();
   var el = document.getElementById('fundOverlapResult');
@@ -7099,9 +7113,11 @@ function finishOverlap(fs, holdings){
   }
   el.innerHTML = '<div class="card-title" style="font-size:15px;">🔗 持仓重合 · 合并建议（' + pairs.length + ' 对）</div>' +
     pairs.map(function(p){
+      var pct = (p.ratio * 100).toFixed(0);
       return '<div class="overlap-pair"><b>' + escapeHtml(p.a.name) + '</b> ⇄ <b>' + escapeHtml(p.b.name) + '</b>' +
-        '<br>共同重仓：' + (p.shared.join('、') || '（同主题布局）') +
-        '<br><span class="text-sm text-muted">同主题重合' + (p.themeOverlap ? '（是）' : '（否）') + '，建议保留其一、合并另一，减少重复暴露与手续费。</span></div>';
+        '<br>共同重仓：' + (p.shared.join('、') || '（无具体个股，仅同主题布局）') +
+        '<br>持仓重合度：<b>' + pct + '%</b>（共同 ' + p.shared.length + ' 只）' +
+        '<br><span class="text-sm text-muted">' + (p.themeOverlap ? '同主题' : '跨主题') + '布局，建议保留表现更优者、合并另一，减少重复暴露与手续费。</span></div>';
     }).join('');
 }
 
