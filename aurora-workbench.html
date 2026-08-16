@@ -3025,7 +3025,7 @@ function escapeHtml(s){
   if(!s) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
-function sanitizeFundName(s){
+function sanitizeText(s){
   if(!s) return '';
   s = String(s);
   /* 去除控制字符（保留换行/制表） */
@@ -3034,10 +3034,12 @@ function sanitizeFundName(s){
   s = s.replace(/\uFFFD/g, '');
   /* 去除私有区/特殊符号块中常见的乱码字符 */
   s = s.replace(/[\uE000-\uF8FF\u2760-\u2775\u2B50-\u2B59\u25A0-\u25FF]{3,}/g, '');
-  /* 折叠连续 3 个以上的 ◆◆◆ 等符号为单个 */
+  /* 折叠连续 3 个以上的 ◆◆◆ 等符号为空 */
   s = s.replace(/([◆●■▲▼★☆♦♠♣♥♧⬟⬡◀▶⏩⏪⏫⏬]){3,}/g, '');
   return s.trim();
 }
+/* 向后兼容 */
+var sanitizeFundName = sanitizeText;
 function timeToMin(t){
   if(!t) return 0;
   var p = t.split(':');
@@ -7328,17 +7330,21 @@ function renderTechNews(){
   if(pager){
     if(pages > 1){
       pager.innerHTML = '';
-      for(var p = 1; p <= pages; p++){
-        (function(pp){
-          var b = document.createElement('button');
-          b.className = 'pager-btn' + (pp === techNewsPage ? ' active' : '');
-          b.textContent = pp;
-          b.style.cssText = 'margin:0 3px;padding:4px 10px;border:1px solid #d4e0e6;background:#fff;border-radius:12px;cursor:pointer;font-size:13px;';
-          if(pp === techNewsPage){ b.style.background = '#15A49B'; b.style.color = '#fff'; }
-          b.onclick = function(){ techNewsPage = pp; renderTechNews(); };
-          pager.appendChild(b);
-        })(p);
-      }
+      /* 精简页码：首末页 + 当前页前后 2 页 */
+      var pgs = [1];
+      for(var pi = techNewsPage - 2; pi <= techNewsPage + 2; pi++){ if(pi > 1 && pi < pages) pgs.push(pi); }
+      if(pages > 1) pgs.push(pages);
+      /* 去重 + 排序 */
+      pgs = pgs.filter(function(v,i,a){ return a.indexOf(v) === i; }).sort(function(a,b){ return a - b; });
+      pgs.forEach(function(pp){
+        var b = document.createElement('button');
+        b.className = 'pager-btn' + (pp === techNewsPage ? ' active' : '');
+        b.textContent = pp;
+        b.style.cssText = 'margin:0 3px;padding:4px 10px;border:1px solid #d4e0e6;background:#fff;border-radius:12px;cursor:pointer;font-size:13px;';
+        if(pp === techNewsPage){ b.style.background = '#15A49B'; b.style.color = '#fff'; }
+        b.onclick = function(){ techNewsPage = pp; renderTechNews(); };
+        pager.appendChild(b);
+      });
     } else { pager.innerHTML = ''; }
   }
 }
@@ -8619,11 +8625,11 @@ function renderRecipes(){
     var idx = DB.recipes.items.indexOf(r);
     var html = '<div class="recipe-item' + (r.fav ? ' fav' : '') + '" onclick="openRecipeDetail(' + idx + ')">';
     html += '<div class="recipe-item-head">';
-    html += '<div><div class="recipe-item-name">' + escapeHtml(r.name) + '</div>';
+    html += '<div><div class="recipe-item-name">' + sanitizeText(escapeHtml(r.name)) + '</div>';
     html += '<div class="recipe-item-meta">';
     html += '<span class="chip chip-gray">' + CATEGORY_LABEL[r.category] + '</span>';
     html += '<span class="chip chip-blue">' + DIFFICULTY_LABEL[r.difficulty] + '</span>';
-    if(r.duration) html += '<span>' + escapeHtml(r.duration) + '</span>';
+    if(r.duration) html += '<span>' + sanitizeText(escapeHtml(r.duration)) + '</span>';
     html += '</div></div>';
     html += '<div class="record-actions">';
     html += '<button class="btn-icon ' + (r.fav ? 'fav-on' : '') + '" onclick="event.stopPropagation();toggleRecipeFav(' + idx + ')" title="常用">&#9733;</button>';
@@ -8658,16 +8664,16 @@ function openRecipeDetail(idx){
   var dough = r.doughIng && r.doughIng.length ? r.doughIng : (r.ingredients || []);
   var filling = r.fillingIng || [];
   if(dough.length){
-    html += '<div class="detail-ing-title">面团原料</div><div class="detail-ing-list">' + dough.map(function(ing){ return escapeHtml(ing.name) + (ing.amount ? ' <span class="text-muted">' + escapeHtml(ing.amount) + '</span>' : ''); }).join('、') + '</div>';
+    html += '<div class="detail-ing-title">面团原料</div><div class="detail-ing-list">' + dough.map(function(ing){ return sanitizeText(escapeHtml(ing.name)) + (ing.amount ? ' <span class="text-muted">' + sanitizeText(escapeHtml(ing.amount)) + '</span>' : ''); }).join('、') + '</div>';
   }
   if(filling.length){
-    html += '<div class="detail-ing-title">馅料</div><div class="detail-ing-list">' + filling.map(function(ing){ return escapeHtml(ing.name) + (ing.amount ? ' <span class="text-muted">' + escapeHtml(ing.amount) + '</span>' : ''); }).join('、') + '</div>';
+    html += '<div class="detail-ing-title">馅料</div><div class="detail-ing-list">' + filling.map(function(ing){ return sanitizeText(escapeHtml(ing.name)) + (ing.amount ? ' <span class="text-muted">' + sanitizeText(escapeHtml(ing.amount)) + '</span>' : ''); }).join('、') + '</div>';
   }
   if(r.steps && r.steps.length){
-    html += '<div class="detail-ing-title">制作步骤</div><ol class="detail-steps">' + r.steps.map(function(s){ return '<li>' + escapeHtml(s) + '</li>'; }).join('') + '</ol>';
+    html += '<div class="detail-ing-title">制作步骤</div><ol class="detail-steps">' + r.steps.map(function(s){ return '<li>' + sanitizeText(escapeHtml(s)) + '</li>'; }).join('') + '</ol>';
   }
   if(r.notes){
-    html += '<div class="detail-ing-title">实操心得 & 调整记录</div><div class="detail-note">' + escapeHtml(r.notes) + '</div>';
+    html += '<div class="detail-ing-title">实操心得 & 调整记录</div><div class="detail-note">' + sanitizeText(escapeHtml(r.notes)) + '</div>';
   }
   body.innerHTML = html;
   document.getElementById('recipeDetailOverlay').classList.add('show');
