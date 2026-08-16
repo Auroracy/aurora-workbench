@@ -3025,6 +3025,19 @@ function escapeHtml(s){
   if(!s) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+function sanitizeFundName(s){
+  if(!s) return '';
+  s = String(s);
+  /* 去除控制字符（保留换行/制表） */
+  s = s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+  /* 去除 Unicode 替换字符 */
+  s = s.replace(/\uFFFD/g, '');
+  /* 去除私有区/特殊符号块中常见的乱码字符 */
+  s = s.replace(/[\uE000-\uF8FF\u2760-\u2775\u2B50-\u2B59\u25A0-\u25FF]{3,}/g, '');
+  /* 折叠连续 3 个以上的 ◆◆◆ 等符号为单个 */
+  s = s.replace(/([◆●■▲▼★☆♦♠♣♥♧⬟⬡◀▶⏩⏪⏫⏬]){3,}/g, '');
+  return s.trim();
+}
 function timeToMin(t){
   if(!t) return 0;
   var p = t.split(':');
@@ -6901,7 +6914,7 @@ function analyzeFundScreenshot(base64, cb){
           throw new Error('返回非数组（顶层应为数组或 {funds/list/items/data:[]}）');
         }
         cb(null, arr.map(function(x){
-          return { code: normalizeFundCode(x.code), name: x.name || '', shares: parseFloat(x.shares) || 0, cost: parseFloat(x.cost) || 0, hp: parseFloat(x.hp) || null, hpPct: parseFloat(x.hpPct) || null };
+          return { code: normalizeFundCode(x.code), name: sanitizeFundName(x.name), shares: parseFloat(x.shares) || 0, cost: parseFloat(x.cost) || 0, hp: parseFloat(x.hp) || null, hpPct: parseFloat(x.hpPct) || null };
         }).filter(function(x){ return x.code; }));
       });
     }).catch(function(err){
@@ -6940,7 +6953,7 @@ function parseFundPasteText(txt){
       arr.forEach(function(x){
         var code = String(x.code || x.fundCode || '').match(/\d{6}/);
         if(!code) return;
-        list.push({ code: code[0], name: x.name || x.fundName || '', shares: parseFloat(x.shares || x.share) || 0, cost: parseFloat(x.cost || x.costPrice) || 0, hp: parseFloat(x.hp) || null, hpPct: parseFloat(x.hpPct) || null });
+        list.push({ code: code[0], name: sanitizeFundName(x.name || x.fundName), shares: parseFloat(x.shares || x.share) || 0, cost: parseFloat(x.cost || x.costPrice) || 0, hp: parseFloat(x.hp) || null, hpPct: parseFloat(x.hpPct) || null });
       });
       if(list.length) return list;
     } catch(e){ }
@@ -6997,7 +7010,7 @@ function commitImportFunds(){
   var added = 0, updated = 0, skipped = [], dupCodes = [];
   pendingImport.forEach(function(x, i){
     var cb = document.querySelector('input[data-i="' + i + '"]'); if(cb && !cb.checked) return;
-    var name = (document.getElementById('imp_name_' + i).value || '').trim();
+    var name = sanitizeFundName(document.getElementById('imp_name_' + i).value || '');
     var shares = parseFloat(document.getElementById('imp_shares_' + i).value) || 0;
     var cost = parseFloat(document.getElementById('imp_cost_' + i).value) || 0;
     var hp = parseFloat(document.getElementById('imp_hp_' + i).value) || null;
