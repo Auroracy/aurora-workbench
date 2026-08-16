@@ -6963,7 +6963,7 @@ function analyzeFundScreenshot(base64, cb){
           if(modelIdx < QWEN_MODELS.length - 1){ modelIdx++; tryModel(); return; }
           throw new Error('返回非数组（顶层应为数组或 {funds/list/items/data:[]}）');
         }
-        /* 先映射 AI 识别结果，再用「基金名称」反查真实代码校正（AI 给的代码常幻觉错误） */
+        /* 先映射 AI 识别结果，立即回调显示预览（不阻塞） */
         var mapped = arr.map(function(x){
           return {
             code: normalizeFundCode(x.code),
@@ -6976,15 +6976,34 @@ function analyzeFundScreenshot(base64, cb){
             aiCode: normalizeFundCode(x.code)
           };
         });
-        Promise.all(mapped.map(function(item){
-          if(!item.name) return Promise.resolve();
+        /* 立即返回识别结果，不等待校正（保证基础识别永远可用） */
+        cb(null, mapped);
+        /* 后台异步用「基金名称」反查真实代码校正，完成后自动刷新预览 */
+        var namesToLookup = mapped.filter(function(x){ return x.name; });
+        if(!namesToLookup.length) return;
+        console.log('[fundCorrection] 后台开始校正', namesToLookup.length, '只基金');
+        var correctedCount = 0;
+        Promise.all(namesToLookup.map(function(item){
           return lookupFundCodeByName(item.name).then(function(res){
             if(res && res.code && res.code !== item.code){
               item.code = res.code;
               item.codeCorrected = true;
+              correctedCount++;
+              console.log('[fundCorrection] ✓', item.name, ':', item.aiCode, '→', item.code);
             }
-          }).catch(function(){ /* 反查失败则用 AI 原代码，不阻断导入 */ });
-        })).then(function(){ cb(null, mapped); }).catch(function(){ cb(null, mapped); });
+          }).catch(function(e){
+            console.warn('[fundCorrection] ✗', item.name, '查询失败:', e && e.message);
+          });
+        })).then(function(){
+          console.log('[fundCorrection] 完成，校正', correctedCount, '/', namesToLookup.length);
+          /* 如果有校正结果且预览还在显示，自动刷新预览 */
+          if(correctedCount > 0 && pendingImport === mapped){
+            renderImportPreview(mapped);
+            toast('已校正 ' + correctedCount + ' 只基金的代码（来自东方财富）');
+          }
+        }).catch(function(){
+          console.warn('[fundCorrection] 整体异常，已跳过（不影响已识别结果）');
+        });
       });
     }).catch(function(err){
       if(err && /超时|AbortError/i.test(err.message || '') && modelIdx < QWEN_MODELS.length - 1){
