@@ -6564,8 +6564,11 @@ function computeFundMetrics(f){
   var cost = parseFloat(f.cost) || 0;
   var mv = nav * shares;
   var ct = cost * shares;
-  var hp = mv - ct;
-  var hpPct = ct > 0 ? hp / ct * 100 : 0;
+  var calcHp = mv - ct;
+  var calcHpPct = ct > 0 ? calcHp / ct * 100 : 0;
+  /* 持有收益：优先用导入原始值，其次用估值计算值 */
+  var hp = (f.hpImport != null && f.hpImport !== 0) ? f.hpImport : calcHp;
+  var hpPct = (f.hpPctImport != null && f.hpPctImport !== 0) ? f.hpPctImport : calcHpPct;
   var dailyPct = f.val && f.val.gszzl != null ? parseFloat(f.val.gszzl) : 0;
   var dailyProfit = mv * dailyPct / 100;
   return { nav: nav, mv: mv, ct: ct, hp: hp, hpPct: hpPct, dailyPct: dailyPct, dailyProfit: dailyProfit };
@@ -6958,15 +6961,35 @@ function parseFundPasteText(txt){
 function renderImportPreview(list){
   var box = document.getElementById('fundImportPreview'); if(!box) return;
   if(!list || !list.length){ box.innerHTML = ''; return; }
+  /* 检测预览列表内部的重复代码 */
+  var codeCount = {};
+  list.forEach(function(x){ codeCount[x.code] = (codeCount[x.code] || 0) + 1; });
+  var dupInPreview = [];
+  Object.keys(codeCount).forEach(function(c){ if(codeCount[c] > 1) dupInPreview.push(c); });
+  /* 检测与已有持仓重复的代码 */
+  var existingCodes = (DB.market.funds || []).map(function(f){ return f.code; });
+  var dupWithExisting = list.filter(function(x){ return existingCodes.indexOf(x.code) >= 0; }).map(function(x){ return x.code; });
+
+  var hintHtml = '';
+  if(dupInPreview.length){
+    hintHtml += '<div style="font-size:12px;color:var(--amber);margin-bottom:6px;">⚠ 预览内重复代码（将合并更新）：' + dupInPreview.join('、') + '</div>';
+  }
+  if(dupWithExisting.length){
+    hintHtml += '<div style="font-size:12px;color:var(--blue);margin-bottom:6px;">ℹ 与已有持仓重复（将更新数据）：' + dupWithExisting.join('、') + '</div>';
+  }
   box.innerHTML = '<div class="card-title" style="font-size:14px;">识别预览（请核对，可修改后导入）</div>' +
+    hintHtml +
     '<table><thead><tr><th>导入</th><th>代码</th><th>名称</th><th>份额</th><th>成本价</th><th>持有收益</th><th>收益率</th></tr></thead><tbody>' +
     list.map(function(x, i){
-      return '<tr><td><input type="checkbox" data-i="' + i + '" checked></td><td>' + x.code + '</td>' +
+      var isDup = codeCount[x.code] > 1;
+      var isExist = existingCodes.indexOf(x.code) >= 0;
+      var rowStyle = isDup ? 'background:var(--amber-bg);' : (isExist ? 'background:var(--blue-bg);' : '');
+      return '<tr style="' + rowStyle + '"><td><input type="checkbox" data-i="' + i + '" checked></td><td>' + x.code + (isDup ? ' <span style="font-size:10px;color:var(--amber);">重</span>' : '') + (isExist ? ' <span style="font-size:10px;color:var(--blue);">旧</span>' : '') + '</td>' +
         '<td><input id="imp_name_' + i + '" value="' + escapeHtml(x.name) + '"></td>' +
         '<td><input id="imp_shares_' + i + '" value="' + x.shares + '"></td>' +
         '<td><input id="imp_cost_' + i + '" value="' + x.cost + '"></td>' +
-        '<td><input id="imp_hp_' + i + '" value="' + (x.hp || 0) + '" style="width:80px;"></td>' +
-        '<td><input id="imp_hpPct_' + i + '" value="' + (x.hpPct || 0) + '" style="width:70px;"></td></tr>';
+        '<td><input id="imp_hp_' + i + '" value="' + (x.hp != null ? x.hp : '') + '" style="width:80px;" placeholder="—"></td>' +
+        '<td><input id="imp_hpPct_' + i + '" value="' + (x.hpPct != null ? x.hpPct : '') + '" style="width:70px;" placeholder="—"></td></tr>';
     }).join('') + '</tbody></table>' +
     '<div style="margin-top:10px;display:flex;gap:10px;"><button class="btn btn-primary btn-sm" onclick="commitImportFunds()">确认导入</button><button class="btn btn-sm" onclick="clearImportPreview()">清空</button></div>';
 }
