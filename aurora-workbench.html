@@ -3128,12 +3128,55 @@ function serverBase(){
 }
 function loadDb(){
   if(serverBase()){
-    // 配置了服务器：直接以服务器 Redis 为唯一数据源，本地仅作离线兜底
-    loadFromServerAsPrimary();
+    loadFromServer();        // 配置了服务器 → 直接读 Redis（唯一真相）
   } else {
-    // 未配置服务器：沿用本地 localStorage
-    loadFromLocal();
+    loadFromLocal();         // 未配置 → 仅本地
   }
+}
+// 读取本地缓存（仅用于一次性迁移判断 / 离线兜底，绝不作为真实来源去覆盖云端）
+function getLocalCache(){
+  try {
+    var raw = localStorage.getItem(DB_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch(e){ return null; }
+}
+// 本地是否含有实质数据（用于首次把本地数据初始化到云端）
+function hasContentKeys(db){
+  if(!db || typeof db !== 'object') return false;
+  for(var k in db){
+    if(k === '_lastModified') continue;
+    var v = db[k];
+    if(v && (typeof v !== 'object' || Object.keys(v).length > 0 || (Array.isArray(v) && v.length > 0))) return true;
+  }
+  return false;
+}
+// 云端是否缺失本地拥有的数据模块（用于一次性把本地历史数据并入云端，防止此前只存在本地的数据丢失）
+function serverMissingLocalModules(local, remote){
+  if(!local || typeof local !== 'object') return false;
+  for(var k in local){
+    if(k === '_lastModified') continue;
+    var lv = local[k];
+    var hasContent = lv && (typeof lv !== 'object' || Object.keys(lv).length > 0 || (Array.isArray(lv) && lv.length > 0));
+    if(hasContent && !(k in remote)) return true;
+  }
+  return false;
+}
+// 一次性合并（仅用于把本地历史数据搬进云端，正常读写不再使用）
+function unionDb(local, remote){
+  var res = JSON.parse(JSON.stringify(remote));
+  for(var k in local){
+    if(k === '_lastModified') continue;
+    if(!(k in res)) res[k] = JSON.parse(JSON.stringify(local[k]));
+    else if(Array.isArray(res[k]) && Array.isArray(local[k])){
+      var ids = {};
+      res[k].forEach(function(x){ if(x && x.id != null) ids[x.id] = 1; });
+      local[k].forEach(function(x){ if(!(x && x.id != null && ids[x.id])) res[k].push(x); });
+    } else if(res[k] && typeof res[k] === 'object' && local[k] && typeof local[k] === 'object'){
+      for(var k2 in local[k]){ if(!(k2 in res[k])) res[k][k2] = local[k][k2]; }
+    }
+  }
+  res._lastModified = Date.now();
+  return res;
 }
 // 仅从本地 localStorage 读取（无服务器时）
 function loadFromLocal(){
@@ -3153,111 +3196,76 @@ function loadFromLocal(){
   }
   migrateDcaHistory();
 }
-// 以服务器 Redis 为数据源：先直读；按 _lastModified 时间戳合并（避免被服务器旧数据覆盖）
-function loadFromServerAsPrimary(){
-  // 先用本地缓存即时渲染（避免白屏），随后被服务器数据刷新
-  loadFromLocal();
-  var url = serverBase() + '/api/db';
-  fetch(url)
+// 直接读 Redis（服务器为唯一真相，不合并、不覆盖；仅在云端缺失本地模块时做一次并入迁移）
+function loadFromServer(){
+  loadFromLocal();                         // 先用本地缓存即时渲染（避免白屏）
+  var base = serverBase();
+  if(!base) return;
+  var localCache = getLocalCache();        // 本地缓存，用于一次性迁移判断
+  fetch(base + '/api/db', { signal: AbortSignal.timeout(8000) })
     .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); })
     .then(function(txt){
-      if(!txt || txt === '{}' || txt === 'null'){
-        // 服务器空/不存在：保留本地，并把本地数据推上去（首次连接时同步）
-        if(DB._lastModified){
-          showServerStatus('服务器暂无数据，正在推送本地数据…', '');
+      var serverEmpty = !txt || txt === '{}' || txt === 'null';
+      if(serverEmpty){
+        // 云端为空：若本地有数据则一次性上传初始化
+        if(localCache && hasContentKeys(localCache)){
+          DB = localCache;
           pushToServerNow();
+          showServerStatus('云端为空，已用本地数据初始化 ✓', 'ok');
         } else {
-          showServerStatus('服务器暂无数据（用本地缓存）', '');
+          showServerStatus('云端暂无数据', '');
         }
         return;
       }
       var remote = JSON.parse(txt);
-      if(remote && typeof remote === 'object'){
-        var remoteTime = remote._lastModified || 0;
-        var localTime = DB._lastModified || 0;
-        if(remoteTime > localTime){
-          // 服务器比本地新 → 用服务器（安全）
-          DB = remote;
-          localStorage.setItem(DB_KEY, JSON.stringify(DB));
-          migrateDcaHistory();
-          showServerStatus('已直读服务器数据 ✓', 'ok');
-          if(typeof renderAllOnSync === 'function') renderAllOnSync();
-        } else if(remoteTime === localTime && remoteTime === 0){
-          // 双方都无时间戳（旧数据）→ 仍以服务器为准，但推送本地时间戳
-          DB = remote;
-          localStorage.setItem(DB_KEY, JSON.stringify(DB));
-          migrateDcaHistory();
-          DB._lastModified = Date.now();
-          pushToServerNow();
-          if(typeof renderAllOnSync === 'function') renderAllOnSync();
-        } else {
-          // 本地比服务器新（用户在另一标签/设备刚修改过，还未来得及推送）→ 保留本地并立即重推
-          showServerStatus('本地数据较新，已自动覆盖服务器…', '');
-          pushToServerNow();
-        }
-      }
-    })
-    .catch(function(err){
-      showServerStatus('服务器读取失败，使用本地缓存：' + err.message, 'fail');
-    });
-}
-function pullFromServer(){
-  var base = serverBase();
-  if(!base) return;
-  var url = base + '/api/db';
-  fetch(url)
-    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); })
-    .then(function(txt){
-      if(!txt || txt === '{}') return;
-      var remote = JSON.parse(txt);
-      if(remote && typeof remote === 'object'){
-        DB = remote;                  // 直接用服务器数据
+      // 一次性迁移：本地含云端没有的模块 → 先并入云端，避免此前只存本地的数据丢失
+      if(serverMissingLocalModules(localCache, remote)){
+        DB = unionDb(localCache, remote);
         localStorage.setItem(DB_KEY, JSON.stringify(DB));
         migrateDcaHistory();
-        showServerStatus('已同步服务器数据 ✓', 'ok');
+        pushToServerNow();   // 把合并结果写回 Redis（一次性把全部本地数据搬进云端）
+        showServerStatus('已将本地数据并入云端 ✓', 'ok');
         if(typeof renderAllOnSync === 'function') renderAllOnSync();
+        return;
       }
+      // 正常路径：直接用云端数据（不合并、不覆盖）
+      DB = remote;
+      localStorage.setItem(DB_KEY, JSON.stringify(DB));
+      migrateDcaHistory();
+      _lastPullTs = remote._lastModified || Date.now();
+      showServerStatus('已读取云端(Redis)数据 ✓', 'ok');
+      if(typeof renderAllOnSync === 'function') renderAllOnSync();
     })
-    .catch(function(err){ showServerStatus('服务器拉取失败：' + err.message + '（用本地数据）', 'fail'); });
+    .catch(function(err){
+      showServerStatus('⚠ 服务器不可用，显示本地缓存：' + err.message, 'fail');
+    });
 }
-function saveDb(){
-  DB._lastModified = Date.now();
-  localStorage.setItem(DB_KEY, JSON.stringify(DB));
-  scheduleAutoSync();
-  pushToServer();
-}
+/* pullFromServer 已弃用：手动拉取见 forcePullFromServer()，后台同步见 silentPullFromServer() */
+/* 旧 saveDb（仅写本地+Gist）已移除，统一由下方 saveDb() 处理（直写 Redis） */
 var _pushTimer = null;
-function pushToServer(){
+var _dirty = false;   // 是否有未保存（未推送）的本地改动，用于后台拉取时避免覆盖正在输入的内容
+function scheduleServerPush(){
   var base = serverBase();
   if(!base) return;
   if(_pushTimer) clearTimeout(_pushTimer);
   _pushTimer = setTimeout(function(){
     _pushTimer = null;
-    var url = base + '/api/db';
-    fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(DB)
-    })
-    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
-    .then(function(){ showServerStatus('已保存到服务器 ✓', 'ok'); })
-    .catch(function(err){ showServerStatus('服务器保存失败：' + err.message, 'fail'); });
-  }, 50); // 50ms 极短防抖，仅合并同帧内的多次写入；保证刷新时服务器已是最新
+    pushToServerNow();
+  }, 60);
 }
-// 立即推送（不等防抖，用于时间戳比较后强制覆盖服务器）
+// 立即推送当前 DB 到 Redis（服务器为唯一真相）
 function pushToServerNow(){
   var base = serverBase();
   if(!base) return;
   if(_pushTimer){ clearTimeout(_pushTimer); _pushTimer = null; }
-  var url = base + '/api/db';
-  fetch(url, {
+  fetch(base + '/api/db', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(DB)
   })
   .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
-  .then(function(){ showServerStatus('已强制保存到服务器 ✓', 'ok'); })
-  .catch(function(err){ showServerStatus('服务器保存失败：' + err.message, 'fail'); });
+  .then(function(){ _dirty = false; showServerStatus('已保存到云端(Redis) ✓', 'ok'); })
+  .catch(function(err){ showServerStatus('✗ 保存失败：' + err.message, 'fail'); });
 }
 function showServerStatus(msg, kind){
   var el = document.getElementById('serverSyncStatus');
@@ -3282,6 +3290,7 @@ function stopAutoPull(){
   if(_autoPullTimer){ clearInterval(_autoPullTimer); _autoPullTimer = null; }
 }
 function silentPullFromServer(){
+  if(_dirty) return;   // 有未保存改动，跳过本轮，避免覆盖正在输入的内容
   var base = serverBase();
   if(!base) return;
   fetch(base + '/api/db', { signal: AbortSignal.timeout(8000) })
@@ -3289,16 +3298,14 @@ function silentPullFromServer(){
     .then(function(txt){
       if(!txt || txt === '{}' || txt === 'null') return;
       var remote = JSON.parse(txt);
-      if(!remote || !remote._lastModified) return;
-      /* 如果服务器数据时间戳比我们上次拉取的更新，且比本地新 → 合并 */
-      if(remote._lastModified > _lastPullTs && remote._lastModified > (DB._lastModified || 0)){
-        _lastPullTs = remote._lastModified;
-        DB = remote;
-        localStorage.setItem(DB_KEY, JSON.stringify(DB));
-        migrateDcaHistory();
-        showServerStatus('已同步最新数据 ✓', 'ok');
-        if(typeof renderAllOnSync === 'function') renderAllOnSync();
-      }
+      if(!remote || typeof remote !== 'object') return;
+      // 直接以云端最新数据为准（本设备改动已在保存时即时写入云端）
+      DB = remote;
+      localStorage.setItem(DB_KEY, JSON.stringify(DB));
+      migrateDcaHistory();
+      _lastPullTs = remote._lastModified || Date.now();
+      showServerStatus('已同步云端最新数据 ✓', 'ok');
+      if(typeof renderAllOnSync === 'function') renderAllOnSync();
     })
     .catch(function(){ /* 静默失败，不打扰用户 */ });
 }
@@ -3331,8 +3338,12 @@ function migrateDcaHistory(){
   });
   if(dirty) saveDb();
 }
+// 保存：写本地缓存（离线兜底）+ 立即推到 Redis（唯一真相）+ 保留 Gist 云同步（若配置）
 function saveDb(){
+  DB._lastModified = Date.now();
   localStorage.setItem(DB_KEY, JSON.stringify(DB));
+  _dirty = true;
+  scheduleServerPush();
   scheduleAutoSync();
 }
 
@@ -9161,7 +9172,8 @@ function saveServerConfig(){
   var url = (document.getElementById('serverUrl')||{}).value || '';
   localStorage.setItem(DB_SERVER_KEY, url.trim());
   showServerStatus(url ? '配置已保存 ✓' : '已关闭服务器同步', 'ok');
-  if(url.trim()) startAutoPull(); else stopAutoPull();
+  if(url.trim()){ startAutoPull(); loadFromServer(); }  // 配置后立即从云端加载（并触发一次性本地数据迁移）
+  else stopAutoPull();
 }
 function loadServerConfigUI(){
   var url = (localStorage.getItem(DB_SERVER_KEY) || '').trim();
@@ -9184,16 +9196,16 @@ function testServerSync(){
     .catch(function(err){ showServerStatus('✗ 无法连接：' + err.message, 'fail'); });
 }
 function forcePushToServer(){
-  var url = (localStorage.getItem(DB_SERVER_KEY) || '').trim();
-  if(!url){ showServerStatus('请先填写服务器地址', 'fail'); return; }
+  var base = serverBase();
+  if(!base){ showServerStatus('请先填写服务器地址', 'fail'); return; }
   showServerStatus('上传中…', '');
-  fetch(url.replace(/\/+$/, '') + '/api/db', {
+  fetch(base + '/api/db', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(DB)
   })
   .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
-  .then(function(){ showServerStatus('✓ 已上传到服务器', 'ok'); })
+  .then(function(){ _dirty = false; showServerStatus('✓ 已上传到云端(Redis)', 'ok'); })
   .catch(function(err){ showServerStatus('✗ 上传失败：' + err.message, 'fail'); });
 }
 function forcePullFromServer(){
@@ -9480,12 +9492,12 @@ window.addEventListener('DOMContentLoaded', init);
 
       <div class="cloud-divider"><span>🖥 服务器同步（自托管 Redis / 文件）</span></div>
       <div class="server-sync-box">
-        <div class="section-desc" style="margin-bottom:8px;">把数据保存到你的服务器（Redis 或 JSON 文件），多设备共享、断网不丢。留空则不走服务器。</div>
+        <div class="section-desc" style="margin-bottom:8px;">数据直接读/写你的服务器（Redis），云端为唯一数据源，多设备实时共享。留空则只用本地。</div>
         <label class="form-label">服务器地址</label>
         <input type="text" id="serverUrl" placeholder="http://你的服务器IP:9000" onblur="saveServerConfig()">
         <div class="server-sync-actions">
           <button class="btn btn-sm" onclick="testServerSync()">🔗 测试连接</button>
-          <button class="btn btn-sm" onclick="forcePushToServer()">⬆ 立即上传</button>
+          <button class="btn btn-sm btn-primary" onclick="forcePushToServer()">⬆ 立即保存云端</button>
           <button class="btn btn-sm" onclick="forcePullFromServer()">⬇ 拉取覆盖</button>
           <span class="server-sync-status" id="serverSyncStatus" style="display:none;"></span>
         </div>
