@@ -3367,7 +3367,7 @@ function saveDb(){
   localStorage.setItem(DB_KEY, JSON.stringify(DB));
   _dirty = true;
   scheduleServerPush();
-  scheduleAutoSync();
+  /* GitHub Gist 同步已废弃（改用 Redis），不再自动同步 */
 }
 
 /* ====== Tab Switching ====== */
@@ -9547,10 +9547,8 @@ async function cloudPull(){
   }
 }
 function scheduleAutoSync(){
-  var cfg = getCloudConfig();
-  if(!cfg.autoSync || !cfg.token || !cfg.gistId) return;
-  if(cloudSyncTimer) clearTimeout(cloudSyncTimer);
-  cloudSyncTimer = setTimeout(function(){ cloudPush(); }, 3000);
+  /* 已废弃：不再自动同步 GitHub Gist，数据通过 Redis 同步 */
+  return;
 }
 function exportBackup(){
   var data = JSON.stringify(DB, null, 2);
