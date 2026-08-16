@@ -7077,18 +7077,30 @@ function fundNameScore(a, b){
 function lookupFundCodeByName(name){
   return new Promise(function(resolve){
     var q = (name || '').trim();
-    if(!q || !hasSameOriginApi()){ resolve(null); return; }
+    if(!q){ console.warn('[lookupFundCode] 空名称，跳过'); resolve(null); return; }
+    if(!hasSameOriginApi()){ console.warn('[lookupFundCode] 无同源API，跳过 name=', q); resolve(null); return; }
     var target = 'https://fundsuggest.eastmoney.com/FundSearch/api/FundSearchAPI.ashx?callback=&m=1&key=' + encodeURIComponent(q);
     var url = apiUrl('/api/eastmoney/proxy?url=' + encodeURIComponent(target));
     var done = false;
     function finish(v){ if(!done){ done = true; resolve(v); } }
-    var timer = setTimeout(function(){ finish(null); }, 8000);
+    var timer = setTimeout(function(){ console.warn('[lookupFundCode] 超时 name=', q); finish(null); }, 8000);
+    console.log('[lookupFundCode] 查询:', q, '→', url.slice(0, 80));
     fetch(url, { headers: { 'Accept': 'application/json' } })
-      .then(function(r){ return r.text(); })
+      .then(function(r){
+        if(!r.ok){ console.warn('[lookupFundCode] HTTP', r.status, 'name=', q); return r.text().then(function(t){ finish(null); }); }
+        return r.text();
+      })
       .then(function(txt){
+        if(!txt) return finish(null);
         clearTimeout(timer);
-        var data; try { data = JSON.parse(txt); } catch(e){ return finish(null); }
+        /* 先检查代理是否返回了错误 */
+        if(txt.indexOf('"error"') >= 0){
+          console.warn('[lookupFundCode] 代理返回错误:', txt.slice(0, 200), 'name=', q);
+          return finish(null);
+        }
+        var data; try { data = JSON.parse(txt); } catch(e){ console.warn('[lookupFundCode] JSON解析失败:', e.message, 'raw=', txt.slice(0, 100)); return finish(null); }
         var ds = (data && data.Datas) || [];
+        console.log('[lookupFundCode]', q, '→ 返回', ds.length, '条候选');
         if(!ds.length) return finish(null);
         /* 先按基础分筛选候选（>=0.4），再在候选中精确匹配份额后缀 */
         var cands = [];
@@ -7125,7 +7137,36 @@ function lookupFundCodeByName(name){
           finish(null);
         }
       })
-      .catch(function(){ clearTimeout(timer); finish(null); });
+      .catch(function(err){
+        clearTimeout(timer);
+        console.warn('[lookupFundCode] 代理请求异常:', err && err.message, 'name=', q, '→ 尝试直接请求...');
+        /* 兜底：代理失败时尝试直接请求东方财富（部分API允许跨域） */
+        fetch(target, { headers: { 'Accept': 'application/json' }, mode: 'cors' })
+          .then(function(r2){
+            if(!r2.ok) throw new Error('HTTP ' + r2.status);
+            return r2.text();
+          })
+          .then(function(txt2){
+            clearTimeout(timer);
+            if(txt2.indexOf('"error"') >= 0 || !txt2) return finish(null);
+            var data2; try { data2 = JSON.parse(txt2); } catch(e){ return finish(null); }
+            var ds2 = (data2 && data2.Datas) || [];
+            console.log('[lookupFundCode] 直接请求成功:', q, '→', ds2.length, '条');
+            if(!ds2.length) return finish(null);
+            var best2 = null, bestScore2 = 0;
+            ds2.forEach(function(d){
+              var sc = fundNameScore(q, d.NAME || '');
+              if(sc > bestScore2){ bestScore2 = sc; best2 = d; }
+            });
+            if(best2 && bestScore2 >= 0.5){
+              var code = normalizeFundCode(best2.CODE || '');
+              finish(code ? { code: code, name: best2.NAME } : null);
+            } else {
+              finish(null);
+            }
+          })
+          .catch(function(e2){ console.warn('[lookupFundCode] 直接请求也失败:', e2.message); finish(null); });
+      });
   });
 }
 /* 在已有持仓中按名称查找基金索引 */
@@ -7187,6 +7228,10 @@ function renderImportPreview(list){
   }
   if(correctedCode.length){
     hintHtml += '<div style="font-size:12px;color:#0a8a3e;margin-bottom:6px;background:#e9f8f0;padding:6px 8px;border-radius:4px;">✅ 已按基金名称从东方财富反查并校正 ' + correctedCode.length + ' 只的<b>错误代码</b>（AI 原识别代码不可靠）。带绿色「⟳已校正」标记的可手动改回；导入后将用校正后的真实代码估值。</div>';
+  } else {
+    /* 校正数为0时显示诊断信息：帮助排查为什么没校正 */
+    var hasNames = list.filter(function(x){ return x.name; }).length;
+    hintHtml += '<div style="font-size:11px;color:#888;margin-bottom:6px;background:#f5f5f5;padding:6px 8px;border-radius:4px;">🔍 代码校正：已尝试对 ' + hasNames + + ' 只基金反查东方财富真实代码，但未匹配到更优结果。请按 F12 打开控制台查看 [lookupFundCode] 日志了解详情（可能原因：服务器代理不可达/东方财富API无结果/名称太短）。</div>';
   }
   box.innerHTML = '<div class="card-title" style="font-size:14px;">识别预览（共 ' + list.length + ' 只，请核对，可修改后导入）</div>' +
     hintHtml +
