@@ -3051,6 +3051,25 @@ function sanitizeText(s){
 }
 /* 向后兼容 */
 var sanitizeFundName = sanitizeText;
+
+/**
+ * cleanXwlbText(s) — 清洗新闻联播 AI 生成文本中的散布乱码
+ * 只用于 xwlb summary（lead/title/point/category 等长文本字段）。
+ * 保留正常中文/英文/标点/emoji，仅删除：
+ *   - 孤立散布的 ◆ ● ■ 等装饰符（前后均为中文/英文时）
+ *   - 连续的 Unicode 替换字符 U+FFFD
+ *   - emoji 后紧跟的损坏字节（如 ❤️◆ → ❤️）
+ */
+function cleanXwlbText(s){
+  if(!s) return '';
+  s = String(s);
+  /* 去除孤立的装饰符号（前后都是文字/标点时才删，保留有意义的用法） */
+  s = s.replace(/([一-鿿豈-﫿a-zA-Z0-9，。！？、；：""''（）【】《》\s])[\u25C6\u25CF\u25A0\u25B6\u25BC\u2605\u2606\u2666\u2660\u2663\u2665\u266A\u266B\u2B1D\u2B1E\u25C0\u25B6\u23E9\u23EA\u23EB\u23EC\u2022\u00B7\u2014\u2013\u2014\u2015\u2026\u2030\u2731\u25CE\u25A1\u25B3\u25BD\u25C7\uFFFD]([一-鿿豈-﫿a-zA-Z0-9，。！？、；：""''（）【】《》\s])/g, '$1$2');
+  /* 去除连续的替换字符 */
+  s = s.replace(/\uFFFD{2,}/g, '');
+  s = s.replace(/\uFFFD/g, ' ');
+  return s.trim();
+}
 function timeToMin(t){
   if(!t) return 0;
   var p = t.split(':');
@@ -3934,6 +3953,9 @@ function getXwlbToday(){ return today(); }
 var XWLB_SYS_PROMPT = '你是资深新闻编辑，把以下《新闻联播》节目单整理成结构化每日总结，严格只输出如下 JSON（不要任何额外文字）：{"lead":"一句话导语（20字以内）","groups":[{"category":"分类名（如：国内要闻/经济发展/国际动态/社会民生/其他）","items":[{"title":"原标题","point":"一句话要点（30字以内）"}]}]}';
 var XWLB_TARGET = 'https://tv.cctv.com/lm/xwlb/';
 var XWLB_PROXIES = [
+  /* 首选：自建服务器代理（稳定、不走公共 CORS） */
+  '', /* 空字符串标记 = 走 /api/cctv/xwlb，在 fetchXwlbDirect 中特殊处理 */
+  /* 兜底：公共 CORS 代理（不稳定，仅服务器不可用时使用） */
   'https://api.allorigins.win/raw?url=',
   'https://corsproxy.io/?',
   'https://api.codetabs.com/v1/proxy/?quest='
@@ -3983,12 +4005,14 @@ function parseXwlbHtml(html){
   return out;
 }
 function fetchXwlbDirect(date){
-  setXwlbStatus('⏳ 正在抓取央视《新闻联播》节目单（前端代理）…', 'loading');
+  setXwlbStatus('⏳ 正在抓取央视《新闻联播》节目单…', 'loading');
   document.getElementById('xwlbFallback').style.display = 'none';
   tryProxy(0);
   function tryProxy(i){
     if(i >= XWLB_PROXIES.length){ afterDirectFail(date); return; }
-    var url = XWLB_PROXIES[i] + encodeURIComponent(XWLB_TARGET);
+    /* 空字符串 = 走自建服务器代理 /api/cctv/xwlb */
+    var isServerProxy = (XWLB_PROXIES[i] === '');
+    var url = isServerProxy ? (API_BASE + '/api/cctv/xwlb') : (XWLB_PROXIES[i] + encodeURIComponent(XWLB_TARGET));
     fetchWithTimeoutXwlb(url, 15000).then(function(res){
       if(!res.ok) throw new Error('HTTP ' + res.status);
       return res.text();
@@ -4002,8 +4026,8 @@ function fetchXwlbDirect(date){
       }
       setXwlbStatus('⏳ 已抓到 ' + titles.length + ' 条，AI 生成总结中…', 'loading');
       callText(titles.join('\n'), XWLB_SYS_PROMPT, 'qwen-plus').then(function(summary){
-        var d = { date: date, titles: titles, summary: summary, generatedAt: new Date().toISOString(), note: '前端自动抓取 + 通义千问' };
-        saveXwlbCache(d); renderXwlb(d, '前端自动'); renderXwlbHistory();
+        var d = { date: date, titles: titles, summary: summary, generatedAt: new Date().toISOString(), note: (isServerProxy ? '服务器代理' : '前端代理') + ' + 通义千问' };
+        saveXwlbCache(d); renderXwlb(d, isServerProxy ? '服务器代理' : '前端自动'); renderXwlbHistory();
       }).catch(function(err){
         setXwlbStatus('⚠ AI 总结生成失败：' + (err && err.message ? err.message : err) + '。可手动粘贴节目单重试。', 'error');
         document.getElementById('xwlbFallback').style.display = 'block';
@@ -4023,6 +4047,19 @@ function fetchWithTimeoutXwlb(url, ms){
 }
 function saveXwlbCache(data){
   if(!data || !data.date) return;
+  /* 清洗 AI 生成文本中的散布乱码后再存 */
+  if(data.summary){
+    if(data.summary.lead) data.summary.lead = cleanXwlbText(data.summary.lead);
+    if(Array.isArray(data.summary.groups)){
+      data.summary.groups.forEach(function(g){
+        if(g.category) g.category = cleanXwlbText(g.category);
+        if(Array.isArray(g.items)) g.items.forEach(function(it){
+          if(it.title) it.title = cleanXwlbText(it.title);
+          if(it.point) it.point = cleanXwlbText(it.point);
+        });
+      });
+    }
+  }
   DB.xwlb.cache[data.date] = data;
   saveDb();
 }
@@ -4041,13 +4078,13 @@ function renderXwlb(data, sourceLabel){
   }
   var s = data.summary;
   var html = '';
-  if(s.lead) html += '<div class="xwlb-lead">📌 ' + escapeHtml(s.lead) + '</div>';
+  if(s.lead) html += '<div class="xwlb-lead">📌 ' + escapeHtml(cleanXwlbText(s.lead)) + '</div>';
   if(Array.isArray(s.groups)){
     html += s.groups.map(function(g){
       var items = (g.items || []).map(function(it){
-        return '<li><b>' + escapeHtml(it.title || '') + '</b>' + (it.point ? ' — ' + escapeHtml(it.point) : '') + '</li>';
+        return '<li><b>' + escapeHtml(cleanXwlbText(it.title || '')) + '</b>' + (it.point ? ' — ' + escapeHtml(cleanXwlbText(it.point)) : '') + '</li>';
       }).join('');
-      return '<div class="xwlb-group"><div class="xwlb-group-cat">' + escapeHtml(g.category || '') + '</div><ul class="xwlb-group-items">' + items + '</ul></div>';
+      return '<div class="xwlb-group"><div class="xwlb-group-cat">' + escapeHtml(cleanXwlbText(g.category || '')) + '</div><ul class="xwlb-group-items">' + items + '</ul></div>';
     }).join('');
   }
   body.innerHTML = html;

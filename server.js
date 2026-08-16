@@ -262,6 +262,12 @@ function handleIfzq(res, param) {
   proxyRaw(target, 'https://stockapp.finance.qq.com/', res);
 }
 
+// 央视新闻联播节目单页面代理（替代不稳定的公共 CORS 代理）
+function handleCctvXwlb(res) {
+  const target = 'https://tv.cctv.com/lm/xwlb/';
+  proxyRaw(target, 'https://tv.cctv.com/', res);
+}
+
 function handleQt(res, q) {
   const target = 'https://qt.gtimg.cn/q=' + q;
   proxyRaw(target, 'https://stockapp.finance.qq.com/', res);
@@ -302,7 +308,7 @@ const server = http.createServer(function (req, res) {
   if (req.method === 'OPTIONS') { res.writeHead(204, CORS); return res.end(); }
 
   if (pathname === '/health') {
-    return sendJSON(res, 200, { ok: true, ts: Date.now(), routes: ['/api/sge', '/api/sina', '/api/eastmoney/ann', '/api/eastmoney/proxy', '/api/fundgz', '/api/ifzq', '/api/qt', '/api/db'], store: redisMode ? 'redis' : 'json-file' });
+    return sendJSON(res, 200, { ok: true, ts: Date.now(), routes: ['/api/sge', '/api/sina', '/api/eastmoney/ann', '/api/eastmoney/proxy', '/api/fundgz', '/api/ifzq', '/api/qt', '/api/cctv/xwlb', '/api/db'], store: redisMode ? 'redis' : 'json-file' });
   }
 
   // 全量数据读写（Redis 优先 / JSON 文件兜底，无需 token）
@@ -349,6 +355,7 @@ const server = http.createServer(function (req, res) {
       const m = qs.match(/(?:^|&)q=([^&]+)/);
       return handleQt(res, m ? decodeURIComponent(m[1]) : '');
     }
+    if (pathname === '/api/cctv/xwlb') return handleCctvXwlb(res);
     return sendJSON(res, 404, { error: 'unknown api route' });
   }
 
