@@ -6926,10 +6926,28 @@ function analyzeFundScreenshot(base64, cb){
           if(modelIdx < QWEN_MODELS.length - 1){ modelIdx++; tryModel(); return; }
           throw new Error('返回非数组（顶层应为数组或 {funds/list/items/data:[]}）');
         }
-        cb(null, arr.map(function(x){
-          var code = normalizeFundCode(x.code);
-          return { code: code, name: sanitizeFundName(x.name), shares: parseFloat(x.shares) || 0, cost: parseFloat(x.cost) || 0, hp: parseFloat(x.hp) || null, hpPct: parseFloat(x.hpPct) || null };
-        }));
+        /* 先映射 AI 识别结果，再用「基金名称」反查真实代码校正（AI 给的代码常幻觉错误） */
+        var mapped = arr.map(function(x){
+          return {
+            code: normalizeFundCode(x.code),
+            name: sanitizeFundName(x.name),
+            shares: parseFloat(x.shares) || 0,
+            cost: parseFloat(x.cost) || 0,
+            hp: parseFloat(x.hp) || null,
+            hpPct: parseFloat(x.hpPct) || null,
+            codeCorrected: false,
+            aiCode: normalizeFundCode(x.code)
+          };
+        });
+        Promise.all(mapped.map(function(item){
+          if(!item.name) return Promise.resolve();
+          return lookupFundCodeByName(item.name).then(function(res){
+            if(res && res.code && res.code !== item.code){
+              item.code = res.code;
+              item.codeCorrected = true;
+            }
+          }).catch(function(){ /* 反查失败则用 AI 原代码，不阻断导入 */ });
+        })).then(function(){ cb(null, mapped); }).catch(function(){ cb(null, mapped); });
       });
     }).catch(function(err){
       if(err && /超时|AbortError/i.test(err.message || '') && modelIdx < QWEN_MODELS.length - 1){
@@ -7001,6 +7019,56 @@ function fundNameSimilar(a, b){
   for(var i = 0; i < Math.min(la, lb); i++){ if(a.charAt(i) === b.charAt(i)) same++; }
   return (same / maxLen > 0.8);
 }
+/* 名称相似度打分 0~1（用于基金代码反查时挑最佳匹配） */
+function fundNameScore(a, b){
+  if(!a || !b) return 0;
+  a = sanitizeText(a).replace(/[CAB\s]/g, '').toLowerCase();
+  b = sanitizeText(b).replace(/[CAB\s]/g, '').toLowerCase();
+  if(!a || !b) return 0;
+  if(a === b) return 1;
+  if(a.indexOf(b) >= 0 || b.indexOf(a) >= 0) return 0.92;
+  /* 字符集合重叠比例 */
+  var setA = {}, setB = {}, keys = {}, inter = 0, uni = 0, k;
+  for(var i = 0; i < a.length; i++) setA[a.charAt(i)] = 1;
+  for(var j = 0; j < b.length; j++) setB[b.charAt(j)] = 1;
+  for(k in setA) keys[k] = 1;
+  for(k in setB) keys[k] = 1;
+  for(k in keys){ if(setA[k] && setB[k]) inter++; uni++; }
+  return uni ? inter / uni : 0;
+}
+/* 按基金名称反查真实代码（东方财富基金搜索，经同源代理避免 CORS） */
+function lookupFundCodeByName(name){
+  return new Promise(function(resolve){
+    var q = (name || '').trim();
+    if(!q || !hasSameOriginApi()){ resolve(null); return; }
+    var target = 'https://fundsuggest.eastmoney.com/FundSearch/api/FundSearchAPI.ashx?callback=&m=1&key=' + encodeURIComponent(q);
+    var url = apiUrl('/api/eastmoney/proxy?url=' + encodeURIComponent(target));
+    var done = false;
+    function finish(v){ if(!done){ done = true; resolve(v); } }
+    var timer = setTimeout(function(){ finish(null); }, 8000);
+    fetch(url, { headers: { 'Accept': 'application/json' } })
+      .then(function(r){ return r.text(); })
+      .then(function(txt){
+        clearTimeout(timer);
+        var data; try { data = JSON.parse(txt); } catch(e){ return finish(null); }
+        var ds = (data && data.Datas) || [];
+        if(!ds.length) return finish(null);
+        var best = null, bestScore = 0;
+        ds.forEach(function(d){
+          var cand = d.NAME || d.SHORTNAME || '';
+          var sc = fundNameScore(q, cand);
+          if(sc > bestScore){ bestScore = sc; best = d; }
+        });
+        if(best && bestScore >= 0.6){
+          var code = normalizeFundCode(best.CODE || best.FCODE || best._id || '');
+          finish(code ? { code: code, name: best.NAME || best.SHORTNAME } : null);
+        } else {
+          finish(null);
+        }
+      })
+      .catch(function(){ clearTimeout(timer); finish(null); });
+  });
+}
 /* 在已有持仓中按名称查找基金索引 */
 function findFundByName(name){
   var list = DB.market.funds || [];
@@ -7039,6 +7107,8 @@ function renderImportPreview(list){
   }
   /* 检测缺代码的基金（AI未识别出代码，之前会被静默丢弃） */
   var missingCode = list.filter(function(x){ return !x.code; });
+  /* 检测代码被反查校正的数量 */
+  var correctedCode = list.filter(function(x){ return x.codeCorrected; });
 
   var hintHtml = '';
   if(missingCode.length){
@@ -7056,6 +7126,9 @@ function renderImportPreview(list){
   if(nameDupInPreview.length){
     hintHtml += '<div style="font-size:12px;color:var(--amber);margin-bottom:6px;background:var(--amber-bg);padding:6px 8px;border-radius:4px;">⚠️ 预览内名称相同但代码不同（AI识别不一致，建议手动核对后只保留一只）：<br>' + nameDupInPreview.join('<br>') + '</div>';
   }
+  if(correctedCode.length){
+    hintHtml += '<div style="font-size:12px;color:#0a8a3e;margin-bottom:6px;background:#e9f8f0;padding:6px 8px;border-radius:4px;">✅ 已按基金名称从东方财富反查并校正 ' + correctedCode.length + ' 只的<b>错误代码</b>（AI 原识别代码不可靠）。带绿色「⟳已校正」标记的可手动改回；导入后将用校正后的真实代码估值。</div>';
+  }
   box.innerHTML = '<div class="card-title" style="font-size:14px;">识别预览（共 ' + list.length + ' 只，请核对，可修改后导入）</div>' +
     hintHtml +
     '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table><thead><tr><th>导入</th><th>代码</th><th>名称</th><th>份额</th><th>成本价</th><th>持有收益</th><th>收益率</th></tr></thead><tbody>' +
@@ -7070,6 +7143,7 @@ function renderImportPreview(list){
       if(isDup) tagHtml += ' <span style="font-size:10px;color:var(--amber);">重</span>';
       if(isExist) tagHtml += ' <span style="font-size:10px;color:var(--blue);">旧</span>';
       if(isNameDupExist) tagHtml += ' <span style="font-size:10px;color:var(--red);font-weight:bold;">名重</span>';
+      if(x.codeCorrected) tagHtml += ' <span title="AI原识别代码 ' + x.aiCode + ' 已按基金名称反查校正为真实代码" style="font-size:10px;color:var(--green);font-weight:bold;cursor:help;">⟳已校正</span>';
       return '<tr style="' + rowStyle + '"><td><input type="checkbox" data-i="' + i + '" ' + (isMissing ? '' : 'checked') + '></td><td>' + (isMissing ? '<input id="imp_code_' + i + '" value="" placeholder="补6位代码" style="width:88px;border-color:var(--red);">' : '<input id="imp_code_' + i + '" value="' + x.code + '" style="width:88px;">') + tagHtml + '</td>' +
         '<td><input id="imp_name_' + i + '" value="' + escapeHtml(x.name) + '"></td>' +
         '<td><input id="imp_shares_' + i + '" value="' + x.shares + '"></td>' +

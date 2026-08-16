@@ -53,6 +53,7 @@ const EASTMONEY_HOSTS = [
   'datacenter-web.eastmoney.com',
   'datacenter.eastmoney.com',
   'fundf10.eastmoney.com',
+  'fundsuggest.eastmoney.com',
 ];
 const FUNDGZ_HOST = 'fundgz.1234567.com.cn';
 
