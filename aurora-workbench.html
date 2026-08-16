@@ -1927,7 +1927,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     <div id="footerDateText"></div>
     <button class="cloud-btn" onclick="openCloudModal()" id="cloudBtn">
       <svg viewBox="0 0 24 24"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
-      <span id="cloudBtnText">☁ 云同步</span>
+      <span id="cloudBtnText">☁ 数据同步</span>
     </button>
   </div>
 </aside>
@@ -3066,7 +3066,7 @@ function showAiBalanceWarn(){
     box.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#c0392b;color:#fff;font-size:13px;line-height:1.5;padding:10px 14px;display:flex;align-items:center;gap:10px;box-shadow:0 2px 8px rgba(0,0,0,.3);';
     document.body.appendChild(box);
   }
-  box.innerHTML = '⚠ AI 视觉服务 <b>余额不足</b> 或免费额度已用完，AI 识别功能将不可用。请到对应平台（百炼 / 智谱 / DeepSeek / 火山方舟）充值，或在「☁ 云同步」弹窗替换 API Key。' +
+  box.innerHTML = '⚠ AI 视觉服务 <b>余额不足</b> 或免费额度已用完，AI 识别功能将不可用。请到对应平台（百炼 / 智谱 / DeepSeek / 火山方舟）充值，或在「☁ 数据同步」弹窗替换 API Key。' +
     '<a href="https://bailian.console.aliyun.com/" target="_blank" style="color:#fff;text-decoration:underline;margin-left:6px;white-space:nowrap;">去充值 ↗</a>' +
     '<button onclick="this.parentNode.remove()" style="margin-left:auto;background:rgba(255,255,255,.22);border:none;color:#fff;padding:5px 12px;border-radius:6px;cursor:pointer;white-space:nowrap;">关闭</button>';
   box.style.display = 'flex';
@@ -3361,7 +3361,7 @@ function migrateDcaHistory(){
   });
   if(dirty) saveDb();
 }
-// 保存：写本地缓存（离线兜底）+ 立即推到 Redis（唯一真相）+ 保留 Gist 云同步（若配置）
+// 保存：写本地缓存（离线兜底）+ 立即推到 Redis（唯一真相）
 function saveDb(){
   DB._lastModified = Date.now();
   localStorage.setItem(DB_KEY, JSON.stringify(DB));
@@ -3983,7 +3983,7 @@ function fetchXwlbDirect(date){
       var titles = parseXwlbHtml(html);
       if(!titles.length) throw new Error('未解析到节目单');
       if(!getQwenKey()){
-        setXwlbStatus('ℹ 已抓到节目单，但缺少通义千问 Key。请到左下角「☁ 云同步 → 🤖 AI 引擎配置」填写 Key 后刷新，即可生成 AI 总结。', 'info');
+        setXwlbStatus('ℹ 已抓到节目单，但缺少通义千问 Key。请到左下角「☁ 数据同步 → 🤖 AI 引擎配置」填写 Key 后刷新，即可生成 AI 总结。', 'info');
         document.getElementById('xwlbFallback').style.display = 'block';
         return;
       }
@@ -4073,7 +4073,7 @@ function summarizeXwlbManual(date){
   var ta = document.getElementById('xwlbManualInput');
   var text = (ta.value || '').trim();
   if(!text){ toast('请先粘贴节目单'); return; }
-  if(!configuredEngines().length){ toast('请先在「☁ 云同步 → 🤖 AI 引擎配置」配置任一 AI Key'); return; }
+  if(!configuredEngines().length){ toast('请先在「☁ 数据同步 → 🤖 AI 引擎配置」配置任一 AI Key'); return; }
   var btn = document.getElementById('xwlbManualBtn');
   if(btn){ btn.disabled = true; btn.textContent = '⏳ 生成中…'; }
   callText(text,
@@ -5170,7 +5170,7 @@ function onMealPhotoSelected(input){
   var primary = getAiEngine();
   var configured = configuredEngines();
   if(!configured.length){
-    toast('照片已上传，未配置任何 AI 密钥 — 可在「☁ 云同步 → 🤖 AI 引擎配置」填写，或手动填写食物和卡路里');
+    toast('照片已上传，未配置任何 AI 密钥 — 可在「☁ 数据同步 → 🤖 AI 引擎配置」填写，或手动填写食物和卡路里');
     openCloudModal();
     return;
   }
@@ -9231,104 +9231,24 @@ function openBookDetail(idx){
 function closeBookDetail(){ var o = document.getElementById('bookDetailOverlay'); if(o) o.classList.remove('show'); }
 
 /* ============================================================
-   Cloud Sync (GitHub Gist) + Backup
+   Cloud Sync (服务器 Redis) + Backup
    ============================================================ */
-var CLOUD_KEY = 'aurora_cloud_config';
-var CORS_PROXY = 'https://corsproxy.io/?';
-var cloudSyncTimer = null;
-var cloudSyncing = false;
-
-/* Smart fetch with proxy fallback */
-async function cloudFetch(url, options){
-  var cfg = getCloudConfig();
-  if(cfg.useProxy){
-    // 优先用代理；失败再试直连
-    try { return await fetch(CORS_PROXY + encodeURIComponent(url), options); }
-    catch(e){ try { return await fetch(url, options); } catch(e2){ throw e; } }
-  } else {
-    // 优先直连；失败自动切代理
-    try { return await fetch(url, options); }
-    catch(e){
-      cfg.useProxy = true;
-      localStorage.setItem(CLOUD_KEY, JSON.stringify(cfg));
-      var toggle = document.getElementById('cloudProxyToggle');
-      if(toggle) toggle.classList.add('on');
-      updateCloudStatus();
-      toast('网络直连受限，已自动切换代理');
-      return await fetch(CORS_PROXY + encodeURIComponent(url), options);
-    }
-  }
-}
-
-function getCloudConfig(){
-  try { return JSON.parse(localStorage.getItem(CLOUD_KEY) || '{}'); }
-  catch(e){ return {}; }
-}
-function saveCloudConfig(){
-  var cfg = getCloudConfig();
-  cfg.token = document.getElementById('cloudToken').value.trim();
-  cfg.gistId = document.getElementById('cloudGistId').value.trim();
-  localStorage.setItem(CLOUD_KEY, JSON.stringify(cfg));
-  updateCloudStatus();
-  updateCloudBtn();
-}
-function toggleCloudAuto(){
-  var cfg = getCloudConfig();
-  cfg.autoSync = !cfg.autoSync;
-  localStorage.setItem(CLOUD_KEY, JSON.stringify(cfg));
-  var el = document.getElementById('cloudAutoToggle');
-  if(el) el.classList.toggle('on', !!cfg.autoSync);
-}
-function toggleCloudProxy(){
-  var cfg = getCloudConfig();
-  cfg.useProxy = !cfg.useProxy;
-  localStorage.setItem(CLOUD_KEY, JSON.stringify(cfg));
-  var el = document.getElementById('cloudProxyToggle');
-  if(el) el.classList.toggle('on', !!cfg.useProxy);
-  toast(cfg.useProxy ? '已启用网络代理' : '已关闭代理，尝试直连');
-}
 function updateCloudBtn(){
-  var cfg = getCloudConfig();
   var btn = document.getElementById('cloudBtn');
   var txt = document.getElementById('cloudBtnText');
   if(!btn) return;
-  if(cloudSyncing){
-    btn.className = 'cloud-btn syncing';
-    if(txt) txt.textContent = '同步中…';
-  } else if(cfg.token && cfg.gistId){
+  var url = (localStorage.getItem(DB_SERVER_KEY) || '').trim();
+  if(url){
     btn.className = 'cloud-btn synced';
     if(txt) txt.textContent = '☁ 已同步';
   } else {
     btn.className = 'cloud-btn';
-    if(txt) txt.textContent = '☁ 云同步';
+    if(txt) txt.textContent = '☁ 数据同步';
   }
-}
-function updateCloudStatus(){
-  var cfg = getCloudConfig();
-  var el = document.getElementById('cloudStatus');
-  if(!el) return;
-  var parts = [];
-  parts.push(cfg.token ? '✓ Token 已配置' : '✗ 未配置 Token');
-  parts.push(cfg.gistId ? '✓ Gist ID: ' + cfg.gistId.substring(0,10) + '...' : '○ 未关联 Gist（首次上传自动创建）');
-  parts.push(cfg.autoSync ? '✓ 自动同步已开启' : '○ 自动同步已关闭');
-  parts.push(cfg.useProxy ? '✓ 网络代理已开启' : '○ 网络代理未开启（直连失败将自动启用）');
-  if(cfg.lastSync){
-    var d = new Date(cfg.lastSync);
-    parts.push('⏱ 上次同步: ' + d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0') + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'));
-  }
-  el.innerHTML = parts.join('<br>');
 }
 function openCloudModal(){
-  var cfg = getCloudConfig();
-  document.getElementById('cloudToken').value = cfg.token || '';
-  document.getElementById('cloudGistId').value = cfg.gistId || '';
-  var toggle = document.getElementById('cloudAutoToggle');
-  if(toggle) toggle.classList.toggle('on', !!cfg.autoSync);
-  var ptoggle = document.getElementById('cloudProxyToggle');
-  if(ptoggle) ptoggle.classList.toggle('on', !!cfg.useProxy);
   loadServerConfigUI();
   syncAiSettingsUI();
-  updateCloudStatus();
   document.getElementById('cloudOverlay').classList.add('show');
 }
 function closeCloudModal(){
@@ -9406,149 +9326,6 @@ function renderAllOnSync(){
     if(typeof initWealth === 'function' && currentTabNum === 10){ initWealth(); }
     /* 梦想金库 Tab 10 需要完整重初始化（因为涉及多个子模块） */
   } catch(e){}
-}
-async function cloudPush(){
-  var cfg = getCloudConfig();
-  if(!cfg.token){ toast('请先填写 GitHub Token'); return; }
-  if(cloudSyncing) return;
-  cloudSyncing = true;
-  updateCloudBtn();
-  document.getElementById('cloudPushBtn').disabled = true;
-  try {
-    var data = JSON.stringify(DB);
-    var url = 'https://api.github.com/gists';
-    var method = 'POST';
-    var body = JSON.stringify({
-      description: 'Aurora Workbench Data Backup',
-      public: false,
-      files: { 'aurora-workbench-backup.json': { content: data } }
-    });
-    if(cfg.gistId){
-      url = 'https://api.github.com/gists/' + cfg.gistId;
-      method = 'PATCH';
-    }
-    var resp = await cloudFetch(url, {
-      method: method,
-      headers: { 'Authorization': 'Bearer ' + cfg.token, 'Accept': 'application/vnd.github+json' },
-      body: body
-    });
-    if(!resp.ok){
-      var err = await resp.json().catch(function(){ return {}; });
-      throw new Error(err.message || ('HTTP ' + resp.status));
-    }
-    var result = await resp.json();
-    if(!cfg.gistId && result.id){
-      cfg.gistId = result.id;
-      localStorage.setItem(CLOUD_KEY, JSON.stringify(cfg));
-      document.getElementById('cloudGistId').value = cfg.gistId;
-    }
-    cfg.lastSync = new Date().toISOString();
-    localStorage.setItem(CLOUD_KEY, JSON.stringify(cfg));
-    updateCloudStatus();
-    updateCloudBtn();
-    toast('✓ 已上传到云端');
-  } catch(e){
-    toast('✗ 同步失败: ' + e.message);
-  } finally {
-    cloudSyncing = false;
-    updateCloudBtn();
-    document.getElementById('cloudPushBtn').disabled = false;
-  }
-}
-async function testCloudToken(){
-  var cfg = getCloudConfig();
-  var token = (document.getElementById('cloudToken').value || cfg.token || '').trim();
-  if(!token){ toast('请先填入 Token'); return; }
-  if(!token.startsWith('ghp_') && !token.startsWith('github_pat_')){
-    toast('⚠ Token 格式不对（应以 ghp_ 或 github_pat_ 开头）');
-  }
-  // Save input first so we test what's actually typed
-  cfg.token = token;
-  localStorage.setItem(CLOUD_KEY, JSON.stringify(cfg));
-  var btn = document.getElementById('cloudTestBtn');
-  btn.disabled = true;
-  btn.textContent = '⏳ 测试中...';
-  try {
-    var resp = await cloudFetch('https://api.github.com/user', { method: 'GET' });
-    var status = resp.status;
-    var data;
-    try { data = await resp.json(); } catch(e){ data = {}; }
-    if(status === 200){
-      btn.textContent = '✓ Token 有效';
-      toast('✓ Token 有效！登录身份: ' + (data.login || '未知'));
-      // Show scopes for debugging
-      var scopes = resp.headers.get('X-OAuth-Scopes') || '';
-      var gistScope = scopes.includes('gist');
-      updateCloudStatus();
-      var hint = document.getElementById('cloudTestHint');
-      if(!hint){
-        hint = document.createElement('div');
-        hint.id = 'cloudTestHint';
-        hint.style.cssText = 'margin-top:8px;padding:8px 10px;background:var(--input-bg);border-radius:6px;font-size:11px;color:var(--text-2);line-height:1.6;';
-        btn.parentNode.parentNode.insertBefore(hint, btn.parentNode.nextSibling);
-      }
-      hint.innerHTML = '✓ 身份验证通过<br>账号: <b>' + (data.login || '-') + '</b><br>权限范围: ' + (scopes || '(空)') + '<br>gist 权限: ' + (gistScope ? '<b style="color:var(--green)">✓ 有</b>' : '<b style="color:var(--red)">✗ 无（请重新生成 Token 并勾选 gist）</b>');
-    } else if(status === 401){
-      btn.textContent = '✗ Token 无效';
-      toast('✗ Token 无效或已过期');
-    } else {
-      btn.textContent = '✗ HTTP ' + status;
-      toast('✗ 异常: HTTP ' + status);
-    }
-  } catch(e){
-    btn.textContent = '✗ 网络错误';
-    toast('✗ 网络错误: ' + e.message);
-  } finally {
-    setTimeout(function(){
-      btn.disabled = false;
-      btn.textContent = '🔍 测试 Token';
-    }, 3000);
-  }
-}
-async function cloudPull(){
-  var cfg = getCloudConfig();
-  if(!cfg.token || !cfg.gistId){ toast('请先配置 Token 和 Gist ID'); return; }
-  if(cloudSyncing) return;
-  if(!confirm('从云端恢复将覆盖本地当前数据，确定继续吗？')) return;
-  cloudSyncing = true;
-  updateCloudBtn();
-  document.getElementById('cloudPullBtn').disabled = true;
-  try {
-    var resp = await cloudFetch('https://api.github.com/gists/' + cfg.gistId, {
-      headers: { 'Authorization': 'Bearer ' + cfg.token, 'Accept': 'application/vnd.github+json' }
-    });
-    if(!resp.ok) throw new Error('HTTP ' + resp.status);
-    var result = await resp.json();
-    var file = result.files['aurora-workbench-backup.json'];
-    if(!file) throw new Error('云端未找到备份数据');
-    var remoteDb = JSON.parse(file.content);
-    DB = remoteDb;
-    for(var k in defaultDb){
-      if(!(k in DB)) DB[k] = JSON.parse(JSON.stringify(defaultDb[k]));
-      if(typeof defaultDb[k] === 'object' && defaultDb[k] !== null){
-        for(var k2 in defaultDb[k]){
-          if(!(k2 in DB[k])) DB[k][k2] = JSON.parse(JSON.stringify(defaultDb[k][k2]));
-        }
-      }
-    }
-    saveDb();
-    cfg.lastSync = new Date().toISOString();
-    localStorage.setItem(CLOUD_KEY, JSON.stringify(cfg));
-    updateCloudStatus();
-    updateCloudBtn();
-    switchTab(currentTabNum);
-    toast('✓ 已从云端恢复');
-  } catch(e){
-    toast('✗ 恢复失败: ' + e.message);
-  } finally {
-    cloudSyncing = false;
-    updateCloudBtn();
-    document.getElementById('cloudPullBtn').disabled = false;
-  }
-}
-function scheduleAutoSync(){
-  /* 已废弃：不再自动同步 GitHub Gist，数据通过 Redis 同步 */
-  return;
 }
 function exportBackup(){
   var data = JSON.stringify(DB, null, 2);
@@ -9628,33 +9405,10 @@ window.addEventListener('DOMContentLoaded', init);
 <div class="cloud-overlay" id="cloudOverlay" onclick="if(event.target===this)closeCloudModal()">
   <div class="cloud-modal">
     <div class="cloud-modal-header">
-      <div class="cloud-modal-title">☁ 云同步 · 数据永久保存</div>
+      <div class="cloud-modal-title">☁ 数据同步 & AI 配置</div>
       <button class="cloud-modal-close" onclick="closeCloudModal()">&times;</button>
     </div>
     <div class="cloud-modal-body">
-      <div class="cloud-step">
-        <div class="cloud-step-num">1</div>
-        <div class="cloud-step-text">
-          打开 <a href="https://github.com/settings/tokens/new?scopes=gist&description=Aurora-Workbench-Sync" target="_blank">GitHub Token 生成页</a>，勾选 <b>gist</b> 权限，生成免费 Token
-        </div>
-      </div>
-      <div class="cloud-step">
-        <div class="cloud-step-num">2</div>
-        <div class="cloud-step-text">粘贴 Token 到下方，点击「上传到云端」自动创建 Gist 存储。之后可开启自动同步，每次保存自动上传。</div>
-      </div>
-      <label class="form-label">GitHub Token</label>
-      <input type="password" id="cloudToken" placeholder="ghp_xxxxxxxxxxxx" onblur="saveCloudConfig()">
-      <label class="form-label">Gist ID（首次留空，自动创建）</label>
-      <input type="text" id="cloudGistId" placeholder="粘贴已有 Gist ID 或留空" onblur="saveCloudConfig()">
-      <div class="cloud-auto-row" onclick="toggleCloudAuto()">
-        <div class="cloud-toggle" id="cloudAutoToggle"></div>
-        <span>自动同步（每次保存后 3 秒自动上传）</span>
-      </div>
-      <div class="cloud-auto-row" onclick="toggleCloudProxy()">
-        <div class="cloud-toggle" id="cloudProxyToggle"></div>
-        <span>使用网络代理（直连失败时自动启用，可手动切换）</span>
-      </div>
-
       <div class="cloud-divider"><span>🖥 服务器同步（自托管 Redis / 文件）</span></div>
       <div class="server-sync-box">
         <div class="section-desc" style="margin-bottom:8px;">数据直接读/写你的服务器（Redis），云端为唯一数据源，多设备实时共享。留空则只用本地。</div>
@@ -9767,13 +9521,10 @@ window.addEventListener('DOMContentLoaded', init);
       </div>
 
       <div class="cloud-actions">
-        <button class="primary" onclick="cloudPush()" id="cloudPushBtn">⬆ 上传到云端</button>
-        <button onclick="cloudPull()" id="cloudPullBtn">⬇ 从云端恢复</button>
         <button onclick="exportBackup()">💾 导出备份</button>
         <button onclick="importBackup()">📥 导入备份</button>
-        <button onclick="testCloudToken()" id="cloudTestBtn" style="background:var(--input-bg);">🔍 测试 Token</button>
       </div>
-      <div class="cloud-status" id="cloudStatus">未配置</div>
+      <div class="cloud-status" id="cloudStatus">数据通过服务器(Redis)同步</div>
     </div>
   </div>
 </div>
