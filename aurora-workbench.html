@@ -6916,8 +6916,9 @@ function analyzeFundScreenshot(base64, cb){
           throw new Error('返回非数组（顶层应为数组或 {funds/list/items/data:[]}）');
         }
         cb(null, arr.map(function(x){
-          return { code: normalizeFundCode(x.code), name: sanitizeFundName(x.name), shares: parseFloat(x.shares) || 0, cost: parseFloat(x.cost) || 0, hp: parseFloat(x.hp) || null, hpPct: parseFloat(x.hpPct) || null };
-        }).filter(function(x){ return x.code; }));
+          var code = normalizeFundCode(x.code);
+          return { code: code, name: sanitizeFundName(x.name), shares: parseFloat(x.shares) || 0, cost: parseFloat(x.cost) || 0, hp: parseFloat(x.hp) || null, hpPct: parseFloat(x.hpPct) || null };
+        }));
       });
     }).catch(function(err){
       if(err && /超时|AbortError/i.test(err.message || '') && modelIdx < QWEN_MODELS.length - 1){
@@ -7025,8 +7026,13 @@ function renderImportPreview(list){
       }
     }
   }
+  /* 检测缺代码的基金（AI未识别出代码，之前会被静默丢弃） */
+  var missingCode = list.filter(function(x){ return !x.code; });
 
   var hintHtml = '';
+  if(missingCode.length){
+    hintHtml += '<div style="font-size:12px;color:var(--red);font-weight:600;margin-bottom:6px;background:var(--red-bg);padding:8px 10px;border-radius:4px;">🔴 有 ' + missingCode.length + ' 只<b>缺少基金代码</b>（AI未识别到）已标红保留，不会丢失！请在对应行「代码」列补全 6 位代码后再导入；留空将用临时码导入（无法估值，需后续补全）。</div>';
+  }
   if(dupInPreview.length){
     hintHtml += '<div style="font-size:12px;color:var(--amber);margin-bottom:6px;">⚠ 预览内重复代码（将合并更新）：' + dupInPreview.join('、') + '</div>';
   }
@@ -7039,19 +7045,21 @@ function renderImportPreview(list){
   if(nameDupInPreview.length){
     hintHtml += '<div style="font-size:12px;color:var(--amber);margin-bottom:6px;background:var(--amber-bg);padding:6px 8px;border-radius:4px;">⚠️ 预览内名称相同但代码不同（AI识别不一致，建议手动核对后只保留一只）：<br>' + nameDupInPreview.join('<br>') + '</div>';
   }
-  box.innerHTML = '<div class="card-title" style="font-size:14px;">识别预览（请核对，可修改后导入）</div>' +
+  box.innerHTML = '<div class="card-title" style="font-size:14px;">识别预览（共 ' + list.length + ' 只，请核对，可修改后导入）</div>' +
     hintHtml +
     '<table><thead><tr><th>导入</th><th>代码</th><th>名称</th><th>份额</th><th>成本价</th><th>持有收益</th><th>收益率</th></tr></thead><tbody>' +
     list.map(function(x, i){
-      var isDup = codeCount[x.code] > 1;
+      var isDup = x.code && codeCount[x.code] > 1;
       var isExist = existingCodes.indexOf(x.code) >= 0;
       var isNameDupExist = (existingCodes.indexOf(x.code) < 0) && (findFundByName(x.name || '') >= 0);
-      var rowStyle = isDup ? 'background:var(--amber-bg);' : (isExist ? 'background:var(--blue-bg);' : (isNameDupExist ? 'background:var(--red-bg);' : ''));
+      var isMissing = !x.code;
+      var rowStyle = isMissing ? 'background:var(--red-bg);' : (isDup ? 'background:var(--amber-bg);' : (isExist ? 'background:var(--blue-bg);' : (isNameDupExist ? 'background:var(--red-bg);' : '')));
       var tagHtml = '';
+      if(isMissing) tagHtml += ' <span style="font-size:10px;color:var(--red);font-weight:bold;">缺代码</span>';
       if(isDup) tagHtml += ' <span style="font-size:10px;color:var(--amber);">重</span>';
       if(isExist) tagHtml += ' <span style="font-size:10px;color:var(--blue);">旧</span>';
       if(isNameDupExist) tagHtml += ' <span style="font-size:10px;color:var(--red);font-weight:bold;">名重</span>';
-      return '<tr style="' + rowStyle + '"><td><input type="checkbox" data-i="' + i + '" checked></td><td>' + x.code + tagHtml + '</td>' +
+      return '<tr style="' + rowStyle + '"><td><input type="checkbox" data-i="' + i + '" ' + (isMissing ? '' : 'checked') + '></td><td>' + (isMissing ? '<input id="imp_code_' + i + '" value="" placeholder="补6位代码" style="width:88px;border-color:var(--red);">' : '<input id="imp_code_' + i + '" value="' + x.code + '" style="width:88px;">') + tagHtml + '</td>' +
         '<td><input id="imp_name_' + i + '" value="' + escapeHtml(x.name) + '"></td>' +
         '<td><input id="imp_shares_' + i + '" value="' + x.shares + '"></td>' +
         '<td><input id="imp_cost_' + i + '" value="' + x.cost + '"></td>' +
@@ -7061,15 +7069,24 @@ function renderImportPreview(list){
     '<div style="margin-top:10px;display:flex;gap:10px;"><button class="btn btn-primary btn-sm" onclick="commitImportFunds()">确认导入</button><button class="btn btn-sm" onclick="clearImportPreview()">清空</button></div>';
 }
 function commitImportFunds(){
-  var added = 0, updated = 0, skipped = [], dupCodes = [];
+  var added = 0, updated = 0, skipped = [], dupCodes = [], missingCodes = [];
+  var ts = Date.now();
   pendingImport.forEach(function(x, i){
     var cb = document.querySelector('input[data-i="' + i + '"]'); if(cb && !cb.checked) return;
+    /* 代码从预览输入框读取（用户可能已补全缺代码行） */
+    var rawCode = (document.getElementById('imp_code_' + i) || {}).value || '';
+    var code = normalizeFundCode(rawCode);
     var name = sanitizeFundName(document.getElementById('imp_name_' + i).value || '');
     var shares = parseFloat(document.getElementById('imp_shares_' + i).value) || 0;
     var cost = parseFloat(document.getElementById('imp_cost_' + i).value) || 0;
     var hp = parseFloat(document.getElementById('imp_hp_' + i).value) || null;
     var hpPct = parseFloat(document.getElementById('imp_hpPct_' + i).value) || null;
-    var existingIdx = DB.market.funds.findIndex(function(f){ return f.code === x.code; });
+    /* 仍未补全代码 → 用临时占位码，保证不丢失，后续可在列表编辑补全 */
+    if(!code){
+      code = 'TEMP_' + (ts + i);
+      missingCodes.push(name || ('第' + (i + 1) + '只'));
+    }
+    var existingIdx = DB.market.funds.findIndex(function(f){ return f.code === code; });
     /* 代码没匹配到，再按名称模糊匹配（AI识别代码错误时兜底） */
     if(existingIdx < 0) existingIdx = findFundByName(name || x.name);
     if(existingIdx >= 0){
@@ -7081,16 +7098,17 @@ function commitImportFunds(){
       if(hp != null) ef.hpImport = hp;
       if(hpPct != null) ef.hpPctImport = hpPct;
       updated++;
-      if(dupCodes.indexOf(x.code) < 0) dupCodes.push(x.code);
+      if(dupCodes.indexOf(code) < 0) dupCodes.push(code);
       return;
     }
-    var cls = classifyFund(name || x.code);
-    DB.market.funds.push({ id: 'f' + Date.now() + i, code: x.code, name: name || x.code, type: cls.type, theme: cls.theme, shares: shares, cost: cost, hpImport: hp, hpPctImport: hpPct, navManual: null, val: null, updatedAt: 0 });
+    var cls = classifyFund(name || code);
+    DB.market.funds.push({ id: 'f' + (ts + i), code: code, name: name || code, type: cls.type, theme: cls.theme, shares: shares, cost: cost, hpImport: hp, hpPctImport: hpPct, navManual: null, val: null, updatedAt: 0 });
     added++;
   });
   saveDb(); clearImportPreview(); renderFunds();
   var msg = '导入完成：新增 ' + added + ' 只';
   if(updated > 0) msg += '，更新 ' + updated + ' 只（' + dupCodes.join('、') + '）';
+  if(missingCodes.length > 0) msg += '；⚠ ' + missingCodes.length + ' 只缺代码已用临时码导入（' + missingCodes.join('、') + '），请在列表补全代码才能估值';
   if(skipped.length > 0) msg += '，跳过 ' + skipped.length + ' 只（' + skipped.join('、') + '）';
   msg += '，记得点「刷新估值」';
   toast(msg);
