@@ -3032,10 +3032,12 @@ function sanitizeText(s){
   s = s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
   /* 去除 Unicode 替换字符 */
   s = s.replace(/\uFFFD/g, '');
-  /* 去除私有区/特殊符号块中常见的乱码字符 */
+  /* 去除私有区乱码块（3个以上连续） */
   s = s.replace(/[\uE000-\uF8FF\u2760-\u2775\u2B50-\u2B59\u25A0-\u25FF]{3,}/g, '');
-  /* 折叠连续 3 个以上的 ◆◆◆ 等符号为空 */
-  s = s.replace(/([◆●■▲▼★☆♦♠♣♥♧⬟⬡◀▶⏩⏪⏫⏬]){3,}/g, '');
+  /* 折叠连续3个以上的装饰符号为空 */
+  s = s.replace(/([◆●■▲▼★☆♦♠♣♥♧⬟⬡◀▶⏩⏪⏫⏬•·—–―…※◎○□△▽◇✓✔✘✙✚✛✜✝✞✟✠✡✢✣✤✥✦✧✩✪✫✬✭✮✯✰✱✲✳✴✵✶✷✸✹✺✻✼✽✾✿❀❁❂❃❄❅❆❇❈❉❊❋❌❍❎❏❐❑❒❓❔❕❖❗❘❙❚❛❜❝❞❟❠❡❢❣❤❥❦❧❨❩❪❫❬❭❮❯❰❱❲❳❴❵❶❷❸❹❺❻❼❽❾❿ⱀⱁⱂⱃⱄⱅⱆⱇⱈⱉⱊⱋⱌⱍⱎⱏⱐⱑⱒⱓⱔⱕⱖⱗⱘⱙⱚⱛⱜⱝⱞⱟⱠⱡⱢⱣⱤⱥⱦⱧⱨⱩⱪⱫⱬⱭⱮⱯⱰⱱⱲⱳⱴⱵⱶⱷⱸⱹⱺⱻⱼⱽⱾⱿⲀⲁⲂⲃⲄⲅⲆⲇⲈⲉⲊⲋⲌⲍⲎⲏⲐⲑⲒⲓⲔⲕⲖⲗⲘⲙⲚⲛⲜⲝⲞⲟⲠⲡⲢⲣⲤⲥⲦⲧⲨⲩⲪⲫⲬⲭⲮⲯⲰⲱⲲⲳⲴⲵⲶⲷⲸⲹⲺⲻⲼⲽⲾⲿⳀⳁⳂⳃⳄⳅⳆⳇⳈⳉⳊⳋⳌⳍⳎⳏⳐⳑⳒⳓⳔⳕⳖⳗⳘⳙⳚⳛⳜⳝⳞⳟⳠⳡⳢⳣⳤ⳥⳦⳧⳨⳩⳪ⳫⳬⳭⳮ⳯⳰⳱Ⳳⳳ⳴⳵⳶⳷⳸⳹⳺⳻⳼⳽⳾⳿]){3,}/g, '');
+  /* 去除开头的连续装饰符号+空白（如 ◆◆◆◆...实上 → 实上），保留尾部中文/英文/数字 */
+  s = s.replace(/^[\s◆●■▲▼★☆♦♠♣♥♧⬟⬡◀▶⏩⏪⏫⏬•·—–―…※◎○□△▽◇✓✔✘✙✚✛✜✝✞✟✠✡✢✣✤✥✦✧✩✪✫✬✭✮✯✰✱✲✳✴✵✶✷✸✹✺✻✼✽✾✿❀❁❂❃❄❅❆❇❈❉❊❋❌❍❎❏❐❑❒❓❔❕❖❗❘❙❚❛❜❝❞❟❠❡❢❣❤❥❦❧❨❩❪❫❬❭❮❯❰❱❲❳❴❵❶❷❸❹❺❻❼❽❾❿ⱀⱁⱂⱃⱄⱅⱆⱇⱈⱉⱊⱋⱌⱍⱎⱏⱐⱑⱒⱓⱔⱕⱖⱗⱘⱙⱚⱛⱜⱝⱞⱟⱠⱡⱢⱣⱤⱥⱦⱧⱨⱩⱪⱫⱬⱭⱮⱯⱰⱱⱲⱳⱴⱵⱶⱷⱸⱹⱺⱻⱼⱽⱾⱿⲀⲁⲂⲃⲄⲅⲆⲇⲈⲉⲊⲋⲌⲍⲎⲏⲐⲑⲒⲓⲔⲕⲖⲗⲘⲙⲚⲛⲜⲝⲞⲟⲠⲡⲢⲣⲤⲥⲦⲧⲨⲩⲪⲫⲬⲭⲮⲯⲰⲱⲲⲳⲴⲵⲶⲷⲸⲹⲺⲻⲼⲽⲾⲿⳀⳁⳂⳃⳄⳅⳆⳇⳈⳉⳊⳋⳌⳍⳎⳏⳐⳑⳒⳓⳔⳕⳖⳗⳘⳙⳚⳛⳜⳝⳞⳟⳠⳡⳢⳣⳤ⳥⳦⳧⳨⳩⳪ⳫⳬⳭⳮ⳯⳰⳱Ⳳⳳ⳴⳵⳶⳷⳸⳹⳺⳻⳼⳽⳾⳿]+/, '');
   return s.trim();
 }
 /* 向后兼容 */
@@ -4309,7 +4311,7 @@ function renderXwlbInvest(res, sourceLabel){
     if(!tf) return;
     var lv = (t.level === '高' || t.level === '中' || t.level === '低') ? t.level : '中';
     var funds = (tf.funds || []).map(function(f){
-      return '<span class="fund-chip" title="' + escapeHtml(f.name) + '"><b>' + escapeHtml(f.code) + '</b>' + escapeHtml(f.name) + '</span>';
+      return '<span class="fund-chip" title="' + escapeHtml(sanitizeText(f.name)) + '"><b>' + escapeHtml(f.code) + '</b>' + escapeHtml(sanitizeText(f.name)) + '</span>';
     }).join('');
     html += '<div class="invest-card">' +
       '<div class="invest-card-head"><span class="invest-theme">' + escapeHtml(tf.label) + '</span><span class="invest-level lvl-' + lvlClass(lv) + '">' + lv + '匹配</span></div>' +
@@ -4416,7 +4418,7 @@ function trackXwlb7d(){
       if(!tf) return;
       var lv = (t.level === '高' || t.level === '中' || t.level === '低') ? t.level : '中';
       var funds = (tf.funds || []).map(function(f){
-        return '<span class="fund-chip" title="' + escapeHtml(f.name) + '"><b>' + escapeHtml(f.code) + '</b>' + escapeHtml(f.name) + '</span>';
+        return '<span class="fund-chip" title="' + escapeHtml(sanitizeText(f.name)) + '"><b>' + escapeHtml(f.code) + '</b>' + escapeHtml(sanitizeText(f.name)) + '</span>';
       }).join('');
       rowsHtml += '<div class="track-row">' +
         '<div class="track-rank">' + (idx + 1) + '</div>' +
@@ -6635,7 +6637,7 @@ function renderFunds(){
       var hasHpData = hasNav || (f.hpImport != null) || (f.hpPctImport != null);
       var hpCls = clsOf(showHp);
       return '<tr>' +
-        '<td><b>' + escapeHtml(f.name) + '</b><br><span class="text-sm text-muted">' + f.code + '</span></td>' +
+        '<td><b>' + escapeHtml(sanitizeText(f.name)) + '</b><br><span class="text-sm text-muted">' + f.code + '</span></td>' +
         '<td><span class="chip">' + f.type + '</span><span class="chip theme">' + f.theme + '</span></td>' +
         '<td>' + fmtNum(f.shares) + '</td>' +
         '<td class="hide-mobile">' + (hasCost ? fmtMoney(f.cost) : '<span class="text-muted">—</span>') + '</td>' +
@@ -6705,7 +6707,7 @@ function renderFundCompare(funds, metricsArr){
     else if(i >= arr.length - 3 && cHpPct < 0) badge = '⚠️ 偏弱';
     else if(cHpPct < 0) badge = '📉 亏损';
     else badge = '✅ 稳健';
-    return '<tr><td>' + (i + 1) + '</td><td><b>' + escapeHtml(f.name) + '</b><br><span class="text-sm text-muted">' + f.type + '·' + f.theme + '</span></td>' +
+    return '<tr><td>' + (i + 1) + '</td><td><b>' + escapeHtml(sanitizeText(f.name)) + '</b><br><span class="text-sm text-muted">' + f.type + '·' + f.theme + '</span></td>' +
       (hasAnyNav ? '<td class="' + (hasData ? clsOf(cHp) : '') + '">' + (hasData ? fmtMoney(cHp) + '<br><span class="text-sm">' + fmtPct(cHpPct) + '</span>' : '<span class="text-muted">待估值</span>') + '</td>' : '') +
       '<td>' + badge + '</td></tr>';
   }).join('');
