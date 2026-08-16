@@ -6971,18 +6971,36 @@ function renderImportPreview(list){
     '<div style="margin-top:10px;display:flex;gap:10px;"><button class="btn btn-primary btn-sm" onclick="commitImportFunds()">确认导入</button><button class="btn btn-sm" onclick="clearImportPreview()">清空</button></div>';
 }
 function commitImportFunds(){
+  var added = 0, updated = 0, skipped = [], dupCodes = [];
   pendingImport.forEach(function(x, i){
     var cb = document.querySelector('input[data-i="' + i + '"]'); if(cb && !cb.checked) return;
     var name = (document.getElementById('imp_name_' + i).value || '').trim();
     var shares = parseFloat(document.getElementById('imp_shares_' + i).value) || 0;
     var cost = parseFloat(document.getElementById('imp_cost_' + i).value) || 0;
-    var hp = parseFloat(document.getElementById('imp_hp_' + i).value) || 0;
-    var hpPct = parseFloat(document.getElementById('imp_hpPct_' + i).value) || 0;
-    if(DB.market.funds.some(function(f){ return f.code === x.code; })) return;
+    var hp = parseFloat(document.getElementById('imp_hp_' + i).value) || null;
+    var hpPct = parseFloat(document.getElementById('imp_hpPct_' + i).value) || null;
+    var existingIdx = DB.market.funds.findIndex(function(f){ return f.code === x.code; });
+    if(existingIdx >= 0){
+      /* 已存在 → 更新份额、成本价、收益数据 */
+      var ef = DB.market.funds[existingIdx];
+      ef.name = name || ef.name;
+      if(shares > 0) ef.shares = shares;
+      if(cost > 0) ef.cost = cost;
+      if(hp != null) ef.hpImport = hp;
+      if(hpPct != null) ef.hpPctImport = hpPct;
+      updated++;
+      if(dupCodes.indexOf(x.code) < 0) dupCodes.push(x.code);
+      return;
+    }
     var cls = classifyFund(name || x.code);
     DB.market.funds.push({ id: 'f' + Date.now() + i, code: x.code, name: name || x.code, type: cls.type, theme: cls.theme, shares: shares, cost: cost, hpImport: hp, hpPctImport: hpPct, navManual: null, val: null, updatedAt: 0 });
+    added++;
   });
-  saveDb(); clearImportPreview(); renderFunds(); toast('导入完成，记得点「刷新估值」');
+  saveDb(); clearImportPreview(); renderFunds();
+  var msg = '导入完成：新增 ' + added + ' 只';
+  if(updated > 0) msg += '，更新 ' + updated + ' 只（' + dupCodes.join('、') + '）';
+  msg += '，记得点「刷新估值」';
+  toast(msg);
 }
 function clearImportPreview(){ pendingImport = []; var box = document.getElementById('fundImportPreview'); if(box) box.innerHTML = ''; }
 
