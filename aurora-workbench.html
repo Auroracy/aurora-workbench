@@ -6898,7 +6898,7 @@ function analyzeFundScreenshot(base64, cb){
           throw new Error('返回非数组（顶层应为数组或 {funds/list/items/data:[]}）');
         }
         cb(null, arr.map(function(x){
-          return { code: normalizeFundCode(x.code), name: x.name || '', shares: parseFloat(x.shares) || 0, cost: parseFloat(x.cost) || 0 };
+          return { code: normalizeFundCode(x.code), name: x.name || '', shares: parseFloat(x.shares) || 0, cost: parseFloat(x.cost) || 0, hp: parseFloat(x.hp) || null, hpPct: parseFloat(x.hpPct) || null };
         }).filter(function(x){ return x.code; }));
       });
     }).catch(function(err){
@@ -6937,7 +6937,7 @@ function parseFundPasteText(txt){
       arr.forEach(function(x){
         var code = String(x.code || x.fundCode || '').match(/\d{6}/);
         if(!code) return;
-        list.push({ code: code[0], name: x.name || x.fundName || '', shares: parseFloat(x.shares || x.share) || 0, cost: parseFloat(x.cost || x.costPrice) || 0 });
+        list.push({ code: code[0], name: x.name || x.fundName || '', shares: parseFloat(x.shares || x.share) || 0, cost: parseFloat(x.cost || x.costPrice) || 0, hp: parseFloat(x.hp) || null, hpPct: parseFloat(x.hpPct) || null });
       });
       if(list.length) return list;
     } catch(e){ }
