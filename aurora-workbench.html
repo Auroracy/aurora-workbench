@@ -2276,6 +2276,12 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     .fund-tbl th,.fund-tbl td{padding:8px 6px;border-bottom:1px solid #e2ebf0;text-align:right;white-space:nowrap;}
     .fund-tbl th:first-child,.fund-tbl td:first-child{text-align:left;}
     .fund-tbl th{color:#5a6b75;font-weight:600;background:#f6fafb;}
+    /* 移动端：隐藏次要列，只保留 基金 | 分类 | 份额 | 市值 | 收益率 */
+    @media(max-width:700px){
+      .fund-tbl .hide-mobile{display:none !important;}
+      .fund-tbl{font-size:12px;}
+      .fund-tbl th,.fund-tbl td{padding:6px 4px;}
+    }
     .chip{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;margin:1px 2px;background:#e8f3f1;color:#15A49B;}
     .chip.theme{background:#eaf1fb;color:#2E86C1;}
     .pos{color:#c0392b;font-weight:600;}
@@ -2516,7 +2522,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
         <button class="btn btn-sm" onclick="fetchFundOverlap()" id="fundOverlapBtn">🔗 分析持仓重合</button>
       </div>
       <table class="fund-tbl">
-        <thead><tr><th>基金</th><th>分类</th><th>份额</th><th>成本价</th><th>最新净值</th><th>市值</th><th>持有收益</th><th>收益率</th><th>今日</th><th>操作</th></tr></thead>
+        <thead><tr><th>基金</th><th>分类</th><th>份额</th><th class="hide-mobile">成本价</th><th class="hide-mobile">最新净值</th><th>市值</th><th class="hide-mobile">持有收益</th><th>收益率</th><th class="hide-mobile">今日</th><th class="hide-mobile">操作</th></tr></thead>
         <tbody id="fundTableBody"></tbody>
       </table>
     </div>
@@ -6591,17 +6597,19 @@ function renderFunds(){
     body.innerHTML = funds.map(function(f){
       var m = metricsArr[f.id];
       var navSrc = f.navManual ? '手动' : (m.nav ? (f.val && f.val.gztime ? '估算' : '—') : '—');
+      var hasNav = m.nav > 0;
+      var hasCost = f.cost > 0;
       return '<tr>' +
         '<td><b>' + escapeHtml(f.name) + '</b><br><span class="text-sm text-muted">' + f.code + '</span></td>' +
         '<td><span class="chip">' + f.type + '</span><span class="chip theme">' + f.theme + '</span></td>' +
         '<td>' + fmtNum(f.shares) + '</td>' +
-        '<td>' + fmtMoney(f.cost) + '</td>' +
-        '<td>' + fmtMoney(m.nav) + '<br><span class="text-sm text-muted">' + navSrc + '</span></td>' +
-        '<td>' + fmtMoney(m.mv) + '</td>' +
-        '<td class="' + clsOf(m.hp) + '">' + fmtMoney(m.hp) + '</td>' +
-        '<td class="' + clsOf(m.hpPct) + '">' + fmtPct(m.hpPct) + '</td>' +
-        '<td class="' + clsOf(m.dailyProfit) + '">' + (f.val && f.val.gszzl != null ? fmtPct(m.dailyPct) + '<br>' + fmtMoney(m.dailyProfit) : '—') + '</td>' +
-        '<td><button class="btn btn-sm" onclick="editFund(\'' + f.id + '\')">编辑</button> <button class="btn btn-sm" onclick="updateFundNavManual(\'' + f.id + '\')">净值</button> <button class="btn btn-sm" onclick="deleteFund(\'' + f.id + '\')">删</button></td>' +
+        '<td class="hide-mobile">' + (hasCost ? fmtMoney(f.cost) : '<span class="text-muted">—</span>') + '</td>' +
+        '<td class="hide-mobile">' + (hasNav ? fmtMoney(m.nav) : '<span class="text-muted">待估值</span>') + '<br><span class="text-sm text-muted">' + navSrc + '</span></td>' +
+        '<td>' + (hasNav ? fmtMoney(m.mv) : '<span class="text-muted">—</span>') + '</td>' +
+        '<td class="hide-mobile ' + (hasNav ? clsOf(m.hp) : '') + '">' + (hasNav ? fmtMoney(m.hp) : '<span class="text-muted">—</span>') + '</td>' +
+        '<td class="' + (hasNav ? clsOf(m.hpPct) : '') + '">' + (hasNav ? fmtPct(m.hpPct) : '<span class="text-muted">待估值</span>') + '</td>' +
+        '<td class="hide-mobile ' + (hasNav && f.val && f.val.gszzl != null ? clsOf(m.dailyProfit) : '') + '">' + (hasNav && f.val && f.val.gszzl != null ? fmtPct(m.dailyPct) + '<br>' + fmtMoney(m.dailyProfit) : '—') + '</td>' +
+        '<td class="hide-mobile"><button class="btn btn-sm" onclick="editFund(\'' + f.id + '\')">编辑</button> <button class="btn btn-sm" onclick="updateFundNavManual(\'' + f.id + '\')">净值</button> <button class="btn btn-sm" onclick="deleteFund(\'' + f.id + '\')">删</button></td>' +
       '</tr>';
     }).join('');
   }
@@ -6627,7 +6635,8 @@ function renderFundCompare(funds, metricsArr){
   var el = document.getElementById('fundCompareList'); if(!el) return;
   if(!funds.length){ el.innerHTML = ''; return; }
   var arr = funds.slice().sort(function(a, b){ return metricsArr[b.id].hpPct - metricsArr[a.id].hpPct; });
-  el.innerHTML = '<table class="fund-tbl"><thead><tr><th>排名</th><th>基金</th><th>收益率</th><th>持有收益</th><th>评价</th></tr></thead><tbody>' +
+  var hasAnyNav = arr.some(function(f){ return (metricsArr[f.id]||{}).nav > 0; });
+  el.innerHTML = '<table class="fund-tbl"><thead><tr><th>排名</th><th>基金</th>' + (hasAnyNav ? '<th>收益率</th><th class="hide-mobile">持有收益</th>' : '') + '<th>评价</th></tr></thead><tbody>' +
     arr.map(function(f, i){
       var m = metricsArr[f.id];
       var badge = '';
@@ -6635,7 +6644,10 @@ function renderFundCompare(funds, metricsArr){
       else if(i >= arr.length - 3 && m.hpPct < 0) badge = '⚠️ 偏弱';
       else if(m.hpPct < 0) badge = '📉 亏损';
       else badge = '✅ 稳健';
-      return '<tr><td>' + (i + 1) + '</td><td><b>' + escapeHtml(f.name) + '</b><br><span class="text-sm text-muted">' + f.type + '·' + f.theme + '</span></td><td class="' + clsOf(m.hpPct) + '">' + fmtPct(m.hpPct) + '</td><td class="' + clsOf(m.hp) + '">' + fmtMoney(m.hp) + '</td><td>' + badge + '</td></tr>';
+      var navOk = m.nav > 0;
+      return '<tr><td>' + (i + 1) + '</td><td><b>' + escapeHtml(f.name) + '</b><br><span class="text-sm text-muted">' + f.type + '·' + f.theme + '</span></td>' +
+        (hasAnyNav ? '<td class="' + (navOk ? clsOf(m.hpPct) : '') + '">' + (navOk ? fmtPct(m.hpPct) : '<span class="text-muted">待估值</span>') + '</td><td class="hide-mobile ' + (navOk ? clsOf(m.hp) : '') + '">' + (navOk ? fmtMoney(m.hp) : '<span class="text-muted">—</span>') + '</td>' : '') +
+        '<td>' + badge + '</td></tr>';
     }).join('') + '</tbody></table>';
 }
 function generateAdvisor(funds, totals, metricsArr){
