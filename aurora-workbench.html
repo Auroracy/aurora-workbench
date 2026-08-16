@@ -7461,6 +7461,8 @@ function toggleTechAutoRefresh(){
 }
 
 /* ============ 科技巨头自选 ============ */
+var WATCH_PAGE_SIZE = 5;   // 自选每页条数
+var WATCH_PAGE_IDX = 1;    // 自选当前页（1-based）
 var WATCH_QUOTE_MAP = {
   us: function(c){ return 'us' + c.toUpperCase().replace(/[^A-Z]/g, ''); },
   hk: function(c){ return 'hk' + c.replace(/\D/g, '').padStart(5, '0'); },
@@ -7475,24 +7477,45 @@ function addWatch(){
   saveDb();
   document.getElementById('watchCode').value = '';
   document.getElementById('watchName').value = '';
+  /* 跳到末页显示新添加的 */
+  WATCH_PAGE_IDX = Math.ceil((DB.market.techWatch || []).length / WATCH_PAGE_SIZE);
   fetchWatchQuotes(true);
 }
 function renderWatchlist(){
   var el = document.getElementById('watchList'); if(!el) return;
   var w = DB.market.techWatch || [];
   if(!w.length){ el.innerHTML = '<div class="text-sm text-muted">还没有关注的科技公司，添加后一键查看实时报价。</div>'; return; }
-  el.innerHTML = '<table class="fund-tbl"><thead><tr><th>名称</th><th>代码</th><th>市场</th><th>现价</th><th>涨跌</th><th>操作</th></tr></thead><tbody>' +
-    w.map(function(x){
+  var total = w.length;
+  var pages = Math.ceil(total / WATCH_PAGE_SIZE);
+  if(WATCH_PAGE_IDX > pages) WATCH_PAGE_IDX = pages;
+  if(WATCH_PAGE_IDX < 1) WATCH_PAGE_IDX = 1;
+  var start = (WATCH_PAGE_IDX - 1) * WATCH_PAGE_SIZE;
+  var pageItems = w.slice(start, start + WATCH_PAGE_SIZE);
+  var html = '<table class="fund-tbl"><thead><tr><th>名称</th><th>代码</th><th>市场</th><th>现价</th><th>涨跌</th><th>操作</th></tr></thead><tbody>' +
+    pageItems.map(function(x){
       var q = x.quote; var chg = q ? q.chg : null; var pct = q ? q.pct : null;
       return '<tr><td><b>' + escapeHtml(x.name || x.code) + '</b></td><td>' + escapeHtml(x.code) + '</td><td>' + (x.market === 'us' ? '美股' : x.market === 'hk' ? '港股' : 'A股') + '</td>' +
         '<td>' + (q ? q.price.toFixed(2) : '—') + '</td>' +
         '<td class="' + clsOf(chg) + '">' + (q ? (chg >= 0 ? '+' : '') + chg.toFixed(2) + ' (' + (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%)' : '—') + '</td>' +
         '<td><button class="btn btn-sm" onclick="deleteWatch(\'' + x.id + '\')">删</button></td></tr>';
     }).join('') + '</tbody></table>';
+  /* 分页控件 */
+  if(pages > 1){
+    html += '<div class="pagination" style="margin-top:8px;display:flex;gap:4px;flex-wrap:wrap;align-items:center;">';
+    if(WATCH_PAGE_IDX > 1) html += '<button class="btn btn-sm" onclick="WATCH_PAGE_IDX=1;renderWatchlist()">首页</button><button class="btn btn-sm" onclick="WATCH_PAGE_IDX--;renderWatchlist()">上一页</button>';
+    html += '<span class="text-sm" style="padding:0 6px;color:var(--text-muted);">' + WATCH_PAGE_IDX + ' / ' + pages + '（共' + total + '条）</span>';
+    if(WATCH_PAGE_IDX < pages) html += '<button class="btn btn-sm" onclick="WATCH_PAGE_IDX++;renderWatchlist()">下一页</button><button class="btn btn-sm" onclick="WATCH_PAGE_IDX=' + pages + ';renderWatchlist()">末页</button>';
+    html += '</div>';
+  }
+  el.innerHTML = html;
 }
 function deleteWatch(id){
   DB.market.techWatch = (DB.market.techWatch || []).filter(function(x){ return x.id !== id; });
-  saveDb(); renderWatchlist();
+  saveDb();
+  var total = (DB.market.techWatch || []).length;
+  var pages = Math.ceil(total / WATCH_PAGE_SIZE);
+  if(WATCH_PAGE_IDX > pages && pages > 0) WATCH_PAGE_IDX = pages;
+  renderWatchlist();
 }
 function fetchWatchQuotes(manual){
   var w = DB.market.techWatch || [];
