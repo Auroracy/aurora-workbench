@@ -2276,7 +2276,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     .fund-tbl th,.fund-tbl td{padding:8px 6px;border-bottom:1px solid #e2ebf0;text-align:right;white-space:nowrap;}
     .fund-tbl th:first-child,.fund-tbl td:first-child{text-align:left;}
     .fund-tbl th{color:#5a6b75;font-weight:600;background:#f6fafb;}
-    /* 移动端：隐藏次要列，只保留 基金 | 分类 | 份额 | 市值 | 收益率 */
+    /* 移动端：隐藏次要列，只保留 基金 | 分类 | 份额 | 市值 | 持有收益/率 */
     @media(max-width:700px){
       .fund-tbl .hide-mobile{display:none !important;}
       .fund-tbl{font-size:12px;}
@@ -2523,7 +2523,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
         <button class="btn btn-sm" onclick="fetchFundOverlap()" id="fundOverlapBtn">🔗 分析持仓重合</button>
       </div>
       <table class="fund-tbl">
-        <thead><tr><th>基金</th><th>分类</th><th>份额</th><th class="hide-mobile">成本价</th><th class="hide-mobile">最新净值</th><th>市值</th><th class="hide-mobile">持有收益</th><th>收益率</th><th class="hide-mobile">今日</th><th class="hide-mobile">操作</th></tr></thead>
+        <thead><tr><th>基金</th><th>分类</th><th>份额</th><th class="hide-mobile">成本价</th><th class="hide-mobile">最新净值</th><th>市值</th><th>持有收益/率</th><th class="hide-mobile">今日</th><th class="hide-mobile">操作</th></tr></thead>
         <tbody id="fundTableBody"></tbody>
       </table>
       <div id="fundPager"></div>
@@ -6611,6 +6611,11 @@ function renderFunds(){
       var navSrc = f.navManual ? '手动' : (m.nav ? (f.val && f.val.gztime ? '估算' : '—') : '—');
       var hasNav = m.nav > 0;
       var hasCost = f.cost > 0;
+      /* 持有收益/率：优先用导入原始值，其次用估值计算值 */
+      var showHp = (f.hpImport != null && f.hpImport !== 0) ? f.hpImport : m.hp;
+      var showHpPct = (f.hpPctImport != null && f.hpPctImport !== 0) ? f.hpPctImport : m.hpPct;
+      var hasHpData = hasNav || (f.hpImport != null) || (f.hpPctImport != null);
+      var hpCls = clsOf(showHp);
       return '<tr>' +
         '<td><b>' + escapeHtml(f.name) + '</b><br><span class="text-sm text-muted">' + f.code + '</span></td>' +
         '<td><span class="chip">' + f.type + '</span><span class="chip theme">' + f.theme + '</span></td>' +
@@ -6618,8 +6623,7 @@ function renderFunds(){
         '<td class="hide-mobile">' + (hasCost ? fmtMoney(f.cost) : '<span class="text-muted">—</span>') + '</td>' +
         '<td class="hide-mobile">' + (hasNav ? fmtMoney(m.nav) : '<span class="text-muted">待估值</span>') + '<br><span class="text-sm text-muted">' + navSrc + '</span></td>' +
         '<td>' + (hasNav ? fmtMoney(m.mv) : '<span class="text-muted">—</span>') + '</td>' +
-        '<td class="hide-mobile ' + (hasNav ? clsOf(m.hp) : '') + '">' + (hasNav ? fmtMoney(m.hp) : '<span class="text-muted">—</span>') + '</td>' +
-        '<td class="' + (hasNav ? clsOf(m.hpPct) : '') + '">' + (hasNav ? fmtPct(m.hpPct) : '<span class="text-muted">待估值</span>') + '</td>' +
+        '<td class="' + (hasHpData ? hpCls : '') + '">' + (hasHpData ? fmtMoney(showHp) + '<br><span class="text-sm">' + fmtPct(showHpPct) + '</span>' : '<span class="text-muted">待估值</span>') + '</td>' +
         '<td class="hide-mobile ' + (hasNav && f.val && f.val.gszzl != null ? clsOf(m.dailyProfit) : '') + '">' + (hasNav && f.val && f.val.gszzl != null ? fmtPct(m.dailyPct) + '<br>' + fmtMoney(m.dailyProfit) : '—') + '</td>' +
         '<td class="hide-mobile"><button class="btn btn-sm" onclick="editFund(\'' + f.id + '\')">编辑</button> <button class="btn btn-sm" onclick="updateFundNavManual(\'' + f.id + '\')">净值</button> <button class="btn btn-sm" onclick="deleteFund(\'' + f.id + '\')">删</button></td>' +
       '</tr>';
@@ -6674,17 +6678,20 @@ function renderFundCompare(funds, metricsArr){
   var rows = pageArr.map(function(f, j){
     var i = start + j; // 全局排名序号（跨页连续）
     var m = metricsArr[f.id];
+    /* 优先用导入值 */
+    var cHp = (f.hpImport != null && f.hpImport !== 0) ? f.hpImport : m.hp;
+    var cHpPct = (f.hpPctImport != null && f.hpPctImport !== 0) ? f.hpPctImport : m.hpPct;
+    var hasData = m.nav > 0 || (f.hpImport != null) || (f.hpPctImport != null);
     var badge = '';
-    if(i < 3 && m.hpPct >= 0) badge = '🏆 领先';
-    else if(i >= arr.length - 3 && m.hpPct < 0) badge = '⚠️ 偏弱';
-    else if(m.hpPct < 0) badge = '📉 亏损';
+    if(i < 3 && cHpPct >= 0) badge = '🏆 领先';
+    else if(i >= arr.length - 3 && cHpPct < 0) badge = '⚠️ 偏弱';
+    else if(cHpPct < 0) badge = '📉 亏损';
     else badge = '✅ 稳健';
-    var navOk = m.nav > 0;
     return '<tr><td>' + (i + 1) + '</td><td><b>' + escapeHtml(f.name) + '</b><br><span class="text-sm text-muted">' + f.type + '·' + f.theme + '</span></td>' +
-      (hasAnyNav ? '<td class="' + (navOk ? clsOf(m.hpPct) : '') + '">' + (navOk ? fmtPct(m.hpPct) : '<span class="text-muted">待估值</span>') + '</td><td class="hide-mobile ' + (navOk ? clsOf(m.hp) : '') + '">' + (navOk ? fmtMoney(m.hp) : '<span class="text-muted">—</span>') + '</td>' : '') +
+      (hasAnyNav ? '<td class="' + (hasData ? clsOf(cHp) : '') + '">' + (hasData ? fmtMoney(cHp) + '<br><span class="text-sm">' + fmtPct(cHpPct) + '</span>' : '<span class="text-muted">待估值</span>') + '</td>' : '') +
       '<td>' + badge + '</td></tr>';
   }).join('');
-  var html = '<table class="fund-tbl"><thead><tr><th>排名</th><th>基金</th>' + (hasAnyNav ? '<th>收益率</th><th class="hide-mobile">持有收益</th>' : '') + '<th>评价</th></tr></thead><tbody>' + rows + '</tbody></table>';
+  var html = '<table class="fund-tbl"><thead><tr><th>排名</th><th>基金</th>' + (hasAnyNav ? '<th>持有收益/率</th>' : '') + '<th>评价</th></tr></thead><tbody>' + rows + '</tbody></table>';
   if(totalPages > 1){
     html += '<div class="pager" style="display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:12px;font-size:13px;">' +
       '<button class="btn btn-sm" ' + (compareCurrentPage <= 1 ? 'disabled style="opacity:.5;"' : 'onclick="compareGoPage(' + (compareCurrentPage - 1) + ')"') + '>‹ 上一页</button>' +
@@ -6824,7 +6831,7 @@ function onFundScreenshot(input){
 function analyzeFundScreenshot(base64, cb){
   var key = getQwenKey();
   if(!key){ cb('未配置通义千问 Key（设置 → AI 引擎）'); return; }
-  var prompt = '请识别这张基金或股票持仓截图，提取每一只基金的持仓信息。仅返回 JSON 数组，不要任何额外文字与符号。每条格式：{"code":"6位基金代码","name":"基金名称","shares":持有份额(数字),"cost":持仓成本价(数字,元每份)}。若某项缺失用0或空字符串。';
+  var prompt = '请识别这张基金或股票持仓截图，提取每一只基金的持仓信息。仅返回 JSON 数组，不要任何额外文字与符号。每条格式：{"code":"6位基金代码","name":"基金名称","shares":持有份额(数字),"cost":持仓成本价(数字,元每份),"hp":持有收益(数字,元,正数盈利负数亏损),"hpPct":收益率(数字,百分比,如-16.67表示-16.67%)}。若某项缺失用0或空字符串。注意：持有收益和收益率在截图里通常显示为"持有收益/率"一列，上面是金额下面是百分比。';
   var modelIdx = 0;
   /* 哪些错误应自动降级到下个模型：401/403 不降级（账号问题），其他都试一下下个模型 */
   function shouldFallback(err, status){
@@ -6952,12 +6959,14 @@ function renderImportPreview(list){
   var box = document.getElementById('fundImportPreview'); if(!box) return;
   if(!list || !list.length){ box.innerHTML = ''; return; }
   box.innerHTML = '<div class="card-title" style="font-size:14px;">识别预览（请核对，可修改后导入）</div>' +
-    '<table><thead><tr><th>导入</th><th>代码</th><th>名称</th><th>份额</th><th>成本价</th></tr></thead><tbody>' +
+    '<table><thead><tr><th>导入</th><th>代码</th><th>名称</th><th>份额</th><th>成本价</th><th>持有收益</th><th>收益率</th></tr></thead><tbody>' +
     list.map(function(x, i){
       return '<tr><td><input type="checkbox" data-i="' + i + '" checked></td><td>' + x.code + '</td>' +
         '<td><input id="imp_name_' + i + '" value="' + escapeHtml(x.name) + '"></td>' +
         '<td><input id="imp_shares_' + i + '" value="' + x.shares + '"></td>' +
-        '<td><input id="imp_cost_' + i + '" value="' + x.cost + '"></td></tr>';
+        '<td><input id="imp_cost_' + i + '" value="' + x.cost + '"></td>' +
+        '<td><input id="imp_hp_' + i + '" value="' + (x.hp || 0) + '" style="width:80px;"></td>' +
+        '<td><input id="imp_hpPct_' + i + '" value="' + (x.hpPct || 0) + '" style="width:70px;"></td></tr>';
     }).join('') + '</tbody></table>' +
     '<div style="margin-top:10px;display:flex;gap:10px;"><button class="btn btn-primary btn-sm" onclick="commitImportFunds()">确认导入</button><button class="btn btn-sm" onclick="clearImportPreview()">清空</button></div>';
 }
@@ -6967,9 +6976,11 @@ function commitImportFunds(){
     var name = (document.getElementById('imp_name_' + i).value || '').trim();
     var shares = parseFloat(document.getElementById('imp_shares_' + i).value) || 0;
     var cost = parseFloat(document.getElementById('imp_cost_' + i).value) || 0;
+    var hp = parseFloat(document.getElementById('imp_hp_' + i).value) || 0;
+    var hpPct = parseFloat(document.getElementById('imp_hpPct_' + i).value) || 0;
     if(DB.market.funds.some(function(f){ return f.code === x.code; })) return;
     var cls = classifyFund(name || x.code);
-    DB.market.funds.push({ id: 'f' + Date.now() + i, code: x.code, name: name || x.code, type: cls.type, theme: cls.theme, shares: shares, cost: cost, navManual: null, val: null, updatedAt: 0 });
+    DB.market.funds.push({ id: 'f' + Date.now() + i, code: x.code, name: name || x.code, type: cls.type, theme: cls.theme, shares: shares, cost: cost, hpImport: hp, hpPctImport: hpPct, navManual: null, val: null, updatedAt: 0 });
   });
   saveDb(); clearImportPreview(); renderFunds(); toast('导入完成，记得点「刷新估值」');
 }
