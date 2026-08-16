@@ -2454,7 +2454,8 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
       </div>
       <div id="importShot" class="import-pane">
         <p class="text-sm text-muted">上传券商 App 的持仓截图，通义千问自动识别基金代码 / 名称 / 份额 / 成本价（需已配置通义千问 Key）。</p>
-        <input type="file" id="fundScreenshotInput" accept="image/*" onchange="onFundScreenshot(this)">
+        <input type="file" id="fundScreenshotInput" accept="image/*" multiple onchange="onFundScreenshot(this)">
+        <div id="fundShotThumbs" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;"></div>
         <div id="fundShotHint" class="text-sm text-muted" style="margin-top:6px;"></div>
       </div>
       <div id="importPaste" class="import-pane" style="display:none;">
@@ -2525,6 +2526,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
         <thead><tr><th>基金</th><th>分类</th><th>份额</th><th class="hide-mobile">成本价</th><th class="hide-mobile">最新净值</th><th>市值</th><th class="hide-mobile">持有收益</th><th>收益率</th><th class="hide-mobile">今日</th><th class="hide-mobile">操作</th></tr></thead>
         <tbody id="fundTableBody"></tbody>
       </table>
+      <div id="fundPager"></div>
     </div>
 
     <!-- 重合 & 合并 -->
@@ -3066,8 +3068,10 @@ function stripBase64Prefix(s){
 function compressImage(file, maxW, cb){
   if(!file){ cb(''); return; }
   var reader = new FileReader();
+  reader.onerror = function(){ cb(''); };
   reader.onload = function(e){
     var img = new Image();
+    img.onerror = function(){ cb(''); };
     img.onload = function(){
       var canvas = document.createElement('canvas');
       var w = img.width, h = img.height;
@@ -6568,6 +6572,8 @@ function computeFundMetrics(f){
 }
 
 /* ============ 渲染基金总览/配置/列表/对比/建议 ============ */
+var fundCurrentPage = 1;
+var FUND_PAGE_SIZE = 10;
 function renderFunds(){
   var funds = DB.market.funds || [];
   var totals = { mv: 0, ct: 0, hp: 0, dailyProfit: 0 };
@@ -6594,7 +6600,12 @@ function renderFunds(){
   if(!funds.length){
     body.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#9aa;">还没有基金，用上方「截图识别 / 批量粘贴 / 手动添加」导入吧</td></tr>';
   } else {
-    body.innerHTML = funds.map(function(f){
+    var totalPages = Math.ceil(funds.length / FUND_PAGE_SIZE);
+    if(fundCurrentPage > totalPages) fundCurrentPage = totalPages;
+    if(fundCurrentPage < 1) fundCurrentPage = 1;
+    var start = (fundCurrentPage - 1) * FUND_PAGE_SIZE;
+    var pageFunds = funds.slice(start, start + FUND_PAGE_SIZE);
+    body.innerHTML = pageFunds.map(function(f){
       var m = metricsArr[f.id];
       var navSrc = f.navManual ? '手动' : (m.nav ? (f.val && f.val.gztime ? '估算' : '—') : '—');
       var hasNav = m.nav > 0;
@@ -6615,6 +6626,24 @@ function renderFunds(){
   }
   renderFundCompare(funds, metricsArr);
   generateAdvisor(funds, totals, metricsArr);
+  renderFundPagination(funds.length);
+}
+function renderFundPagination(total){
+  var el = document.getElementById('fundPager'); if(!el) return;
+  var totalPages = Math.ceil(total / FUND_PAGE_SIZE);
+  if(totalPages <= 1){ el.innerHTML = ''; return; }
+  var html = '<div class="pager" style="display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:12px;font-size:13px;">';
+  html += '<button class="btn btn-sm" ' + (fundCurrentPage <= 1 ? 'disabled style="opacity:.5;"' : 'onclick="fundGoPage(' + (fundCurrentPage - 1) + ')"') + '>‹ 上一页</button>';
+  html += '<span class="pager-info" style="color:var(--text-2);">第 ' + fundCurrentPage + ' / ' + totalPages + ' 页（共 ' + total + ' 只基金）</span>';
+  html += '<button class="btn btn-sm" ' + (fundCurrentPage >= totalPages ? 'disabled style="opacity:.5;"' : 'onclick="fundGoPage(' + (fundCurrentPage + 1) + ')"') + '>下一页 ›</button>';
+  html += '</div>';
+  el.innerHTML = html;
+}
+function fundGoPage(p){
+  fundCurrentPage = p;
+  var body = document.getElementById('fundTableBody');
+  if(body) body.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  renderFunds();
 }
 function renderAlloc(containerId, map, total, label){
   var el = document.getElementById(containerId); if(!el) return;
@@ -6734,18 +6763,41 @@ function switchFundImport(mode){
   btns.forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-mode') === mode); });
 }
 function onFundScreenshot(input){
-  var file = input.files && input.files[0]; if(!file) return;
+  var files = Array.prototype.slice.call(input.files || []);
+  if(!files.length) return;
   var hint = document.getElementById('fundShotHint');
-  hint.textContent = '识别中...';
-  compressImage(file, 800, function(base64){
-    analyzeFundScreenshot(base64, function(err, list){
-      if(err){ hint.textContent = '识别失败：' + err + '（可改用「批量粘贴」）'; return; }
-      if(!list.length){ hint.textContent = '未在截图中识别到基金，可改用批量粘贴'; return; }
-      hint.textContent = '识别到 ' + list.length + ' 只基金，请核对后导入';
-      pendingImport = list;
-      renderImportPreview(list);
+  var thumbs = document.getElementById('fundShotThumbs');
+  // 渲染已选缩略图
+  if(thumbs){ thumbs.innerHTML = files.map(function(f, i){
+    return '<div style="position:relative;width:54px;height:54px;border-radius:8px;overflow:hidden;border:1px solid var(--border);"><img src="' + (URL.createObjectURL ? URL.createObjectURL(f) : '') + '" style="width:100%;height:100%;object-fit:cover;" title="' + escapeHtml(f.name) + '"><span style="position:absolute;left:2px;top:1px;font-size:10px;background:rgba(0,0,0,.55);color:#fff;border-radius:6px;padding:0 4px;">' + (i+1) + '</span></div>';
+  }).join(''); }
+  hint.textContent = '正在识别 ' + files.length + ' 张图片（0/' + files.length + '）…';
+  var allResults = [];
+  var failed = 0;
+  var done = 0;
+  files.forEach(function(file, idx){
+    compressImage(file, 800, function(base64){
+      if(!base64){ done++; failed++; checkFinish(); return; }
+      analyzeFundScreenshot(base64, function(err, list){
+        done++;
+        if(err){ failed++; }
+        else { allResults = allResults.concat(list || []); }
+        checkFinish();
+      });
     });
   });
+  function checkFinish(){
+    hint.textContent = '正在识别 ' + files.length + ' 张图片（' + done + '/' + files.length + '）…';
+    if(done >= files.length){
+      if(!allResults.length){
+        hint.textContent = failed ? ('所有图片均未识别到基金' + (failed === files.length ? '' : '（跳过 ' + failed + ' 张失败图）') + '，可改用「批量粘贴」') : '所有图片均未识别到基金，可改用批量粘贴';
+        return;
+      }
+      hint.textContent = '共识别到 ' + allResults.length + ' 只基金（来自 ' + files.length + ' 张图' + (failed ? '，' + failed + ' 张失败已跳过' : '') + '），请核对后导入';
+      pendingImport = allResults;
+      renderImportPreview(allResults);
+    }
+  }
 }
 function analyzeFundScreenshot(base64, cb){
   var key = getQwenKey();
