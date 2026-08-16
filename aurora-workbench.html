@@ -7090,11 +7090,33 @@ function lookupFundCodeByName(name){
         var data; try { data = JSON.parse(txt); } catch(e){ return finish(null); }
         var ds = (data && data.Datas) || [];
         if(!ds.length) return finish(null);
-        var best = null, bestScore = 0;
+        /* 先按基础分筛选候选（>=0.4），再在候选中精确匹配份额后缀 */
+        var cands = [];
         ds.forEach(function(d){
           var cand = d.NAME || d.SHORTNAME || '';
           var sc = fundNameScore(q, cand);
-          if(sc > bestScore){ bestScore = sc; best = d; }
+          if(sc >= 0.4) cands.push({ d: d, name: cand, score: sc });
+        });
+        if(!cands.length) return finish(null);
+        /* 优先匹配份额后缀：查询名含 C/A/B 则优先选同名后缀的基金 */
+        var suffix = (q.match(/[CAB]$/) || [])[0] || '';
+        var best = null, bestScore = 0;
+        if(suffix){
+          var suffMatch = cands.filter(function(c){ return (c.name || '').slice(-1) === suffix; });
+          if(suffMatch.length){
+            suffMatch.forEach(function(c){
+              if(c.score > bestScore){ bestScore = c.score; best = c.d; }
+            });
+            /* 后缀匹配成功且分数不低就直接用 */
+            if(best && bestScore >= 0.5){
+              var code = normalizeFundCode(best.CODE || best.FCODE || best._id || '');
+              return finish(code ? { code: code, name: best.NAME || best.SHORTNAME } : null);
+            }
+          }
+        }
+        /* 无后缀或后缀没命中 → 选最高分的 */
+        cands.forEach(function(c){
+          if(c.score > bestScore){ bestScore = c.score; best = c.d; }
         });
         if(best && bestScore >= 0.6){
           var code = normalizeFundCode(best.CODE || best.FCODE || best._id || '');
