@@ -3178,7 +3178,18 @@ var defaultDb = {
 
 function serverBase(){
   var u = (localStorage.getItem(DB_SERVER_KEY) || '').trim();
-  if(!u) return '';
+  if(!u){
+    /* 默认同源：页面由 server.js 托管时，API 与页面同域，自动连服务器/Redis。
+       不再强制要求 localStorage 里手动配置服务器地址——否则一旦清空浏览器数据，
+       serverBase() 返回空，前端会退回纯本地模式，所有新增数据只写 localStorage 而不进 Redis，
+       导致「清空浏览器 = 数据全丢」。DB_SERVER_KEY 仅作为跨域部署时的可选覆盖。 */
+    try {
+      if(window.location && window.location.protocol && window.location.protocol.indexOf('http') === 0){
+        return window.location.origin;   // 例如 http://your-host:9000
+      }
+    } catch(e){}
+    return '';
+  }
   return u.replace(/\/+$/, '');
 }
 function loadDb(){
@@ -9820,8 +9831,9 @@ function updateCloudBtn(){
   var btn = document.getElementById('cloudBtn');
   var txt = document.getElementById('cloudBtnText');
   if(!btn) return;
-  var url = (localStorage.getItem(DB_SERVER_KEY) || '').trim();
-  if(url){
+  // 用 serverBase() 判断：同源默认即为已连接（不再要求手动填过服务器地址）
+  var base = serverBase();
+  if(base){
     btn.className = 'cloud-btn synced';
     if(txt) txt.textContent = '☁ 已同步';
   } else {

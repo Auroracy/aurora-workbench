@@ -105,7 +105,19 @@ function ensureFs() {
 async function dbGet() {
   if (redisMode && redisClient && redisClient.isReady) {
     const raw = await redisClient.get(DATA_KEY);
-    return raw ? raw : '';
+    if (raw) return raw;
+    // Redis 为空（可能被 FLUSH / 重启未开持久化）→ 从磁盘快照 data/db.json 兜底，并回填 Redis。
+    // 关键：dbSet 在每次保存时都会同步落盘 data/db.json，因此磁盘快照是最新的、可靠的真相来源，
+    // 即使 Redis 在运行中被清空，读取也能从磁盘恢复，不依赖服务器重启时机。
+    try {
+      const disk = fs.readFileSync(DB_FILE, 'utf8');
+      if (disk && disk.trim() && disk.trim() !== '{}' && disk.trim() !== 'null') {
+        await redisClient.set(DATA_KEY, disk).catch(function () {});
+        console.warn('[store] Redis 为空，已从磁盘快照 data/db.json 恢复并回填 Redis');
+        return disk;
+      }
+    } catch (e) { /* 磁盘也无数据，返回空 */ }
+    return '';
   }
   // 文件兜底（同步读）
   try { return fs.readFileSync(DB_FILE, 'utf8'); } catch (e) { return ''; }
