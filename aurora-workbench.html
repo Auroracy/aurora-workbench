@@ -2276,11 +2276,12 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     .fund-tbl th,.fund-tbl td{padding:8px 6px;border-bottom:1px solid #e2ebf0;text-align:right;white-space:nowrap;}
     .fund-tbl th:first-child,.fund-tbl td:first-child{text-align:left;}
     .fund-tbl th{color:#5a6b75;font-weight:600;background:#f6fafb;}
-    /* 移动端：隐藏次要列，只保留 基金 | 分类 | 份额 | 市值 | 持有收益/率 */
+    /* 移动端：隐藏次要列，只保留 基金 | 金额 | 昨日收益 | 持有收益/率 */
     @media(max-width:700px){
       .fund-tbl .hide-mobile{display:none !important;}
-      .fund-tbl{font-size:12px;}
-      .fund-tbl th,.fund-tbl td{padding:6px 4px;}
+      .fund-tbl{font-size:11px;table-layout:auto;}
+      .fund-tbl th,.fund-tbl td{padding:6px 3px;white-space:nowrap;}
+      .fund-tbl th:first-child,.fund-tbl td:first-child{min-width:84px;}
     }
     .chip{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;margin:1px 2px;background:#e8f3f1;color:#15A49B;}
     .chip.theme{background:#eaf1fb;color:#2E86C1;}
@@ -2521,9 +2522,10 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
         <span>持仓明细</span>
         <button class="btn btn-sm" onclick="refreshAllFundValuation()">🔄 刷新估值</button>
         <button class="btn btn-sm" onclick="fetchFundOverlap()" id="fundOverlapBtn">🔗 分析持仓重合</button>
+        <span id="fundValTime" style="font-size:11px;color:var(--text-2);margin-left:auto;"></span>
       </div>
       <table class="fund-tbl">
-        <thead><tr><th>基金</th><th>分类</th><th>份额</th><th class="hide-mobile">成本价</th><th class="hide-mobile">最新净值</th><th>市值</th><th>持有收益/率</th><th class="hide-mobile">今日</th><th class="hide-mobile">操作</th></tr></thead>
+        <thead><tr><th>基金</th><th class="hide-mobile">分类</th><th>金额</th><th>昨日收益</th><th>持有收益/率</th><th class="hide-mobile">成本价</th><th class="hide-mobile">净值</th><th class="hide-mobile">操作</th></tr></thead>
         <tbody id="fundTableBody"></tbody>
       </table>
       <div id="fundPager"></div>
@@ -6809,14 +6811,13 @@ function renderFunds(){
       var hasHpData = hasNav || (f.hpImport != null) || (f.hpPctImport != null);
       var hpCls = clsOf(showHp);
       return '<tr>' +
-        '<td><b>' + escapeHtml(sanitizeText(f.name)) + '</b><br><span class="text-sm text-muted">' + f.code + '</span></td>' +
-        '<td><span class="chip">' + f.type + '</span><span class="chip theme">' + f.theme + '</span></td>' +
-        '<td>' + fmtNum(f.shares) + '</td>' +
+        '<td><b>' + escapeHtml(sanitizeText(f.name)) + '</b><br><span class="text-sm text-muted">' + f.code + '<br>' + fmtNum(f.shares) + '份</span></td>' +
+        '<td class="hide-mobile"><span class="chip">' + f.type + '</span><span class="chip theme">' + f.theme + '</span></td>' +
+        '<td>' + (hasNav ? fmtMoney(m.mv) : '<span class="text-muted">待估值</span>') + '</td>' +
+        '<td class="' + (hasNav && f.val && f.val.gszzl != null ? clsOf(m.dailyProfit) : '') + '">' + (hasNav && f.val && f.val.gszzl != null ? (m.dailyProfit >= 0 ? '+' : '') + fmtMoney(m.dailyProfit) + '<br><span class="text-sm">' + fmtPct(m.dailyPct) + '</span>' : '<span class="text-muted">—</span>') + '</td>' +
+        '<td class="' + (hasHpData ? hpCls : '') + '">' + (hasHpData ? fmtMoney(showHp) + '<br><span class="text-sm">' + fmtPct(showHpPct) + '</span>' : '<span class="text-muted">待估值</span>') + '</td>' +
         '<td class="hide-mobile">' + (hasCost ? fmtMoney(f.cost) : '<span class="text-muted">—</span>') + '</td>' +
         '<td class="hide-mobile">' + (hasNav ? fmtMoney(m.nav) : '<span class="text-muted">待估值</span>') + '<br><span class="text-sm text-muted">' + navSrc + '</span></td>' +
-        '<td>' + (hasNav ? fmtMoney(m.mv) : '<span class="text-muted">—</span>') + '</td>' +
-        '<td class="' + (hasHpData ? hpCls : '') + '">' + (hasHpData ? fmtMoney(showHp) + '<br><span class="text-sm">' + fmtPct(showHpPct) + '</span>' : '<span class="text-muted">待估值</span>') + '</td>' +
-        '<td class="hide-mobile ' + (hasNav && f.val && f.val.gszzl != null ? clsOf(m.dailyProfit) : '') + '">' + (hasNav && f.val && f.val.gszzl != null ? fmtPct(m.dailyPct) + '<br>' + fmtMoney(m.dailyProfit) : '—') + '</td>' +
         '<td class="hide-mobile"><button class="btn btn-sm" onclick="editFund(\'' + f.id + '\')">编辑</button> <button class="btn btn-sm" onclick="updateFundNavManual(\'' + f.id + '\')">净值</button> <button class="btn btn-sm" onclick="deleteFund(\'' + f.id + '\')">删</button></td>' +
       '</tr>';
     }).join('');
@@ -6824,6 +6825,7 @@ function renderFunds(){
   renderFundCompare(funds, metricsArr);
   generateAdvisor(funds, totals, metricsArr);
   renderFundPagination(funds.length);
+  if(typeof updateFundValTime === 'function') updateFundValTime();
 }
 function renderFundPagination(total){
   var el = document.getElementById('fundPager'); if(!el) return;
@@ -7707,8 +7709,9 @@ function commitImportFunds(){
       batchUsedCodes[code] = 1;
     }
     var existingIdx = DB.market.funds.findIndex(function(f){ return f.code === code; });
-    /* 代码没匹配到，再按名称模糊匹配（AI识别代码错误时兜底） */
-    if(existingIdx < 0) existingIdx = findFundByName(name || x.name);
+    /* 仅在代码为临时占位码(TEMP_)时才按名称模糊匹配合并；
+     * 有真实6位代码的基金，严格按代码去重，不因名称相似就合并（避免"诺安多策略"被误合并到"诺安成长"） */
+    if(existingIdx < 0 && code.indexOf('TEMP_') === 0) existingIdx = findFundByName(name || x.name);
     if(existingIdx >= 0){
       /* 已存在 → 更新份额、成本价、收益数据 */
       var ef = DB.market.funds[existingIdx];
@@ -7764,7 +7767,7 @@ function refreshAllFundValuation(){
   if(!fs.length){ toast('全部为手动净值，无需联网更新'); return; }
   toast('正在刷新 ' + fs.length + ' 只基金估值...');
   function step(i){
-    if(i >= fs.length){ saveDb(); renderFunds(); toast('估值刷新完成'); return; }
+    if(i >= fs.length){ saveDb(); renderFunds(); updateFundValTime(); toast('估值刷新完成'); return; }
     fetchFundValuation(fs[i].code, function(err, d){
       if(!err && d){
         var f = DB.market.funds.find(function(x){ return x.code === fs[i].code; });
@@ -7789,6 +7792,7 @@ function autoFetchFundNavIfNeeded(force){
   var fs = (DB.market.funds || []).filter(function(f){
     if(!f.code || !/^\d{6}$/.test(f.code)) return false;
     if(f.navManual) return false;  /* 手动净值不覆盖 */
+    if(force) return true;  /* 强制模式：刷新全部有代码的基金，保证估值/昨日收益列有数据 */
     /* 无估值数据，或数据超过30分钟旧 → 需要刷新 */
     var age = f.updatedAt ? (Date.now() - f.updatedAt) : Infinity;
     return (!f.val || age > 30 * 60 * 1000);
@@ -7813,10 +7817,23 @@ function autoFetchFundNavIfNeeded(force){
       if(done === fs.length){
         saveDb();
         renderFunds();
+        updateFundValTime();
         console.log('[autoNav] 净值刷新完成');
       }
     });
   });
+}
+
+/* 显示估值更新时间 */
+function updateFundValTime(){
+  var el = document.getElementById('fundValTime'); if(!el) return;
+  var funds = DB.market.funds || [];
+  var valid = funds.filter(function(f){ return f.val && f.val.gztime; });
+  if(!valid.length){ el.textContent = ''; return; }
+  /* 取最新估值时间 */
+  var latest = valid.map(function(f){ return f.val.gztime || ''; }).sort().pop();
+  var short = latest ? latest.replace(/^\d{4}-/, '').replace(' ', ' ') : '';
+  el.textContent = '估值更新于 ' + short + '（每日自动刷新）';
 }
 
 /* 启动交易时间定时刷新（每5分钟，仅在交易日9:00-15:15） */
@@ -7826,13 +7843,18 @@ function startFundNavAutoRefresh(){
     var now = new Date();
     var dow = now.getDay();
     var h = now.getHours(), m = now.getMinutes();
-    /* 仅周一~周五 9:00 ~ 15:15 */
-    if(dow >= 1 && dow <= 5 && (h > 9 || (h === 9 && m >= 0)) && (h < 15 || (h === 15 && m <= 15))){
+    /* 交易日 9:00~15:15：盘中实时估值刷新（每5分钟） */
+    var inTrading = dow >= 1 && dow <= 5 && (h > 9 || (h === 9 && m >= 0)) && (h < 15 || (h === 15 && m <= 15));
+    /* 收盘后 15:30~16:00：抓取当日最终净值（每日一次） */
+    var afterClose = dow >= 1 && dow <= 5 && h === 15 && m >= 30 && m <= 59;
+    /* 非交易时段但距离上次刷新超6小时：补抓（确保周末/开盘前也有最新净值） */
+    var staleCatchup = (Date.now() - _lastNavFetchTs) > 6 * 60 * 60 * 1000;
+    if(inTrading || afterClose || staleCatchup){
       autoFetchFundNavIfNeeded(false);
     }
   }
   _fundNavTimer = setInterval(tick, 5 * 60 * 1000);  /* 每5分钟 */
-  /* 立即执行一次 */
+  /* 立即执行一次（页面打开即刷新全部估值） */
   tick();
 }
 function stopFundNavAutoRefresh(){
