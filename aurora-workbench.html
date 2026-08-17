@@ -4009,26 +4009,19 @@ function loadXwlb(force){
     renderXwlb(cached, '缓存');
     return;
   }
-  /* 优先从 GitHub Actions 同步缓存抓（个人 GitHub Pages 部署的用户可享受每日定时同步） */
-  fetchXwlbFromGitHub(date, function(data){
-    if(data && data.summary){
-      saveXwlbCache(data);
-      renderXwlb(data, 'GitHub 同步');
+  /* Redis 缓存已在上方命中即返回；此处仅处理缓存未命中。
+     数据唯一来源是 Redis（DB.xwlb.cache），不再从 GitHub 下载；
+     优先从服务器本地磁盘文件恢复（Redis 清空后的磁盘兜底），都没有再 fallback 到前端自动抓央视节目单。 */
+  fetchXwlbFromServerLocal(date, function(localData){
+    if(localData && (localData.summary || (localData.titles && localData.titles.length))){
+      saveXwlbCache(localData);
+      renderXwlb(localData, '本地恢复');
       renderXwlbHistory();
+      toast('已从服务器本地文件恢复 ' + date + ' 数据');
       return;
     }
-    /* GitHub 没抓到 → 尝试从服务器本地文件恢复（Redis 清空后的磁盘兜底） */
-    fetchXwlbFromServerLocal(date, function(localData){
-      if(localData && (localData.summary || (localData.titles && localData.titles.length))){
-        saveXwlbCache(localData);
-        renderXwlb(localData, '本地恢复');
-        renderXwlbHistory();
-        toast('已从服务器本地文件恢复 ' + date + ' 数据');
-        return;
-      }
-      /* 本地也没有 → fallback 到前端自动抓 CCTV */
-      fetchXwlbDirect(date);
-    });
+    /* 本地也没有 → fallback 到前端自动抓 CCTV */
+    fetchXwlbDirect(date);
   });
 }
 
@@ -4048,20 +4041,7 @@ function fetchXwlbFromServerLocal(date, cb){
     .catch(function(){ cb(null); });
 }
 
-/* 从 GitHub Pages / GitHub raw 读 data/xwlb/{date}.json */
-var XWLB_REMOTE_BASE = 'https://raw.githubusercontent.com/Auroracy/aurora-workbench/main/data/xwlb/';
-function fetchXwlbFromGitHub(date, cb){
-  var url = XWLB_REMOTE_BASE + date + '.json';
-  fetch(url, { headers: { 'Accept': 'application/json' } })
-    .then(function(r){
-      if(!r.ok){ cb(null); return null; }
-      return r.json();
-    })
-    .then(function(j){
-      if(j && j.date === date && j.summary){ cb(j); } else { cb(null); }
-    })
-    .catch(function(){ cb(null); });
-}
+/* 数据来源仅 Redis（DB.xwlb.cache）+ 服务器本地磁盘文件 data/xwlb/{date}.json，不再从 GitHub 下载 */
 function parseXwlbHtml(html){
   if(!html) return [];
   var re = /\[视频\]([^<"\n]+)/g, m, seen = {}, out = [];
@@ -4184,13 +4164,14 @@ function refreshXwlb(){
   if(date === getXwlbToday()){
     loadXwlb(true);
   } else {
-    fetchXwlbFromGitHub(date, function(remote){
-      if(remote && remote.summary){
-        saveXwlbCache(remote);
-        renderXwlb(remote, 'GitHub 同步');
+    /* 历史日期缓存未命中：直接从服务器本地文件恢复（不再从 GitHub 下载） */
+    fetchXwlbFromServerLocal(date, function(localData){
+      if(localData && (localData.summary || (localData.titles && localData.titles.length))){
+        saveXwlbCache(localData);
+        renderXwlb(localData, '本地恢复');
         refreshXwlbInvestPanel(date);
         renderXwlbHistory();
-        toast('已从 GitHub 同步 ' + date);
+        toast('已从服务器本地文件恢复 ' + date);
         return;
       }
       enterXwlbHistoryEditMode(date);
@@ -4317,29 +4298,18 @@ function viewXwlbDate(d){
     refreshXwlbInvestPanel(d);
     return;
   }
-  /* 无缓存数据 → 按优先级尝试恢复：GitHub → 服务器本地文件 → 待补录 */
-  fetchXwlbFromGitHub(d, function(remote){
-    if(remote && remote.summary){
-      saveXwlbCache(remote);
-      renderXwlb(remote, 'GitHub 同步');
+  /* 无缓存数据 → 从服务器本地磁盘文件恢复（数据唯一来源是 Redis，不再从 GitHub 下载） */
+  fetchXwlbFromServerLocal(d, function(localData){
+    if(localData && (localData.summary || (localData.titles && localData.titles.length))){
+      saveXwlbCache(localData);
+      renderXwlb(localData, '本地恢复');
       refreshXwlbInvestPanel(d);
       renderXwlbHistory();
-      toast('已从 GitHub 同步补齐 ' + d);
+      toast('已从服务器本地文件恢复 ' + d);
       return;
     }
-    /* GitHub 没有 → 尝试服务器本地文件 */
-    fetchXwlbFromServerLocal(d, function(localData){
-      if(localData && (localData.summary || (localData.titles && localData.titles.length))){
-        saveXwlbCache(localData);
-        renderXwlb(localData, '本地恢复');
-        refreshXwlbInvestPanel(d);
-        renderXwlbHistory();
-        toast('已从服务器本地文件恢复 ' + d);
-        return;
-      }
-      /* 都没有 → 进入补录模式 */
-      enterXwlbHistoryEditMode(d);
-    });
+    /* 都没有 → 进入补录模式 */
+    enterXwlbHistoryEditMode(d);
   });
 }
 function enterXwlbHistoryEditMode(d){
@@ -7103,12 +7073,15 @@ function analyzeFundScreenshot(base64, cb){
         console.log('[fundCorrection] 后台开始校正', namesToLookup.length, '只基金');
         var correctedCount = 0;
         Promise.all(namesToLookup.map(function(item){
-          return lookupFundCodeByName(item.name).then(function(res){
+          return lookupFundCodeByName(item.name, item.aiCode).then(function(res){
+            /* 仅在「AI原代码无效」且反查到不同真实代码时才覆盖（保留AI读对的情况，避免被同名份额覆盖成错码） */
             if(res && res.code && res.code !== item.code){
               item.code = res.code;
               item.codeCorrected = true;
               correctedCount++;
               console.log('[fundCorrection] ✓', item.name, ':', item.aiCode, '→', item.code);
+            } else if(res && res.trustedAi){
+              console.log('[fundCorrection] ✓ AI代码有效，保留:', item.name, item.code);
             }
           }).catch(function(e){
             console.warn('[fundCorrection] ✗', item.name, '查询失败:', e && e.message);
@@ -7230,7 +7203,7 @@ function fundNameScore(a, b){
 /* 按基金名称反查真实代码（东方财富基金搜索）
  * 四层策略：JSONP(绕CORS) → 直连fetch(CORS) → 服务器代理 → 硬编码兜底
  * 精确搜索无结果时自动用名称前缀(2~5字)降级重试。 */
-function lookupFundCodeByName(name){
+function lookupFundCodeByName(name, aiCode){
   return new Promise(function(resolve){
     var q = (name || '').trim();
     if(!q){ console.warn('[lookupFundCode] 空名称，跳过'); resolve(null); return; }
@@ -7362,105 +7335,108 @@ function lookupFundCodeByName(name){
     var done = false;
     function finish(v){ if(!done){ done = true; resolve(v); } }
     var timer = setTimeout(function(){
-      console.warn('[lookupFundCode] 总超时 name=', q, '→ 尝试硬编码兜底');
+      console.warn('[lookupFundCode] 总超时 name=', q);
       var hb = hardcodedFallback(q);
       finish(hb || null);
     }, 20000);
 
-    /* ===== 主流程 ===== */
-
-    /* 第一步：JSONP 查询（绕 CORS） */
-    console.log('[lookupFundCode] [JSONP] 查询:', q);
-    doJsonp(q).then(function(ds){
-      if(done) return;
-      var result = pickBest(ds, q);
-      if(result){ clearTimeout(timer); console.log('[lookupFundCode] ✓ JSONP命中:', result.name); return finish(result); }
-
-      /* 第二步：JSONP 前缀降级 */
-      var prefixes = [];
-      if(q.length >= 5) prefixes.push(q.slice(0, 5));
-      if(q.length >= 4) prefixes.push(q.slice(0, 4));
-      if(q.length >= 3) prefixes.push(q.slice(0, 3));
-      if(q.length >= 2) prefixes.push(q.slice(0, 2));
-      prefixes = prefixes.filter(function(p, i){ return prefixes.indexOf(p) === i; });
-
-      console.log('[lookupFundCode] JSONP精确未命中，前缀降级:', prefixes.join('/'));
-      var pi = 0;
-      function tryPrefixJsonp(){
-        if(pi >= prefixes.length || done){
-          if(!done) tryFetchFull();
-          return;
-        }
-        doJsonp(prefixes[pi]).then(function(ds2){
-          if(done) return;
-          var r2 = pickBest(ds2, q);
-          if(r2){
-            console.log('[lookupFundCode] ✓ JSONP前缀"', prefixes[pi], '"命中:', r2.name);
-            clearTimeout(timer); return finish(r2);
+    /* 第0层：先验证 AI 读到的代码是否在东方财富真实存在且名称吻合。
+       若存在 → 直接信任 AI 的代码，避免被「同名不同份额」搜索结果覆盖成错误代码
+       （例如把嘉实绿色主题C 017745 覆盖成同名A类 019708）。 */
+    function validateAiCode(){
+      var code = normalizeFundCode(aiCode);
+      if(!code || !/^\d{6}$/.test(code)){ return Promise.resolve(null); }
+      return doJsonp(code).then(function(ds){
+        var hit = (ds || []).filter(function(d){
+          return normalizeFundCode(d.CODE || d.FCODE || d._id) === code;
+        });
+        if(hit.length){
+          var nm = (hit[0].NAME || hit[0].SHORTNAME || '');
+          if(fundNameScore(q, nm) >= 0.4){
+            console.log('[lookupFundCode] ✓ AI代码有效，保留:', code, nm);
+            return { code: code, name: nm, score: 1, trustedAi: true };
           }
-          pi++; tryPrefixJsonp();
+        }
+        return null;
+      }).catch(function(){ return null; });
+    }
+
+    /* 名字反查主流程（JSONP→fetch→代理→硬编码兜底） */
+    function tryNameLookup(){
+      /* 第一步：JSONP 查询（绕 CORS） */
+      console.log('[lookupFundCode] [JSONP] 查询:', q);
+      doJsonp(q).then(function(ds){
+        if(done) return;
+        var result = pickBest(ds, q);
+        if(result){ clearTimeout(timer); console.log('[lookupFundCode] ✓ JSONP命中:', result.name); return finish(result); }
+
+        /* 第二步：JSONP 前缀降级 */
+        var prefixes = [];
+        if(q.length >= 5) prefixes.push(q.slice(0, 5));
+        if(q.length >= 4) prefixes.push(q.slice(0, 4));
+        if(q.length >= 3) prefixes.push(q.slice(0, 3));
+        if(q.length >= 2) prefixes.push(q.slice(0, 2));
+        prefixes = prefixes.filter(function(p, i){ return prefixes.indexOf(p) === i; });
+
+        console.log('[lookupFundCode] JSONP精确未命中，前缀降级:', prefixes.join('/'));
+        var pi = 0;
+        function tp(){
+          if(pi >= prefixes.length || done){ if(!done) tf(); return; }
+          doJsonp(prefixes[pi]).then(function(ds2){
+            if(done) return;
+            var r2 = pickBest(ds2, q);
+            if(r2){ clearTimeout(timer); console.log('[lookupFundCode] ✓ JSONP前缀"', prefixes[pi], '"命中:', r2.name); return finish(r2); }
+            pi++; tp();
+          });
+        }
+        tp();
+      });
+
+      /* 第三步：fetch 直连 */
+      function tf(){
+        if(done) return;
+        console.log('[lookupFundCode] [fetch] 尝试直连:', q);
+        doFetch(q).then(function(ds){
+          if(done) return;
+          var r = pickBest(ds, q);
+          if(r){ clearTimeout(timer); console.log('[lookupFundCode] ✓ fetch命中:', r.name); return finish(r); }
+          var pfx = [];
+          if(q.length >= 3) pfx.push(q.slice(0, 3));
+          if(q.length >= 2) pfx.push(q.slice(0, 2));
+          var fi = 0;
+          function fp(){ if(fi >= pfx.length || done){ if(!done) tp2(); return; }
+            doFetch(pfx[fi]).then(function(ds2){ if(done) return; var r2 = pickBest(ds2, q);
+              if(r2){ clearTimeout(timer); finish(r2); } else { fi++; fp(); } }); }
+          fp();
         });
       }
-      tryPrefixJsonp();
+
+      /* 第四步：服务器代理 */
+      function tp2(){
+        if(done) return;
+        console.log('[lookupFundCode] [代理] 尝试服务器代理:', q);
+        doProxy(q).then(function(ds){
+          if(done) return;
+          var r = pickBest(ds, q);
+          if(r){ clearTimeout(timer); console.log('[lookupFundCode] ✓ 代理命中:', r.name); return finish(r); }
+          var pfx = [];
+          if(q.length >= 3) pfx.push(q.slice(0, 3));
+          if(q.length >= 2) pfx.push(q.slice(0, 2));
+          var pj = 0;
+          function pp(){ if(pj >= pfx.length || done){ if(!done){ var hb = hardcodedFallback(q); finish(hb); } return; }
+            doProxy(pfx[pj]).then(function(ds2){ if(done) return; var r2 = pickBest(ds2, q);
+              if(r2){ clearTimeout(timer); finish(r2); } else { pj++; pp(); } }); }
+          pp();
+        });
+      }
+    }
+
+    /* 先验证 AI 代码：有效则保留（不覆盖）；无效才走名字反查 */
+    validateAiCode().then(function(v){
+      if(done) return;
+      if(v){ clearTimeout(timer); return finish(v); }
+      tryNameLookup();
     });
-
-    /* 第三步：fetch 直连 */
-    function tryFetchFull(){
-      if(done) return;
-      console.log('[lookupFundCode] [fetch] 尝试直连:', q);
-      doFetch(q).then(function(ds){
-        if(done) return;
-        var r = pickBest(ds, q);
-        if(r){ clearTimeout(timer); console.log('[lookupFundCode] ✓ fetch命中:', r.name); return finish(r); }
-        /* fetch 前缀 */
-        var pfx = [];
-        if(q.length >= 3) pfx.push(q.slice(0, 3));
-        if(q.length >= 2) pfx.push(q.slice(0, 2));
-        var fi = 0;
-        function tryFetchPfx(){
-          if(fi >= pfx.length || done){ if(!done) tryProxyFull(); return; }
-          doFetch(pfx[fi]).then(function(ds2){
-            if(done) return;
-            var r2 = pickBest(ds2, q);
-            if(r2){ clearTimeout(timer); finish(r2); } else { fi++; tryFetchPfx(); }
-          });
-        }
-        tryFetchPfx();
-      });
-    }
-
-    /* 第四步：服务器代理 */
-    function tryProxyFull(){
-      if(done) return;
-      console.log('[lookupFundCode] [代理] 尝试服务器代理:', q);
-      doProxy(q).then(function(ds){
-        if(done) return;
-        var r = pickBest(ds, q);
-        if(r){ clearTimeout(timer); console.log('[lookupFundCode] ✓ 代理命中:', r.name); return finish(r); }
-        /* 代理前缀 */
-        var pfx = [];
-        if(q.length >= 3) pfx.push(q.slice(0, 3));
-        if(q.length >= 2) pfx.push(q.slice(0, 2));
-        var pj = 0;
-        function tryProxyPfx(){
-          if(pj >= pfx.length || done){
-            /* 第五步：全部失败 → 硬编码兜底 */
-            if(!done){
-              console.log('[lookupFundCode] API全部失败，尝试硬编码兜底');
-              var hb = hardcodedFallback(q);
-              finish(hb);
-            }
-            return;
-          }
-          doProxy(pfx[pj]).then(function(ds2){
-            if(done) return;
-            var r2 = pickBest(ds2, q);
-            if(r2){ clearTimeout(timer); finish(r2); } else { pj++; tryProxyPfx(); }
-          });
-        }
-        tryProxyPfx();
-      });
-    }
   });
 }
 /* 在已有持仓中按名称查找基金索引 */
