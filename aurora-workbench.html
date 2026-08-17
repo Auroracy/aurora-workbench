@@ -6897,74 +6897,84 @@ function onFundScreenshot(input){
   }
 }
 function analyzeFundScreenshot(base64, cb){
-  var key = getQwenKey();
-  if(!key){ cb('未配置通义千问 Key（设置 → AI 引擎）'); return; }
   var prompt = '请识别这张基金或股票持仓截图，提取每一只基金的持仓信息。仅返回 JSON 数组，不要任何额外文字与符号。每条格式：{"code":"6位基金代码","name":"基金名称","shares":持有份额(数字,单位份,通常是较大的数如12345.67份),"cost":持仓成本价(数字,元每份,可选),"hp":持有收益(数字,元,正数盈利负数亏损,如-750.05),"hpPct":收益率(数字,百分比,如-16.67表示-16.67%)}。若某项缺失用null。重要区分：份额(shares)是持有份数量（通常几千~几万份），市值(market value)是金额（元）如3749.95元——不要把市值误当份额！支付宝截图里"金额"列是市值不是份额。持有收益和收益率在截图里通常显示为"持有收益/率"一列，上面是金额(hp)下面是百分比(hpPct)。';
-  var modelIdx = 0;
-  /* 哪些错误应自动降级到下个模型：401/403 不降级（账号问题），其他都试一下下个模型 */
-  function shouldFallback(err, status){
-    if(status === 401 || status === 403) return false;
-    return true;
+  var imgContent = [{ type: 'text', text: prompt }, { type: 'image_url', image_url: { url: 'data:image/jpeg;base64,' + stripBase64Prefix(base64) } }];
+
+  /* 构建尝试队列：先千问所有模型，再其他已配置引擎 */
+  var qwenKey = getQwenKey();
+  var queue = [];
+  if(qwenKey){
+    QWEN_MODELS.forEach(function(m){ queue.push({ engine:'qwen', model:m, url:'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', key:qwenKey, supportJsonFormat:true }); });
   }
-  function tryModel(){
-    if(modelIdx >= QWEN_MODELS.length){ cb('通义千问全部模型都不可用（已试 ' + QWEN_MODELS.length + ' 个）'); return; }
-    var model = QWEN_MODELS[modelIdx];
-    var url = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
-    var body = JSON.stringify({
-      model: model,
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'text', text: prompt },
-          { type: 'image_url', image_url: { url: 'data:image/jpeg;base64,' + stripBase64Prefix(base64) } }
-        ]
-      }],
-      temperature: 0.1,
-      response_format: { type: 'json_object' }
-    });
+  /* 其他已配置的 OpenAI 兼容引擎（跳过 gemini，它协议不同） */
+  ['zhipu','deepseek','doubao'].forEach(function(eng){
+    var ek = getEngineKey(eng);
+    if(!ek) return;
+    var cfg = AI_ENGINES[eng];
+    if(!cfg || !cfg.url || !cfg.visionModel) return;
+    queue.push({ engine:eng, model:cfg.visionModel, url:cfg.url, key:ek, supportJsonFormat:false });
+  });
+
+  if(!queue.length){ cb('未配置任何 AI 引擎 Key（设置 → AI 引擎），请至少配置通义千问或智谱 GLM 的 Key'); return; }
+
+  var idx = 0;
+  function tryNext(){
+    if(idx >= queue.length){
+      var tried = queue.map(function(q){ return q.engine + '/' + q.model; });
+      cb('所有 AI 引擎均不可用（已试：' + tried.join('、') + '）');
+      return;
+    }
+    var q = queue[idx++];
+    console.log('[analyzeFundScreenshot] 尝试 #' + idx + ':', q.engine, '/', q.model);
+    var bodyObj = {
+      model: q.model,
+      messages: [{ role:'user', content: imgContent }],
+      temperature: 0.1
+    };
+    /* 仅千问支持 json_object 格式 */
+    if(q.supportJsonFormat) bodyObj.response_format = { type: 'json_object' };
+    var body = JSON.stringify(bodyObj);
+
     Promise.race([
-      fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key }, body: body }),
+      fetch(q.url, { method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer ' + q.key }, body:body }),
       new Promise(function(_, r){ setTimeout(function(){ r(new Error('超时')); }, 25000); })
     ]).then(function(res){
       return res.text().then(function(text){
         if(res.status === 401 || res.status === 403){
-          throw new Error('Key 无效或无权限（' + res.status + '）');
+          console.warn('[analyzeFundScreenshot]', q.engine, '/', q.model, '→ Key无效(', res.status, ')');
+          tryNext(); return; /* 换下一个引擎 */
         }
-        /* 400/422/415 都是请求格式错误，换模型也救不回来，直接抛出 */
         if(res.status === 400 || res.status === 415 || res.status === 422){
-          var msg400 = text ? (text.length > 220 ? text.slice(0, 220) + '…' : text) : ('API ' + res.status);
-          throw new Error('请求格式被服务端拒绝 (API ' + res.status + ') · ' + msg400 + ' | 提示：请确认 Key 是否已开通 VL 多模态权限');
+          var msg400 = text ? (text.length > 220 ? text.slice(0,220)+'…' : text) : ('API '+res.status);
+          /* 格式错误不跨引擎重试（同一引擎的其他模型也一样） */
+          throw new Error('请求格式被拒绝 (API ' + res.status + ') · ' + msg400);
         }
         if(!res.ok){
-          var msg = text ? (text.length > 200 ? text.slice(0, 200) + '…' : text) : ('API ' + res.status);
-          if(shouldFallback(null, res.status) && modelIdx < QWEN_MODELS.length - 1){
-            console.warn('Model', model, 'returned', res.status, '— fallback. body:', text);
-            modelIdx++;
-            tryModel();
-            return;
-          }
-          throw new Error('API ' + res.status + ' · ' + msg);
+          var msg = text ? (text.length > 200 ? text.slice(0,200)+'…' : text) : ('API '+res.status);
+          console.warn('[analyzeFundScreenshot]', q.engine, '/', q.model, '→ HTTP', res.status, ', 尝试下一个');
+          tryNext(); return;
         }
-        var data; try { data = JSON.parse(text); } catch(e){ throw new Error('返回非 JSON：' + text.slice(0, 100)); }
+        var data; try { data = JSON.parse(text); } catch(e){ console.warn('[analyzeFundScreenshot] 非JSON:', text.slice(0,100)); tryNext(); return; }
         var content = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content || '';
         if(typeof content !== 'string' || !content){
-          if(modelIdx < QWEN_MODELS.length - 1){ modelIdx++; tryModel(); return; }
-          throw new Error('返回内容为空');
+          console.warn('[analyzeFundScreenshot]', q.engine, '/', q.model, '→ 内容为空, 尝试下一个');
+          tryNext(); return;
         }
-        /* 宽容解析：纯 JSON / ```json ...``` / 带前后注释 都尽量容忍 */
-        var stripped = content.replace(/```json/gi, '').replace(/```/g, '').trim();
+        /* 宽容解析 JSON */
+        var stripped = content.replace(/```json/gi,'').replace(/```/g,'').trim();
         var arr;
         try {
           var parsed = JSON.parse(stripped);
           arr = Array.isArray(parsed) ? parsed : (parsed.funds || parsed.list || parsed.items || parsed.data || null);
         } catch(e){
-          if(modelIdx < QWEN_MODELS.length - 1){ modelIdx++; tryModel(); return; }
-          throw new Error('返回无法解析为 JSON：' + stripped.slice(0, 120));
+          console.warn('[analyzeFundScreenshot]', q.engine, '/', q.model, '→ JSON解析失败, 尝试下一个');
+          tryNext(); return;
         }
-        if(!Array.isArray(arr)){
-          if(modelIdx < QWEN_MODELS.length - 1){ modelIdx++; tryModel(); return; }
-          throw new Error('返回非数组（顶层应为数组或 {funds/list/items/data:[]}）');
+        if(!Array.isArray(arr) || !arr.length){
+          console.warn('[analyzeFundScreenshot]', q.engine, '/', q.model, '→ 返回空数组, 尝试下一个');
+          tryNext(); return;
         }
+        console.log('[analyzeFundScreenshot] ✓', q.engine, '/', q.model, '→ 识别到', arr.length, '只基金');
         /* 先映射 AI 识别结果，立即回调显示预览（不阻塞） */
         var mapped = arr.map(function(x){
           return {
@@ -7008,13 +7018,14 @@ function analyzeFundScreenshot(base64, cb){
         });
       });
     }).catch(function(err){
-      if(err && /超时|AbortError/i.test(err.message || '') && modelIdx < QWEN_MODELS.length - 1){
-        modelIdx++; tryModel(); return;
+      if(err && /超时|AbortError/i.test(err.message || '')){
+        console.warn('[analyzeFundScreenshot]', (queue[idx-1]||{}).engine, '/', (queue[idx-1]||{}).model, '→ 超时, 尝试下一个');
+        tryNext(); return;
       }
       cb(err.message || '网络错误');
     });
   }
-  tryModel();
+  tryNext();
 }
 function fillFundPasteDemo(){
   var area = document.getElementById('fundPasteArea');
@@ -7252,7 +7263,7 @@ function renderImportPreview(list){
   } else {
     /* 校正数为0时显示诊断信息：帮助排查为什么没校正 */
     var hasNames = list.filter(function(x){ return x.name; }).length;
-    hintHtml += '<div style="font-size:11px;color:#888;margin-bottom:6px;background:#f5f5f5;padding:6px 8px;border-radius:4px;">🔍 代码校正：已尝试对 ' + hasNames + + ' 只基金反查东方财富真实代码，但未匹配到更优结果。请按 F12 打开控制台查看 [lookupFundCode] 日志了解详情（可能原因：服务器代理不可达/东方财富API无结果/名称太短）。</div>';
+    hintHtml += '<div style="font-size:11px;color:#888;margin-bottom:6px;background:#f5f5f5;padding:6px 8px;border-radius:4px;">🔍 代码校正：已尝试对 ' + hasNames + ' 只基金反查东方财富真实代码，但未匹配到更优结果。请按 F12 打开控制台查看 [lookupFundCode] 日志了解详情（可能原因：服务器代理不可达/东方财富API无结果/名称太短）。</div>';
   }
   box.innerHTML = '<div class="card-title" style="font-size:14px;">识别预览（共 ' + list.length + ' 只，请核对，可修改后导入）</div>' +
     hintHtml +
