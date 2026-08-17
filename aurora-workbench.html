@@ -7052,17 +7052,42 @@ function analyzeFundScreenshot(base64, cb){
           tryNext(); return;
         }
         console.log('[analyzeFundScreenshot] ✓', q.engine, '/', q.model, '→ 识别到', arr.length, '只基金');
+        /* 硬编码常用基金名→代码即时匹配表（同步，在映射阶段直接填入，不等异步校正）
+         * 覆盖用户实际持仓 + 常见基金；key=名称关键词（支持前缀/包含匹配），value=6位真实代码 */
+        var QUICK_FUND_MAP = {
+          /* 嘉实系列 */
+          '嘉实绿色主题': '017745', '嘉实上证科创': '019708', '嘉实品质发现': '019522',
+          /* 银华系列 */
+          '银华海外数字': '016844', '银华中小盘精': '016081', '银华中小盘精选': '016081',
+          /* 其他常见 */
+          '易方达蓝筹': '005827', '易方达中小盘': '110011',
+          '招商中证白酒': '161725', '招商中证电池': '012414',
+          '中欧医疗健康': '003095', '诺安成长混合': '007007',
+          '兴全合润': '163406', '富国天惠': '161005',
+          '广发稳健增长': '270002', '景顺长城新兴成长': '260108',
+        };
+        /* 同步即时匹配：名称包含任一 key 即填入对应代码 */
+        function quickMatchCode(name){
+          if(!name) return '';
+          var n = name.replace(/[CAB\s]/g, '');
+          for(var k in QUICK_FUND_MAP){ if(n.indexOf(k) >= 0) return QUICK_FUND_MAP[k]; }
+          return '';
+        }
+
         /* 先映射 AI 识别结果，立即回调显示预览（不阻塞） */
         var mapped = arr.map(function(x){
+          var rawName = sanitizeFundName(x.name);
+          var qc = quickMatchCode(rawName);
+          var nc = normalizeFundCode(x.code);
           return {
-            code: normalizeFundCode(x.code),
-            name: sanitizeFundName(x.name),
+            code: qc || nc,  /* 硬编码优先 > AI识别代码 */
+            name: rawName,
             shares: parseFloat(x.shares) || 0,
             cost: parseFloat(x.cost) || 0,
             hp: parseFloat(x.hp) || null,
             hpPct: parseFloat(x.hpPct) || null,
-            codeCorrected: false,
-            aiCode: normalizeFundCode(x.code)
+            codeCorrected: !!qc && !nc,  /* 硬编码命中且AI无代码→标记为已校正 */
+            aiCode: nc
           };
         });
         /* 立即返回识别结果，不等待校正（保证基础识别永远可用） */
