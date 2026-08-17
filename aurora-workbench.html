@@ -2276,12 +2276,18 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     .fund-tbl th,.fund-tbl td{padding:8px 6px;border-bottom:1px solid #e2ebf0;text-align:right;white-space:nowrap;}
     .fund-tbl th:first-child,.fund-tbl td:first-child{text-align:left;}
     .fund-tbl th{color:#5a6b75;font-weight:600;background:#f6fafb;}
-    /* 移动端：隐藏次要列，只保留 基金 | 金额 | 昨日收益 | 持有收益/率 */
+    /* 移动端：隐藏次要列，只保留 基金 | 金额/昨日收益 | 持有收益/率(含操作按钮) */
     @media(max-width:700px){
       .fund-tbl .hide-mobile{display:none !important;}
       .fund-tbl{font-size:11px;table-layout:auto;}
-      .fund-tbl th,.fund-tbl td{padding:6px 3px;white-space:nowrap;}
-      .fund-tbl th:first-child,.fund-tbl td:first-child{min-width:84px;}
+      .fund-tbl th,.fund-tbl td{padding:7px 4px;}
+      .fund-tbl th:first-child,.fund-tbl td:first-child{min-width:80px;white-space:normal;word-break:break-all;}
+      /* 金额/昨日收益列：固定宽度避免挤压 */
+      .fund-tbl td:nth-child(3){min-width:88px;text-align:right;}
+      /* 估值列：紧凑右对齐 */
+      .fund-tbl td:nth-child(4){min-width:78px;text-align:right;}
+      /* 持有收益列允许换行以容纳操作按钮 */
+      .fund-tbl td:nth-child(5){white-space:normal;min-width:100px;}
     }
     .chip{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;margin:1px 2px;background:#e8f3f1;color:#15A49B;}
     .chip.theme{background:#eaf1fb;color:#2E86C1;}
@@ -2506,7 +2512,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
       <div class="metric-tile"><div class="metric-label">基金数量</div><div class="metric-value mini-num" id="fFundCount">0</div></div>
       <div class="metric-tile"><div class="metric-label">持仓市值</div><div class="metric-value mini-num" id="fTotalAsset">—</div></div>
       <div class="metric-tile"><div class="metric-label">累计收益</div><div class="metric-value mini-num" id="fTotalProfit">—</div><div class="metric-change" id="fTotalPct">—</div></div>
-      <div class="metric-tile accent"><div class="metric-label">今日盈亏</div><div class="metric-value mini-num" id="fTodayProfit">—</div></div>
+      <div class="metric-tile accent"><div class="metric-label">昨日收益</div><div class="metric-value mini-num" id="fTodayProfit">—</div></div>
     </div>
 
     <!-- 资产配置 -->
@@ -2525,7 +2531,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
         <span id="fundValTime" style="font-size:11px;color:var(--text-2);margin-left:auto;"></span>
       </div>
       <table class="fund-tbl">
-        <thead><tr><th>基金</th><th class="hide-mobile">分类</th><th>金额</th><th>昨日收益</th><th>持有收益/率</th><th class="hide-mobile">成本价</th><th class="hide-mobile">净值</th><th class="hide-mobile">操作</th></tr></thead>
+        <thead><tr><th>基金</th><th class="hide-mobile">分类</th><th>金额/昨日收益</th><th>估值</th><th>持有收益/率</th><th class="hide-mobile">成本价</th><th class="hide-mobile">净值</th><th class="hide-mobile">操作</th></tr></thead>
         <tbody id="fundTableBody"></tbody>
       </table>
       <div id="fundPager"></div>
@@ -4440,7 +4446,7 @@ function renderXwlbInvest(res, sourceLabel){
     }).join('');
     html += '<div class="invest-card">' +
       '<div class="invest-card-head"><span class="invest-theme">' + escapeHtml(tf.label) + '</span><span class="invest-level lvl-' + lvlClass(lv) + '">' + lv + '匹配</span></div>' +
-      '<div class="invest-reason">' + escapeHtml(t.reason || '') + '</div>' +
+      '<div class="invest-reason">' + escapeHtml(cleanXwlbText(t.reason || '')) + '</div>' +
       '<div class="invest-funds-label">可关注基金</div>' +
       '<div class="invest-funds">' + funds + '</div>' +
     '</div>';
@@ -4550,7 +4556,7 @@ function trackXwlb7d(){
         '<div class="track-main">' +
           '<div class="track-head"><span class="invest-theme">' + escapeHtml(tf.label) + '</span>' +
             '<span class="invest-level lvl-' + lvlClass(lv) + '">' + lv + '匹配</span></div>' +
-          (t.reason ? '<div class="invest-reason">' + escapeHtml(t.reason) + '</div>' : '') +
+          (t.reason ? '<div class="invest-reason">' + escapeHtml(cleanXwlbText(t.reason)) + '</div>' : '') +
           '<div class="invest-funds-label">可关注基金</div>' +
           '<div class="invest-funds">' + funds + '</div>' +
         '</div>' +
@@ -6514,9 +6520,9 @@ function renderNews(){
       html += '<button class="btn-icon" onclick="event.stopPropagation();deleteNews(' + n.manualIdx + ')">&#10005;</button>';
     }
     html += '</div></div>';
-    html += '<div class="news-headline">' + escapeHtml(n.title) + '</div>';
+    html += '<div class="news-headline">' + escapeHtml(cleanXwlbText(n.title)) + '</div>';
     if(n.summary){
-      html += '<div class="news-summary">' + escapeHtml(n.summary) + '</div>';
+      html += '<div class="news-summary">' + escapeHtml(cleanXwlbText(n.summary)) + '</div>';
     }
     html += '<div class="news-actions">';
     if(n.url){
@@ -6672,6 +6678,31 @@ function fmtPct(v){ if(v == null || isNaN(v)) return '—'; return (v > 0 ? '+' 
 function clsOf(v){ return v > 0 ? 'pos' : (v < 0 ? 'neg' : ''); }
 
 /* ============ 基金分类 ============ */
+/**
+ * cleanTheme(raw) — 清洗基金主题/类型字段中的乱码
+ * AI模型常返回带装饰符号(◆●■等)的文本，如"消费◆升级"、"Meta (◆◆◆Facebook)"
+ * 此函数提取有效中文/英文主题词，去除所有装饰符号和乱码
+ */
+function cleanTheme(raw){
+  if(!raw) return '其他';
+  var s = String(raw).trim();
+  /* 快速路径：已经是干净的标准主题词，直接返回 */
+  var STANDARD_THEMES = ['股票型','指数型','ETF联接','QDII','债券型','货币型','混合型','其他',
+    '科技','医药','消费','新能源','军工','金融','海外','黄金/有色','宽基'];
+  if(STANDARD_THEMES.indexOf(s) >= 0) return s;
+  /* 去除所有装饰符号（Unicode数学符号/几何形状/装饰符区块） */
+  s = s.replace(/[\u25C6\u25CF\u25A0\u25B6\u25BC\u2605\u2606\u2666\u2660\u2663\u2665\u266A\u266B\u2B1D\u2B1E\u25C0\u25B2\u25BC\u23E9\u23EA\u23EB\u23EC\u2022\u00B7\u2014\u2013\u2014\u2015\u2026\u2030\u2731\u25CE\u25A1\u25B3\u25BD\u25C7\uFFFD\uFEFF\u200B\u200C\u200D\u2060]+/g, '');
+  /* 去除括号内的纯乱码内容：Meta (◆◆◆...Facebook) → Meta Facebook */
+  s = s.replace(/\([^)]*[\u25C6\u25CF\u25A0\u2605\u2666\uFFFD\u2760-\u2775][^)]*\)/g, '');
+  s = s.replace(/\（[^）]*[\u25C6\u25CF\u25A0\u2605\u2666\uFFFD][^）]*\）/g, '');
+  /* 去除首尾空白/符号 */
+  s = s.trim();
+  /* 如果清洗后为空或只剩标点，返回默认值 */
+  if(!s || /^[\s\(\)\[\]{}、。，！？;:]+$/.test(s)) return '其他';
+  /* 长度异常（>20字符）说明有残留乱码，截取前6个字符 */
+  if(s.length > 20) s = s.substring(0, 6).trim();
+  return s;
+}
 function classifyFund(name){
   name = (name || '').toLowerCase();
   var type = '股票型';
@@ -6691,7 +6722,7 @@ function classifyFund(name){
   else if(name.indexOf('美股') >= 0 || name.indexOf('纳斯达克') >= 0 || name.indexOf('标普') >= 0 || name.indexOf('恒生') >= 0 || name.indexOf('港股') >= 0) theme = '海外';
   else if(name.indexOf('黄金') >= 0 || name.indexOf('有色') >= 0) theme = '黄金/有色';
   else if(name.indexOf('沪深300') >= 0 || name.indexOf('中证') >= 0 || name.indexOf('上证') >= 0 || name.indexOf('红利') >= 0 || name.indexOf('宽基') >= 0) theme = '宽基';
-  return { type: type, theme: theme };
+  return { type: type, theme: cleanTheme(theme) };
 }
 function normalizeFundCode(raw){
   var d = String(raw || '').replace(/\D/g, '');
@@ -6749,8 +6780,25 @@ function detectBatchFakeCodes(list){
 
 /* ============ 基金指标计算 ============ */
 function fundNav(f){ return f.navManual ? parseFloat(f.navManual) : (f.val && f.val.gsz ? parseFloat(f.val.gsz) : 0); }
+
+/* 写入基金估值/净值数据，并追踪前一日确认净值(prevDwjz)用于计算昨日收益 */
+function applyFundVal(f, d){
+  if(!f.val) f.val = {};
+  /* 净值日期变化（如收盘后新净值发布）→ 把旧确认净值存为前一日净值 */
+  if(d.jzrq && d.jzrq !== f.val.jzrq && f.val.dwjz != null && f.val.dwjz !== ''){
+    f.prevDwjz = f.val.dwjz;
+    f.prevDwjzDate = f.val.jzrq;
+  }
+  f.val = { gsz: d.gsz, dwjz: d.dwjz, gszzl: d.gszzl, gztime: d.gztime, jzrq: d.jzrq };
+  if(!f.name || f.name === f.code) f.name = d.name || f.name;
+  f.updatedAt = Date.now();
+}
+
 function computeFundMetrics(f){
-  var nav = fundNav(f);
+  var nav = fundNav(f);  /* 市值用实时估值gsz（盘中）/手动净值 */
+  var gsz = nav;
+  var dwjz = (f.val && f.val.dwjz != null && f.val.dwjz !== '') ? parseFloat(f.val.dwjz) : 0;
+  var prevDwjz = (f.val && f.val.prevDwjz != null && f.val.prevDwjz !== '') ? parseFloat(f.val.prevDwjz) : 0;
   var shares = parseFloat(f.shares) || 0;
   var cost = parseFloat(f.cost) || 0;
   var mv = nav * shares;
@@ -6760,9 +6808,18 @@ function computeFundMetrics(f){
   /* 持有收益：优先用导入原始值，其次用估值计算值 */
   var hp = (f.hpImport != null && f.hpImport !== 0) ? f.hpImport : calcHp;
   var hpPct = (f.hpPctImport != null && f.hpPctImport !== 0) ? f.hpPctImport : calcHpPct;
-  var dailyPct = f.val && f.val.gszzl != null ? parseFloat(f.val.gszzl) : 0;
-  var dailyProfit = mv * dailyPct / 100;
-  return { nav: nav, mv: mv, ct: ct, hp: hp, hpPct: hpPct, dailyPct: dailyPct, dailyProfit: dailyProfit };
+  /* 昨日收益：基于确认净值变化(prevDwjz→dwjz)；无历史则退回估值涨跌(盘中临时) */
+  var yesterdayProfit = 0, yesterdayPct = 0;
+  if(dwjz > 0 && prevDwjz > 0){
+    yesterdayProfit = (dwjz - prevDwjz) * shares;
+    yesterdayPct = prevDwjz > 0 ? (dwjz - prevDwjz) / prevDwjz * 100 : 0;
+  } else if(dwjz > 0 && f.val && f.val.gszzl != null){
+    yesterdayPct = parseFloat(f.val.gszzl);
+    yesterdayProfit = dwjz * yesterdayPct / 100 * shares;  /* gszzl相对dwjz */
+  }
+  var gszzl = (f.val && f.val.gszzl != null) ? parseFloat(f.val.gszzl) : 0;
+  return { nav: nav, gsz: gsz, dwjz: dwjz, mv: mv, ct: ct, hp: hp, hpPct: hpPct,
+           gszzl: gszzl, yesterdayProfit: yesterdayProfit, yesterdayPct: yesterdayPct };
 }
 
 /* ============ 渲染基金总览/配置/列表/对比/建议 ============ */
@@ -6771,12 +6828,12 @@ var compareCurrentPage = 1;
 var FUND_PAGE_SIZE = 10;
 function renderFunds(){
   var funds = DB.market.funds || [];
-  var totals = { mv: 0, ct: 0, hp: 0, dailyProfit: 0 };
+  var totals = { mv: 0, ct: 0, hp: 0, yesterdayProfit: 0 };
   var metricsArr = {}; var typeMap = {}; var themeMap = {};
   funds.forEach(function(f){
     var m = computeFundMetrics(f); metricsArr[f.id] = m;
     if(isNaN(m.mv)) m.mv = 0;
-    totals.mv += m.mv; totals.ct += m.ct; totals.hp += m.hp; totals.dailyProfit += m.dailyProfit;
+    totals.mv += m.mv; totals.ct += m.ct; totals.hp += m.hp; totals.yesterdayProfit += m.yesterdayProfit;
     typeMap[f.type] = (typeMap[f.type] || 0) + m.mv;
     themeMap[f.theme] = (themeMap[f.theme] || 0) + m.mv;
   });
@@ -6786,14 +6843,27 @@ function renderFunds(){
   setText('fTotalAsset', fmtMoney(totals.mv));
   var tp = document.getElementById('fTotalProfit'); if(tp){ tp.textContent = fmtMoney(totals.hp); tp.className = 'metric-change ' + clsOf(totals.hp); }
   var tpp = document.getElementById('fTotalPct'); if(tpp){ tpp.textContent = fmtPct(totals.hpPct); tpp.className = 'metric-change ' + clsOf(totals.hpPct); }
-  var tdp = document.getElementById('fTodayProfit'); if(tdp){ tdp.textContent = (totals.dailyProfit >= 0 ? '+' : '') + fmtMoney(totals.dailyProfit); tdp.className = 'metric-value mini-num ' + clsOf(totals.dailyProfit); }
+  var tdp = document.getElementById('fTodayProfit'); if(tdp){ tdp.textContent = (totals.yesterdayProfit >= 0 ? '+' : '') + fmtMoney(totals.yesterdayProfit); tdp.className = 'metric-value mini-num ' + clsOf(totals.yesterdayProfit); }
 
   renderAlloc('fAllocType', typeMap, totals.mv, '类型');
   renderAlloc('fAllocTheme', themeMap, totals.mv, '主题');
 
+  /* 一次性迁移：清洗 DB 中残留的乱码 theme/name（仅首次执行） */
+  if(!window._themeCleaned){
+    window._themeCleaned = true;
+    var dirty = false;
+    (DB.market.funds || []).forEach(function(f){
+      var ct = cleanTheme(f.theme);
+      if(ct !== f.theme){ f.theme = ct; dirty = true; }
+      var cn = sanitizeText(f.name);
+      if(cn !== f.name){ f.name = cn; dirty = true; }
+    });
+    if(dirty){ saveDb(); console.log('[migrate] 已清洗基金数据中的乱码'); }
+  }
+
   var body = document.getElementById('fundTableBody'); if(!body) return;
   if(!funds.length){
-    body.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#9aa;">还没有基金，用上方「截图识别 / 批量粘贴 / 手动添加」导入吧</td></tr>';
+    body.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#9aa;">还没有基金，用上方「截图识别 / 批量粘贴 / 手动添加」导入吧</td></tr>';
   } else {
     var totalPages = Math.ceil(funds.length / FUND_PAGE_SIZE);
     if(fundCurrentPage > totalPages) fundCurrentPage = totalPages;
@@ -6802,22 +6872,42 @@ function renderFunds(){
     var pageFunds = funds.slice(start, start + FUND_PAGE_SIZE);
     body.innerHTML = pageFunds.map(function(f){
       var m = metricsArr[f.id];
-      var navSrc = f.navManual ? '手动' : (m.nav ? (f.val && f.val.gztime ? '估算' : '—') : '—');
       var hasNav = m.nav > 0;
       var hasCost = f.cost > 0;
+      var hasGsz = (f.val && f.val.gsz != null && f.val.gsz !== '') ;
+      var hasYest = (f.val && f.val.prevDwjz != null && f.val.prevDwjz !== '') || (f.val && f.val.gszzl != null);
+      /* 净值列来源标注：手动 / 净值日期 */
+      var navSrc = f.navManual ? '手动' : (m.dwjz > 0 ? ('净值 ' + (f.val.jzrq || '')) : '—');
       /* 持有收益/率：优先用导入原始值，其次用估值计算值 */
       var showHp = (f.hpImport != null && f.hpImport !== 0) ? f.hpImport : m.hp;
       var showHpPct = (f.hpPctImport != null && f.hpPctImport !== 0) ? f.hpPctImport : m.hpPct;
       var hasHpData = hasNav || (f.hpImport != null) || (f.hpPctImport != null);
       var hpCls = clsOf(showHp);
+      /* 昨日收益着色 */
+      var yestCls = m.yesterdayProfit > 0 ? 'pos' : (m.yesterdayProfit < 0 ? 'neg' : 'text-muted');
+      var yestTxt = (m.yesterdayProfit >= 0 ? '+' : '') + fmtMoney(m.yesterdayProfit);
+      /* 估值着色 */
+      var gzCls = m.gszzl > 0 ? 'pos' : (m.gszzl < 0 ? 'neg' : 'text-muted');
+      var gzTxt = (m.gszzl >= 0 ? '+' : '') + fmtPct(m.gszzl);
       return '<tr>' +
         '<td><b>' + escapeHtml(sanitizeText(f.name)) + '</b><br><span class="text-sm text-muted">' + f.code + '<br>' + fmtNum(f.shares) + '份</span></td>' +
-        '<td class="hide-mobile"><span class="chip">' + f.type + '</span><span class="chip theme">' + f.theme + '</span></td>' +
-        '<td>' + (hasNav ? fmtMoney(m.mv) : '<span class="text-muted">待估值</span>') + '</td>' +
-        '<td class="' + (hasNav && f.val && f.val.gszzl != null ? clsOf(m.dailyProfit) : '') + '">' + (hasNav && f.val && f.val.gszzl != null ? (m.dailyProfit >= 0 ? '+' : '') + fmtMoney(m.dailyProfit) + '<br><span class="text-sm">' + fmtPct(m.dailyPct) + '</span>' : '<span class="text-muted">—</span>') + '</td>' +
-        '<td class="' + (hasHpData ? hpCls : '') + '">' + (hasHpData ? fmtMoney(showHp) + '<br><span class="text-sm">' + fmtPct(showHpPct) + '</span>' : '<span class="text-muted">待估值</span>') + '</td>' +
+        '<td class="hide-mobile"><span class="chip">' + f.type + '</span><span class="chip theme">' + cleanTheme(f.theme) + '</span></td>' +
+        /* 合并列：金额(大字) + 昨日收益(基于确认净值，小字在下) */ +
+        '<td>' +
+          (hasNav ? '<div style="font-size:14px;font-weight:600;">' + fmtMoney(m.mv) + '</div>' : '<div style="font-size:14px;font-weight:600;color:var(--text-2);">待估值</div>') +
+          '<div class="text-sm ' + (hasYest ? yestCls : 'text-muted') + '">' + (hasYest ? yestTxt : '0.00') + '</div>' +
+        '</td>' +
+        /* 估值列：实时估算净值 + 涨跌幅(红涨绿跌) */ +
+        '<td>' +
+          (hasGsz ? '<div style="font-size:14px;font-weight:600;">' + fmtMoney(parseFloat(f.val.gsz)) + '</div>' : '<div style="font-size:14px;font-weight:600;color:var(--text-2);">—</div>') +
+          '<div class="text-sm ' + gzCls + '">' + gzTxt + '</div>' +
+        '</td>' +
+        '<td class="' + (hasHpData ? hpCls : '') + '">' + (hasHpData ? fmtMoney(showHp) + '<br><span class="text-sm">' + fmtPct(showHpPct) + '</span>' : '<span class="text-muted">待估值</span>') +
+          /* 操作按钮内嵌到持有收益列底部，手机端始终可见 */ +
+          '<div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap;"><button class="btn btn-sm" style="font-size:11px;padding:2px 6px;" onclick="editFund(\'' + f.id + '\')">编辑</button><button class="btn btn-sm" style="font-size:11px;padding:2px 6px;" onclick="updateFundNavManual(\'' + f.id + '\')">净值</button><button class="btn btn-sm" style="font-size:11px;padding:2px 6px;color:#c0392b;border-color:#f5c6cb;" onclick="deleteFund(\'' + f.id + '\')">删</button></div>' +
+        '</td>' +
         '<td class="hide-mobile">' + (hasCost ? fmtMoney(f.cost) : '<span class="text-muted">—</span>') + '</td>' +
-        '<td class="hide-mobile">' + (hasNav ? fmtMoney(m.nav) : '<span class="text-muted">待估值</span>') + '<br><span class="text-sm text-muted">' + navSrc + '</span></td>' +
+        '<td class="hide-mobile">' + (m.dwjz > 0 ? fmtMoney(m.dwjz) : '<span class="text-muted">待净值</span>') + '<br><span class="text-sm text-muted">' + navSrc + '</span></td>' +
         '<td class="hide-mobile"><button class="btn btn-sm" onclick="editFund(\'' + f.id + '\')">编辑</button> <button class="btn btn-sm" onclick="updateFundNavManual(\'' + f.id + '\')">净值</button> <button class="btn btn-sm" onclick="deleteFund(\'' + f.id + '\')">删</button></td>' +
       '</tr>';
     }).join('');
@@ -6855,8 +6945,9 @@ function renderAlloc(containerId, map, total, label){
   var legend = '<div class="alloc-legend">';
   keys.forEach(function(k, i){
     var pct = total > 0 ? map[k] / total * 100 : 0;
+    var label = cleanTheme(k);
     html += '<div class="alloc-seg" style="width:' + pct + '%;background:' + colors[i % colors.length] + '"></div>';
-    legend += '<span><i style="background:' + colors[i % colors.length] + '"></i>' + k + ' ' + pct.toFixed(1) + '%</span>';
+    legend += '<span><i style="background:' + colors[i % colors.length] + '"></i>' + label + ' ' + pct.toFixed(1) + '%</span>';
   });
   html += '</div>'; legend += '</div>';
   el.innerHTML = '<div class="text-sm text-muted" style="margin-bottom:2px;">按' + label + '</div>' + html + legend;
@@ -6883,7 +6974,7 @@ function renderFundCompare(funds, metricsArr){
     else if(i >= arr.length - 3 && cHpPct < 0) badge = '⚠️ 偏弱';
     else if(cHpPct < 0) badge = '📉 亏损';
     else badge = '✅ 稳健';
-    return '<tr><td>' + (i + 1) + '</td><td><b>' + escapeHtml(sanitizeText(f.name)) + '</b><br><span class="text-sm text-muted">' + f.type + '·' + f.theme + '</span></td>' +
+    return '<tr><td>' + (i + 1) + '</td><td><b>' + escapeHtml(sanitizeText(f.name)) + '</b><br><span class="text-sm text-muted">' + f.type + '·' + cleanTheme(f.theme) + '</span></td>' +
       (hasAnyNav ? '<td class="' + (hasData ? clsOf(cHp) : '') + '">' + (hasData ? fmtMoney(cHp) + '<br><span class="text-sm">' + fmtPct(cHpPct) + '</span>' : '<span class="text-muted">待估值</span>') + '</td>' : '') +
       '<td>' + badge + '</td></tr>';
   }).join('');
@@ -6908,7 +6999,7 @@ function generateAdvisor(funds, totals, metricsArr){
   var el = document.getElementById('fundAdvisor'); if(!el) return;
   var tips = [];
   if(!funds.length){ el.innerHTML = '<span class="text-muted">导入基金后，这里会自动生成专属诊断与配置建议。</span>'; return; }
-  tips.push('当前共持有 <b>' + funds.length + '</b> 只基金，持仓市值 <b>' + fmtMoney(totals.mv) + '</b>，累计' + (totals.hp >= 0 ? '盈利' : '亏损') + ' <b>' + fmtMoney(Math.abs(totals.hp)) + '</b>（' + fmtPct(totals.hpPct) + '），今日 ' + (totals.dailyProfit >= 0 ? '+' : '') + fmtMoney(totals.dailyProfit) + '。');
+  tips.push('当前共持有 <b>' + funds.length + '</b> 只基金，持仓市值 <b>' + fmtMoney(totals.mv) + '</b>，累计' + (totals.hp >= 0 ? '盈利' : '亏损') + ' <b>' + fmtMoney(Math.abs(totals.hp)) + '</b>（' + fmtPct(totals.hpPct) + '），昨日收益 ' + (totals.yesterdayProfit >= 0 ? '+' : '') + fmtMoney(totals.yesterdayProfit) + '。');
   var maxW = 0, maxF = null;
   funds.forEach(function(f){ var m = metricsArr[f.id]; var w = totals.mv > 0 ? m.mv / totals.mv : 0; if(w > maxW){ maxW = w; maxF = f; } });
   if(maxF && maxW > 0.4) tips.push('⚠️ <b>集中度偏高</b>：' + escapeHtml(maxF.name) + ' 占组合 ' + (maxW * 100).toFixed(0) + '%，建议单只基金占比控制在 30% 以内以分散风险。');
@@ -7771,11 +7862,7 @@ function refreshAllFundValuation(){
     fetchFundValuation(fs[i].code, function(err, d){
       if(!err && d){
         var f = DB.market.funds.find(function(x){ return x.code === fs[i].code; });
-        if(f){
-          f.val = { gsz: d.gsz, dwjz: d.dwjz, gszzl: d.gszzl, gztime: d.gztime, jzrq: d.jzrq };
-          if(!f.name || f.name === f.code) f.name = d.name || f.name;
-          f.updatedAt = Date.now();
-        }
+        if(f) applyFundVal(f, d);
       }
       step(i + 1);
     });
@@ -7809,9 +7896,7 @@ function autoFetchFundNavIfNeeded(force){
     fetchFundValuation(f.code, function(err, d){
       done++;
       if(!err && d){
-        f.val = { gsz: d.gsz, dwjz: d.dwjz, gszzl: d.gszzl, gztime: d.gztime, jzrq: d.jzrq };
-        if(!f.name || f.name === f.code) f.name = d.name || f.name;
-        f.updatedAt = Date.now();
+        applyFundVal(f, d);
       }
       /* 全部完成时保存并渲染 */
       if(done === fs.length){
@@ -8095,9 +8180,9 @@ function renderTechNews(){
       var catTxt = n.cat === 'earnings' ? '财报' : '';
       var tagStyle = cls === 'pos' ? 'background:#fdecea;color:#c0392b' : cls === 'neg' ? 'background:#eafaf0;color:#1e8e4e' : 'background:#eef3f6;color:#5a6b75';
       return '<div class="news-item" style="border-left-color:' + (cls === 'pos' ? '#c0392b' : cls === 'neg' ? '#1e8e4e' : '#cfd8dd') + ';">' +
-        '<div style="display:flex;justify-content:space-between;gap:8px;"><a href="' + (n.url || '#') + '" target="_blank" style="color:#1f3b47;font-weight:600;text-decoration:none;">' + escapeHtml(n.title) + '</a>' +
+        '<div style="display:flex;justify-content:space-between;gap:8px;"><a href="' + (n.url || '#') + '" target="_blank" style="color:#1f3b47;font-weight:600;text-decoration:none;">' + escapeHtml(cleanXwlbText(n.title)) + '</a>' +
         '<span style="white-space:nowrap;cursor:pointer;" onclick="toggleTechFav(\'' + n.id + '\',' + n.isManual + ')">' + (fv ? '★' : '☆') + '</span></div>' +
-        (n.summary ? '<div class="text-sm text-muted" style="margin:4px 0;">' + escapeHtml(n.summary) + '</div>' : '') +
+        (n.summary ? '<div class="text-sm text-muted" style="margin:4px 0;">' + escapeHtml(cleanXwlbText(n.summary)) + '</div>' : '') +
         '<div class="text-sm" style="color:#8a99a0;">' + (catTxt ? '<span class="chip">' + catTxt + '</span>' : '') + '<span class="chip" style="' + tagStyle + '">' + tagTxt + '</span> ' + escapeHtml(n.source) + ' · ' + n.time + '</div>' +
       '</div>';
     }).join('');
