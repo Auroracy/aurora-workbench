@@ -6869,13 +6869,14 @@ function onFundScreenshot(input){
   hint.textContent = '正在识别 ' + files.length + ' 张图片（0/' + files.length + '）…';
   var allResults = [];
   var failed = 0;
+  var firstError = '';
   var done = 0;
   files.forEach(function(file, idx){
     compressImage(file, 800, function(base64){
-      if(!base64){ done++; failed++; checkFinish(); return; }
+      if(!base64){ done++; failed++; firstError = firstError || '图片压缩失败'; checkFinish(); return; }
       analyzeFundScreenshot(base64, function(err, list){
         done++;
-        if(err){ failed++; }
+        if(err){ failed++; if(!firstError) firstError = (err || '未知错误').slice(0, 200); console.error('[onFundScreenshot] 图片#' + (idx+1) + ' 识别失败:', err); }
         else { allResults = allResults.concat(list || []); }
         checkFinish();
       });
@@ -6885,7 +6886,8 @@ function onFundScreenshot(input){
     hint.textContent = '正在识别 ' + files.length + ' 张图片（' + done + '/' + files.length + '）…';
     if(done >= files.length){
       if(!allResults.length){
-        hint.textContent = failed ? ('所有图片均未识别到基金' + (failed === files.length ? '' : '（跳过 ' + failed + ' 张失败图）') + '，可改用「批量粘贴」') : '所有图片均未识别到基金，可改用批量粘贴';
+        var errDetail = firstError ? '<div style="font-size:12px;color:var(--red);margin-top:4px;">原因：' + escapeHtml(firstError) + '</div>' : '';
+        hint.innerHTML = (failed ? ('所有图片均未识别到基金' + (failed === files.length ? '' : '（跳过 ' + failed + ' 张失败图）') + '，可改用「批量粘贴」') : '所有图片均未识别到基金，可改用批量粘贴') + errDetail;
         return;
       }
       hint.textContent = '共识别到 ' + allResults.length + ' 只基金（来自 ' + files.length + ' 张图' + (failed ? '，' + failed + ' 张失败已跳过' : '') + '），请核对后导入';
