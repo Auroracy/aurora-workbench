@@ -6786,6 +6786,8 @@ function renderFundPagination(total){
   html += '<button class="btn btn-sm" ' + (fundCurrentPage >= totalPages ? 'disabled style="opacity:.5;"' : 'onclick="fundGoPage(' + (fundCurrentPage + 1) + ')"') + '>下一页 ›</button>';
   html += '</div>';
   el.innerHTML = html;
+  /* 自动抓取净值：有代码但无近期估值数据的基金，静默后台更新 */
+  if(typeof autoFetchFundNavIfNeeded === 'function') autoFetchFundNavIfNeeded(false);
 }
 function fundGoPage(p){
   fundCurrentPage = p;
@@ -7599,11 +7601,13 @@ function commitImportFunds(){
     added++;
   });
   saveDb(); clearImportPreview(); renderFunds();
+  /* 导入后立即自动抓取净值 */
+  if(typeof autoFetchFundNavIfNeeded === 'function') autoFetchFundNavIfNeeded(true);
   var msg = '导入完成：新增 ' + added + ' 只';
   if(updated > 0) msg += '，更新 ' + updated + ' 只（' + dupCodes.join('、') + '）';
   if(missingCodes.length > 0) msg += '；⚠ ' + missingCodes.length + ' 只缺代码已用临时码导入（' + missingCodes.join('、') + '），请在列表补全代码才能估值';
   if(skipped.length > 0) msg += '，跳过 ' + skipped.length + ' 只（' + skipped.join('、') + '）';
-  msg += '，记得点「刷新估值」';
+  msg += '，正在自动获取估值…';
   toast(msg);
 }
 function clearImportPreview(){ pendingImport = []; var box = document.getElementById('fundImportPreview'); if(box) box.innerHTML = ''; }
@@ -7649,6 +7653,65 @@ function refreshAllFundValuation(){
     });
   }
   step(0);
+}
+
+/* ============ 基金净值自动刷新 ============ */
+var _fundNavTimer = null;  /* 交易时间定时刷新句柄 */
+var _lastNavFetchTs = 0;   /* 上次自动抓取时间戳，避免重复触发 */
+
+/* 检查是否有基金需要抓取净值（有代码但无近期估值数据），有则静默自动抓取 */
+function autoFetchFundNavIfNeeded(force){
+  var fs = (DB.market.funds || []).filter(function(f){
+    if(!f.code || !/^\d{6}$/.test(f.code)) return false;
+    if(f.navManual) return false;  /* 手动净值不覆盖 */
+    /* 无估值数据，或数据超过30分钟旧 → 需要刷新 */
+    var age = f.updatedAt ? (Date.now() - f.updatedAt) : Infinity;
+    return (!f.val || age > 30 * 60 * 1000);
+  });
+  if(!fs.length) return;
+  /* 防抖：5秒内不重复触发（除非强制） */
+  var now = Date.now();
+  if(!force && now - _lastNavFetchTs < 5000) return;
+  _lastNavFetchTs = now;
+  console.log('[autoNav] 自动抓取', fs.length, '只基金净值...');
+  /* 静默逐只抓取，完成后 saveDb + renderFunds 刷新显示 */
+  var done = 0;
+  fs.forEach(function(f){
+    fetchFundValuation(f.code, function(err, d){
+      done++;
+      if(!err && d){
+        f.val = { gsz: d.gsz, dwjz: d.dwjz, gszzl: d.gszzl, gztime: d.gztime, jzrq: d.jzrq };
+        if(!f.name || f.name === f.code) f.name = d.name || f.name;
+        f.updatedAt = Date.now();
+      }
+      /* 全部完成时保存并渲染 */
+      if(done === fs.length){
+        saveDb();
+        renderFunds();
+        console.log('[autoNav] 净值刷新完成');
+      }
+    });
+  });
+}
+
+/* 启动交易时间定时刷新（每5分钟，仅在交易日9:00-15:15） */
+function startFundNavAutoRefresh(){
+  stopFundNavAutoRefresh();  /* 先清除旧的 */
+  function tick(){
+    var now = new Date();
+    var dow = now.getDay();
+    var h = now.getHours(), m = now.getMinutes();
+    /* 仅周一~周五 9:00 ~ 15:15 */
+    if(dow >= 1 && dow <= 5 && (h > 9 || (h === 9 && m >= 0)) && (h < 15 || (h === 15 && m <= 15))){
+      autoFetchFundNavIfNeeded(false);
+    }
+  }
+  _fundNavTimer = setInterval(tick, 5 * 60 * 1000);  /* 每5分钟 */
+  /* 立即执行一次 */
+  tick();
+}
+function stopFundNavAutoRefresh(){
+  if(_fundNavTimer){ clearInterval(_fundNavTimer); _fundNavTimer = null; }
 }
 
 /* ============ 持仓重合 / 合并建议 ============ */
@@ -9992,6 +10055,8 @@ function init(){
   renderRecipeHero();
   // Start fasting timer
   setInterval(updateFastingNow, 60000);
+  // 启动基金净值自动定时刷新（交易时间每5分钟）
+  if(typeof startFundNavAutoRefresh === 'function') startFundNavAutoRefresh();
 }
 
 window.addEventListener('DOMContentLoaded', init);
