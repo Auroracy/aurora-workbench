@@ -6696,6 +6696,55 @@ function normalizeFundCode(raw){
   return d.slice(-6);
 }
 
+/* 检测 AI 编造的假基金代码（连续序号/明显幻觉模式）
+ * 返回 true 表示代码不可信，应置 null 触发名称反查 */
+function isFakeFundCode(code, name){
+  if(!code || code.length !== 6) return true; /* 空或非6位→不可信 */
+  var c = code;
+  /* 模式1：连续序号（AI最常见幻觉）001234,001235,001236... 或 000001,000002... */
+  if(/^(0{4,5}[1-9]\d*|00\d{4})$/.test(c)){
+    /* 例外：一些真实的低号段基金（黄金ETF、货币基金等） */
+    var knownLow = ['518800','159934','159980','159981','518880','518850','518860',
+      '159937','159938','159939','159915','159919','159928','159941','159951',
+      '001029','001231','001232','001233','001234','001235','001236','001237','001238',
+      '511010','511260','511280','511360','511380','511880','511990',
+      '003818','004094','006555','007300','006879'];
+    if(knownLow.indexOf(c) >= 0) return false; /* 已知真实低号段 */
+    /* 数字全顺序或接近顺序 → 假 */
+    for(var i=1;i<6;i++){ if(Math.abs(parseInt(c[i])-parseInt(c[i-1])) !== 1) return false; }
+    return true;
+  }
+  /* 模式2：同一批识别结果中代码高度相似（如都是0012xx）且名称完全不同
+   * 这个在调用方批量检测，单条不判 */
+  return false;
+}
+
+/* 批量检测假代码：如果一批代码中存在≥3个共享相同前缀的低序号代码，判定整批可疑 */
+function detectBatchFakeCodes(list){
+  if(!list || list.length < 2) return {};
+  var prefixGroups = {};
+  list.forEach(function(x){
+    var c = String(x.code || '');
+    if(c.length === 6) {
+      var p = c.slice(0, 3);
+      if(!prefixGroups[p]) prefixGroups[p] = [];
+      prefixGroups[p].push({ code: c, name: x.name });
+    }
+  });
+  var fakeSet = {};
+  Object.keys(prefixGroups).forEach(function(p){
+    var group = prefixGroups[p];
+    if(group.length >= 3){
+      /* 同前缀≥3只，检查是否为连续/近续序号 */
+      var nums = group.map(function(g){ return parseInt(g.code); }).sort(function(a,b){return a-b;});
+      var isSequential = true;
+      for(var i=1;i<nums.length;i++){ if(nums[i] - nums[i-1] > 3) { isSequential = false; break; } }
+      if(isSequential) group.forEach(function(g){ fakeSet[g.code] = true; });
+    }
+  });
+  return fakeSet;
+}
+
 /* ============ 基金指标计算 ============ */
 function fundNav(f){ return f.navManual ? parseFloat(f.navManual) : (f.val && f.val.gsz ? parseFloat(f.val.gsz) : 0); }
 function computeFundMetrics(f){
@@ -7057,16 +7106,47 @@ function analyzeFundScreenshot(base64, cb){
         /* 硬编码常用基金名→代码即时匹配表（同步，在映射阶段直接填入，不等异步校正）
          * 覆盖用户实际持仓 + 常见基金；key=名称关键词（支持前缀/包含匹配），value=6位真实代码 */
         var QUICK_FUND_MAP = {
-          /* 嘉实系列 */
+          /* ===== 黄金/商品 ETF ===== */
+          '博时黄金': '159934', '博时黄金ETF': '159934',
+          '国泰黄金': '518800', '国泰黄金ETF': '518800',
+          '华安黄金': '518880', '华安黄金ETF': '518880',
+          '易方达黄金': '159934', '黄金ETF': '518880',
+          '嘉实黄金': '159981', '前海开源黄金': '159812',
+          /* ===== 宽基/指数 ETF ===== */
+          '华泰柏瑞沪深300': '512480', '华泰柏瑞科': '512480', '沪深300ETF': '510300',
+          '南方中证500': '515050', '南方中证500ETF': '515050', '南方中证5': '515050',
+          '嘉实沪深300': '159919', '华夏沪深300': '159920',
+          '华夏上证50': '510050', '上证50ETF': '510050',
+          '南方创业板': '159948', '创业板ETF': '159915',
+          '华夏科创50': '588000', '科创板ETF': '588000',
+          '国寿安保沪港深': '007868', '汇添富中证沪港深500': '006879', '汇添富中证': '006879',
+          /* ===== 行业/主题 ETF/LOF ===== */
+          '东方人工智能': '006555', '东方人工智': '006555',
+          '南方信息创新': '007300', '南方信息创': '007300',
+          '华宝竞争优势': '007599', '华宝竞争优': '007599',
+          '长信美国标普': '001029', '长信美国标': '001029', '长信美国': '001029',
+          '恒生前海消费': '014151', '恒生前海消': '014151',
+          '国泰全指证券公司': '501016', '证券公司ETF': '512880',
+          '招商中证白酒': '161725', '招商中证酒': '161725',
+          '国泰半导': '512480', '半导体ETF': '512480',
+          '新能源车ETF': '159806', '光伏ETF': '515790',
+          /* ===== 嘉实系列 ===== */
           '嘉实绿色主题': '017745', '嘉实上证科创': '019708', '嘉实品质发现': '019522',
-          /* 银华系列 */
+          /* ===== 银华系列 ===== */
           '银华海外数字': '016844', '银华中小盘精': '016081', '银华中小盘精选': '016081',
-          /* 其他常见 */
-          '易方达蓝筹': '005827', '易方达中小盘': '110011',
-          '招商中证白酒': '161725', '招商中证电池': '012414',
-          '中欧医疗健康': '003095', '诺安成长混合': '007007',
-          '兴全合润': '163406', '富国天惠': '161005',
-          '广发稳健增长': '270002', '景顺长城新兴成长': '260108',
+          /* ===== 主动混合/股票型（常见持仓） ===== */
+          '诺安多策略': '320007', '诺安成长': '007007', '诺安和鑫': '002510',
+          '国金新兴价值': '009358', '国金新兴价': '009358', '国金量化': '016525',
+          '易方达蓝筹': '005827', '易方达中小盘': '110011', '易方达优质精选': '110011',
+          '中欧医疗健康': '003095', '中欧明睿新常态': '001811',
+          '兴全合润': '163406', '兴全合宜': '163417',
+          '富国天惠': '161005', '富国天博': '161035',
+          '广发稳健增长': '270002', '广发小盘成长': '162703',
+          '景顺长城新兴成长': '260108', '景顺长城鼎益': '162605',
+          '招商中证电池': '012414',
+          /* ===== QDII / 海外 ===== */
+          '国泰纳斯达克100': '513100', '广发纳斯达克100': '270042',
+          '易方达标普500': '118001',
         };
         /* 同步即时匹配：名称包含任一 key 即填入对应代码 */
         function quickMatchCode(name){
@@ -7076,20 +7156,29 @@ function analyzeFundScreenshot(base64, cb){
           return '';
         }
 
+        /* 批量检测 AI 编造的假代码 */
+        var batchFake = detectBatchFakeCodes(arr.map(function(x){ return { code: normalizeFundCode(x.code), name: sanitizeFundName(x.name) }; }));
+        var fakeKeys = Object.keys(batchFake);
+        if(fakeKeys.length) console.warn('[analyzeFundScreenshot] ⚠ 检测到 AI 编造假代码:', fakeKeys.join(', '), '→ 将置null触发反查');
+
         /* 先映射 AI 识别结果，立即回调显示预览（不阻塞） */
         var mapped = arr.map(function(x){
           var rawName = sanitizeFundName(x.name);
+          var rawCode = normalizeFundCode(x.code);
+          /* 如果被批量检测为假代码，强制置null让后续反查修正 */
+          if(batchFake[rawCode]){ rawCode = ''; }
           var qc = quickMatchCode(rawName);
-          var nc = normalizeFundCode(x.code);
+          var nc = rawCode;
           return {
-            code: qc || nc,  /* 硬编码优先 > AI识别代码 */
+            code: qc || nc,  /* 硬编码优先 > AI识别代码（假代码已被清空） */
             name: rawName,
             shares: parseFloat(x.shares) || 0,
             cost: parseFloat(x.cost) || 0,
             hp: parseFloat(x.hp) || null,
             hpPct: parseFloat(x.hpPct) || null,
             codeCorrected: !!qc && !nc,  /* 硬编码命中且AI无代码→标记为已校正 */
-            aiCode: nc
+            aiCode: nc,
+            wasFake: !!batchFake[normalizeFundCode(x.code)]  /* 标记原代码是假的 */
           };
         });
         /* 立即返回识别结果，不等待校正（保证基础识别永远可用） */
@@ -7297,24 +7386,54 @@ function lookupFundCodeByName(name, aiCode){
     function hardcodedFallback(query){
       query = sanitizeText(query).replace(/[CAB\s]/g, '').toLowerCase();
       var map = [
-        /* 嘉实系列 */
+        /* ===== 黄金/商品 ETF ===== */
+        { kw:['博时黄金','博时黄金ETF'], code:'159934', name:'博时黄金ETF' },
+        { kw:['国泰黄金','国泰黄金ETF'], code:'518800', name:'国泰黄金ETF' },
+        { kw:['华安黄金','华安黄金ETF'], code:'518880', name:'华安黄金ETF' },
+        { kw:['嘉实黄金'], code:'159981', name:'嘉实黄金ETF' },
+        { kw:['前海开源黄金'], code:'159812', name:'前海开源黄金ETF' },
+        { kw:['黄金ETF'], code:'518880', name:'华安黄金ETF' },
+        /* ===== 宽基指数 ETF ===== */
+        { kw:['华泰柏瑞沪深300','华泰柏瑞300'], code:'512480', name:'华泰柏瑞沪深300ETF' },
+        { kw:['华泰柏瑞科'], code:'512480', name:'华泰柏瑞沪深300ETF' },
+        { kw:['南方中证500','南方中证500ETF','南方中证5'], code:'515050', name:'南方中证500ETF' },
+        { kw:['沪深300ETF','300ETF'], code:'510300', name:'华泰柏瑞沪深300ETF' },
+        { kw:['上证50ETF','50ETF'], code:'510050', name:'华夏上证50ETF' },
+        { kw:['创业板ETF','创业板'], code:'159915', name:'易方达创业板ETF' },
+        { kw:['科创50ETF','科创板ETF'], code:'588000', name:'华夏科创板50ETF' },
+        { kw:['长信美国标普','长信美国标','长信美国'], code:'001029', name:'长信美国标准普尔100指数QDII' },
+        { kw:['汇添富中证沪港深500','汇添富中证','汇添富沪港深'], code:'006879', name:'汇添富中证沪港深500A' },
+        /* ===== 行业/主题 ===== */
+        { kw:['东方人工智能','东方人工智'], code:'006555', name:'东方人工智能主题混合A' },
+        { kw:['南方信息创新','南方信息创'], code:'007300', name:'南方信息创新混合A' },
+        { kw:['华宝竞争优势','华宝竞争优'], code:'007599', name:'华宝竞争优势混合A' },
+        { kw:['恒生前海消费','恒生前海消'], code:'014151', name:'恒生前海消费主题混合A' },
+        { kw:['诺安多策略','诺安多策略混'], code:'320007', name:'诺安多策略混合' },
+        { kw:['国金新兴价值','国金新兴价','国金新兴'], code:'009358', name:'国金新兴价值混合A' },
+        { kw:['证券公司ETF','证券ETF','券商ETF'], code:'512880', name:'国泰证券公司ETF' },
+        { kw:['招商中证白酒','白酒ETF','中证白酒'], code:'161725', name:'招商中证白酒指数分级' },
+        { kw:['招商中证电池','电池ETF'], code:'012414', name:'招商中证电池主题ETF发起式A' },
+        { kw:['新能源车ETF'], code:'159806', name:'平安中证新能源汽车产业ETF' },
+        { kw:['光伏ETF'], code:'515790', name:'华泰柏瑞中证光伏产业ETF' },
+        /* ===== 嘉实系列 ===== */
         { kw:['嘉实绿色主题'], code:'017745', name:'嘉实绿色主题股票发起式证券投资基金C' },
         { kw:['嘉实上证科创'], code:'019708', name:'嘉实上证科创板100ETF发起式A' },
         { kw:['嘉实品质发现'], code:'019522', name:'嘉实品质发现股票发起式A' },
-        /* 银华系列 */
+        /* ===== 银华系列 ===== */
         { kw:['银华海外数字'], code:'016844', name:'银华海外数字混合A' },
         { kw:['银华中小盘精','银华中小盘精选'], code:'016081', name:'银华中小盘精选混合A' },
-        /* 其他常见 */
+        /* ===== 其他常见主动型 ===== */
         { kw:['易方达蓝筹'], code:'005827', name:'易方达蓝筹精选混合' },
         { kw:['易方达中小盘'], code:'110011', name:'易方达中小盘混合' },
-        { kw:['招商中证白酒'], code:'161725', name:'招商中证白酒指数分级' },
-        { kw:['招商中证电池'], code:'012414', name:'招商中证电池主题ETF发起式A' },
         { kw:['中欧医疗健康'], code:'003095', name:'中欧医疗健康混合A' },
-        { kw:['诺安成长混合'], code:'007007', name:'诺安成长混合' },
+        { kw:['诺安成长混合','诺安成长'], code:'007007', name:'诺安成长混合' },
         { kw:['兴全合润'], code:'163406', name:'兴全合润分级混合' },
         { kw:['富国天惠'], code:'161005', name:'富国天惠成长混合A' },
         { kw:['广发稳健增长'], code:'270002', name:'广发稳健增长混合' },
         { kw:['景顺长城新兴成长'], code:'260108', name:'景顺长城新兴成长混合' },
+        /* ===== QDII ===== */
+        { kw:['纳斯达克100','纳指100','纳斯达克'], code:'513100', name:'国泰纳斯达克100ETF' },
+        { kw:['标普500','标普','S&P500'], code:'118001', name:'易方达标普500人民币' },
       ];
       for(var i = 0; i < map.length; i++){
         for(var j = 0; j < map[i].kw.length; j++){
@@ -7506,8 +7625,13 @@ function renderImportPreview(list){
   var missingCode = list.filter(function(x){ return !x.code; });
   /* 检测代码被反查校正的数量 */
   var correctedCode = list.filter(function(x){ return x.codeCorrected; });
+  /* 检测被判定为AI假代码的数量 */
+  var fakeCodeCount = list.filter(function(x){ return x.wasFake; });
 
   var hintHtml = '';
+  if(fakeCodeCount.length){
+    hintHtml += '<div style="font-size:12px;color:var(--red);font-weight:600;margin-bottom:6px;background:var(--red-bg);padding:8px 10px;border-radius:4px;">🚫 检测到 <b>' + fakeCodeCount.length + ' 只</b>基金的代码为 AI 编造（连续序号幻觉），已自动清除并触发名称反查。带红色「🚫假」标记的行说明 AI 原代码不可信。</div>';
+  }
   if(missingCode.length){
     hintHtml += '<div style="font-size:12px;color:var(--red);font-weight:600;margin-bottom:6px;background:var(--red-bg);padding:8px 10px;border-radius:4px;">🔴 有 ' + missingCode.length + ' 只<b>缺少基金代码</b>（AI未识别到）已标红保留，不会丢失！请在对应行「代码」列补全 6 位代码后再导入；留空将用临时码导入（无法估值，需后续补全）。</div>';
   }
@@ -7528,7 +7652,7 @@ function renderImportPreview(list){
   } else {
     /* 校正数为0时显示诊断信息：帮助排查为什么没校正 */
     var hasNames = list.filter(function(x){ return x.name; }).length;
-    hintHtml += '<div style="font-size:11px;color:#888;margin-bottom:6px;background:#f5f5f5;padding:6px 8px;border-radius:4px;">🔍 代码校正：已尝试对 ' + hasNames + ' 只基金反查代码（JSONP→直连→代理→硬编码兜底），但未匹配到。请按 F12 查看 [lookupFundCode] 日志。若名称被截断可手动补代码。</div>';
+    hintHtml += '<div style="font-size:11px;color:#888;margin-bottom:6px;background:#f5f5f5;padding:6px 8px;border-radius:4px;">🔍 代码校正：已尝试对 ' + (hasNames || 0) + ' 只基金反查代码（JSONP→直连→代理→硬编码兜底），但未匹配到。请按 F12 查看 [lookupFundCode] 日志。若名称被截断可手动补代码。</div>';
   }
   box.innerHTML = '<div class="card-title" style="font-size:14px;">识别预览（共 ' + list.length + ' 只，请核对，可修改后导入）</div>' +
     hintHtml +
@@ -7545,6 +7669,7 @@ function renderImportPreview(list){
       if(isExist) tagHtml += ' <span style="font-size:10px;color:var(--blue);">旧</span>';
       if(isNameDupExist) tagHtml += ' <span style="font-size:10px;color:var(--red);font-weight:bold;">名重</span>';
       if(x.codeCorrected) tagHtml += ' <span title="AI原识别代码 ' + x.aiCode + ' 已按基金名称反查校正为真实代码" style="font-size:10px;color:var(--green);font-weight:bold;cursor:help;">⟳已校正</span>';
+      if(x.wasFake) tagHtml += ' <span title="AI编造的假代码（' + x.aiCode + '）已清除，当前代码来自名称反查或硬编码映射" style="font-size:10px;color:var(--red);font-weight:bold;cursor:help;">🚫假</span>';
       return '<tr style="' + rowStyle + '"><td><input type="checkbox" data-i="' + i + '" ' + (isMissing ? '' : 'checked') + '></td><td>' + (isMissing ? '<input id="imp_code_' + i + '" value="" placeholder="补6位代码" style="width:88px;border-color:var(--red);">' : '<input id="imp_code_' + i + '" value="' + x.code + '" style="width:88px;">') + tagHtml + '</td>' +
         '<td><input id="imp_name_' + i + '" value="' + escapeHtml(x.name) + '"></td>' +
         '<td><input id="imp_shares_' + i + '" value="' + x.shares + '"></td>' +
