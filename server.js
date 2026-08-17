@@ -118,6 +118,22 @@ async function dbSet(dataStr) {
     if (!fs.existsSync(path.join(ROOT, 'data'))) fs.mkdirSync(path.join(ROOT, 'data'), { recursive: true });
     fs.writeFileSync(DB_FILE, dataStr, 'utf8');
   } catch (e) { console.error('[store] 落盘快照失败：', e.message); }
+  // 同步把新闻联播归档拆成 data/xwlb/{date}.json 每日静态文件，
+  // 使「本地文件恢复」完全自洽，不再依赖外部 GitHub Actions 工作流。
+  try {
+    const obj = JSON.parse(dataStr);
+    const cache = obj && obj.xwlb && obj.xwlb.cache;
+    if (cache && typeof cache === 'object') {
+      const xwlbDir = path.join(ROOT, 'data', 'xwlb');
+      if (!fs.existsSync(xwlbDir)) fs.mkdirSync(xwlbDir, { recursive: true });
+      Object.keys(cache).forEach(function (d) {
+        const item = cache[d];
+        if (!item || !item.date) return;
+        const fp = path.join(xwlbDir, d + '.json');
+        fs.writeFileSync(fp, JSON.stringify(item, null, 2), 'utf8');
+      });
+    }
+  } catch (e) { console.error('[store] 拆分 xwlb 每日文件失败：', e.message); }
   if (redisMode && redisClient && redisClient.isReady) {
     await redisClient.set(DATA_KEY, dataStr);
     return;
@@ -138,8 +154,22 @@ async function migrateJsonToRedis() {
       console.log('[migrate] JSON 文件也为空，无需迁移');
       return;
     }
-    /* 有旧数据 → 写入 Redis */
+    /* 有旧数据 → 写入 Redis，并补全每日静态文件 */
     await redisClient.set(DATA_KEY, jsonData);
+    try {
+      const obj = JSON.parse(jsonData);
+      const cache = obj && obj.xwlb && obj.xwlb.cache;
+      if (cache && typeof cache === 'object') {
+        const xwlbDir = path.join(ROOT, 'data', 'xwlb');
+        if (!fs.existsSync(xwlbDir)) fs.mkdirSync(xwlbDir, { recursive: true });
+        Object.keys(cache).forEach(function (d) {
+          const item = cache[d];
+          if (!item || !item.date) return;
+          const fp = path.join(xwlbDir, d + '.json');
+          if (!fs.existsSync(fp)) fs.writeFileSync(fp, JSON.stringify(item, null, 2), 'utf8');
+        });
+      }
+    } catch (e) { console.error('[migrate] 补全 xwlb 每日文件失败：', e.message); }
     console.log('[migrate] ✓ 已将 JSON 文件数据迁移到 Redis（', (jsonData.length / 1024).toFixed(1), 'KB ）');
   } catch (e) {
     console.error('[migrate] 迁移失败（不影响启动）:', e.message);
