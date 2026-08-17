@@ -3312,6 +3312,14 @@ function scheduleServerPush(){
 function pushToServerNow(){
   var base = serverBase();
   if(!base) return;
+  // 防雪上加霜：若此前已成功从云端拉到过真实数据（_lastPullTs>0），但当前 DB 是空壳（无实质内容），
+  // 说明本地可能解析损坏/尚未同步，禁止用空壳覆盖云端，改为先拉取云端真实数据恢复。
+  if(_lastPullTs > 0 && !hasContentKeys(DB)){
+    _dirty = false;
+    showServerStatus('本地数据异常，正从云端恢复…', 'fail');
+    silentPullFromServer();
+    return;
+  }
   if(_pushTimer){ clearTimeout(_pushTimer); _pushTimer = null; }
   fetch(base + '/api/db', {
     method: 'POST',

@@ -112,14 +112,17 @@ async function dbGet() {
 }
 
 async function dbSet(dataStr) {
+  // 始终同步落盘一份到 data/db.json（已在 .gitignore 排除），作为 Redis 崩溃/重启时的恢复兜底；
+  // 配合 initStore→migrateJsonToRedis：Redis 为空但文件有数据时，启动时自动回填 Redis。
+  try {
+    if (!fs.existsSync(path.join(ROOT, 'data'))) fs.mkdirSync(path.join(ROOT, 'data'), { recursive: true });
+    fs.writeFileSync(DB_FILE, dataStr, 'utf8');
+  } catch (e) { console.error('[store] 落盘快照失败：', e.message); }
   if (redisMode && redisClient && redisClient.isReady) {
     await redisClient.set(DATA_KEY, dataStr);
     return;
   }
-  try {
-    if (!fs.existsSync(path.join(ROOT, 'data'))) fs.mkdirSync(path.join(ROOT, 'data'), { recursive: true });
-    fs.writeFileSync(DB_FILE, dataStr, 'utf8');
-  } catch (e) { throw new Error('写文件失败：' + e.message); }
+  // 未启用 Redis：纯文件存储，已在上方写入，无需额外操作
 }
 
 /* 启动时自动迁移：Redis 空但 JSON 文件有数据 → 导入 Redis */
