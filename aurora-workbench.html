@@ -3956,6 +3956,28 @@ function initXwlb(){
   document.getElementById('xwlbDate').textContent = getXwlbToday();
   renderXwlbHistory();
   loadXwlb(false);
+  /* 启动时批量恢复：若 xwlb.cache 为空（Redis 清空后），自动从服务器本地文件恢复近7天归档 */
+  var cacheKeys = Object.keys(DB.xwlb.cache).length;
+  if(cacheKeys === 0){
+    restoreXwlbFromLocalFiles();
+  }
+}
+/* 批量从服务器本地 data/xwlb/ 文件恢复（Redis 清空后的一次性恢复） */
+function restoreXwlbFromLocalFiles(){
+  var days = getRecentXwlbDays(7);
+  var base = serverBase();
+  if(!base) return;
+  var restored = 0;
+  days.forEach(function(d){
+    if(DB.xwlb.cache[d]) return; /* 已有则跳过 */
+    fetchXwlbFromServerLocal(d, function(data){
+      if(data && data.summary){
+        saveXwlbCache(data);
+        restored++;
+        if(restored > 0){ renderXwlbHistory(); }
+      }
+    });
+  });
 }
 function getXwlbToday(){ return today(); }
 var XWLB_SYS_PROMPT = '你是资深新闻编辑，把以下《新闻联播》节目单整理成结构化每日总结，严格只输出如下 JSON（不要任何额外文字）：{"lead":"一句话导语（20字以内）","groups":[{"category":"分类名（如：国内要闻/经济发展/国际动态/社会民生/其他）","items":[{"title":"原标题","point":"一句话要点（30字以内）"}]}]}';
@@ -3984,9 +4006,35 @@ function loadXwlb(force){
       renderXwlbHistory();
       return;
     }
-    /* GitHub 没抓到再 fallback 到前端自动抓 */
-    fetchXwlbDirect(date);
+    /* GitHub 没抓到 → 尝试从服务器本地文件恢复（Redis 清空后的磁盘兜底） */
+    fetchXwlbFromServerLocal(date, function(localData){
+      if(localData && localData.summary){
+        saveXwlbCache(localData);
+        renderXwlb(localData, '本地恢复');
+        renderXwlbHistory();
+        toast('已从服务器本地文件恢复 ' + date + ' 数据');
+        return;
+      }
+      /* 本地也没有 → fallback 到前端自动抓 CCTV */
+      fetchXwlbDirect(date);
+    });
   });
+}
+
+/* 从服务器本地 data/xwlb/{date}.json 恢复（Redis 清空后的磁盘兜底） */
+function fetchXwlbFromServerLocal(date, cb){
+  var base = serverBase();
+  if(!base){ cb(null); return; }
+  var url = base.replace(/\/+$/, '') + '/data/xwlb/' + date + '.json';
+  fetch(url, { headers: { 'Accept': 'application/json' } })
+    .then(function(r){
+      if(!r.ok){ cb(null); return; }
+      return r.json();
+    })
+    .then(function(j){
+      if(j && j.date === date && (j.summary || j.titles)){ cb(j); } else { cb(null); }
+    })
+    .catch(function(){ cb(null); });
 }
 
 /* 从 GitHub Pages / GitHub raw 读 data/xwlb/{date}.json */
@@ -4230,7 +4278,7 @@ function viewXwlbDate(d){
     refreshXwlbInvestPanel(d);
     return;
   }
-  /* 无数据 → 进入补录模式：先尝试从 GitHub Actions 同步缓存取，再 fallback 到手动 */
+  /* 无缓存数据 → 按优先级尝试恢复：GitHub → 服务器本地文件 → 待补录 */
   fetchXwlbFromGitHub(d, function(remote){
     if(remote && remote.summary){
       saveXwlbCache(remote);
@@ -4240,7 +4288,19 @@ function viewXwlbDate(d){
       toast('已从 GitHub 同步补齐 ' + d);
       return;
     }
-    enterXwlbHistoryEditMode(d);
+    /* GitHub 没有 → 尝试服务器本地文件 */
+    fetchXwlbFromServerLocal(d, function(localData){
+      if(localData && localData.summary){
+        saveXwlbCache(localData);
+        renderXwlb(localData, '本地恢复');
+        refreshXwlbInvestPanel(d);
+        renderXwlbHistory();
+        toast('已从服务器本地文件恢复 ' + d);
+        return;
+      }
+      /* 都没有 → 进入补录模式 */
+      enterXwlbHistoryEditMode(d);
+    });
   });
 }
 function enterXwlbHistoryEditMode(d){
@@ -7128,39 +7188,46 @@ function fundNameScore(a, b){
   if(la <= 5 && jaccard > 0.35) return Math.max(jaccard + 0.15, 0.55);
   return jaccard;
 }
-/* 按基金名称反查真实代码（东方财富基金搜索，经同源代理避免 CORS）
- * 改进：精确搜索无结果时自动用名称前缀(2~5字)降级重试 */
+/* 按基金名称反查真实代码（东方财富基金搜索）
+ * 策略：直接请求东方财富优先（该API支持CORS），服务器代理做兜底。
+ * 精确搜索无结果时自动用名称前缀(2~5字)降级重试。 */
 function lookupFundCodeByName(name){
   return new Promise(function(resolve){
     var q = (name || '').trim();
     if(!q){ console.warn('[lookupFundCode] 空名称，跳过'); resolve(null); return; }
-    if(!hasSameOriginApi()){ console.warn('[lookupFundCode] 无同源API，跳过 name=', q); resolve(null); return; }
 
-    /* 核心搜索函数（支持用不同关键词重试） */
-    function doSearch(keyword, isFallback){
-      var target = 'https://fundsuggest.eastmoney.com/FundSearch/api/FundSearchAPI.ashx?callback=&m=1&key=' + encodeURIComponent(keyword);
-      var url = apiUrl('/api/eastmoney/proxy?url=' + encodeURIComponent(target));
-      console.log('[lookupFundCode]', isFallback ? '[降级]' : '', '查询:', keyword);
-      return fetch(url, { headers: { 'Accept': 'application/json' } })
+    /* 构建东方财富搜索 URL */
+    function buildUrl(keyword){
+      return 'https://fundsuggest.eastmoney.com/FundSearch/api/FundSearchAPI.ashx?callback=&m=1&key=' + encodeURIComponent(keyword);
+    }
+
+    /* 核心搜索函数 */
+    function doSearch(keyword, useProxy){
+      var target = buildUrl(keyword);
+      var url = useProxy ? apiUrl('/api/eastmoney/proxy?url=' + encodeURIComponent(target)) : target;
+      var opts = useProxy ? { headers: { 'Accept': 'application/json' } } : { headers: { 'Accept': 'application/json' }, mode: 'cors' };
+      console.log('[lookupFundCode]', useProxy ? '[代理]' : '[直连]', '查询:', keyword);
+      return fetch(url, opts)
         .then(function(r){
           if(!r.ok) throw new Error('HTTP ' + r.status);
           return r.text();
         })
         .then(function(txt){
-          if(!txt || txt.indexOf('"error"') >= 0) return null;
-          var data; try { data = JSON.parse(txt); } catch(e){ return null; }
+          if(!txt || txt.indexOf('"error"') >= 0 || txt.indexOf('<!') >= 0) return [];
+          var data; try { data = JSON.parse(txt); } catch(e){ return []; }
           return (data && data.Datas) || [];
-        });
+        })
+        .catch(function(e){ console.warn('[lookupFundCode]', useProxy?'代理':'直连', '失败:', e.message); return []; });
     }
 
-    /* 从候选列表中选最佳匹配 */
+    /* 从候选列表中选最佳匹配（降低阈值确保短名也能命中） */
     function pickBest(ds, queryName){
       if(!ds || !ds.length) return null;
       var cands = [];
       ds.forEach(function(d){
         var cand = d.NAME || d.SHORTNAME || '';
         var sc = fundNameScore(queryName, cand);
-        if(sc >= 0.35) cands.push({ d: d, name: cand, score: sc });
+        if(sc >= 0.3) cands.push({ d: d, name: cand, score: sc });
       });
       if(!cands.length) return null;
       /* 优先匹配份额后缀 */
@@ -7170,15 +7237,15 @@ function lookupFundCodeByName(name){
         var suffMatch = cands.filter(function(c){ return (c.name || '').slice(-1) === suffix; });
         if(suffMatch.length){
           suffMatch.forEach(function(c){ if(c.score > bestScore){ bestScore = c.score; best = c.d; } });
-          if(best && bestScore >= 0.45){
+          if(best && bestScore >= 0.4){
             var code = normalizeFundCode(best.CODE || best.FCODE || best._id || '');
             return code ? { code: code, name: best.NAME || best.SHORTNAME, score: bestScore } : null;
           }
         }
       }
-      /* 选最高分 */
+      /* 选最高分（阈值降到 0.45） */
       cands.forEach(function(c){ if(c.score > bestScore){ bestScore = c.score; best = c.d; } });
-      if(best && bestScore >= 0.5){
+      if(best && bestScore >= 0.45){
         var code = normalizeFundCode(best.CODE || best.FCODE || best._id || '');
         return code ? { code: code, name: best.NAME || best.SHORTNAME, score: bestScore } : null;
       }
@@ -7187,53 +7254,69 @@ function lookupFundCodeByName(name){
 
     var done = false;
     function finish(v){ if(!done){ done = true; resolve(v); } }
-    var timer = setTimeout(function(){ console.warn('[lookupFundCode] 总超时 name=', q); finish(null); }, 12000);
+    var timer = setTimeout(function(){ console.warn('[lookupFundCode] 总超时 name=', q); finish(null); }, 15000);
 
-    /* 第一步：精确搜索（用完整名称） */
+    /* ===== 主流程：先直连东方财富，失败再用服务器代理 ===== */
+
+    /* 第一步：直连东方财富（CORS，大部分浏览器允许） */
     doSearch(q, false).then(function(ds){
       if(done) return;
       var result = pickBest(ds, q);
-      if(result){ clearTimeout(timer); return finish(result); }
-      /* 第二步：降级——用名称前缀(2~5字)重新搜索 */
+      if(result){ clearTimeout(timer); console.log('[lookupFundCode] ✓ 直连命中:', result.name); return finish(result); }
+
+      /* 第二步：直连精确未命中 → 前缀降级（仍用直连） */
       var prefixes = [];
       if(q.length >= 5) prefixes.push(q.slice(0, 5));
       if(q.length >= 4) prefixes.push(q.slice(0, 4));
       if(q.length >= 3) prefixes.push(q.slice(0, 3));
       if(q.length >= 2) prefixes.push(q.slice(0, 2));
-      /* 去重 */
       prefixes = prefixes.filter(function(p, i){ return prefixes.indexOf(p) === i; });
 
-      console.log('[lookupFundCode] 精确未命中，尝试前缀降级:', prefixes.join('/'));
-      /* 串行尝试每个前缀，找到就停 */
+      console.log('[lookupFundCode] 直连精确未命中，前缀降级:', prefixes.join('/'));
       var pi = 0;
-      function tryPrefix(){
-        if(pi >= prefixes.length || done){ if(!done) finish(null); return; }
-        doSearch(prefixes[pi], true).then(function(ds2){
+      function tryPrefixDirect(){
+        if(pi >= prefixes.length || done){
+          /* 第三步：全部直连失败 → 切换到服务器代理重试完整名称 */
+          if(!done) tryProxyFull();
+          return;
+        }
+        doSearch(prefixes[pi], false).then(function(ds2){
           if(done) return;
-          var result2 = pickBest(ds2, q); /* 仍用原始全名打分 */
-          if(result2){
-            console.log('[lookupFundCode] ✓ 前缀"', prefixes[pi], '"命中:', result2.name, '(' + result2.score.toFixed(2) + ')');
-            clearTimeout(timer); return finish(result2);
+          var r2 = pickBest(ds2, q);
+          if(r2){
+            console.log('[lookupFundCode] ✓ 直连前缀"', prefixes[pi], '"命中:', r2.name, '(' + r2.score.toFixed(2) + ')');
+            clearTimeout(timer); return finish(r2);
           }
-          pi++; tryPrefix();
-        }).catch(function(){ pi++; tryPrefix(); });
+          pi++; tryPrefixDirect();
+        }).catch(function(){ pi++; tryPrefixDirect(); });
       }
-      tryPrefix();
-    }).catch(function(err){
-      console.warn('[lookupFundCode] 搜索异常:', err && err.message);
-      /* 兜底：直接请求东方财富 */
-      var target = 'https://fundsuggest.eastmoney.com/FundSearch/api/FundSearchAPI.ashx?callback=&m=1&key=' + encodeURIComponent(q);
-      fetch(target, { headers: { 'Accept': 'application/json' }, mode: 'cors' })
-        .then(function(r){ if(!r.ok) throw new Error('HTTP'+r.status); return r.text(); })
-        .then(function(txt){
-          if(done) return;
-          if(txt.indexOf('"error"') >= 0 || !txt) return finish(null);
-          var data; try { data = JSON.parse(txt); } catch(e){ return finish(null); }
-          var ds = (data && data.Datas) || [];
-          var result = pickBest(ds, q);
-          if(result){ clearTimeout(timer); finish(result); } else { finish(null); }
-        }).catch(function(){ if(!done) finish(null); });
+      tryPrefixDirect();
     });
+
+    /* 第三步：服务器代理兜底（直连全部失败时） */
+    function tryProxyFull(){
+      if(!hasSameOriginApi()){ finish(null); return; }
+      console.log('[lookupFundCode] 直连全败，切换服务器代理...');
+      doSearch(q, true).then(function(ds){
+        if(done) return;
+        var r = pickBest(ds, q);
+        if(r){ clearTimeout(timer); console.log('[lookupFundCode] ✓ 代理命中:', r.name); return finish(r); }
+        /* 代理也用前缀降级 */
+        var pfx = [];
+        if(q.length >= 3) pfx.push(q.slice(0, 3));
+        if(q.length >= 2) pfx.push(q.slice(0, 2));
+        var pj = 0;
+        function tryProxyPfx(){
+          if(pj >= pfx.length || done){ finish(null); return; }
+          doSearch(pfx[pj], true).then(function(ds2){
+            if(done) return;
+            var r2 = pickBest(ds2, q);
+            if(r2){ clearTimeout(timer); finish(r2); } else { pj++; tryProxyPfx(); }
+          }).catch(function(){ pj++; tryProxyPfx(); });
+        }
+        tryProxyPfx();
+      });
+    }
   });
 }
 /* 在已有持仓中按名称查找基金索引 */
