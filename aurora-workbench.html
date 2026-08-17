@@ -4008,7 +4008,7 @@ function loadXwlb(force){
     }
     /* GitHub 没抓到 → 尝试从服务器本地文件恢复（Redis 清空后的磁盘兜底） */
     fetchXwlbFromServerLocal(date, function(localData){
-      if(localData && localData.summary){
+      if(localData && (localData.summary || (localData.titles && localData.titles.length))){
         saveXwlbCache(localData);
         renderXwlb(localData, '本地恢复');
         renderXwlbHistory();
@@ -4124,27 +4124,41 @@ function renderXwlb(data, sourceLabel){
   document.getElementById('xwlbDate').textContent = date;
   document.getElementById('xwlbSource').textContent = sourceLabel || '—';
   var dot = document.getElementById('xwlbDot');
-  dot.className = 'xwlb-dot ' + (data.summary ? 'ok' : 'warn');
+  dot.className = 'xwlb-dot ' + (data.summary ? 'ok' : ((data.titles && data.titles.length) ? 'warn' : 'warn'));
   var body = document.getElementById('xwlbBody');
-  if(!data.summary){
-    body.innerHTML = '<div class="xwlb-raw"><div class="xwlb-note">' + escapeHtml(data.note || '暂无 AI 总结，请配置通义千问 Key 后刷新，或手动粘贴节目单生成。') + '</div></div>';
-    setXwlbStatus(data.note ? 'ℹ ' + data.note : '', 'info');
+  /* 有 summary → 正常渲染 */
+  if(data.summary){
+    var s = data.summary;
+    var html = '';
+    if(s.lead) html += '<div class="xwlb-lead">📌 ' + escapeHtml(cleanXwlbText(s.lead)) + '</div>';
+    if(Array.isArray(s.groups)){
+      html += s.groups.map(function(g){
+        var items = (g.items || []).map(function(it){
+          return '<li><b>' + escapeHtml(cleanXwlbText(it.title || '')) + '</b>' + (it.point ? ' — ' + escapeHtml(cleanXwlbText(it.point)) : '') + '</li>';
+        }).join('');
+        return '<div class="xwlb-group"><div class="xwlb-group-cat">' + escapeHtml(cleanXwlbText(g.category || '')) + '</div><ul class="xwlb-group-items">' + items + '</ul></div>';
+      }).join('');
+    }
+    body.innerHTML = html;
+    setXwlbStatus('', '');
     refreshXwlbInvestPanel(date);
     return;
   }
-  var s = data.summary;
-  var html = '';
-  if(s.lead) html += '<div class="xwlb-lead">📌 ' + escapeHtml(cleanXwlbText(s.lead)) + '</div>';
-  if(Array.isArray(s.groups)){
-    html += s.groups.map(function(g){
-      var items = (g.items || []).map(function(it){
-        return '<li><b>' + escapeHtml(cleanXwlbText(it.title || '')) + '</b>' + (it.point ? ' — ' + escapeHtml(cleanXwlbText(it.point)) : '') + '</li>';
-      }).join('');
-      return '<div class="xwlb-group"><div class="xwlb-group-cat">' + escapeHtml(cleanXwlbText(g.category || '')) + '</div><ul class="xwlb-group-items">' + items + '</ul></div>';
-    }).join('');
+  /* 无 summary 但有原始条目 → 显示条目列表 + 补录按钮 */
+  if(data.titles && data.titles.length){
+    var itemsHtml = '<div class="xwlb-note" style="margin-bottom:8px">ℹ 已有 <b>' + data.titles.length + '</b> 条新闻标题，暂无 AI 总结。</div>';
+    itemsHtml += '<div class="xwlb-raw"><ul style="margin:0;padding-left:18px">';
+    itemsHtml += data.titles.map(function(t){ return '<li>' + escapeHtml(cleanXwlbText(t)) + '</li>'; }).join('');
+    itemsHtml += '</ul></div>';
+    itemsHtml += '<div style="margin-top:10px;text-align:center"><button onclick="summarizeXwlbManual(\'' + date + '\')" style="padding:6px 20px;cursor:pointer;border-radius:6px;border:1px solid #0ea5e9;background:#0ea5e9;color:#fff;font-size:13px">✨ 生成 ' + date.slice(5) + ' 总结</button></div>';
+    body.innerHTML = itemsHtml;
+    setXwlbStatus('ℹ 有 ' + data.titles.length + ' 条标题，可点击下方按钮生成总结', 'info');
+    refreshXwlbInvestPanel(date);
+    return;
   }
-  body.innerHTML = html;
-  setXwlbStatus('', '');
+  /* 完全无数据 */
+  body.innerHTML = '<div class="xwlb-raw"><div class="xwlb-note">' + escapeHtml(data.note || '暂无 AI 总结，请配置通义千问 Key 后刷新，或手动粘贴节目单生成。') + '</div></div>';
+  setXwlbStatus(data.note ? 'ℹ ' + data.note : '', 'info');
   refreshXwlbInvestPanel(date);
 }
 function setXwlbStatus(msg, type){
@@ -4178,20 +4192,34 @@ function summarizeXwlbManual(date){
   date = date || getXwlbToday();
   var ta = document.getElementById('xwlbManualInput');
   var text = (ta.value || '').trim();
-  if(!text){ toast('请先粘贴节目单'); return; }
+  /* 优先使用已有标题（从缓存中的数据），其次才用手动输入 */
+  var cached = DB.xwlb.cache[date];
+  if(!text && cached && cached.titles && cached.titles.length){
+    text = cached.titles.join('\n');
+  }
+  if(!text){ toast('请先粘贴节目单，或等待数据加载'); return; }
   if(!configuredEngines().length){ toast('请先在「☁ 数据同步 → 🤖 AI 引擎配置」配置任一 AI Key'); return; }
   var btn = document.getElementById('xwlbManualBtn');
   if(btn){ btn.disabled = true; btn.textContent = '⏳ 生成中…'; }
+  var existingTitles = (cached && cached.titles) || [];
   callText(text,
     '你是资深新闻编辑，把以下《新闻联播》节目单整理成结构化每日总结，严格只输出如下 JSON（不要任何额外文字）：{"lead":"一句话导语（20字以内）","groups":[{"category":"分类名（如：国内要闻/经济发展/国际动态/社会民生/其他）","items":[{"title":"原标题","point":"一句话要点（30字以内）"}]}]}',
     'qwen-plus')
     .then(function(summary){
+      var allTitles = text.split(/\n+/).map(function(s){ return s.trim(); }).filter(Boolean);
+      /* 保留已有标题（去重合并） */
+      if(existingTitles.length){
+        var titleMap = {};
+        existingTitles.forEach(function(t){ titleMap[t] = 1; });
+        allTitles.forEach(function(t){ titleMap[t] = 1; });
+        allTitles = Object.keys(titleMap);
+      }
       var data = {
         date: date,
-        titles: text.split(/\n+/).map(function(s){ return s.trim(); }).filter(Boolean),
+        titles: allTitles,
         summary: summary,
         generatedAt: new Date().toISOString(),
-        note: '手动生成'
+        note: cached && cached.titles && cached.titles.length ? 'AI 补录总结' : '手动生成'
       };
       saveXwlbCache(data);
       currentXwlbView = data.date;
@@ -4290,7 +4318,7 @@ function viewXwlbDate(d){
     }
     /* GitHub 没有 → 尝试服务器本地文件 */
     fetchXwlbFromServerLocal(d, function(localData){
-      if(localData && localData.summary){
+      if(localData && (localData.summary || (localData.titles && localData.titles.length))){
         saveXwlbCache(localData);
         renderXwlb(localData, '本地恢复');
         refreshXwlbInvestPanel(d);
@@ -7189,7 +7217,7 @@ function fundNameScore(a, b){
   return jaccard;
 }
 /* 按基金名称反查真实代码（东方财富基金搜索）
- * 策略：直接请求东方财富优先（该API支持CORS），服务器代理做兜底。
+ * 四层策略：JSONP(绕CORS) → 直连fetch(CORS) → 服务器代理 → 硬编码兜底
  * 精确搜索无结果时自动用名称前缀(2~5字)降级重试。 */
 function lookupFundCodeByName(name){
   return new Promise(function(resolve){
@@ -7198,36 +7226,104 @@ function lookupFundCodeByName(name){
 
     /* 构建东方财富搜索 URL */
     function buildUrl(keyword){
-      return 'https://fundsuggest.eastmoney.com/FundSearch/api/FundSearchAPI.ashx?callback=&m=1&key=' + encodeURIComponent(keyword);
+      return 'https://fundsuggest.eastmoney.com/FundSearch/api/FundSearchAPI.ashx?m=1&key=' + encodeURIComponent(keyword);
     }
 
-    /* 核心搜索函数 */
-    function doSearch(keyword, useProxy){
+    /* ===== 第一层：JSONP（完全绕过 CORS，最可靠） ===== */
+    function doJsonp(keyword){
+      return new Promise(function(res){
+        var cbName = '_jsonp_' + Date.now() + '_' + Math.floor(Math.random()*9999);
+        var url = buildUrl(keyword) + '&callback=' + cbName;
+        var timer = setTimeout(function(){
+          cleanup(); res([]);
+        }, 8000);
+        function cleanup(){
+          window[cbName] = undefined;
+          try { delete window[cbName]; } catch(e){}
+          if(scr && scr.parentNode) scr.parentNode.removeChild(scr);
+        }
+        var scr = document.createElement('script');
+        window[cbName] = function(data){
+          clearTimeout(timer);
+          cleanup();
+          res((data && data.Datas) || []);
+        };
+        scr.src = url;
+        scr.onerror = function(){ clearTimeout(timer); cleanup(); res([]); };
+        (document.head || document.documentElement).appendChild(scr);
+      });
+    }
+
+    /* 第二层：直连 fetch（CORS，部分浏览器允许） */
+    function doFetch(keyword){
       var target = buildUrl(keyword);
-      var url = useProxy ? apiUrl('/api/eastmoney/proxy?url=' + encodeURIComponent(target)) : target;
-      var opts = useProxy ? { headers: { 'Accept': 'application/json' } } : { headers: { 'Accept': 'application/json' }, mode: 'cors' };
-      console.log('[lookupFundCode]', useProxy ? '[代理]' : '[直连]', '查询:', keyword);
-      return fetch(url, opts)
-        .then(function(r){
-          if(!r.ok) throw new Error('HTTP ' + r.status);
-          return r.text();
-        })
+      return fetch(target, { headers: { 'Accept': 'application/json' }, mode: 'cors' })
+        .then(function(r){ if(!r.ok) throw new Error('HTTP'+r.status); return r.text(); })
         .then(function(txt){
           if(!txt || txt.indexOf('"error"') >= 0 || txt.indexOf('<!') >= 0) return [];
           var data; try { data = JSON.parse(txt); } catch(e){ return []; }
           return (data && data.Datas) || [];
         })
-        .catch(function(e){ console.warn('[lookupFundCode]', useProxy?'代理':'直连', '失败:', e.message); return []; });
+        .catch(function(){ return []; });
     }
 
-    /* 从候选列表中选最佳匹配（降低阈值确保短名也能命中） */
+    /* 第三层：服务器代理 */
+    function doProxy(keyword){
+      if(!hasSameOriginApi()) return Promise.resolve([]);
+      var target = buildUrl(keyword);
+      var url = apiUrl('/api/eastmoney/proxy?url=' + encodeURIComponent(target));
+      return fetch(url, { headers: { 'Accept': 'application/json' } })
+        .then(function(r){ if(!r.ok) throw new Error('HTTP'+r.status); return r.text(); })
+        .then(function(txt){
+          if(!txt || txt.indexOf('"error"') >= 0) return [];
+          var data; try { data = JSON.parse(txt); } catch(e){ return []; }
+          return (data && data.Datas) || [];
+        })
+        .catch(function(){ return []; });
+    }
+
+    /* 第四层：硬编码常用基金名→代码兜底映射 */
+    function hardcodedFallback(query){
+      query = sanitizeText(query).replace(/[CAB\s]/g, '').toLowerCase();
+      var map = [
+        /* 嘉实系列 */
+        { kw:['嘉实绿色主题'], code:'017745', name:'嘉实绿色主题股票发起式证券投资基金C' },
+        { kw:['嘉实上证科创'], code:'019708', name:'嘉实上证科创板100ETF发起式A' },
+        { kw:['嘉实品质发现'], code:'019522', name:'嘉实品质发现股票发起式A' },
+        /* 银华系列 */
+        { kw:['银华海外数字'], code:'016844', name:'银华海外数字混合A' },
+        { kw:['银华中小盘精','银华中小盘精选'], code:'016081', name:'银华中小盘精选混合A' },
+        /* 其他常见 */
+        { kw:['易方达蓝筹'], code:'005827', name:'易方达蓝筹精选混合' },
+        { kw:['易方达中小盘'], code:'110011', name:'易方达中小盘混合' },
+        { kw:['招商中证白酒'], code:'161725', name:'招商中证白酒指数分级' },
+        { kw:['招商中证电池'], code:'012414', name:'招商中证电池主题ETF发起式A' },
+        { kw:['中欧医疗健康'], code:'003095', name:'中欧医疗健康混合A' },
+        { kw:['诺安成长混合'], code:'007007', name:'诺安成长混合' },
+        { kw:['兴全合润'], code:'163406', name:'兴全合润分级混合' },
+        { kw:['富国天惠'], code:'161005', name:'富国天惠成长混合A' },
+        { kw:['广发稳健增长'], code:'270002', name:'广发稳健增长混合' },
+        { kw:['景顺长城新兴成长'], code:'260108', name:'景顺长城新兴成长混合' },
+      ];
+      for(var i = 0; i < map.length; i++){
+        for(var j = 0; j < map[i].kw.length; j++){
+          if(query.indexOf(map[i].kw[j]) >= 0 || map[i].kw[j].indexOf(query) >= 0){
+            console.log('[lookupFundCode] ✓ 硬编码命中:', query, '→', map[i].code, map[i].name);
+            return { code: map[i].code, name: map[i].name, score: 1.0 };
+          }
+        }
+      }
+      return null;
+    }
+
+    /* 从候选列表中选最佳匹配 */
     function pickBest(ds, queryName){
       if(!ds || !ds.length) return null;
       var cands = [];
       ds.forEach(function(d){
         var cand = d.NAME || d.SHORTNAME || '';
         var sc = fundNameScore(queryName, cand);
-        if(sc >= 0.3) cands.push({ d: d, name: cand, score: sc });
+        if(sc >= 0.25) cands.push({ d: d, name: cand, score: sc });
       });
       if(!cands.length) return null;
       /* 优先匹配份额后缀 */
@@ -7237,15 +7333,15 @@ function lookupFundCodeByName(name){
         var suffMatch = cands.filter(function(c){ return (c.name || '').slice(-1) === suffix; });
         if(suffMatch.length){
           suffMatch.forEach(function(c){ if(c.score > bestScore){ bestScore = c.score; best = c.d; } });
-          if(best && bestScore >= 0.4){
+          if(best && bestScore >= 0.35){
             var code = normalizeFundCode(best.CODE || best.FCODE || best._id || '');
             return code ? { code: code, name: best.NAME || best.SHORTNAME, score: bestScore } : null;
           }
         }
       }
-      /* 选最高分（阈值降到 0.45） */
+      /* 选最高分（阈值降到 0.4） */
       cands.forEach(function(c){ if(c.score > bestScore){ bestScore = c.score; best = c.d; } });
-      if(best && bestScore >= 0.45){
+      if(best && bestScore >= 0.4){
         var code = normalizeFundCode(best.CODE || best.FCODE || best._id || '');
         return code ? { code: code, name: best.NAME || best.SHORTNAME, score: bestScore } : null;
       }
@@ -7254,17 +7350,22 @@ function lookupFundCodeByName(name){
 
     var done = false;
     function finish(v){ if(!done){ done = true; resolve(v); } }
-    var timer = setTimeout(function(){ console.warn('[lookupFundCode] 总超时 name=', q); finish(null); }, 15000);
+    var timer = setTimeout(function(){
+      console.warn('[lookupFundCode] 总超时 name=', q, '→ 尝试硬编码兜底');
+      var hb = hardcodedFallback(q);
+      finish(hb || null);
+    }, 20000);
 
-    /* ===== 主流程：先直连东方财富，失败再用服务器代理 ===== */
+    /* ===== 主流程 ===== */
 
-    /* 第一步：直连东方财富（CORS，大部分浏览器允许） */
-    doSearch(q, false).then(function(ds){
+    /* 第一步：JSONP 查询（绕 CORS） */
+    console.log('[lookupFundCode] [JSONP] 查询:', q);
+    doJsonp(q).then(function(ds){
       if(done) return;
       var result = pickBest(ds, q);
-      if(result){ clearTimeout(timer); console.log('[lookupFundCode] ✓ 直连命中:', result.name); return finish(result); }
+      if(result){ clearTimeout(timer); console.log('[lookupFundCode] ✓ JSONP命中:', result.name); return finish(result); }
 
-      /* 第二步：直连精确未命中 → 前缀降级（仍用直连） */
+      /* 第二步：JSONP 前缀降级 */
       var prefixes = [];
       if(q.length >= 5) prefixes.push(q.slice(0, 5));
       if(q.length >= 4) prefixes.push(q.slice(0, 4));
@@ -7272,47 +7373,79 @@ function lookupFundCodeByName(name){
       if(q.length >= 2) prefixes.push(q.slice(0, 2));
       prefixes = prefixes.filter(function(p, i){ return prefixes.indexOf(p) === i; });
 
-      console.log('[lookupFundCode] 直连精确未命中，前缀降级:', prefixes.join('/'));
+      console.log('[lookupFundCode] JSONP精确未命中，前缀降级:', prefixes.join('/'));
       var pi = 0;
-      function tryPrefixDirect(){
+      function tryPrefixJsonp(){
         if(pi >= prefixes.length || done){
-          /* 第三步：全部直连失败 → 切换到服务器代理重试完整名称 */
-          if(!done) tryProxyFull();
+          if(!done) tryFetchFull();
           return;
         }
-        doSearch(prefixes[pi], false).then(function(ds2){
+        doJsonp(prefixes[pi]).then(function(ds2){
           if(done) return;
           var r2 = pickBest(ds2, q);
           if(r2){
-            console.log('[lookupFundCode] ✓ 直连前缀"', prefixes[pi], '"命中:', r2.name, '(' + r2.score.toFixed(2) + ')');
+            console.log('[lookupFundCode] ✓ JSONP前缀"', prefixes[pi], '"命中:', r2.name);
             clearTimeout(timer); return finish(r2);
           }
-          pi++; tryPrefixDirect();
-        }).catch(function(){ pi++; tryPrefixDirect(); });
+          pi++; tryPrefixJsonp();
+        });
       }
-      tryPrefixDirect();
+      tryPrefixJsonp();
     });
 
-    /* 第三步：服务器代理兜底（直连全部失败时） */
+    /* 第三步：fetch 直连 */
+    function tryFetchFull(){
+      if(done) return;
+      console.log('[lookupFundCode] [fetch] 尝试直连:', q);
+      doFetch(q).then(function(ds){
+        if(done) return;
+        var r = pickBest(ds, q);
+        if(r){ clearTimeout(timer); console.log('[lookupFundCode] ✓ fetch命中:', r.name); return finish(r); }
+        /* fetch 前缀 */
+        var pfx = [];
+        if(q.length >= 3) pfx.push(q.slice(0, 3));
+        if(q.length >= 2) pfx.push(q.slice(0, 2));
+        var fi = 0;
+        function tryFetchPfx(){
+          if(fi >= pfx.length || done){ if(!done) tryProxyFull(); return; }
+          doFetch(pfx[fi]).then(function(ds2){
+            if(done) return;
+            var r2 = pickBest(ds2, q);
+            if(r2){ clearTimeout(timer); finish(r2); } else { fi++; tryFetchPfx(); }
+          });
+        }
+        tryFetchPfx();
+      });
+    }
+
+    /* 第四步：服务器代理 */
     function tryProxyFull(){
-      if(!hasSameOriginApi()){ finish(null); return; }
-      console.log('[lookupFundCode] 直连全败，切换服务器代理...');
-      doSearch(q, true).then(function(ds){
+      if(done) return;
+      console.log('[lookupFundCode] [代理] 尝试服务器代理:', q);
+      doProxy(q).then(function(ds){
         if(done) return;
         var r = pickBest(ds, q);
         if(r){ clearTimeout(timer); console.log('[lookupFundCode] ✓ 代理命中:', r.name); return finish(r); }
-        /* 代理也用前缀降级 */
+        /* 代理前缀 */
         var pfx = [];
         if(q.length >= 3) pfx.push(q.slice(0, 3));
         if(q.length >= 2) pfx.push(q.slice(0, 2));
         var pj = 0;
         function tryProxyPfx(){
-          if(pj >= pfx.length || done){ finish(null); return; }
-          doSearch(pfx[pj], true).then(function(ds2){
+          if(pj >= pfx.length || done){
+            /* 第五步：全部失败 → 硬编码兜底 */
+            if(!done){
+              console.log('[lookupFundCode] API全部失败，尝试硬编码兜底');
+              var hb = hardcodedFallback(q);
+              finish(hb);
+            }
+            return;
+          }
+          doProxy(pfx[pj]).then(function(ds2){
             if(done) return;
             var r2 = pickBest(ds2, q);
             if(r2){ clearTimeout(timer); finish(r2); } else { pj++; tryProxyPfx(); }
-          }).catch(function(){ pj++; tryProxyPfx(); });
+          });
         }
         tryProxyPfx();
       });
@@ -7381,7 +7514,7 @@ function renderImportPreview(list){
   } else {
     /* 校正数为0时显示诊断信息：帮助排查为什么没校正 */
     var hasNames = list.filter(function(x){ return x.name; }).length;
-    hintHtml += '<div style="font-size:11px;color:#888;margin-bottom:6px;background:#f5f5f5;padding:6px 8px;border-radius:4px;">🔍 代码校正：已尝试对 ' + hasNames + ' 只基金反查东方财富真实代码，但未匹配到更优结果。请按 F12 打开控制台查看 [lookupFundCode] 日志了解详情（可能原因：服务器代理不可达/东方财富API无结果/名称太短）。</div>';
+    hintHtml += '<div style="font-size:11px;color:#888;margin-bottom:6px;background:#f5f5f5;padding:6px 8px;border-radius:4px;">🔍 代码校正：已尝试对 ' + hasNames + ' 只基金反查代码（JSONP→直连→代理→硬编码兜底），但未匹配到。请按 F12 查看 [lookupFundCode] 日志。若名称被截断可手动补代码。</div>';
   }
   box.innerHTML = '<div class="card-title" style="font-size:14px;">识别预览（共 ' + list.length + ' 只，请核对，可修改后导入）</div>' +
     hintHtml +
