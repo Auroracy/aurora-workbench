@@ -2288,6 +2288,8 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
       .fund-tbl td:nth-child(4){min-width:78px;text-align:right;}
       /* 持有收益列允许换行以容纳操作按钮 */
       .fund-tbl td:nth-child(5){white-space:normal;min-width:100px;}
+      /* 手机端显示持有收益列内的操作按钮 */
+      .show-mobile-op{display:flex !important;}
     }
     .chip{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;margin:1px 2px;background:#e8f3f1;color:#15A49B;}
     .chip.theme{background:#eaf1fb;color:#2E86C1;}
@@ -2460,7 +2462,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
         <button class="tab-btn" data-mode="manual" onclick="switchFundImport('manual')">✏️ 手动添加</button>
       </div>
       <div id="importShot" class="import-pane">
-        <p class="text-sm text-muted">上传券商 App 的持仓截图，通义千问自动识别基金代码 / 名称 / 份额 / 成本价（需已配置通义千问 Key）。</p>
+        <p class="text-sm text-muted">上传券商 App 的持仓截图，AI 自动识别基金代码 / 名称 / 份额 / 成本价（需已配置 AI 引擎 Key）。</p>
         <input type="file" id="fundScreenshotInput" accept="image/*" multiple onchange="onFundScreenshot(this)">
         <div id="fundShotThumbs" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;"></div>
         <div id="fundShotHint" class="text-sm text-muted" style="margin-top:6px;"></div>
@@ -2905,7 +2907,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
   </div>
 
   <div class="xwlb-fallback" id="xwlbFallback" style="display:none;">
-    <div class="xwlb-fallback-tip">自动抓取（前端代理）不可达。可手动粘贴当天《新闻联播》节目单，由通义千问生成总结：</div>
+    <div class="xwlb-fallback-tip">自动抓取（前端代理）不可达。可手动粘贴当天《新闻联播》节目单，由 AI 引擎生成总结：</div>
     <textarea id="xwlbManualInput" class="xwlb-manual-input" placeholder="每行一条，例如：&#10;【新思想引领新征程】服务消费扩容升级 激发内需新活力&#10;今年前7个月我国货物贸易进出口超30万亿元&#10;大面积单产提升持续加力 夯实秋粮稳产基础"></textarea>
     <button class="btn btn-primary btn-sm" id="xwlbManualBtn" onclick="summarizeXwlbManual(this.getAttribute('data-target-date'))">✨ 生成总结</button>
   </div>
@@ -4074,14 +4076,16 @@ function fetchXwlbDirect(date){
     }).then(function(html){
       var titles = parseXwlbHtml(html);
       if(!titles.length) throw new Error('未解析到节目单');
-      if(!getQwenKey()){
-        setXwlbStatus('ℹ 已抓到节目单，但缺少通义千问 Key。请到左下角「☁ 数据同步 → 🤖 AI 引擎配置」填写 Key 后刷新，即可生成 AI 总结。', 'info');
+      /* 用用户已配置的任意可用引擎生成总结（不再硬编码 qwen-plus） */
+      var availEngines = configuredEngines();
+      if(!availEngines.length){
+        setXwlbStatus('ℹ 已抓到 ' + titles.length + ' 条节目单，但未配置任何 AI 引擎 Key。请到左下角「☁ 数据同步 → 🤖 AI 引擎配置」填写 Key 后刷新。', 'info');
         document.getElementById('xwlbFallback').style.display = 'block';
         return;
       }
-      setXwlbStatus('⏳ 已抓到 ' + titles.length + ' 条，AI 生成总结中…', 'loading');
-      callText(titles.join('\n'), XWLB_SYS_PROMPT, 'qwen-plus').then(function(summary){
-        var d = { date: date, titles: titles, summary: summary, generatedAt: new Date().toISOString(), note: (isServerProxy ? '服务器代理' : '前端代理') + ' + 通义千问' };
+      setXwlbStatus('⏳ 已抓到 ' + titles.length + ' 条，AI（' + AI_ENGINES[availEngines[0]].label + '）生成总结中…', 'loading');
+      callText(titles.join('\n'), XWLB_SYS_PROMPT).then(function(summary){
+        var d = { date: date, titles: titles, summary: summary, generatedAt: new Date().toISOString(), note: (isServerProxy ? '服务器代理' : '前端代理') + ' + ' + AI_ENGINES[configuredEngines()[0] || 'qwen'].label };
         saveXwlbCache(d); renderXwlb(d, isServerProxy ? '服务器代理' : '前端自动'); renderXwlbHistory();
       }).catch(function(err){
         setXwlbStatus('⚠ AI 总结生成失败：' + (err && err.message ? err.message : err) + '。可手动粘贴节目单重试。', 'error');
@@ -4091,7 +4095,7 @@ function fetchXwlbDirect(date){
   }
 }
 function afterDirectFail(date){
-  setXwlbStatus('⚠ 自动抓取失败（代理不可达或央视页面异常）。可手动粘贴节目单，由通义千问生成总结。', 'error');
+  setXwlbStatus('⚠ 自动抓取失败（代理不可达或央视页面异常）。可手动粘贴节目单，由 AI 引擎生成总结。', 'error');
   document.getElementById('xwlbFallback').style.display = 'block';
 }
 function fetchWithTimeoutXwlb(url, ms){
@@ -4156,7 +4160,7 @@ function renderXwlb(data, sourceLabel){
     return;
   }
   /* 完全无数据 */
-  body.innerHTML = '<div class="xwlb-raw"><div class="xwlb-note">' + escapeHtml(data.note || '暂无 AI 总结，请配置通义千问 Key 后刷新，或手动粘贴节目单生成。') + '</div></div>';
+  body.innerHTML = '<div class="xwlb-raw"><div class="xwlb-note">' + escapeHtml(data.note || '暂无 AI 总结，请配置 AI 引擎 Key 后刷新，或手动粘贴节目单生成。') + '</div></div>';
   setXwlbStatus(data.note ? 'ℹ ' + data.note : '', 'info');
   refreshXwlbInvestPanel(date);
 }
@@ -4329,7 +4333,7 @@ function enterXwlbHistoryEditMode(d){
   document.getElementById('xwlbInvestStatus').textContent = '';
   var fb = document.getElementById('xwlbFallback');
   var tip = fb.querySelector('.xwlb-fallback-tip');
-  if(tip){ tip.innerHTML = '<b>' + d + '</b> 暂无总结。可手动粘贴当天《新闻联播》节目单，由通义千问生成：'; }
+  if(tip){ tip.innerHTML = '<b>' + d + '</b> 暂无总结。可手动粘贴当天《新闻联播》节目单，由 AI 引擎生成：'; }
   var btn = document.getElementById('xwlbManualBtn');
   if(btn){
     btn.textContent = '✨ 生成 ' + d.slice(5) + ' 总结';
@@ -4408,20 +4412,21 @@ function generateXwlbInvest(){
     renderXwlbInvest(res, res.source);
     if(btn){ btn.disabled = false; btn.textContent = '📊 生成投资分析'; }
   };
-  if(!getQwenKey()){
+  var avail = configuredEngines();
+  if(!avail.length){
     done({ date: date, themes: matchThemesByKeyword(text), generatedAt: new Date().toISOString(), source: '关键词匹配' });
     return;
   }
   var themeList = Object.keys(THEME_FUNDS).map(function(k){ return k + '=' + THEME_FUNDS[k].label; }).join('；');
   var sys = '你是宏观策略分析师。根据下方《新闻联播》每日总结，判断其中蕴含的可投资方向，并为每个方向写一句话投资逻辑。严格只输出如下 JSON（不要任何额外文字）：{"themes":[{"key":"<必须且只能从上述主题列表的key中选一个>","reason":"一句话投资逻辑（30字以内）","level":"高/中/低"}]}';
   var user = '可选主题列表（key=标签）：' + themeList + '\n\n《新闻联播》每日总结：\n' + text;
-  setXwlbInvestStatus('⏳ AI 分析中…', 'loading');
-  callText(user, sys, 'qwen-plus').then(function(out){
+  setXwlbInvestStatus('⏳ AI（' + AI_ENGINES[avail[0]].label + '）分析中…', 'loading');
+  callText(user, sys).then(function(out){
     var themes = ((out && out.themes) || []).map(function(t){
       var k = normalizeThemeKey(t.key);
       return { key: k, reason: t.reason || '', level: t.level || '中' };
     }).filter(function(t){ return t.key && THEME_FUNDS[t.key]; });
-    done({ date: date, themes: themes, generatedAt: new Date().toISOString(), source: '通义千问' });
+    done({ date: date, themes: themes, generatedAt: new Date().toISOString(), source: AI_ENGINES[avail[0]].label });
   }).catch(function(err){
     setXwlbInvestStatus('⚠ AI 分析失败：' + (err && err.message ? err.message : err) + '。已改用关键词兜底。', 'error');
     done({ date: date, themes: matchThemesByKeyword(text), generatedAt: new Date().toISOString(), source: '关键词匹配(兜底)' });
@@ -6779,7 +6784,7 @@ function detectBatchFakeCodes(list){
 }
 
 /* ============ 基金指标计算 ============ */
-function fundNav(f){ return f.navManual ? parseFloat(f.navManual) : (f.val && f.val.gsz ? parseFloat(f.val.gsz) : 0); }
+function fundNav(f){ var v = f.navManual ? parseFloat(f.navManual) : (f.val && f.val.gsz ? parseFloat(f.val.gsz) : 0); return isNaN(v) ? 0 : v; }
 
 /* 写入基金估值/净值数据，并追踪前一日确认净值(prevDwjz)用于计算昨日收益 */
 function applyFundVal(f, d){
@@ -6797,8 +6802,8 @@ function applyFundVal(f, d){
 function computeFundMetrics(f){
   var nav = fundNav(f);  /* 市值用实时估值gsz（盘中）/手动净值 */
   var gsz = nav;
-  var dwjz = (f.val && f.val.dwjz != null && f.val.dwjz !== '') ? parseFloat(f.val.dwjz) : 0;
-  var prevDwjz = (f.val && f.val.prevDwjz != null && f.val.prevDwjz !== '') ? parseFloat(f.val.prevDwjz) : 0;
+  var dwjz = (f.val && f.val.dwjz != null && f.val.dwjz !== '') ? (isNaN(parseFloat(f.val.dwjz)) ? 0 : parseFloat(f.val.dwjz)) : 0;
+  var prevDwjz = (f.val && f.val.prevDwjz != null && f.val.prevDwjz !== '') ? (isNaN(parseFloat(f.val.prevDwjz)) ? 0 : parseFloat(f.val.prevDwjz)) : 0;
   var shares = parseFloat(f.shares) || 0;
   var cost = parseFloat(f.cost) || 0;
   var mv = nav * shares;
@@ -6814,12 +6819,14 @@ function computeFundMetrics(f){
     yesterdayProfit = (dwjz - prevDwjz) * shares;
     yesterdayPct = prevDwjz > 0 ? (dwjz - prevDwjz) / prevDwjz * 100 : 0;
   } else if(dwjz > 0 && f.val && f.val.gszzl != null){
-    yesterdayPct = parseFloat(f.val.gszzl);
+    var _gz = parseFloat(f.val.gszzl);
+    if(!_gz || isNaN(_gz)) _gz = 0;
+    yesterdayPct = _gz;
     yesterdayProfit = dwjz * yesterdayPct / 100 * shares;  /* gszzl相对dwjz */
   }
-  var gszzl = (f.val && f.val.gszzl != null) ? parseFloat(f.val.gszzl) : 0;
-  return { nav: nav, gsz: gsz, dwjz: dwjz, mv: mv, ct: ct, hp: hp, hpPct: hpPct,
-           gszzl: gszzl, yesterdayProfit: yesterdayProfit, yesterdayPct: yesterdayPct };
+  var gszzl = (f.val && f.val.gszzl != null) ? (isNaN(parseFloat(f.val.gszzl)) ? 0 : parseFloat(f.val.gszzl)) : 0;
+  return { nav: nav, gsz: gsz, dwjz: dwjz, mv: isNaN(mv)?0:mv, ct: ct, hp: hp, hpPct: hpPct,
+           gszzl: gszzl, yesterdayProfit: isNaN(yesterdayProfit)?0:yesterdayProfit, yesterdayPct: yesterdayPct };
 }
 
 /* ============ 渲染基金总览/配置/列表/对比/建议 ============ */
@@ -6833,7 +6840,7 @@ function renderFunds(){
   funds.forEach(function(f){
     var m = computeFundMetrics(f); metricsArr[f.id] = m;
     if(isNaN(m.mv)) m.mv = 0;
-    totals.mv += m.mv; totals.ct += m.ct; totals.hp += m.hp; totals.yesterdayProfit += m.yesterdayProfit;
+    totals.mv += (isNaN(m.mv)?0:m.mv); totals.ct += (isNaN(m.ct)?0:m.ct); totals.hp += (isNaN(m.hp)?0:m.hp); totals.yesterdayProfit += (isNaN(m.yesterdayProfit)?0:m.yesterdayProfit);
     typeMap[f.type] = (typeMap[f.type] || 0) + m.mv;
     themeMap[f.theme] = (themeMap[f.theme] || 0) + m.mv;
   });
@@ -6843,7 +6850,7 @@ function renderFunds(){
   setText('fTotalAsset', fmtMoney(totals.mv));
   var tp = document.getElementById('fTotalProfit'); if(tp){ tp.textContent = fmtMoney(totals.hp); tp.className = 'metric-change ' + clsOf(totals.hp); }
   var tpp = document.getElementById('fTotalPct'); if(tpp){ tpp.textContent = fmtPct(totals.hpPct); tpp.className = 'metric-change ' + clsOf(totals.hpPct); }
-  var tdp = document.getElementById('fTodayProfit'); if(tdp){ tdp.textContent = (totals.yesterdayProfit >= 0 ? '+' : '') + fmtMoney(totals.yesterdayProfit); tdp.className = 'metric-value mini-num ' + clsOf(totals.yesterdayProfit); }
+  var tdp = document.getElementById('fTodayProfit'); if(tdp){ var _yp = isNaN(totals.yesterdayProfit)?0:totals.yesterdayProfit; tdp.textContent = (_yp >= 0 ? '+' : '') + fmtMoney(_yp); tdp.className = 'metric-value mini-num ' + clsOf(_yp); }
 
   renderAlloc('fAllocType', typeMap, totals.mv, '类型');
   renderAlloc('fAllocTheme', themeMap, totals.mv, '主题');
@@ -6872,29 +6879,42 @@ function renderFunds(){
     var pageFunds = funds.slice(start, start + FUND_PAGE_SIZE);
     body.innerHTML = pageFunds.map(function(f){
       var m = metricsArr[f.id];
-      var hasNav = m.nav > 0;
+      /* NaN 安全防护 */
+      var safeNav = isNaN(m.nav) ? 0 : m.nav;
+      var safeMv = isNaN(m.mv) ? 0 : m.mv;
+      var safeDwjz = isNaN(m.dwjz) ? 0 : m.dwjz;
+      var safeGszl = isNaN(m.gszzl) ? 0 : m.gszzl;
+      var safeYestP = isNaN(m.yesterdayProfit) ? 0 : m.yesterdayProfit;
+      var safeHp = isNaN(showHp) ? 0 : showHp;
+      var safeHpPct = isNaN(showHpPct) ? 0 : showHpPct;
+      var hasNav = safeNav > 0;
       var hasCost = f.cost > 0;
-      var hasGsz = (f.val && f.val.gsz != null && f.val.gsz !== '') ;
-      var hasYest = (f.val && f.val.prevDwjz != null && f.val.prevDwjz !== '') || (f.val && f.val.gszzl != null);
+      var hasGsz = (f.val && f.val.gsz != null && f.val.gsz !== '' && !isNaN(parseFloat(f.val.gsz)));
+      var hasYest = (f.val && f.val.prevDwjz != null && f.val.prevDwjz !== '') || (f.val && f.val.gszzl != null && !isNaN(parseFloat(f.val.gszzl)));
       /* 净值列来源标注：手动 / 净值日期 */
-      var navSrc = f.navManual ? '手动' : (m.dwjz > 0 ? ('净值 ' + (f.val.jzrq || '')) : '—');
+      var navSrc = f.navManual ? '手动' : (safeDwjz > 0 ? ('净值 ' + (f.val.jzrq || '')) : '—');
       /* 持有收益/率：优先用导入原始值，其次用估值计算值 */
       var showHp = (f.hpImport != null && f.hpImport !== 0) ? f.hpImport : m.hp;
       var showHpPct = (f.hpPctImport != null && f.hpPctImport !== 0) ? f.hpPctImport : m.hpPct;
       var hasHpData = hasNav || (f.hpImport != null) || (f.hpPctImport != null);
-      var hpCls = clsOf(showHp);
+      var hpCls = clsOf(safeHp);
       /* 昨日收益着色 */
-      var yestCls = m.yesterdayProfit > 0 ? 'pos' : (m.yesterdayProfit < 0 ? 'neg' : 'text-muted');
-      var yestTxt = (m.yesterdayProfit >= 0 ? '+' : '') + fmtMoney(m.yesterdayProfit);
+      var yestCls = safeYestP > 0 ? 'pos' : (safeYestP < 0 ? 'neg' : 'text-muted');
+      var yestTxt = (safeYestP >= 0 ? '+' : '') + fmtMoney(safeYestP);
       /* 估值着色 */
-      var gzCls = m.gszzl > 0 ? 'pos' : (m.gszzl < 0 ? 'neg' : 'text-muted');
-      var gzTxt = (m.gszzl >= 0 ? '+' : '') + fmtPct(m.gszzl);
+      var gzCls = safeGszl > 0 ? 'pos' : (safeGszl < 0 ? 'neg' : 'text-muted');
+      var gzTxt = (safeGszl >= 0 ? '+' : '') + fmtPct(safeGszl);
+      /* 用 data-id 属性避免 onclick 引号转义问题 */
+      var fid = String(f.id).replace(/'/g, '&#39;');
+      var opBtns = '<button class="btn btn-sm" data-fid="' + fid + '" onclick="editFund(this.dataset.fid)">编辑</button> ' +
+        '<button class="btn btn-sm" data-fid="' + fid + '" onclick="updateFundNavManual(this.dataset.fid)">净值</button> ' +
+        '<button class="btn btn-sm" style="color:#c0392b;border-color:#f5c6cb;" data-fid="' + fid + '" onclick="deleteFund(this.dataset.fid)">删</button>';
       return '<tr>' +
         '<td><b>' + escapeHtml(sanitizeText(f.name)) + '</b><br><span class="text-sm text-muted">' + f.code + '<br>' + fmtNum(f.shares) + '份</span></td>' +
         '<td class="hide-mobile"><span class="chip">' + f.type + '</span><span class="chip theme">' + cleanTheme(f.theme) + '</span></td>' +
         /* 合并列：金额(大字) + 昨日收益(基于确认净值，小字在下) */ +
         '<td>' +
-          (hasNav ? '<div style="font-size:14px;font-weight:600;">' + fmtMoney(m.mv) + '</div>' : '<div style="font-size:14px;font-weight:600;color:var(--text-2);">待估值</div>') +
+          (hasNav ? '<div style="font-size:14px;font-weight:600;">' + fmtMoney(safeMv) + '</div>' : '<div style="font-size:14px;font-weight:600;color:var(--text-2);">待估值</div>') +
           '<div class="text-sm ' + (hasYest ? yestCls : 'text-muted') + '">' + (hasYest ? yestTxt : '0.00') + '</div>' +
         '</td>' +
         /* 估值列：实时估算净值 + 涨跌幅(红涨绿跌) */ +
@@ -6902,13 +6922,13 @@ function renderFunds(){
           (hasGsz ? '<div style="font-size:14px;font-weight:600;">' + fmtMoney(parseFloat(f.val.gsz)) + '</div>' : '<div style="font-size:14px;font-weight:600;color:var(--text-2);">—</div>') +
           '<div class="text-sm ' + gzCls + '">' + gzTxt + '</div>' +
         '</td>' +
-        '<td class="' + (hasHpData ? hpCls : '') + '">' + (hasHpData ? fmtMoney(showHp) + '<br><span class="text-sm">' + fmtPct(showHpPct) + '</span>' : '<span class="text-muted">待估值</span>') +
-          /* 操作按钮内嵌到持有收益列底部，手机端始终可见 */ +
-          '<div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap;"><button class="btn btn-sm" style="font-size:11px;padding:2px 6px;" onclick="editFund(\'' + f.id + '\')">编辑</button><button class="btn btn-sm" style="font-size:11px;padding:2px 6px;" onclick="updateFundNavManual(\'' + f.id + '\')">净值</button><button class="btn btn-sm" style="font-size:11px;padding:2px 6px;color:#c0392b;border-color:#f5c6cb;" onclick="deleteFund(\'' + f.id + '\')">删</button></div>' +
+        '<td class="' + (hasHpData ? hpCls : '') + '">' + (hasHpData ? fmtMoney(safeHp) + '<br><span class="text-sm">' + fmtPct(safeHpPct) + '</span>' : '<span class="text-muted">待估值</span>') +
+          /* 手机端操作按钮 */ +
+          '<div class="show-mobile-op" style="margin-top:6px;display:none;gap:4px;flex-wrap:wrap;">' + opBtns + '</div>' +
         '</td>' +
         '<td class="hide-mobile">' + (hasCost ? fmtMoney(f.cost) : '<span class="text-muted">—</span>') + '</td>' +
-        '<td class="hide-mobile">' + (m.dwjz > 0 ? fmtMoney(m.dwjz) : '<span class="text-muted">待净值</span>') + '<br><span class="text-sm text-muted">' + navSrc + '</span></td>' +
-        '<td class="hide-mobile"><button class="btn btn-sm" onclick="editFund(\'' + f.id + '\')">编辑</button> <button class="btn btn-sm" onclick="updateFundNavManual(\'' + f.id + '\')">净值</button> <button class="btn btn-sm" onclick="deleteFund(\'' + f.id + '\')">删</button></td>' +
+        '<td class="hide-mobile">' + (safeDwjz > 0 ? fmtMoney(safeDwjz) : '<span class="text-muted">待净值</span>') + '<br><span class="text-sm text-muted">' + navSrc + '</span></td>' +
+        '<td class="hide-mobile">' + opBtns + '</td>' +
       '</tr>';
     }).join('');
   }
@@ -6999,7 +7019,8 @@ function generateAdvisor(funds, totals, metricsArr){
   var el = document.getElementById('fundAdvisor'); if(!el) return;
   var tips = [];
   if(!funds.length){ el.innerHTML = '<span class="text-muted">导入基金后，这里会自动生成专属诊断与配置建议。</span>'; return; }
-  tips.push('当前共持有 <b>' + funds.length + '</b> 只基金，持仓市值 <b>' + fmtMoney(totals.mv) + '</b>，累计' + (totals.hp >= 0 ? '盈利' : '亏损') + ' <b>' + fmtMoney(Math.abs(totals.hp)) + '</b>（' + fmtPct(totals.hpPct) + '），昨日收益 ' + (totals.yesterdayProfit >= 0 ? '+' : '') + fmtMoney(totals.yesterdayProfit) + '。');
+  var _tYp = isNaN(totals.yesterdayProfit)?0:totals.yesterdayProfit;
+  tips.push('当前共持有 <b>' + funds.length + '</b> 只基金，持仓市值 <b>' + fmtMoney(totals.mv) + '</b>，累计' + (totals.hp >= 0 ? '盈利' : '亏损') + ' <b>' + fmtMoney(Math.abs(totals.hp)) + '</b>（' + fmtPct(totals.hpPct) + '），昨日收益 ' + (_tYp >= 0 ? '+' : '') + fmtMoney(_tYp) + '。');
   var maxW = 0, maxF = null;
   funds.forEach(function(f){ var m = metricsArr[f.id]; var w = totals.mv > 0 ? m.mv / totals.mv : 0; if(w > maxW){ maxW = w; maxF = f; } });
   if(maxF && maxW > 0.4) tips.push('⚠️ <b>集中度偏高</b>：' + escapeHtml(maxF.name) + ' 占组合 ' + (maxW * 100).toFixed(0) + '%，建议单只基金占比控制在 30% 以内以分散风险。');
@@ -7136,7 +7157,7 @@ function analyzeFundScreenshot(base64, cb){
     queue.push({ engine:eng, model:cfg.visionModel, url:cfg.url, key:ek, supportJsonFormat:false });
   });
 
-  if(!queue.length){ cb('未配置任何 AI 引擎 Key（设置 → AI 引擎），请至少配置通义千问或智谱 GLM 的 Key'); return; }
+  if(!queue.length){ cb('未配置任何 AI 引擎 Key（设置 → AI 引擎），请至少配置一个引擎的 Key'); return; }
 
   var idx = 0;
   function tryNext(){
