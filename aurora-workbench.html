@@ -3075,6 +3075,8 @@ function cleanXwlbText(s){
   s = String(s);
   /* 去除孤立的装饰符号（前后都是文字/标点时才删，保留有意义的用法） */
   s = s.replace(/([一-鿿豈-﫿a-zA-Z0-9，。！？、；：""''（）【】《》\s])[\u25C6\u25CF\u25A0\u25B6\u25BC\u2605\u2606\u2666\u2660\u2663\u2665\u266A\u266B\u2B1D\u2B1E\u25C0\u25B6\u23E9\u23EA\u23EB\u23EC\u2022\u00B7\u2014\u2013\u2014\u2015\u2026\u2030\u2731\u25CE\u25A1\u25B3\u25BD\u25C7\uFFFD]([一-鿿豈-﫿a-zA-Z0-9，。！？、；：""''（）【】《》\s])/g, '$1$2');
+  /* 去除连续的装饰符号（如"女◆❤◆生活"中的"◆❤◆"） */
+  s = s.replace(/([一-鿿豈-﫿a-zA-Z0-9])[\u25C6\u25CF\u25A0\u25B6\u25BC\u2605\u2606\u2666\u2660\u2663\u2665\u266A\u266B\u2B1D\u2B1E\u25C0\u25B6\u23E9\u23EA\u23EB\u23EC\u2022\u00B7\u2014\u2013\u2014\u2015\u2026\u2030\u2731\u25CE\u25A1\u25B3\u25BD\u25C7\uFFFD]{1,}([一-鿿豈-﫿a-zA-Z0-9])/g, '$1$2');
   /* 去除连续的替换字符 */
   s = s.replace(/\uFFFD{2,}/g, '');
   s = s.replace(/\uFFFD/g, ' ');
@@ -3502,6 +3504,13 @@ function renderDreamList(){
 
   var catCycle = WEALTH_CATEGORIES.slice(); // 分类循环列表
   var coreSeq = 0;
+  /* 一次性迁移：清洗梦想文字和分类中的乱码符号 */
+  var dreamDirty = false;
+  list.forEach(function(d){
+    var cleanTxt = cleanXwlbText(d.text);
+    if(cleanTxt !== d.text){ d.text = cleanTxt; dreamDirty = true; }
+  });
+  if(dreamDirty) saveDb();
   list.forEach(function(d, i){
     if(d.core) coreSeq++;
     var item = document.createElement('div');
@@ -3544,9 +3553,19 @@ function renderDreamList(){
     textCell.appendChild(label); textCell.appendChild(inp);
     item.appendChild(textCell);
 
-    /* 分类标签：点击循环切换 */
+    /* 分类标签：点击循环切换（清洗乱码后显示） */
     var catTag = document.createElement('span');
     var catIdx = Math.max(0, catCycle.indexOf(d.category));
+    /* 一次性迁移：如果存储的分类不在标准列表中，尝试模糊匹配修复 */
+    if(d.category && catCycle.indexOf(d.category) < 0){
+      var cleaned = cleanTheme(d.category);
+      /* 模糊匹配：清洗后的值包含标准分类的关键字 */
+      var matched = catCycle.find(function(c){ return cleaned.indexOf(c.replace(/^[^\s]+\s/,'')) >= 0; });
+      if(matched){ d.category = matched; saveDb(); }
+      else if(cleaned && cleaned !== d.category){ d.category = cleaned; saveDb(); }
+      else { d.category = WEALTH_CATEGORIES[0]; saveDb(); }  /* 实在匹配不到就归为默认 */
+      catIdx = Math.max(0, catCycle.indexOf(d.category));
+    }
     catTag.className = 'dream-cat-tag cat-' + (d.category ? d.category.replace(/^[^\s]+\s/,'') : '');
     catTag.textContent = d.category || '未分类';
     catTag.onclick = function(){
