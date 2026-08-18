@@ -6844,7 +6844,7 @@ function computeFundMetrics(f){
     yesterdayProfit = dwjz * yesterdayPct / 100 * shares;  /* gszzl相对dwjz */
   }
   var gszzl = (f.val && f.val.gszzl != null) ? (isNaN(parseFloat(f.val.gszzl)) ? 0 : parseFloat(f.val.gszzl)) : 0;
-  return { nav: nav, gsz: gsz, dwjz: dwjz, mv: isNaN(mv)?0:mv, ct: ct, hp: hp, hpPct: hpPct,
+  return { nav: nav, gsz: gsz, dwjz: dwjz, mv: isNaN(mv)?0:mv, ct: ct, hp: isNaN(hp)?0:hp, hpPct: isNaN(hpPct)?0:hpPct,
            gszzl: gszzl, yesterdayProfit: isNaN(yesterdayProfit)?0:yesterdayProfit, yesterdayPct: yesterdayPct };
 }
 
@@ -6898,23 +6898,23 @@ function renderFunds(){
     var pageFunds = funds.slice(start, start + FUND_PAGE_SIZE);
     body.innerHTML = pageFunds.map(function(f){
       var m = metricsArr[f.id];
+      /* ★ 先计算 showHp/showHpPct（依赖 m.hp/m.hpPct），再做 NaN 安全防护 */
+      var _rawHp = (f.hpImport != null && f.hpImport !== 0) ? f.hpImport : m.hp;
+      var _rawHpPct = (f.hpPctImport != null && f.hpPctImport !== 0) ? f.hpPctImport : m.hpPct;
       /* NaN 安全防护 */
       var safeNav = isNaN(m.nav) ? 0 : m.nav;
       var safeMv = isNaN(m.mv) ? 0 : m.mv;
       var safeDwjz = isNaN(m.dwjz) ? 0 : m.dwjz;
       var safeGszl = isNaN(m.gszzl) ? 0 : m.gszzl;
       var safeYestP = isNaN(m.yesterdayProfit) ? 0 : m.yesterdayProfit;
-      var safeHp = isNaN(showHp) ? 0 : showHp;
-      var safeHpPct = isNaN(showHpPct) ? 0 : showHpPct;
+      var safeHp = isNaN(_rawHp) ? 0 : _rawHp;
+      var safeHpPct = isNaN(_rawHpPct) ? 0 : _rawHpPct;
       var hasNav = safeNav > 0;
       var hasCost = f.cost > 0;
       var hasGsz = (f.val && f.val.gsz != null && f.val.gsz !== '' && !isNaN(parseFloat(f.val.gsz)));
       var hasYest = (f.val && f.val.prevDwjz != null && f.val.prevDwjz !== '') || (f.val && f.val.gszzl != null && !isNaN(parseFloat(f.val.gszzl)));
       /* 净值列来源标注：手动 / 净值日期 */
       var navSrc = f.navManual ? '手动' : (safeDwjz > 0 ? ('净值 ' + (f.val.jzrq || '')) : '—');
-      /* 持有收益/率：优先用导入原始值，其次用估值计算值 */
-      var showHp = (f.hpImport != null && f.hpImport !== 0) ? f.hpImport : m.hp;
-      var showHpPct = (f.hpPctImport != null && f.hpPctImport !== 0) ? f.hpPctImport : m.hpPct;
       var hasHpData = hasNav || (f.hpImport != null) || (f.hpPctImport != null);
       var hpCls = clsOf(safeHp);
       /* 昨日收益着色 */
@@ -6938,7 +6938,7 @@ function renderFunds(){
         '</td>' +
         /* 估值列：实时估算净值 + 涨跌幅(红涨绿跌) */ +
         '<td>' +
-          (hasGsz ? '<div style="font-size:14px;font-weight:600;">' + fmtMoney(parseFloat(f.val.gsz)) + '</div>' : '<div style="font-size:14px;font-weight:600;color:var(--text-2);">—</div>') +
+          (hasGsz ? '<div style="font-size:14px;font-weight:600;">' + fmtMoney(parseFloat(f.val.gsz) || 0) + '</div>' : '<div style="font-size:14px;font-weight:600;color:var(--text-2);">—</div>') +
           '<div class="text-sm ' + gzCls + '">' + gzTxt + '</div>' +
         '</td>' +
         '<td class="' + (hasHpData ? hpCls : '') + '">' + (hasHpData ? fmtMoney(safeHp) + '<br><span class="text-sm">' + fmtPct(safeHpPct) + '</span>' : '<span class="text-muted">待估值</span>') +
