@@ -6995,12 +6995,11 @@ function renderFunds(){
         /* 合并列：金额(大字) + 昨日收益(基于确认净值，小字在下) */ +
         '<td>' +
           (hasNav ? '<div style="font-size:14px;font-weight:600;">' + fmtMoney(safeMv) + '</div>' : '<div style="font-size:14px;font-weight:600;color:var(--text-2);">待估值</div>') +
-          '<div class="text-sm ' + (hasYest ? yestCls : 'text-muted') + '">' + (hasYest ? yestTxt : '0.00') + '</div>' +
+          '<div class="text-sm ' + (hasYest ? yestCls : 'text-muted') + '">' + (hasYest ? yestTxt : '—') + '</div>' +
         '</td>' +
-        /* 估值列：实时估算净值 + 涨跌幅(红涨绿跌) */ +
+        /* 估值列：实时估算净值 + 涨跌幅(红涨绿跌) */
         '<td>' +
-          (hasGsz ? '<div style="font-size:14px;font-weight:600;">' + fmtMoney(parseFloat(f.val.gsz) || 0) + '</div>' : '<div style="font-size:14px;font-weight:600;color:var(--text-2);">—</div>') +
-          '<div class="text-sm ' + gzCls + '">' + gzTxt + '</div>' +
+          (hasGsz ? '<div style="font-size:14px;font-weight:600;">' + fmtMoney(safeNum(parseFloat(f.val.gsz))) + '</div><div class="text-sm ' + gzCls + '">' + gzTxt + '</div>' : '<div style="font-size:14px;font-weight:600;color:var(--text-2);">—</div>') +
         '</td>' +
         '<td class="' + (hasHpData ? hpCls : '') + '">' + (hasHpData ? fmtMoney(safeHp) + '<br><span class="text-sm">' + fmtPct(safeHpPct) + '</span>' : '<span class="text-muted">待估值</span>') +
           /* 手机端操作按钮 */ +
