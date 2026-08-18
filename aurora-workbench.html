@@ -4025,10 +4025,12 @@ var XWLB_TARGET = 'https://tv.cctv.com/lm/xwlb/';
 var XWLB_PROXIES = [
   /* 首选：自建服务器代理（稳定、不走公共 CORS） */
   '', /* 空字符串标记 = 走 /api/cctv/xwlb，在 fetchXwlbDirect 中特殊处理 */
-  /* 兜底：公共 CORS 代理（不稳定，仅服务器不可用时使用） */
+  /* 兜底：公共 CORS 代理（不稳定，仅服务器不可用时使用；按实测可用性排序） */
   'https://api.allorigins.win/raw?url=',
   'https://corsproxy.io/?',
-  'https://api.codetabs.com/v1/proxy/?quest='
+  'https://api.codetabs.com/v1/proxy/?quest=',
+  /* 新增备选（2026-08 实测补充） */
+  'https://cors.riopr.com/',
 ];
 function loadXwlb(force){
   var date = getXwlbToday();
@@ -4083,18 +4085,21 @@ function parseXwlbHtml(html){
 function fetchXwlbDirect(date){
   setXwlbStatus('⏳ 正在抓取央视《新闻联播》节目单…', 'loading');
   document.getElementById('xwlbFallback').style.display = 'none';
+  var proxyNames = ['服务器代理','allorigins','corsproxy','codetabs','riopr'];
   tryProxy(0);
   function tryProxy(i){
     if(i >= XWLB_PROXIES.length){ afterDirectFail(date); return; }
     /* 空字符串 = 走自建服务器代理 /api/cctv/xwlb */
     var isServerProxy = (XWLB_PROXIES[i] === '');
+    var proxyName = proxyNames[i] || ('代理#' + i);
     var url = isServerProxy ? (API_BASE + '/api/cctv/xwlb') : (XWLB_PROXIES[i] + encodeURIComponent(XWLB_TARGET));
-    fetchWithTimeoutXwlb(url, 15000).then(function(res){
+    setXwlbStatus('⏳ 尝试 ' + proxyName + '…（' + (i+1) + '/' + XWLB_PROXIES.length + '）', 'loading');
+    fetchWithTimeoutXwlb(url, isServerProxy ? 20000 : 12000).then(function(res){
       if(!res.ok) throw new Error('HTTP ' + res.status);
       return res.text();
     }).then(function(html){
       var titles = parseXwlbHtml(html);
-      if(!titles.length) throw new Error('未解析到节目单');
+      if(!titles.length) throw new Error('未解析到节目单(页面可能改版)');
       /* 用用户已配置的任意可用引擎生成总结（不再硬编码 qwen-plus） */
       var availEngines = configuredEngines();
       if(!availEngines.length){
@@ -4104,17 +4109,20 @@ function fetchXwlbDirect(date){
       }
       setXwlbStatus('⏳ 已抓到 ' + titles.length + ' 条，AI（' + AI_ENGINES[availEngines[0]].label + '）生成总结中…', 'loading');
       callText(titles.join('\n'), XWLB_SYS_PROMPT).then(function(summary){
-        var d = { date: date, titles: titles, summary: summary, generatedAt: new Date().toISOString(), note: (isServerProxy ? '服务器代理' : '前端代理') + ' + ' + AI_ENGINES[configuredEngines()[0] || 'qwen'].label };
+        var d = { date: date, titles: titles, summary: summary, generatedAt: new Date().toISOString(), note: (isServerProxy ? '服务器代理' : '前端代理') + '(' + proxyName + ') + ' + AI_ENGINES[configuredEngines()[0] || 'qwen'].label };
         saveXwlbCache(d); renderXwlb(d, isServerProxy ? '服务器代理' : '前端自动'); renderXwlbHistory();
       }).catch(function(err){
         setXwlbStatus('⚠ AI 总结生成失败：' + (err && err.message ? err.message : err) + '。可手动粘贴节目单重试。', 'error');
         document.getElementById('xwlbFallback').style.display = 'block';
       });
-    }).catch(function(err){ tryProxy(i + 1); });
+    }).catch(function(err){
+      console.warn('[xwlb] ' + proxyName + ' 失败:', err && err.message || err);
+      tryProxy(i + 1);
+    });
   }
 }
 function afterDirectFail(date){
-  setXwlbStatus('⚠ 自动抓取失败（代理不可达或央视页面异常）。可手动粘贴节目单，由 AI 引擎生成总结。', 'error');
+  setXwlbStatus('⚠ 自动抓取失败（所有代理均不可达：服务器代理+4个公共CORS代理）。可手动粘贴节目单，或稍后点「🔄 刷新」重试。', 'error');
   document.getElementById('xwlbFallback').style.display = 'block';
 }
 function fetchWithTimeoutXwlb(url, ms){

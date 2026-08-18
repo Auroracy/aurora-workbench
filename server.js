@@ -308,9 +308,37 @@ function handleIfzq(res, param) {
 }
 
 // 央视新闻联播节目单页面代理（替代不稳定的公共 CORS 代理）
+// 增强版：3 次重试 + 内存缓存(5分钟) + 更长超时
+const _xwlbCache = { data: null, ts: 0, TTL: 5 * 60 * 1000 };
 function handleCctvXwlb(res) {
   const target = 'https://tv.cctv.com/lm/xwlb/';
-  proxyRaw(target, 'https://tv.cctv.com/', res);
+  // 缓存命中 → 直接返回
+  if (_xwlbCache.data && (Date.now() - _xwlbCache.ts < _xwlbCache.TTL)) {
+    console.log('[cctv/xwlb] cache hit');
+    return res.end(_xwlbCache.data);
+  }
+  // 带重试的抓取
+  let attempts = 0;
+  const MAX_ATTEMPTS = 3;
+  function tryFetch() {
+    attempts++;
+    console.log('[cctv/xwlb] attempt ' + attempts + '/' + MAX_ATTEMPTS);
+    upstreamGet(target, { 'Referer': 'https://tv.cctv.com/', 'Accept-Language': 'zh-CN,zh;q=0.9' }, function (err, status, buf, headers) {
+      if (err || !buf || (status && status >= 400)) {
+        console.error('[cctv/xwlb] attempt ' + attempts + ' failed:', err || ('HTTP ' + status));
+        if (attempts < MAX_ATTEMPTS) return setTimeout(tryFetch, 2000 * attempts); // 递增延迟: 2s, 4s
+        return sendJSON(res, 502, { error: '央视抓取失败(' + MAX_ATTEMPTS + '次): ' + (err && err.message || 'HTTP ' + status) });
+      }
+      // 成功 → 写缓存并返回
+      const ct = (headers && headers['content-type']) || 'text/html; charset=utf-8';
+      _xwlbCache.data = buf;
+      _xwlbCache.ts = Date.now();
+      console.log('[cctv/xwlb] success, size=' + buf.length);
+      res.writeHead(200, Object.assign({}, CORS, { 'Content-Type': ct, 'Cache-Control': 'public, max-age=120' }));
+      res.end(buf);
+    });
+  }
+  tryFetch();
 }
 
 function handleQt(res, q) {
