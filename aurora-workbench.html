@@ -7020,7 +7020,7 @@ function renderFunds(){
         '</td>' +
         /* 估值列：实时估算净值(4位小数) + 涨跌幅(红涨绿跌)；gsz 合理性校验(0.01~100为有效净值范围) */
         (function(){
-          var _g = safeNum(parseFloat(f.val.gsz));
+          var _g = (f.val && f.val.gsz != null) ? safeNum(parseFloat(f.val.gsz)) : 0;
           var _validGsz = hasGsz && _g >= 0.01 && _g <= 100;
           return '<td>' +
             (_validGsz ? '<div style="font-size:14px;font-weight:600;">' + _g.toFixed(4) + '</div><div class="text-sm ' + gzCls + '">' + gzTxt + '</div>' : '<div style="font-size:14px;font-weight:600;color:var(--text-2);">—</div>') +
