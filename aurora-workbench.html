@@ -6750,6 +6750,14 @@ function fmtMoney(v){ if(v == null || isNaN(v)) return '—'; var s = Math.abs(v
 function fmtNum(v){ if(v == null || isNaN(v)) return '—'; var s = Math.abs(v).toFixed(2); var p = s.split('.'); p[0] = p[0].replace(/\B(?=(\d{3})+(?!\d))/g, ','); return (v < 0 ? '-' : '') + p.join('.'); }
 function fmtPct(v){ if(v == null || isNaN(v)) return '—'; return (v > 0 ? '+' : '') + v.toFixed(2) + '%'; }
 function clsOf(v){ return v > 0 ? 'pos' : (v < 0 ? 'neg' : ''); }
+/**
+ * safeNum(v, fallback) — 全局数值安全函数
+ * 任何可能为 NaN/null/undefined/非数字 的值经过此函数都返回安全数字
+ * 用途：所有渲染路径的最终防线，防止 NaN 泄漏到 DOM
+ */
+function safeNum(v, fallback){ fallback = (fallback !== undefined) ? fallback : 0; if(v == null || typeof v !== 'number' || isNaN(v) || !isFinite(v)) return fallback; return v; }
+/** stripNaN(str) — 从字符串中移除字面量 "NaN"（渲染后兜底清理） */
+function stripNaN(str){ if(typeof str !== 'string') return str; return str.replace(/NaN/g, '—').replace(/—+/g, '—').trim(); }
 
 /* ============ 基金分类 ============ */
 /**
@@ -6908,18 +6916,21 @@ function renderFunds(){
   var metricsArr = {}; var typeMap = {}; var themeMap = {};
   funds.forEach(function(f){
     var m = computeFundMetrics(f); metricsArr[f.id] = m;
-    if(isNaN(m.mv)) m.mv = 0;
-    totals.mv += (isNaN(m.mv)?0:m.mv); totals.ct += (isNaN(m.ct)?0:m.ct); totals.hp += (isNaN(m.hp)?0:m.hp); totals.yesterdayProfit += (isNaN(m.yesterdayProfit)?0:m.yesterdayProfit);
-    typeMap[f.type] = (typeMap[f.type] || 0) + m.mv;
-    themeMap[f.theme] = (themeMap[f.theme] || 0) + m.mv;
+    /* 所有累加值用 safeNum 防护 */
+    totals.mv += safeNum(m.mv);
+    totals.ct += safeNum(m.ct);
+    totals.hp += safeNum(m.hp);
+    totals.yesterdayProfit += safeNum(m.yesterdayProfit);
+    typeMap[f.type] = (typeMap[f.type] || 0) + safeNum(m.mv);
+    themeMap[f.theme] = (themeMap[f.theme] || 0) + safeNum(m.mv);
   });
   totals.hpPct = totals.ct > 0 ? totals.hp / totals.ct * 100 : 0;
 
   setText('fFundCount', funds.length);
-  setText('fTotalAsset', fmtMoney(totals.mv));
-  var tp = document.getElementById('fTotalProfit'); if(tp){ tp.textContent = fmtMoney(totals.hp); tp.className = 'metric-change ' + clsOf(totals.hp); }
-  var tpp = document.getElementById('fTotalPct'); if(tpp){ tpp.textContent = fmtPct(totals.hpPct); tpp.className = 'metric-change ' + clsOf(totals.hpPct); }
-  var tdp = document.getElementById('fTodayProfit'); if(tdp){ var _yp = isNaN(totals.yesterdayProfit)?0:totals.yesterdayProfit; tdp.textContent = (_yp >= 0 ? '+' : '') + fmtMoney(_yp); tdp.className = 'metric-value mini-num ' + clsOf(_yp); }
+  setText('fTotalAsset', fmtMoney(safeNum(totals.mv)));
+  var tp = document.getElementById('fTotalProfit'); if(tp){ tp.textContent = fmtMoney(safeNum(totals.hp)); tp.className = 'metric-change ' + clsOf(totals.hp); }
+  var tpp = document.getElementById('fTotalPct'); if(tpp){ tpp.textContent = fmtPct(safeNum(totals.hpPct)); tpp.className = 'metric-change ' + clsOf(totals.hpPct); }
+  var tdp = document.getElementById('fTodayProfit'); if(tdp){ var _yp = safeNum(totals.yesterdayProfit); tdp.textContent = (_yp >= 0 ? '+' : '') + fmtMoney(_yp); tdp.className = 'metric-value mini-num ' + clsOf(_yp); }
 
   renderAlloc('fAllocType', typeMap, totals.mv, '类型');
   renderAlloc('fAllocTheme', themeMap, totals.mv, '主题');
@@ -6947,18 +6958,18 @@ function renderFunds(){
     var start = (fundCurrentPage - 1) * FUND_PAGE_SIZE;
     var pageFunds = funds.slice(start, start + FUND_PAGE_SIZE);
     body.innerHTML = pageFunds.map(function(f){
-      var m = metricsArr[f.id];
-      /* ★ 先计算 showHp/showHpPct（依赖 m.hp/m.hpPct），再做 NaN 安全防护 */
-      var _rawHp = (f.hpImport != null && f.hpImport !== 0) ? f.hpImport : m.hp;
-      var _rawHpPct = (f.hpPctImport != null && f.hpPctImport !== 0) ? f.hpPctImport : m.hpPct;
-      /* NaN 安全防护 */
-      var safeNav = isNaN(m.nav) ? 0 : m.nav;
-      var safeMv = isNaN(m.mv) ? 0 : m.mv;
-      var safeDwjz = isNaN(m.dwjz) ? 0 : m.dwjz;
-      var safeGszl = isNaN(m.gszzl) ? 0 : m.gszzl;
-      var safeYestP = isNaN(m.yesterdayProfit) ? 0 : m.yesterdayProfit;
-      var safeHp = isNaN(_rawHp) ? 0 : _rawHp;
-      var safeHpPct = isNaN(_rawHpPct) ? 0 : _rawHpPct;
+      var m = metricsArr[f.id] || {};
+      /* ★ 所有 metrics 值必须经过 safeNum() 防护，杜绝 NaN 泄漏到 DOM */
+      var _rawHp = (f.hpImport != null && f.hpImport !== 0) ? f.hpImport : safeNum(m.hp);
+      var _rawHpPct = (f.hpPctImport != null && f.hpPctImport !== 0) ? f.hpPctImport : safeNum(m.hpPct);
+      /* safe* 变量：全部用 safeNum 双重防护 */
+      var safeNav = safeNum(m.nav);
+      var safeMv = safeNum(m.mv);
+      var safeDwjz = safeNum(m.dwjz);
+      var safeGszl = safeNum(m.gszzl);
+      var safeYestP = safeNum(m.yesterdayProfit);
+      var safeHp = safeNum(_rawHp);
+      var safeHpPct = safeNum(_rawHpPct);
       var hasNav = safeNav > 0;
       var hasCost = f.cost > 0;
       var hasGsz = (f.val && f.val.gsz != null && f.val.gsz !== '' && !isNaN(parseFloat(f.val.gsz)));
@@ -7000,6 +7011,8 @@ function renderFunds(){
         '<td class="hide-mobile">' + opBtns + '</td>' +
       '</tr>';
     }).join('');
+    /* ★★ 渲染后兜底：移除任何泄漏到 HTML 中的字面量 "NaN" 文本 ★★ */
+    if(body) body.innerHTML = stripNaN(body.innerHTML);
   }
   renderFundCompare(funds, metricsArr);
   generateAdvisor(funds, totals, metricsArr);
@@ -7053,11 +7066,11 @@ function renderFundCompare(funds, metricsArr){
   var pageArr = arr.slice(start, start + FUND_PAGE_SIZE);
   var rows = pageArr.map(function(f, j){
     var i = start + j; // 全局排名序号（跨页连续）
-    var m = metricsArr[f.id];
-    /* 优先用导入值 */
-    var cHp = (f.hpImport != null && f.hpImport !== 0) ? f.hpImport : m.hp;
-    var cHpPct = (f.hpPctImport != null && f.hpPctImport !== 0) ? f.hpPctImport : m.hpPct;
-    var hasData = m.nav > 0 || (f.hpImport != null) || (f.hpPctImport != null);
+    var m = metricsArr[f.id] || {};
+    /* 优先用导入值，全部 safeNum 防护 */
+    var cHp = safeNum((f.hpImport != null && f.hpImport !== 0) ? f.hpImport : m.hp);
+    var cHpPct = safeNum((f.hpPctImport != null && f.hpPctImport !== 0) ? f.hpPctImport : m.hpPct);
+    var hasData = safeNum(m.nav) > 0 || (f.hpImport != null) || (f.hpPctImport != null);
     var badge = '';
     if(i < 3 && cHpPct >= 0) badge = '🏆 领先';
     else if(i >= arr.length - 3 && cHpPct < 0) badge = '⚠️ 偏弱';
@@ -7068,6 +7081,8 @@ function renderFundCompare(funds, metricsArr){
       '<td>' + badge + '</td></tr>';
   }).join('');
   var html = '<table class="fund-tbl"><thead><tr><th>排名</th><th>基金</th>' + (hasAnyNav ? '<th>持有收益/率</th>' : '') + '<th>评价</th></tr></thead><tbody>' + rows + '</tbody></table>';
+  /* 兜底清理 NaN */
+  html = stripNaN(html);
   if(totalPages > 1){
     html += '<div class="pager" style="display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:12px;font-size:13px;">' +
       '<button class="btn btn-sm" ' + (compareCurrentPage <= 1 ? 'disabled style="opacity:.5;"' : 'onclick="compareGoPage(' + (compareCurrentPage - 1) + ')"') + '>‹ 上一页</button>' +
@@ -7088,21 +7103,21 @@ function generateAdvisor(funds, totals, metricsArr){
   var el = document.getElementById('fundAdvisor'); if(!el) return;
   var tips = [];
   if(!funds.length){ el.innerHTML = '<span class="text-muted">导入基金后，这里会自动生成专属诊断与配置建议。</span>'; return; }
-  var _tYp = isNaN(totals.yesterdayProfit)?0:totals.yesterdayProfit;
-  tips.push('当前共持有 <b>' + funds.length + '</b> 只基金，持仓市值 <b>' + fmtMoney(totals.mv) + '</b>，累计' + (totals.hp >= 0 ? '盈利' : '亏损') + ' <b>' + fmtMoney(Math.abs(totals.hp)) + '</b>（' + fmtPct(totals.hpPct) + '），昨日收益 ' + (_tYp >= 0 ? '+' : '') + fmtMoney(_tYp) + '。');
+  var _tYp = safeNum(totals.yesterdayProfit);
+  tips.push('当前共持有 <b>' + funds.length + '</b> 只基金，持仓市值 <b>' + fmtMoney(totals.mv) + '</b>，累计' + (totals.hp >= 0 ? '盈利' : '亏损') + ' <b>' + fmtMoney(Math.abs(safeNum(totals.hp))) + '</b>（' + fmtPct(safeNum(totals.hpPct)) + '），昨日收益 ' + (_tYp >= 0 ? '+' : '') + fmtMoney(_tYp) + '。');
   var maxW = 0, maxF = null;
-  funds.forEach(function(f){ var m = metricsArr[f.id]; var w = totals.mv > 0 ? m.mv / totals.mv : 0; if(w > maxW){ maxW = w; maxF = f; } });
+  funds.forEach(function(f){ var m = metricsArr[f.id] || {}; var _mv = safeNum(m.mv); var w = totals.mv > 0 ? _mv / totals.mv : 0; if(w > maxW){ maxW = w; maxF = f; } });
   if(maxF && maxW > 0.4) tips.push('⚠️ <b>集中度偏高</b>：' + escapeHtml(maxF.name) + ' 占组合 ' + (maxW * 100).toFixed(0) + '%，建议单只基金占比控制在 30% 以内以分散风险。');
   var typeMap = {};
-  funds.forEach(function(f){ var m = metricsArr[f.id]; typeMap[f.type] = (typeMap[f.type] || 0) + m.mv; });
+  funds.forEach(function(f){ var m = metricsArr[f.id] || {}; typeMap[f.type] = (typeMap[f.type] || 0) + safeNum(m.mv); });
   var equityTypes = { '股票型':1, '指数型':1, 'ETF联接':1, 'QDII':1, '混合型':0.6 };
   var equity = 0;
   Object.keys(typeMap).forEach(function(t){ equity += typeMap[t] * (equityTypes[t] != null ? equityTypes[t] : 0.5); });
   if(totals.mv > 0 && equity / totals.mv > 0.9) tips.push('🛡️ 组合权益类占比约 <b>' + (equity / totals.mv * 100).toFixed(0) + '%</b>，缺乏债券 / 货币等防守仓，市场回调时波动较大，可考虑增配 10–20% 债基或货基作为缓冲。');
-  var neg = Object.keys(metricsArr).filter(function(id){ return metricsArr[id].hp < 0; }).sort(function(a, b){ return metricsArr[a].hpPct - metricsArr[b].hpPct; });
+  var neg = Object.keys(metricsArr).filter(function(id){ return (metricsArr[id]||{}).hp < 0; }).sort(function(a, b){ return safeNum(metricsArr[a].hpPct) - safeNum(metricsArr[b].hpPct); });
   if(neg.length){
     var nf = funds.find(function(f){ return f.id === neg[0]; });
-    tips.push('📉 当前 <b>' + neg.length + '</b> 只基金处于亏损，最深的是 ' + escapeHtml(nf ? nf.name : '') + '（' + fmtPct(metricsArr[neg[0]].hpPct) + '），可结合定投或基本面判断是否继续持有。');
+    tips.push('📉 当前 <b>' + neg.length + '</b> 只基金处于亏损，最深的是 ' + escapeHtml(nf ? nf.name : '') + '（' + fmtPct(safeNum(metricsArr[neg[0]].hpPct)) + '），可结合定投或基本面判断是否继续持有。');
   }
   if(DB.market.fundOverlap && DB.market.fundOverlap.pairs && DB.market.fundOverlap.pairs.length){
     tips.push('🔗 检测到 <b>' + DB.market.fundOverlap.pairs.length + '</b> 对基金持仓高度重合，建议保留表现更优者、合并重复仓（见上方「持仓重合」）。');
