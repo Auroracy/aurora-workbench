@@ -6880,7 +6880,13 @@ function applyFundVal(f, d){
     f.prevDwjz = f.val.dwjz;
     f.prevDwjzDate = f.val.jzrq;
   }
-  f.val = { gsz: d.gsz, dwjz: d.dwjz, gszzl: d.gszzl, gztime: d.gztime, jzrq: d.jzrq };
+  /* gsz 合理性校验：估算净值应在 0.01~100 范围内，超出则丢弃防止显示异常 */
+  var _gsz = parseFloat(d.gsz);
+  var _validGsz = !isNaN(_gsz) && _gsz >= 0.01 && _gsz <= 100;
+  if(!_validGsz && d.gsz != null && d.gsz !== ''){
+    console.warn('[applyFundVal] ' + (f.code||'?') + ' gsz 异常值已丢弃:', d.gsz, '(有效范围 0.01~100)');
+  }
+  f.val = { gsz: _validGsz ? _gsz : (f.val&&f.val.gsz)||null, dwjz: d.dwjz, gszzl: d.gszzl, gztime: d.gztime, jzrq: d.jzrq };
   if(!f.name || f.name === f.code) f.name = d.name || f.name;
   f.updatedAt = Date.now();
 }
@@ -6965,7 +6971,7 @@ function renderFunds(){
     if(fundCurrentPage > totalPages) fundCurrentPage = totalPages;
     if(fundCurrentPage < 1) fundCurrentPage = 1;
     var start = (fundCurrentPage - 1) * FUND_PAGE_SIZE;
-    var pageFunds = funds.slice(start, start + FUND_PAGE_SIZE);
+    var pageFunds = funds.slice(start, start + FUND_PAGE_SIZE).filter(function(f){ return f && f.name && f.code; });
     body.innerHTML = pageFunds.map(function(f){
       var m = metricsArr[f.id] || {};
       /* ★ 所有 metrics 值必须经过 safeNum() 防护，杜绝 NaN 泄漏到 DOM */
@@ -7006,10 +7012,14 @@ function renderFunds(){
           (hasNav ? '<div style="font-size:14px;font-weight:600;">' + fmtMoney(safeMv) + '</div>' : '<div style="font-size:14px;font-weight:600;color:var(--text-2);">待估值</div>') +
           '<div class="text-sm ' + (hasYest ? yestCls : 'text-muted') + '">' + (hasYest ? yestTxt : '—') + '</div>' +
         '</td>' +
-        /* 估值列：实时估算净值 + 涨跌幅(红涨绿跌) */
-        '<td>' +
-          (hasGsz ? '<div style="font-size:14px;font-weight:600;">' + fmtMoney(safeNum(parseFloat(f.val.gsz))) + '</div><div class="text-sm ' + gzCls + '">' + gzTxt + '</div>' : '<div style="font-size:14px;font-weight:600;color:var(--text-2);">—</div>') +
-        '</td>' +
+        /* 估值列：实时估算净值(4位小数) + 涨跌幅(红涨绿跌)；gsz 合理性校验(0.01~100为有效净值范围) */
+        (function(){
+          var _g = safeNum(parseFloat(f.val.gsz));
+          var _validGsz = hasGsz && _g >= 0.01 && _g <= 100;
+          return '<td>' +
+            (_validGsz ? '<div style="font-size:14px;font-weight:600;">' + _g.toFixed(4) + '</div><div class="text-sm ' + gzCls + '">' + gzTxt + '</div>' : '<div style="font-size:14px;font-weight:600;color:var(--text-2);">—</div>') +
+            '</td>';
+        })() +
         '<td class="' + (hasHpData ? hpCls : '') + '">' + (hasHpData ? fmtMoney(safeHp) + '<br><span class="text-sm">' + fmtPct(safeHpPct) + '</span>' : '<span class="text-muted">待估值</span>') +
           /* 手机端操作按钮 */ +
           '<div class="show-mobile-op" style="margin-top:6px;display:none;gap:4px;flex-wrap:wrap;">' + opBtns + '</div>' +
