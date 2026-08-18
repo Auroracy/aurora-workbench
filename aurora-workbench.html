@@ -4067,21 +4067,8 @@ function onXwlbDatePick(date){
   syncXwlbDatePicker(date);
   currentXwlbView = date;
   renderXwlbHistory();
-  var data = DB.xwlb.cache[date];
-  if(data){
-    renderXwlb(data, '缓存');
-  } else {
-    /* 无数据：尝试从服务器本地文件恢复，否则进入「待生成」状态 */
-    fetchXwlbFromServerLocal(date, function(localData){
-      if(localData && (localData.summary || (localData.titles && localData.titles.length))){
-        saveXwlbCache(localData);
-        renderXwlb(localData, '本地恢复');
-        renderXwlbHistory();
-      } else {
-        renderXwlb({ date: date, note: '该日期暂无数据。点「🤖 生成所选日期」按钮，将从央视抓取并生成总结（央视仅提供最新一期，若所选日期非最新一期，内容以实际抓取到的日期为准）。' }, 'info');
-      }
-    });
-  }
+  /* 统一走 viewXwlbDate 避免双路径不一致 */
+  viewXwlbDate(date);
 }
 function syncXwlbDatePicker(date){
   var dp = document.getElementById('xwlbDatePicker');
@@ -4163,8 +4150,9 @@ function fetchXwlbDirect(date){
   }
 }
 function afterDirectFail(date){
-  setXwlbStatus('⚠ 自动抓取失败（所有代理均不可达：服务器代理+4个公共CORS代理）。可手动粘贴节目单，或稍后点「🔄 刷新」重试。', 'error');
-  document.getElementById('xwlbFallback').style.display = 'block';
+  /* 抓取失败 → 进入补录模式（统一入口，避免双路径状态冲突） */
+  setXwlbStatus('⚠ 自动抓取失败（所有代理均不可达）。已切换到手动补录模式。', 'error');
+  enterXwlbHistoryEditMode(date);
 }
 function fetchWithTimeoutXwlb(url, ms){
   return Promise.race([
@@ -4227,10 +4215,9 @@ function renderXwlb(data, sourceLabel){
     refreshXwlbInvestPanel(date);
     return;
   }
-  /* 完全无数据 */
-  body.innerHTML = '<div class="xwlb-raw"><div class="xwlb-note">' + escapeHtml(data.note || '暂无 AI 总结，请配置 AI 引擎 Key 后刷新，或手动粘贴节目单生成。') + '</div></div>';
-  setXwlbStatus(data.note ? 'ℹ ' + data.note : '', 'info');
-  refreshXwlbInvestPanel(date);
+  /* 完全无数据 → 统一进入补录模式 */
+  enterXwlbHistoryEditMode(date);
+  if(data.note) setXwlbStatus('ℹ ' + data.note, 'info');
 }
 function setXwlbStatus(msg, type){
   var el = document.getElementById('xwlbStatus');
@@ -4394,9 +4381,13 @@ function viewXwlbDate(d){
   });
 }
 function enterXwlbHistoryEditMode(d){
-  document.getElementById('xwlbDate').textContent = d + '（待补录）';
+  /* 检查手动输入区是否已有内容 */
+  var ta = document.getElementById('xwlbManualInput');
+  var hasManualText = ta && (ta.value || '').trim().length > 0;
+  var statusLabel = hasManualText ? '（已粘贴，待生成）' : '（待补录）';
+  document.getElementById('xwlbDate').textContent = d + statusLabel;
   document.getElementById('xwlbSource').textContent = '—';
-  document.getElementById('xwlbDot').className = 'xwlb-dot warn';
+  document.getElementById('xwlbDot').className = 'xwlb-dot ' + (hasManualText ? 'warn' : 'warn');
   document.getElementById('xwlbBody').innerHTML = '';
   document.getElementById('xwlbInvestBody').innerHTML = '';
   document.getElementById('xwlbInvestStatus').textContent = '';
@@ -4409,6 +4400,12 @@ function enterXwlbHistoryEditMode(d){
     btn.setAttribute('data-target-date', d);
   }
   fb.style.display = 'block';
+  /* 有内容时不再显示"自动抓取失败"等无关状态提示 */
+  if(hasManualText){
+    setXwlbStatus('ℹ 已检测到粘贴内容，点击「✨ 生成 ' + d.slice(5) + ' 总结」按钮即可生成 AI 总结', 'info');
+  } else {
+    setXwlbStatus('', '');
+  }
   /* 滚到补录面板 */
   fb.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
