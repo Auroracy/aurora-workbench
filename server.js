@@ -308,16 +308,11 @@ function handleIfzq(res, param) {
 }
 
 // 央视新闻联播节目单页面代理（替代不稳定的公共 CORS 代理）
-// 增强版：3 次重试 + 内存缓存(5分钟) + 更长超时
-const _xwlbCache = { data: null, ts: 0, TTL: 5 * 60 * 1000 };
-function handleCctvXwlb(res) {
+// 3 次重试(递增延迟) + 更长超时。不缓存——已生成数据存 Redis，按需读取。
+function handleCctvXwlb(res, query) {
   const target = 'https://tv.cctv.com/lm/xwlb/';
-  // 缓存命中 → 直接返回
-  if (_xwlbCache.data && (Date.now() - _xwlbCache.ts < _xwlbCache.TTL)) {
-    console.log('[cctv/xwlb] cache hit');
-    return res.end(_xwlbCache.data);
-  }
-  // 带重试的抓取
+  const reqDate = (query && query.date) || '';
+  console.log('[cctv/xwlb] request date=' + (reqDate || 'latest') + ' target=' + target);
   let attempts = 0;
   const MAX_ATTEMPTS = 3;
   function tryFetch() {
@@ -329,12 +324,9 @@ function handleCctvXwlb(res) {
         if (attempts < MAX_ATTEMPTS) return setTimeout(tryFetch, 2000 * attempts); // 递增延迟: 2s, 4s
         return sendJSON(res, 502, { error: '央视抓取失败(' + MAX_ATTEMPTS + '次): ' + (err && err.message || 'HTTP ' + status) });
       }
-      // 成功 → 写缓存并返回
       const ct = (headers && headers['content-type']) || 'text/html; charset=utf-8';
-      _xwlbCache.data = buf;
-      _xwlbCache.ts = Date.now();
       console.log('[cctv/xwlb] success, size=' + buf.length);
-      res.writeHead(200, Object.assign({}, CORS, { 'Content-Type': ct, 'Cache-Control': 'public, max-age=120' }));
+      res.writeHead(200, Object.assign({}, CORS, { 'Content-Type': ct, 'Cache-Control': 'no-store' }));
       res.end(buf);
     });
   }
@@ -428,7 +420,7 @@ const server = http.createServer(function (req, res) {
       const m = qs.match(/(?:^|&)q=([^&]+)/);
       return handleQt(res, m ? decodeURIComponent(m[1]) : '');
     }
-    if (pathname === '/api/cctv/xwlb') return handleCctvXwlb(res);
+    if (pathname === '/api/cctv/xwlb') return handleCctvXwlb(res, qs);
     return sendJSON(res, 404, { error: 'unknown api route' });
   }
 

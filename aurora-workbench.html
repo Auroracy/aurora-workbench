@@ -2883,7 +2883,11 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
 <section id="tab9" class="tab-section">
   <div class="section-header">
     <div class="section-title">新闻联播 · 每日总结</div>
-    <button class="btn btn-ghost btn-sm" onclick="refreshXwlb()">🔄 刷新</button>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <input type="date" id="xwlbDatePicker" class="form-input" style="width:auto;font-size:13px;padding:4px 8px;" onchange="onXwlbDatePick(this.value)">
+      <button class="btn btn-primary btn-sm" id="xwlbGenBtn" onclick="generateXwlbByDate()">🤖 生成所选日期</button>
+      <button class="btn btn-ghost btn-sm" onclick="refreshXwlb()">🔄 刷新</button>
+    </div>
   </div>
 
   <div class="xwlb-meta">
@@ -4032,9 +4036,10 @@ var XWLB_PROXIES = [
   /* 新增备选（2026-08 实测补充） */
   'https://cors.riopr.com/',
 ];
-function loadXwlb(force){
-  var date = getXwlbToday();
+function loadXwlb(force, date){
+  date = date || getXwlbToday();
   currentXwlbView = date;
+  syncXwlbDatePicker(date);
   var cached = DB.xwlb.cache[date];
   if(cached && !force){
     renderXwlb(cached, '缓存');
@@ -4054,6 +4059,42 @@ function loadXwlb(force){
     /* 本地也没有 → fallback 到前端自动抓 CCTV */
     fetchXwlbDirect(date);
   });
+}
+
+/* 日期选择器：切换所选日期 → 加载该日（有缓存直接读，无则提示可生成） */
+function onXwlbDatePick(date){
+  if(!date) return;
+  syncXwlbDatePicker(date);
+  currentXwlbView = date;
+  renderXwlbHistory();
+  var data = DB.xwlb.cache[date];
+  if(data){
+    renderXwlb(data, '缓存');
+  } else {
+    /* 无数据：尝试从服务器本地文件恢复，否则进入「待生成」状态 */
+    fetchXwlbFromServerLocal(date, function(localData){
+      if(localData && (localData.summary || (localData.titles && localData.titles.length))){
+        saveXwlbCache(localData);
+        renderXwlb(localData, '本地恢复');
+        renderXwlbHistory();
+      } else {
+        renderXwlb({ date: date, note: '该日期暂无数据。点「🤖 生成所选日期」按钮，将从央视抓取并生成总结（央视仅提供最新一期，若所选日期非最新一期，内容以实际抓取到的日期为准）。' }, 'info');
+      }
+    });
+  }
+}
+function syncXwlbDatePicker(date){
+  var dp = document.getElementById('xwlbDatePicker');
+  if(dp && date) dp.value = date;
+}
+/* 根据日期选择器所选日期，抓取央视并生成总结（存 Redis，下次自动读取） */
+function generateXwlbByDate(){
+  var dp = document.getElementById('xwlbDatePicker');
+  var date = (dp && dp.value) ? dp.value : getXwlbToday();
+  currentXwlbView = date;
+  syncXwlbDatePicker(date);
+  /* 前端自动抓（服务器代理优先）→ AI 生成 → saveXwlbCache 存 Redis */
+  fetchXwlbDirect(date);
 }
 
 /* 从服务器本地 data/xwlb/{date}.json 恢复（Redis 清空后的磁盘兜底） */
@@ -4329,6 +4370,7 @@ function getRecentXwlbDays(n){
 var currentXwlbView = null; // 最近点开/正在查看的归档日期（驱动历史 chip 高亮）
 function viewXwlbDate(d){
   currentXwlbView = d;
+  syncXwlbDatePicker(d);
   renderXwlbHistory();
   var data = DB.xwlb.cache[d];
   if(data){
