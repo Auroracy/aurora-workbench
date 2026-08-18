@@ -1576,6 +1576,8 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 .xwlb-fallback-tip{font-size:12.5px;color:var(--text-2);margin-bottom:8px;line-height:1.5;}
 .xwlb-manual-input{width:100%;min-height:110px;resize:vertical;padding:10px 12px;border:1px solid var(--line);border-radius:var(--radius-sm);font-size:13px;font-family:inherit;line-height:1.6;background:#fff;color:var(--text);margin-bottom:10px;}
 .xwlb-manual-input:focus{outline:none;border-color:var(--accent);}
+.xwlb-manual-input.xwlb-input-empty{border-color:#ef4444;box-shadow:0 0 0 3px rgba(239,68,68,.15);animation:xwlbShake .4s ease;}
+@keyframes xwlbShake{0%,100%{transform:translateX(0);}20%,60%{transform:translateX(-5px);}40%,80%{transform:translateX(5px);}}
 .xwlb-history{margin-top:6px;border-top:1px solid var(--line-soft);padding-top:12px;}
 .xwlb-history-title{font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
 .xwlb-history-list{display:flex;flex-wrap:wrap;gap:7px;}
@@ -2912,7 +2914,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
 
   <div class="xwlb-fallback" id="xwlbFallback" style="display:none;">
     <div class="xwlb-fallback-tip">自动抓取（前端代理）不可达。可手动粘贴当天《新闻联播》节目单，由 AI 引擎生成总结：</div>
-    <textarea id="xwlbManualInput" class="xwlb-manual-input" placeholder="每行一条，例如：&#10;【新思想引领新征程】服务消费扩容升级 激发内需新活力&#10;今年前7个月我国货物贸易进出口超30万亿元&#10;大面积单产提升持续加力 夯实秋粮稳产基础"></textarea>
+    <textarea id="xwlbManualInput" class="xwlb-manual-input" placeholder="📋 在此粘贴当天《新闻联播》节目单原文（每行一条标题）&#10;&#10;示例格式：&#10;【新思想引领新征程】服务消费扩容升级 激发内需新活力&#10;今年前7个月我国货物贸易进出口超30万亿元&#10;大面积单产提升持续加力 夯实秋粮稳产基础"></textarea>
     <button class="btn btn-primary btn-sm" id="xwlbManualBtn" onclick="summarizeXwlbManual(this.getAttribute('data-target-date'))">✨ 生成总结</button>
   </div>
 
@@ -4256,10 +4258,17 @@ function summarizeXwlbManual(date){
   if(!text && cached && cached.titles && cached.titles.length){
     text = cached.titles.join('\n');
   }
-  if(!text){ toast('请先粘贴节目单，或等待数据加载'); return; }
+  if(!text){
+    /* 醒目提示：高亮文本框 + 状态栏提示 + 聚焦输入 */
+    if(ta){ ta.classList.add('xwlb-input-empty'); ta.focus(); setTimeout(function(){ ta.classList.remove('xwlb-input-empty'); }, 1500); }
+    setXwlbStatus('⚠️ 请先在上方文本框粘贴 ' + date + ' 的《新闻联播》节目单，再点生成', 'warn');
+    toast('❌ 文本框为空，请先粘贴节目单内容');
+    return;
+  }
   if(!configuredEngines().length){ toast('请先在「☁ 数据同步 → 🤖 AI 引擎配置」配置任一 AI Key'); return; }
   var btn = document.getElementById('xwlbManualBtn');
-  if(btn){ btn.disabled = true; btn.textContent = '⏳ 生成中…'; }
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ AI 生成中…'; }
+  setXwlbStatus('⏳ AI 引擎生成 ' + date + ' 总结中，请稍候…', 'loading');
   var existingTitles = (cached && cached.titles) || [];
   callText(text,
     '你是资深新闻编辑，把以下《新闻联播》节目单整理成结构化每日总结，严格只输出如下 JSON（不要任何额外文字）：{"lead":"一句话导语（20字以内）","groups":[{"category":"分类名（如：国内要闻/经济发展/国际动态/社会民生/其他）","items":[{"title":"原标题","point":"一句话要点（30字以内）"}]}]}',
@@ -4284,12 +4293,15 @@ function summarizeXwlbManual(date){
       currentXwlbView = data.date;
       renderXwlb(data, '手动补录');
       renderXwlbHistory();
-      toast('已补录 ' + date + ' 总结');
+      setXwlbStatus('✅ ' + date + ' 总结已生成并保存', 'success');
+      toast('✅ 已补录 ' + date + ' 总结');
     })
-    .catch(function(err){ toast('生成失败：' + (err && err.message ? err.message : err)); })
+    .catch(function(err){
+      setXwlbStatus('❌ 生成失败：' + (err && err.message ? err.message : err), 'error');
+      toast('生成失败：' + (err && err.message ? err.message : err));
+    })
     .finally(function(){
       if(btn){ btn.disabled = false; btn.textContent = '✨ 生成 ' + date.slice(5) + ' 总结'; }
-      if(ta) ta.value = '';
     });
 }
 function callQwenText(userPrompt, sysPrompt, model){
