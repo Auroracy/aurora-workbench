@@ -4049,7 +4049,7 @@ function loadXwlb(force, date){
   }
   /* Redis 缓存已在上方命中即返回；此处仅处理缓存未命中。
      数据唯一来源是 Redis（DB.xwlb.cache），不再从 GitHub 下载；
-     优先从服务器本地磁盘文件恢复（Redis 清空后的磁盘兜底），都没有再 fallback 到前端自动抓央视节目单。 */
+     优先从服务器本地磁盘文件恢复（Redis 清空后的磁盘兜底），都没有则进入补录模式（不再自动抓取央视）。 */
   fetchXwlbFromServerLocal(date, function(localData){
     if(localData && (localData.summary || (localData.titles && localData.titles.length))){
       saveXwlbCache(localData);
@@ -4058,8 +4058,8 @@ function loadXwlb(force, date){
       toast('已从服务器本地文件恢复 ' + date + ' 数据');
       return;
     }
-    /* 本地也没有 → fallback 到前端自动抓 CCTV */
-    fetchXwlbDirect(date);
+    /* 本地也没有 → 进入补录模式（用户手动粘贴节目单后点生成） */
+    enterXwlbHistoryEditMode(date);
   });
 }
 
@@ -4076,14 +4076,20 @@ function syncXwlbDatePicker(date){
   var dp = document.getElementById('xwlbDatePicker');
   if(dp && date) dp.value = date;
 }
-/* 根据日期选择器所选日期，抓取央视并生成总结（存 Redis，下次自动读取） */
+/* 根据日期选择器所选日期，打开补录模式（用户粘贴后点生成总结） */
 function generateXwlbByDate(){
   var dp = document.getElementById('xwlbDatePicker');
   var date = (dp && dp.value) ? dp.value : getXwlbToday();
   currentXwlbView = date;
   syncXwlbDatePicker(date);
-  /* 前端自动抓（服务器代理优先）→ AI 生成 → saveXwlbCache 存 Redis */
-  fetchXwlbDirect(date);
+  /* 检查是否已有缓存数据 */
+  var cached = DB.xwlb.cache[date];
+  if(cached && cached.summary){
+    renderXwlb(cached, '缓存');
+    return;
+  }
+  /* 无缓存 → 进入补录模式 */
+  enterXwlbHistoryEditMode(date);
 }
 
 /* 从服务器本地 data/xwlb/{date}.json 恢复（Redis 清空后的磁盘兜底） */
