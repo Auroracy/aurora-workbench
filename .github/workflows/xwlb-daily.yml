@@ -48,5 +48,12 @@ jobs:
             exit 0
           fi
           DATE=$(ls -1 data/xwlb/ | sort | tail -1 | sed 's/\.json$//')
-          git commit -m "xwlb: ${DATE} 央视《新闻联播》AI 总结"
+          # 检查是否为 skipped 标记（抓取失败）
+          if grep -q '"_skipped": true' "data/xwlb/${DATE}.json" 2>/dev/null; then
+            REASON=$(node -e "const d=require('./data/xwlb/${DATE}.json'); console.log(d._reason||'unknown')")
+            git commit -m "xwlb: ${DATE} 跳过（${REASON}）"
+            echo "⚠️ 已提交跳过标记: ${DATE}"
+          else
+            git commit -m "xwlb: ${DATE} 央视《新闻联播》AI 总结"
+          fi
           git push

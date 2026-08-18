@@ -70,18 +70,24 @@ function fallbackSummary(titles){
   };
 }
 
-/* 通用：带超时的 GET 文本抓取 */
-function fetchText(url, label, timeoutMs){
-  console.log('🌐 抓取' + label + ':', url);
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(new Error(label + ' timeout ' + (timeoutMs/1000) + 's')), timeoutMs);
-  return fetch(url, {
-    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Aurora-Workbench/1.0)' },
-    signal: controller.signal,
-  }).then(res => {
-    if(!res.ok) throw new Error(label + ' HTTP ' + res.status);
-    return res.text();
-  }).finally(() => clearTimeout(timer));
+/* 通用：带重试的 GET 文本抓取 */
+async function fetchTextWithRetry(url, label, timeoutMs, maxRetries = 3){
+  let lastErr;
+  for(let attempt = 1; attempt <= maxRetries; attempt++){
+    try {
+      console.log(`🌐 抓取${label} (${attempt}/${maxRetries}):`, url);
+      return await fetchText(url, label, timeoutMs);
+    } catch(e){
+      lastErr = e;
+      console.warn(`⚠️ ${label} 第${attempt}次失败:`, e.message);
+      if(attempt < maxRetries){
+        const delay = attempt * 2000;
+        console.log(`⏳ ${delay}ms 后重试...`);
+        await new Promise(r => setTimeout(r, delay));
+      }
+    }
+  }
+  throw lastErr;
 }
 
 /* 阶段1：从栏目首页定位当天那期新闻联播详情页链接。
@@ -156,18 +162,22 @@ async function callQwen(titles){
     if(!m) throw new Error('bad date format: ' + date);
     const yymmdd = m[1].slice(2) + m[2] + m[3];
 
-    const columnHtml = await fetchText('https://tv.cctv.com/lm/xwlb/', 'CCTV 栏目首页', 30000);
+    const columnHtml = await fetchTextWithRetry('https://tv.cctv.com/lm/xwlb/', 'CCTV 栏目首页', 30000);
     const epLink = findTodayEpisode(columnHtml, yymmdd);
     if(!epLink){
-      throw new Error(`栏目首页没找到 ${date} (${yymmdd}) 那期新闻联播。CCTV 栏目页只保留当日节目，无法抓历史日期；如需补录请用 Tab9「手动粘贴节目单」。`);
+      console.warn(`⚠️ 栏目首页没找到 ${date} (${yymmdd}) 那期新闻联播，可能当日尚未播出或页面结构变更`);
+      writeSkipped(date, `栏目首页未找到 ${date} (${yymmdd}) 那期链接`);
+      process.exit(0);
     }
     console.log('🔗 当期详情页:', epLink);
 
-    const detailHtml = await fetchText(epLink, 'CCTV 当期详情页', 30000);
+    const detailHtml = await fetchTextWithRetry(epLink, 'CCTV 当期详情页', 30000);
     const titles = parseDetail(detailHtml);
 
     if(!titles.length){
-      throw new Error(`详情页没解析到 ${date} 的节目单（可能当日新闻联播尚未更新，或页面结构再次变更）。如需补录请用 Tab9「手动粘贴节目单」。`);
+      console.warn(`⚠️ 详情页没解析到 ${date} 的节目单，可能当日尚未更新或页面结构变更`);
+      writeSkipped(date, `详情页解析到 0 条节目单`);
+      process.exit(0);
     }
     console.log(`📋 抓到 ${titles.length} 条 ${date} 节目:`);
     titles.forEach((t, i) => console.log(`  ${i+1}. ${t}`));
@@ -196,7 +206,26 @@ async function callQwen(titles){
 
     process.stdout.write(JSON.stringify({ ok: true, file: OUT, titleCount: titles.length }) + '\n');
   } catch(e){
-    console.error('❌ 失败:', e.message);
-    process.exit(1);
+    /* 网络不可达等致命错误 → 写 skipped 标记 + exit 0（不阻塞 workflow） */
+    console.error('⚠️ 抓取失败（非致命）:', e.message);
+    writeSkipped(date, e.message);
+    process.exit(0);
   }
 })();
+
+/* 写入跳过标记（抓取失败时用，保证 workflow 绿色 + 后续可区分"无数据"和"未运行"） */
+function writeSkipped(date, reason){
+  const skipOut = `data/xwlb/${date}.json`;
+  const data = {
+    date,
+    titles: [],
+    summary: { lead: `⚠️ ${date} 新闻联播自动抓取失败`, groups: [] },
+    generatedAt: new Date().toISOString(),
+    source: 'github-actions',
+    _skipped: true,
+    _reason: reason
+  };
+  mkdirSync(dirname(skipOut), { recursive: true });
+  writeFileSync(skipOut, JSON.stringify(data, null, 2) + '\n');
+  console.log(`📝 已写入跳过标记: ${skipOut}（原因: ${reason}）`);
+}
