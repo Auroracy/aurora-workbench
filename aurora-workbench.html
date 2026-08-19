@@ -4275,8 +4275,8 @@ function summarizeXwlbManual(date){
   setXwlbStatus('⏳ AI 引擎生成 ' + date + ' 总结中，请稍候…', 'loading');
   var existingTitles = (cached && cached.titles) || [];
   callText(text,
-    '你是资深新闻编辑，把以下《新闻联播》节目单整理成结构化每日总结，严格只输出如下 JSON（不要任何额外文字）：{"lead":"一句话导语（20字以内）","groups":[{"category":"分类名（如：国内要闻/经济发展/国际动态/社会民生/其他）","items":[{"title":"原标题","point":"一句话要点（30字以内）"}]}]}',
-    'qwen-plus')
+    '你是资深新闻编辑，把以下《新闻联播》节目单整理成结构化每日总结，严格只输出如下 JSON（不要任何额外文字）：{"lead":"一句话导语（20字以内）","groups":[{"category":"分类名（如：国内要闻/经济发展/国际动态/社会民生/其他）","items":[{"title":"原标题","point":"一句话要点（30字以内）"}]}]}')
+    /* 注意：不传 model 参数，让 callText 内部按引擎自动选择默认模型（避免跨引擎模型名不兼容） */
     .then(function(summary){
       var allTitles = text.split(/\n+/).map(function(s){ return s.trim(); }).filter(Boolean);
       /* 保留已有标题（去重合并） */

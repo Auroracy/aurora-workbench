@@ -360,7 +360,14 @@ function serveStatic(res, pathname) {
   fs.readFile(filePath, function (err, data) {
     if (err) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end('404 Not Found'); return; }
     const ext = path.extname(filePath).toLowerCase();
-    res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
+    /* HTML 文件禁用缓存（确保 git pull 后浏览器立即获取最新代码） */
+    var headers = { 'Content-Type': MIME[ext] || 'application/octet-stream' };
+    if (ext === '.html') {
+      headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+      headers['Pragma'] = 'no-cache';
+      headers['Expires'] = '0';
+    }
+    res.writeHead(200, headers);
     res.end(data);
   });
 }
