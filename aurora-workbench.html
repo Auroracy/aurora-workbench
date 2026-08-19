@@ -2278,18 +2278,16 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     .fund-tbl th,.fund-tbl td{padding:8px 6px;border-bottom:1px solid #e2ebf0;text-align:right;white-space:nowrap;}
     .fund-tbl th:first-child,.fund-tbl td:first-child{text-align:left;}
     .fund-tbl th{color:#5a6b75;font-weight:600;background:#f6fafb;}
-    /* 移动端：隐藏次要列，只保留 基金 | 金额/昨日收益 | 持有收益/率(含操作按钮) */
+    /* 移动端：隐藏次要列，只保留 基金 | 估值 | 持有收益/率(含操作按钮) */
     @media(max-width:700px){
       .fund-tbl .hide-mobile{display:none !important;}
       .fund-tbl{font-size:11px;table-layout:auto;}
       .fund-tbl th,.fund-tbl td{padding:7px 4px;}
       .fund-tbl th:first-child,.fund-tbl td:first-child{min-width:80px;white-space:normal;word-break:break-all;}
-      /* 金额/昨日收益列：固定宽度避免挤压 */
-      .fund-tbl td:nth-child(3){min-width:88px;text-align:right;}
       /* 估值列：紧凑右对齐 */
-      .fund-tbl td:nth-child(4){min-width:78px;text-align:right;}
+      .fund-tbl td:nth-child(3){min-width:78px;text-align:right;}
       /* 持有收益列允许换行以容纳操作按钮 */
-      .fund-tbl td:nth-child(5){white-space:normal;min-width:100px;}
+      .fund-tbl td:nth-child(4){white-space:normal;min-width:100px;}
       /* 手机端显示持有收益列内的操作按钮 */
       .show-mobile-op{display:flex !important;}
     }
@@ -2536,7 +2534,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
         <span id="fundValTime" style="font-size:11px;color:var(--text-2);margin-left:auto;"></span>
       </div>
       <table class="fund-tbl">
-        <thead><tr><th>基金</th><th class="hide-mobile">分类</th><th>金额/昨日收益</th><th>估值</th><th>持有收益/率</th><th class="hide-mobile">成本价</th><th class="hide-mobile">净值</th><th class="hide-mobile">操作</th></tr></thead>
+        <thead><tr><th>基金</th><th class="hide-mobile">分类</th><th>估值</th><th>持有收益/率</th><th class="hide-mobile">成本价</th><th class="hide-mobile">净值</th><th class="hide-mobile">操作</th></tr></thead>
         <tbody id="fundTableBody"></tbody>
       </table>
       <div id="fundPager"></div>
@@ -6985,7 +6983,7 @@ function renderFunds(){
 
   var body = document.getElementById('fundTableBody'); if(!body) return;
   if(!funds.length){
-    body.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#9aa;">还没有基金，用上方「截图识别 / 批量粘贴 / 手动添加」导入吧</td></tr>';
+    body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#9aa;">还没有基金，用上方「截图识别 / 批量粘贴 / 手动添加」导入吧</td></tr>';
   } else {
     var totalPages = Math.ceil(funds.length / FUND_PAGE_SIZE);
     if(fundCurrentPage > totalPages) fundCurrentPage = totalPages;
@@ -7042,11 +7040,6 @@ function renderFunds(){
       return '<tr>' +
         '<td><b>' + escapeHtml(sanitizeText(f.name)) + '</b><br><span class="text-sm text-muted">' + f.code + '<br>' + fmtNum(f.shares) + '份</span></td>' +
         '<td class="hide-mobile"><span class="chip">' + f.type + '</span><span class="chip theme">' + cleanTheme(f.theme) + '</span></td>' +
-        /* 合并列：金额(大字) + 昨日收益(基于确认净值，小字在下) */ +
-        '<td>' +
-          (hasNav ? '<div style="font-size:14px;font-weight:600;">' + fmtMoney(safeMv) + '</div>' : '<div style="font-size:14px;font-weight:600;color:var(--text-2);">待估值</div>') +
-          '<div class="text-sm ' + (hasYest ? yestCls : 'text-muted') + '">' + (hasYest ? yestTxt : '—') + '</div>' +
-        '</td>' +
         /* 估值列：实时估算净值(4位小数) + 涨跌幅(红涨绿跌)；gsz 合理性校验(0.01~100为有效净值范围) */
         (function(){
           var _g = (f.val && f.val.gsz != null) ? safeNum(parseFloat(f.val.gsz)) : 0;
@@ -10429,7 +10422,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'a3b7c1x', date:'2026-08-19', desc:'恢复新闻联播自动抓取+静默降级' };
+  window.ver = { git:'21e8705', date:'2026-08-19', desc:'移除持仓明细金额/昨日收益合并列' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
