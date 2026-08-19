@@ -6968,6 +6968,22 @@ function renderFunds(){
     });
     if(dirty){ saveDb(); console.log('[migrate] 已清洗基金数据中的乱码'); }
   }
+  /* 一次性迁移：清洗 DB 中异常的 gsz 值（超出 0.01~100 有效净值范围的脏数据） */
+  if(!window._gszCleaned){
+    window._gszCleaned = true;
+    var gszDirty = false;
+    (DB.market.funds || []).forEach(function(f){
+      if(f.val && f.val.gsz != null && f.val.gsz !== ''){
+        var v = parseFloat(f.val.gsz);
+        if(isNaN(v) || v < 0.01 || v > 100){
+          console.log('[migrate] 清洗 ' + (f.code||'?') + ' 异常 gsz:', f.val.gsz, '→ null');
+          f.val.gsz = null;
+          gszDirty = true;
+        }
+      }
+    });
+    if(gszDirty){ saveDb(); console.log('[migrate] 已清洗基金数据中的异常 gsz 值'); }
+  }
 
   var body = document.getElementById('fundTableBody'); if(!body) return;
   if(!funds.length){
