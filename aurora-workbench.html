@@ -7009,6 +7009,21 @@ function renderFunds(){
       var hasCost = f.cost > 0;
       var hasGsz = (f.val && f.val.gsz != null && f.val.gsz !== '' && !isNaN(parseFloat(f.val.gsz)));
       var hasYest = (f.val && f.val.prevDwjz != null && f.val.prevDwjz !== '') || (f.val && f.val.gszzl != null && !isNaN(parseFloat(f.val.gszzl)));
+      /* ★ 诊断日志：前3只基金的关键值（仅首次渲染时输出） */
+      if(!window._fundDiagDone){ window._fundDiagDone = true;
+        console.log('[FUND-DIAG] === 持仓明细渲染诊断 ===');
+        console.log('[FUND-DIAG] 代码版本:', window.ver ? window.ver.git : '未知');
+        pageFunds.slice(0,3).forEach(function(ff,ii){
+          var vv = ff.val || {};
+          console.log('[FUND-DIAG] #' + ii + ' ' + ff.code + ' ' + ff.name +
+            ' | gsz=' + vv.gsz + '(type:' + typeof vv.gsz + ')' +
+            ' | hasGsz=' + hasGsz +
+            ' | shares=' + ff.shares +
+            ' | cost=' + ff.cost +
+            ' | hpImport=' + ff.hpImport +
+            ' | nav=' + safeNav + ' mv=' + safeMv + ' hp=' + safeHp);
+        });
+      }
       /* 净值列来源标注：手动 / 净值日期 */
       var navSrc = f.navManual ? '手动' : (safeDwjz > 0 ? ('净值 ' + (f.val.jzrq || '')) : '—');
       var hasHpData = hasNav || (f.hpImport != null) || (f.hpPctImport != null);
@@ -7049,6 +7064,12 @@ function renderFunds(){
         '<td class="hide-mobile">' + opBtns + '</td>' +
       '</tr>';
     }).join('');
+    /* ★ 诊断：输出第一行实际 HTML（截取估值列附近） */
+    if(!window._fundHtmlDiag && body){
+      window._fundHtmlDiag = true;
+      var firstTr = body.querySelector('tr');
+      if(firstTr) console.log('[FUND-DIAG] 第一行HTML(估值列附近):', firstTr.innerHTML.substring(0, 800));
+    }
     /* ★★ 渲染后兜底：移除任何泄漏到 HTML 中的字面量 "NaN" 文本 ★★ */
     if(body) body.innerHTML = stripNaN(body.innerHTML);
   }
