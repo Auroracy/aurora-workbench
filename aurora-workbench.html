@@ -2530,6 +2530,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     <div style="margin-top:16px;overflow-x:auto;">
       <div class="card-title" style="font-size:15px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
         <span>持仓明细</span>
+        <span id="fundVerBadge" style="font-size:10px;color:#888;border:1px solid #ddd;border-radius:4px;padding:0 4px;display:none;">v—</span>
         <button class="btn btn-sm" onclick="refreshAllFundValuation()">🔄 刷新估值</button>
         <button class="btn btn-sm" onclick="fetchFundOverlap()" id="fundOverlapBtn">🔗 分析持仓重合</button>
         <span id="fundValTime" style="font-size:11px;color:var(--text-2);margin-left:auto;"></span>
@@ -10409,6 +10410,9 @@ function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
   window.ver = { git:'a3b7c1x', date:'2026-08-19', desc:'恢复新闻联播自动抓取+静默降级' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
+  /* 页面内版本标签（方便确认服务器是否已更新） */
+  var vb = document.getElementById('fundVerBadge');
+  if(vb){ vb.textContent = 'v' + window.ver.git.slice(0,6); vb.style.display = 'inline-block'; vb.title = window.ver.date + ' ' + window.ver.desc; }
   loadDb();
   /* 启动服务器定期同步（如果配置了服务器地址） */
   startAutoPull();
