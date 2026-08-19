@@ -4047,19 +4047,16 @@ function loadXwlb(force, date){
     renderXwlb(cached, '缓存');
     return;
   }
-  /* Redis 缓存已在上方命中即返回；此处仅处理缓存未命中。
-     数据唯一来源是 Redis（DB.xwlb.cache），不再从 GitHub 下载；
-     优先从服务器本地磁盘文件恢复（Redis 清空后的磁盘兜底），都没有则进入补录模式（不再自动抓取央视）。 */
+  /* Redis 缓存未命中 → 先尝试服务器本地磁盘文件恢复 */
   fetchXwlbFromServerLocal(date, function(localData){
     if(localData && (localData.summary || (localData.titles && localData.titles.length))){
       saveXwlbCache(localData);
       renderXwlb(localData, '本地恢复');
       renderXwlbHistory();
-      toast('已从服务器本地文件恢复 ' + date + ' 数据');
       return;
     }
-    /* 本地也没有 → 进入补录模式（用户手动粘贴节目单后点生成） */
-    enterXwlbHistoryEditMode(date);
+    /* 本地也没有 → 尝试自动抓取央视（失败则静默降级到补录模式） */
+    fetchXwlbDirect(date);
   });
 }
 
@@ -4076,7 +4073,7 @@ function syncXwlbDatePicker(date){
   var dp = document.getElementById('xwlbDatePicker');
   if(dp && date) dp.value = date;
 }
-/* 根据日期选择器所选日期，打开补录模式（用户粘贴后点生成总结） */
+/* 根据日期选择器所选日期，尝试自动抓取央视并生成总结（失败则静默降级到补录模式） */
 function generateXwlbByDate(){
   var dp = document.getElementById('xwlbDatePicker');
   var date = (dp && dp.value) ? dp.value : getXwlbToday();
@@ -4088,8 +4085,8 @@ function generateXwlbByDate(){
     renderXwlb(cached, '缓存');
     return;
   }
-  /* 无缓存 → 进入补录模式 */
-  enterXwlbHistoryEditMode(date);
+  /* 无缓存 → 尝试自动抓取（失败则静默降级到补录模式） */
+  fetchXwlbDirect(date);
 }
 
 /* 从服务器本地 data/xwlb/{date}.json 恢复（Redis 清空后的磁盘兜底） */
@@ -4148,7 +4145,7 @@ function fetchXwlbDirect(date){
         var d = { date: date, titles: titles, summary: summary, generatedAt: new Date().toISOString(), note: (isServerProxy ? '服务器代理' : '前端代理') + '(' + proxyName + ') + ' + AI_ENGINES[configuredEngines()[0] || 'qwen'].label };
         saveXwlbCache(d); renderXwlb(d, isServerProxy ? '服务器代理' : '前端自动'); renderXwlbHistory();
       }).catch(function(err){
-        setXwlbStatus('⚠ AI 总结生成失败：' + (err && err.message ? err.message : err) + '。可手动粘贴节目单重试。', 'error');
+        setXwlbStatus('ℹ AI 生成暂不可用，可手动粘贴节目单后点「生成总结」', 'info');
         document.getElementById('xwlbFallback').style.display = 'block';
       });
     }).catch(function(err){
@@ -4158,8 +4155,8 @@ function fetchXwlbDirect(date){
   }
 }
 function afterDirectFail(date){
-  /* 抓取失败 → 进入补录模式（统一入口，避免双路径状态冲突） */
-  setXwlbStatus('⚠ 自动抓取失败（所有代理均不可达）。已切换到手动补录模式。', 'error');
+  /* 抓取失败 → 静默降级到补录模式（不弹报错，用户可直接粘贴） */
+  setXwlbStatus('ℹ 自动获取不可用，已切换到手动补录模式', 'info');
   enterXwlbHistoryEditMode(date);
 }
 function fetchWithTimeoutXwlb(url, ms){
@@ -10410,7 +10407,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'5d66658', date:'2026-08-19', desc:'gsz清洗+估值格式修复' };
+  window.ver = { git:'a3b7c1x', date:'2026-08-19', desc:'恢复新闻联播自动抓取+静默降级' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   loadDb();
   /* 启动服务器定期同步（如果配置了服务器地址） */
