@@ -2910,7 +2910,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
   </div>
 
   <div class="xwlb-fallback" id="xwlbFallback" style="display:none;">
-    <div class="xwlb-fallback-tip">自动抓取（前端代理）不可达。可手动粘贴当天《新闻联播》节目单，由 AI 引擎生成总结：</div>
+    <div class="xwlb-fallback-tip">选日期将自动获取当日《新闻联播》节目单并生成总结；若自动获取失败可手动粘贴：</div>
     <textarea id="xwlbManualInput" class="xwlb-manual-input" placeholder="📋 在此粘贴当天《新闻联播》节目单原文（每行一条标题）&#10;&#10;示例格式：&#10;【新思想引领新征程】服务消费扩容升级 激发内需新活力&#10;今年前7个月我国货物贸易进出口超30万亿元&#10;大面积单产提升持续加力 夯实秋粮稳产基础"></textarea>
     <button class="btn btn-primary btn-sm" id="xwlbManualBtn" onclick="summarizeXwlbManual(this.getAttribute('data-target-date'))">✨ 生成总结</button>
   </div>
@@ -4102,9 +4102,9 @@ function fetchXwlbFromServerLocal(date, cb){
     .catch(function(){ cb(null); });
 }
 
-/* 数据来源仅 Redis（DB.xwlb.cache）+ 服务器本地磁盘文件 data/xwlb/{date}.json，不再从 GitHub 下载 */
-/* 自动抓取央视节目的逻辑已彻底移除（所有外部代理均不可达，自动抓取只会误导用户）。
-   新闻联播模块现在纯手动补录：用户粘贴节目单后点「生成总结」调用 AI 引擎。 */
+/* 数据来源：Redis（DB.xwlb.cache）→ 服务器本地磁盘文件 data/xwlb/{date}.json → 服务端自动抓取央视栏目页
+   选日期即自动获取当日节目单（服务端 /api/cctv/xwlb-parse 解析，避开 CORS），并自动触发 AI 总结。
+   历史日期央视无公开归档时，降级为手动粘贴（原有兜底）。 */
 function saveXwlbCache(data){
   if(!data || !data.date) return;
   /* 清洗 AI 生成文本中的散布乱码后再存 */
@@ -4365,6 +4365,51 @@ function viewXwlbDate(d){
     enterXwlbHistoryEditMode(d);
   });
 }
+/* 选日期即自动获取节目单：调用服务端 /api/cctv/xwlb-parse（央视栏目页服务端解析，避开 CORS）
+   autoGen=true 时，若取到标题且已配置 AI 引擎，自动触发 AI 总结（恢复「选日期就出」体验）。 */
+function autoFetchProgramList(date, autoGen){
+  console.log('[xwlb] autoFetchProgramList START date=' + date + ' autoGen=' + autoGen);
+  try {
+    var base = serverBase();
+    if(!base){ console.log('[xwlb] no serverBase, skip auto-fetch'); return; }
+    var ta = document.getElementById('xwlbManualInput');
+    setXwlbStatus('⏳ 正在自动获取 ' + date + ' 节目单…', 'loading');
+    var url = base.replace(/\/+$/, '') + '/api/cctv/xwlb-parse?date=' + encodeURIComponent(date);
+    fetch(url, { headers: { 'Accept': 'application/json' } })
+      .then(function(r){ return r.json(); })
+      .then(function(j){
+        if(j && j.titles && j.titles.length){
+          if(ta){ ta.value = j.titles.join('\n'); }
+          /* 暂存标题到缓存（未生成前也能恢复），不覆盖已有 summary */
+          var cached = (DB && DB.xwlb && DB.xwlb.cache) ? DB.xwlb.cache[date] : null;
+          if(!cached || !cached.summary){
+            saveXwlbCache({ date: date, titles: j.titles, note: '自动抓取' });
+          }
+          var engines = configuredEngines();
+          console.log('[xwlb] autoFetch got ' + j.titles.length + ' titles, engines=' + (engines ? engines.length : 0));
+          if(autoGen && engines && engines.length){
+            setXwlbStatus('✅ 已自动获取 ' + j.titles.length + ' 条节目单，正在生成总结…', 'success');
+            summarizeXwlbManual(date);
+          } else if(autoGen && (!engines || !engines.length)){
+            setXwlbStatus('✅ 已自动获取 ' + j.titles.length + ' 条节目单；未配置 AI 引擎，请先配置后点「生成总结」', 'info');
+          } else {
+            setXwlbStatus('✅ 已自动获取 ' + j.titles.length + ' 条节目单，可点击「生成总结」', 'success');
+          }
+        } else {
+          console.log('[xwlb] autoFetch found=false');
+          setXwlbStatus('ℹ ' + (j && j.note ? j.note : '未能自动获取该日期节目单') + '，可手动粘贴后点生成', 'info');
+        }
+      })
+      .catch(function(e){
+        console.error('[xwlb] autoFetch error:', e);
+        setXwlbStatus('⚠️ 自动获取失败：' + (e && e.message ? e.message : e) + '，可手动粘贴', 'warn');
+      });
+  } catch(e) {
+    console.error('[xwlb] autoFetch EXCEPTION:', e);
+  }
+  console.log('[xwlb] autoFetchProgramList END');
+}
+
 function enterXwlbHistoryEditMode(d){
   /* 检查手动输入区是否已有内容 */
   var ta = document.getElementById('xwlbManualInput');
@@ -4378,7 +4423,7 @@ function enterXwlbHistoryEditMode(d){
   document.getElementById('xwlbInvestStatus').textContent = '';
   var fb = document.getElementById('xwlbFallback');
   var tip = fb.querySelector('.xwlb-fallback-tip');
-  if(tip){ tip.innerHTML = '<b>' + d + '</b> 暂无总结。可手动粘贴当天《新闻联播》节目单，由 AI 引擎生成：'; }
+  if(tip){ tip.innerHTML = '<b>' + d + '</b> 正在自动获取当日《新闻联播》节目单，获取成功将自动生成总结；若自动获取失败（仅当日可自动获取），可手动粘贴节目单后点「生成总结」：'; }
   var btn = document.getElementById('xwlbManualBtn');
   if(btn){
     btn.textContent = '✨ 生成 ' + d.slice(5) + ' 总结';
@@ -4389,7 +4434,8 @@ function enterXwlbHistoryEditMode(d){
   if(hasManualText){
     setXwlbStatus('ℹ 已检测到粘贴内容，点击「✨ 生成 ' + d.slice(5) + ' 总结」按钮即可生成 AI 总结', 'info');
   } else {
-    setXwlbStatus('', '');
+    /* 选日期即自动获取节目单（央视栏目页服务端解析）；取到则自动触发 AI 总结 */
+    autoFetchProgramList(d, true);
   }
   /* 滚到补录面板 */
   fb.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -10370,7 +10416,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'d4a1f2c', date:'2026-08-20', desc:'新闻生成按钮增强反馈+调试日志' };
+  window.ver = { git:'VER_PLACEHOLDER', date:'2026-08-20', desc:'新闻联播选日期自动获取节目单+自动生成总结' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');

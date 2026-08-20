@@ -338,6 +338,74 @@ function handleQt(res, q) {
   proxyRaw(target, 'https://stockapp.finance.qq.com/', res);
 }
 
+// 解析央视《新闻联播》栏目页，抽取指定日期的新闻标题列表。
+// 关键点：解析在服务端完成（避开浏览器 CORS + 客户端脆弱解析），只回传干净 JSON。
+//   央视栏目页 https://tv.cctv.com/lm/xwlb/ 仅保留「当日」节目单链接，
+//   因此本接口对当日日期可稳定返回标题；历史日期无解（央视无公开归档），返回 found:false。
+// GET /api/cctv/xwlb-parse?date=YYYY-MM-DD  ->  { date, found, titles:[...], count, source, note, fetchedAt }
+const XWLB_PARSE_CACHE = {};               // date -> { ts, payload } 进程内短缓存，避免重复抓取
+const XWLB_PARSE_TTL = 10 * 60 * 1000;     // 10 分钟
+function handleCctvXwlbParse(res, qs) {
+  const m = qs.match(/(?:^|&)date=([^&]+)/);
+  const raw = m ? decodeURIComponent(m[1]) : '';
+  const dm = raw.match(/^(\d{4})[-/]?(\d{2})[-/]?(\d{2})$/);   // 支持 YYYY-MM-DD / YYYYMMDD
+  if (!dm) return sendJSON(res, 400, { error: '缺少或非法 date 参数（需要 YYYY-MM-DD）' });
+  const norm = dm[1] + '-' + dm[2] + '-' + dm[3];
+  const slashDate = norm.replace(/-/g, '/');
+  console.log('[cctv/xwlb-parse] date=' + norm + ' slash=' + slashDate);
+  const hit = XWLB_PARSE_CACHE[norm];
+  if (hit && (Date.now() - hit.ts) < XWLB_PARSE_TTL) {
+    console.log('[cctv/xwlb-parse] 内存缓存命中，count=' + hit.payload.count);
+    return sendJSON(res, 200, hit.payload);
+  }
+  const target = 'https://tv.cctv.com/lm/xwlb/';
+  let attempts = 0;
+  const MAX = 3;
+  function tryFetch() {
+    attempts++;
+    console.log('[cctv/xwlb-parse] attempt ' + attempts + '/' + MAX);
+    upstreamGet(target, { 'Referer': 'https://tv.cctv.com/', 'Accept-Language': 'zh-CN,zh;q=0.9' }, function (err, status, buf) {
+      if (err || !buf || (status && status >= 400)) {
+        console.error('[cctv/xwlb-parse] attempt ' + attempts + ' 失败：', err || ('HTTP ' + status));
+        if (attempts < MAX) return setTimeout(tryFetch, 2000 * attempts);
+        return sendJSON(res, 502, { error: '央视抓取失败(' + MAX + '次)：' + (err && err.message || 'HTTP ' + status) });
+      }
+      const html = buf.toString('utf-8');
+      const re = new RegExp('href="(https://tv\\.cctv\\.com/' + slashDate.replace(/\//g, '\\/') + '/VIDE[^"]+\\.shtml)"', 'g');
+      const titles = [];
+      const seen = {};
+      let mm;
+      while ((mm = re.exec(html)) !== null) {
+        const seg = html.slice(Math.max(0, mm.index - 300), mm.index + 60);
+        const txts = seg.match(/>([^<]{4,60})</g) || [];
+        let title = '';
+        for (let i = txts.length - 1; i >= 0; i--) {
+          const t = txts[i].replace(/^>|<\/$/g, '').trim();
+          if (t && !/完整版/.test(t) && t !== '/') { title = t; break; }
+        }
+        if (title && /\[视频\]/.test(title)) {
+          title = title.replace('[视频]', '').trim();
+          if (title && !seen[title]) { seen[title] = 1; titles.push(title); }
+        }
+      }
+      const found = titles.length > 0;
+      const payload = {
+        date: norm,
+        found: found,
+        titles: titles,
+        count: titles.length,
+        source: found ? 'cctv-column' : 'none',
+        note: found ? '' : '央视栏目页仅保留当日节目单，该日期请手动粘贴',
+        fetchedAt: new Date().toISOString(),
+      };
+      XWLB_PARSE_CACHE[norm] = { ts: Date.now(), payload: payload };
+      console.log('[cctv/xwlb-parse] 成功，count=' + titles.length);
+      return sendJSON(res, 200, payload);
+    });
+  }
+  tryFetch();
+}
+
 // ---------- 静态文件托管 ----------
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -380,7 +448,7 @@ const server = http.createServer(function (req, res) {
   if (req.method === 'OPTIONS') { res.writeHead(204, CORS); return res.end(); }
 
   if (pathname === '/health') {
-    return sendJSON(res, 200, { ok: true, ts: Date.now(), routes: ['/api/sge', '/api/sina', '/api/eastmoney/ann', '/api/eastmoney/proxy', '/api/fundgz', '/api/ifzq', '/api/qt', '/api/cctv/xwlb', '/api/db'], store: redisMode ? 'redis' : 'json-file' });
+    return sendJSON(res, 200, { ok: true, ts: Date.now(), routes: ['/api/sge', '/api/sina', '/api/eastmoney/ann', '/api/eastmoney/proxy', '/api/fundgz', '/api/ifzq', '/api/qt', '/api/cctv/xwlb', '/api/cctv/xwlb-parse', '/api/db'], store: redisMode ? 'redis' : 'json-file' });
   }
 
   // 全量数据读写（Redis 优先 / JSON 文件兜底，无需 token）
@@ -428,6 +496,7 @@ const server = http.createServer(function (req, res) {
       return handleQt(res, m ? decodeURIComponent(m[1]) : '');
     }
     if (pathname === '/api/cctv/xwlb') return handleCctvXwlb(res, qs);
+    if (pathname === '/api/cctv/xwlb-parse') return handleCctvXwlbParse(res, qs);
     return sendJSON(res, 404, { error: 'unknown api route' });
   }
 
