@@ -338,13 +338,93 @@ function handleQt(res, q) {
   proxyRaw(target, 'https://stockapp.finance.qq.com/', res);
 }
 
-// 解析央视《新闻联播》栏目页，抽取指定日期的新闻标题列表。
-// 关键点：解析在服务端完成（避开浏览器 CORS + 客户端脆弱解析），只回传干净 JSON。
-//   央视栏目页 https://tv.cctv.com/lm/xwlb/ 仅保留「当日」节目单链接，
-//   因此本接口对当日日期可稳定返回标题；历史日期无解（央视无公开归档），返回 found:false。
+// 解析《新闻联播》指定日期的节目单/新闻标题列表。
+//   数据源优先级（央视仅公开「当日」节目单，历史日期需第三方归档）：
+//   1) 央视栏目页 https://tv.cctv.com/lm/xwlb/ —— 最权威，仅当日可稳定返回。
+//   2) mrxwlb.com 第三方文字版归档 —— 月度归档页提取当日详情链接，覆盖历史（回溯至 2015）。
+//   3) cn.govopendata.com 公共数据平台 —— 兜底备用。
+//   历史日期自动降级到第三方源，实现「选任意日期都能自动出节目单 + 生成总结」。
 // GET /api/cctv/xwlb-parse?date=YYYY-MM-DD  ->  { date, found, titles:[...], count, source, note, fetchedAt }
 const XWLB_PARSE_CACHE = {};               // date -> { ts, payload } 进程内短缓存，避免重复抓取
 const XWLB_PARSE_TTL = 10 * 60 * 1000;     // 10 分钟
+function xwlbCleanText(s) {
+  return (s || '')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&')
+    .replace(/&[a-z]+;/gi, ' ').replace(/&#\d+;/g, ' ')
+    .replace(/\s+/g, ' ').trim();
+}
+// 从详情页 HTML 抽取新闻标题列表：优先 li（mrxwlb），不足则按段落/编号兜底（govopendata）
+function xwlbExtractItems(html) {
+  const m = html.match(/<(div|article|section)[^>]*class="[^"]*(entry-content|post-content)[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
+  const body = m ? m[3] : html;
+  let items = [];
+  const re = /<li[^>]*>([\s\S]*?)<\/li>/gi;
+  let x;
+  while ((x = re.exec(body)) !== null) {
+    const t = xwlbCleanText(x[1]);
+    if (t && t.length >= 6 && !/继续阅读|首页|分类目录|归档|标签|上一篇|下一篇/.test(t)) items.push(t);
+  }
+  if (items.length < 3) {
+    const pre = html.indexOf('主要内容');
+    const seg = pre >= 0 ? html.slice(pre) : body;
+    const txt = xwlbCleanText(seg);
+    const parts = txt.split(/(?:；|;|。|\n|\r|\d+[.、)、])/)
+      .map(function (s) { return s.trim(); })
+      .filter(function (s) { return s.length >= 6 && s.length <= 80 && !/继续阅读|主要内容/.test(s); });
+    items = parts.slice(0, 30);
+  }
+  return items;
+}
+// 带重定向跟随的抓取（govopendata 会 301 跳转）
+function fetchText(url, hdrs, redirects, cb) {
+  upstreamGet(url, hdrs, function (err, status, buf, headers) {
+    if (err) return cb(err);
+    if ([301, 302, 303, 307, 308].indexOf(status) >= 0) {
+      if (redirects <= 0) return cb(new Error('too many redirects'));
+      let loc = headers && headers.location;
+      if (!loc) return cb(new Error('redirect without location'));
+      if (loc[0] === '/') { try { loc = new URL(url).origin + loc; } catch (e) { return cb(new Error('bad redirect')); } }
+      return fetchText(loc, hdrs, redirects - 1, cb);
+    }
+    if (status && status >= 400) return cb(new Error('HTTP ' + status));
+    cb(null, buf.toString('utf-8'));
+  });
+}
+// 第三方源1：mrxwlb.com（月度归档页 -> 当日详情链接，避免 slug 猜测）
+function tryMrxwlb(date, cb) {
+  const p = date.split('-');
+  const Y = p[0], M = p[1], D = p[2];
+  const monthUrl = 'http://mrxwlb.com/' + Y + '/' + M + '/';
+  fetchText(monthUrl, { 'Referer': 'http://mrxwlb.com/' }, 3, function (err, html) {
+    if (err || !html) return cb(null, []);
+    const re = new RegExp('href="(https?://mrxwlb\\.com/' + Y + '/' + M + '/' + D + '/[^"]+)"', 'i');
+    const mm = html.match(re);
+    if (!mm) return cb(null, []);
+    fetchText(mm[1], { 'Referer': monthUrl }, 3, function (err2, html2) {
+      if (err2 || !html2) return cb(null, []);
+      cb(null, xwlbExtractItems(html2));
+    });
+  });
+}
+// 第三方源2：cn.govopendata.com 公共数据平台（兜底）
+function tryGovopendata(date, cb) {
+  const ymd = date.replace(/-/g, '');
+  const url = 'https://cn.govopendata.com/xinwenlianbo/' + ymd + '/';
+  fetchText(url, { 'Referer': 'https://cn.govopendata.com/' }, 3, function (err, html) {
+    if (err || !html) return cb(null, []);
+    cb(null, xwlbExtractItems(html));
+  });
+}
+function tryThirdParty(date, cb) {
+  tryMrxwlb(date, function (err, items) {
+    if (items && items.length) return cb(null, { found: true, titles: items, source: 'mrxwlb' });
+    tryGovopendata(date, function (err2, items2) {
+      if (items2 && items2.length) return cb(null, { found: true, titles: items2, source: 'govopendata' });
+      cb(null, { found: false, titles: [], source: 'none' });
+    });
+  });
+}
 function handleCctvXwlbParse(res, qs) {
   const m = qs.match(/(?:^|&)date=([^&]+)/);
   const raw = m ? decodeURIComponent(m[1]) : '';
@@ -361,14 +441,30 @@ function handleCctvXwlbParse(res, qs) {
   const target = 'https://tv.cctv.com/lm/xwlb/';
   let attempts = 0;
   const MAX = 3;
+  function finish(payload) {
+    payload.date = norm;
+    payload.count = payload.titles ? payload.titles.length : 0;
+    if (!payload.note) payload.note = '';
+    payload.fetchedAt = new Date().toISOString();
+    XWLB_PARSE_CACHE[norm] = { ts: Date.now(), payload: payload };
+    console.log('[cctv/xwlb-parse] 完成 source=' + payload.source + ' count=' + payload.count);
+    return sendJSON(res, 200, payload);
+  }
+  function finishThirdParty() {
+    console.log('[cctv/xwlb-parse] 央视无当日数据，尝试第三方归档源');
+    tryThirdParty(norm, function (err, r) {
+      if (r && r.found) return finish(r);
+      return finish({ found: false, titles: [], source: 'none', note: '央视仅公开当日节目单，且第三方归档源暂未收录该日期，请手动粘贴后生成' });
+    });
+  }
   function tryFetch() {
     attempts++;
-    console.log('[cctv/xwlb-parse] attempt ' + attempts + '/' + MAX);
+    console.log('[cctv/xwlb-parse] attempt ' + attempts + '/' + MAX + ' (央视)');
     upstreamGet(target, { 'Referer': 'https://tv.cctv.com/', 'Accept-Language': 'zh-CN,zh;q=0.9' }, function (err, status, buf) {
       if (err || !buf || (status && status >= 400)) {
-        console.error('[cctv/xwlb-parse] attempt ' + attempts + ' 失败：', err || ('HTTP ' + status));
+        console.error('[cctv/xwlb-parse] 央视 attempt ' + attempts + ' 失败：', err || ('HTTP ' + status));
         if (attempts < MAX) return setTimeout(tryFetch, 2000 * attempts);
-        return sendJSON(res, 502, { error: '央视抓取失败(' + MAX + '次)：' + (err && err.message || 'HTTP ' + status) });
+        return finishThirdParty();
       }
       const html = buf.toString('utf-8');
       const re = new RegExp('href="(https://tv\\.cctv\\.com/' + slashDate.replace(/\//g, '\\/') + '/VIDE[^"]+\\.shtml)"', 'g');
@@ -388,19 +484,8 @@ function handleCctvXwlbParse(res, qs) {
           if (title && !seen[title]) { seen[title] = 1; titles.push(title); }
         }
       }
-      const found = titles.length > 0;
-      const payload = {
-        date: norm,
-        found: found,
-        titles: titles,
-        count: titles.length,
-        source: found ? 'cctv-column' : 'none',
-        note: found ? '' : '央视栏目页仅保留当日节目单，该日期请手动粘贴',
-        fetchedAt: new Date().toISOString(),
-      };
-      XWLB_PARSE_CACHE[norm] = { ts: Date.now(), payload: payload };
-      console.log('[cctv/xwlb-parse] 成功，count=' + titles.length);
-      return sendJSON(res, 200, payload);
+      if (titles.length > 0) return finish({ found: true, titles: titles, source: 'cctv-column' });
+      return finishThirdParty();
     });
   }
   tryFetch();
