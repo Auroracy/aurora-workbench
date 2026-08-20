@@ -7051,12 +7051,12 @@ function renderFunds(){
       return '<tr>' +
         '<td><b>' + escapeHtml(sanitizeText(f.name)) + '</b><br><span class="text-sm text-muted">' + f.code + '<br>' + fmtNum(f.shares) + '份</span></td>' +
         '<td class="hide-mobile"><span class="chip">' + f.type + '</span><span class="chip theme">' + cleanTheme(f.theme) + '</span></td>' +
-        /* 估值列：实时估算净值(4位小数) + 涨跌幅(红涨绿跌)；gsz 合理性校验(0.01~100为有效净值范围) */
+        /* 估值列：涨跌幅百分比(红涨绿跌)；gsz 合理性校验(0.01~100为有效净值范围) */
         (function(){
           var _g = (f.val && f.val.gsz != null) ? safeNum(parseFloat(f.val.gsz)) : 0;
           var _validGsz = hasGsz && _g >= 0.01 && _g <= 100;
           return '<td>' +
-            (_validGsz ? '<div style="font-size:14px;font-weight:600;">' + _g.toFixed(4) + '</div><div class="text-sm ' + gzCls + '">' + gzTxt + '</div>' : '<div style="font-size:14px;font-weight:600;color:var(--text-2);">—</div>') +
+            (_validGsz ? '<div style="font-size:15px;font-weight:600;" class="' + gzCls + '">' + gzTxt + '</div>' : '<div style="font-size:14px;font-weight:600;color:var(--text-2);">—</div>') +
             '</td>';
         })() +
         '<td class="' + (hasHpData ? hpCls : '') + '">' + (hasHpData ? fmtMoney(safeHp) + '<br><span class="text-sm">' + fmtPct(safeHpPct) + '</span>' : '<span class="text-muted">—</span>') +
@@ -7071,7 +7071,16 @@ function renderFunds(){
             : '<span class="text-sm text-muted">估值 —</span>';
           return main + '<br>' + sub;
         })() + '</td>' +
-        '<td class="hide-mobile">' + (safeDwjz > 0 ? fmtMoney(safeDwjz) : '<span class="text-muted">待净值</span>') + '<br><span class="text-sm text-muted">' + navSrc + '</span></td>' +
+        /* 净值列：日涨跌幅百分比(红涨绿跌) + 净值日期标注 */
+        '<td class="hide-mobile">' + (function(){
+          var navPct = safeNum(m.yesterdayPct);
+          var navPctCls = navPct > 0 ? 'pos' : (navPct < 0 ? 'neg' : 'text-muted');
+          var navPctTxt = (navPct >= 0 ? '+' : '') + fmtPct(navPct);
+          if(safeDwjz > 0 && navPct !== 0){
+            return '<div style="font-size:15px;font-weight:600;" class="' + navPctCls + '">' + navPctTxt + '</div><div class="text-sm text-muted">' + navSrc + '</div>';
+          }
+          return '<span class="text-muted">' + (safeDwjz > 0 ? '—<br><span class="text-sm text-muted">' + navSrc + '</span>' : '待净值') + '</span>';
+        })() + '</td>' +
         '<td class="hide-mobile">' + opBtns + '</td>' +
       '</tr>';
     }).join('');
@@ -10456,7 +10465,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'95691d3', date:'2026-08-20', desc:'持仓明细新增金额列(净值市值+估值市值),移除成本价列' };
+  window.ver = { git:'e3c8f1a', date:'2026-08-21', desc:'估值/净值列改为百分比显示(红涨绿跌)' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
