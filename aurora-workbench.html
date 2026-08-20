@@ -4048,7 +4048,7 @@ function loadXwlb(force, date){
     renderXwlb(cached, '缓存');
     return;
   }
-  /* Redis 缓存未命中 → 先尝试服务器本地磁盘文件恢复 */
+  /* Redis 缓存未命中 → 尝试服务器本地磁盘文件恢复 */
   fetchXwlbFromServerLocal(date, function(localData){
     if(localData && (localData.summary || (localData.titles && localData.titles.length))){
       saveXwlbCache(localData);
@@ -4056,8 +4056,8 @@ function loadXwlb(force, date){
       renderXwlbHistory();
       return;
     }
-    /* 本地也没有 → 尝试自动抓取央视（失败则静默降级到补录模式） */
-    fetchXwlbDirect(date);
+    /* 本地也没有 → 直接进入补录模式（用户粘贴节目单后点生成） */
+    enterXwlbHistoryEditMode(date);
   });
 }
 
@@ -4074,7 +4074,7 @@ function syncXwlbDatePicker(date){
   var dp = document.getElementById('xwlbDatePicker');
   if(dp && date) dp.value = date;
 }
-/* 根据日期选择器所选日期，尝试自动抓取央视并生成总结（失败则静默降级到补录模式） */
+/* 根据日期选择器所选日期，打开补录模式（用户粘贴后点生成总结） */
 function generateXwlbByDate(){
   var dp = document.getElementById('xwlbDatePicker');
   var date = (dp && dp.value) ? dp.value : getXwlbToday();
@@ -4086,8 +4086,8 @@ function generateXwlbByDate(){
     renderXwlb(cached, '缓存');
     return;
   }
-  /* 无缓存 → 尝试自动抓取（失败则静默降级到补录模式） */
-  fetchXwlbDirect(date);
+  /* 无缓存 → 直接进入补录模式 */
+  enterXwlbHistoryEditMode(date);
 }
 
 /* 从服务器本地 data/xwlb/{date}.json 恢复（Redis 清空后的磁盘兜底） */
@@ -10403,7 +10403,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'ca814c5', date:'2026-08-20', desc:'修复操作按钮泄漏+清理诊断' };
+  window.ver = { git:'e30c572', date:'2026-08-20', desc:'新闻联播彻底移除自动抓取' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
