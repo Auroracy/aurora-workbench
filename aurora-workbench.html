@@ -2291,6 +2291,8 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
       /* 手机端显示持有收益列内的操作按钮 */
       .show-mobile-op{display:flex !important;}
     }
+    /* 桌面端：强制隐藏移动端操作按钮（!important 覆盖所有可能的样式冲突） */
+    .show-mobile-op{display:none !important;}
     .chip{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;margin:1px 2px;background:#e8f3f1;color:#15A49B;}
     .chip.theme{background:#eaf1fb;color:#2E86C1;}
     .pos{color:#c0392b;font-weight:600;}
@@ -7007,21 +7009,6 @@ function renderFunds(){
       var hasCost = f.cost > 0;
       var hasGsz = (f.val && f.val.gsz != null && f.val.gsz !== '' && !isNaN(parseFloat(f.val.gsz)));
       var hasYest = (f.val && f.val.prevDwjz != null && f.val.prevDwjz !== '') || (f.val && f.val.gszzl != null && !isNaN(parseFloat(f.val.gszzl)));
-      /* ★ 诊断日志：前3只基金的关键值（仅首次渲染时输出） */
-      if(!window._fundDiagDone){ window._fundDiagDone = true;
-        console.log('[FUND-DIAG] === 持仓明细渲染诊断 ===');
-        console.log('[FUND-DIAG] 代码版本:', window.ver ? window.ver.git : '未知');
-        pageFunds.slice(0,3).forEach(function(ff,ii){
-          var vv = ff.val || {};
-          console.log('[FUND-DIAG] #' + ii + ' ' + ff.code + ' ' + ff.name +
-            ' | gsz=' + vv.gsz + '(type:' + typeof vv.gsz + ')' +
-            ' | hasGsz=' + hasGsz +
-            ' | shares=' + ff.shares +
-            ' | cost=' + ff.cost +
-            ' | hpImport=' + ff.hpImport +
-            ' | nav=' + safeNav + ' mv=' + safeMv + ' hp=' + safeHp);
-        });
-      }
       /* 净值列来源标注：手动 / 净值日期 */
       var navSrc = f.navManual ? '手动' : (safeDwjz > 0 ? ('净值 ' + (f.val.jzrq || '')) : '—');
       var hasHpData = hasNav || (f.hpImport != null) || (f.hpPctImport != null);
@@ -7057,12 +7044,6 @@ function renderFunds(){
         '<td class="hide-mobile">' + opBtns + '</td>' +
       '</tr>';
     }).join('');
-    /* ★ 诊断：输出第一行实际 HTML（截取估值列附近） */
-    if(!window._fundHtmlDiag && body){
-      window._fundHtmlDiag = true;
-      var firstTr = body.querySelector('tr');
-      if(firstTr) console.log('[FUND-DIAG] 第一行HTML(估值列附近):', firstTr.innerHTML.substring(0, 800));
-    }
     /* ★★ 渲染后兜底：移除任何泄漏到 HTML 中的字面量 "NaN" 文本 ★★ */
     if(body) body.innerHTML = stripNaN(body.innerHTML);
   }
@@ -10422,7 +10403,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'b7c5b38', date:'2026-08-19', desc:'移除持仓明细金额/昨日收益合并列' };
+  window.ver = { git:'ca814c5', date:'2026-08-20', desc:'修复操作按钮泄漏+清理诊断' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
