@@ -4193,9 +4193,11 @@ function refreshXwlb(){
 }
 function summarizeXwlbManual(date){
   /* date 缺省 = 补当天；可由「历史归档」chip 灰显补录传入指定日期 */
-  date = date || getXwlbToday();
-  var ta = document.getElementById('xwlbManualInput');
-  var text = (ta.value || '').trim();
+  try {
+    date = date || getXwlbToday();
+    console.log('[xwlb] summarizeXwlbManual called, date=' + date);
+    var ta = document.getElementById('xwlbManualInput');
+    var text = (ta ? (ta.value || '').trim() : '');
   /* 优先使用已有标题（从缓存中的数据），其次才用手动输入 */
   var cached = DB.xwlb.cache[date];
   if(!text && cached && cached.titles && cached.titles.length){
@@ -4246,6 +4248,13 @@ function summarizeXwlbManual(date){
     .finally(function(){
       if(btn){ btn.disabled = false; btn.textContent = '✨ 生成 ' + date.slice(5) + ' 总结'; }
     });
+  } catch(e) {
+    console.error('[xwlb] summarizeXwlbManual error:', e);
+    setXwlbStatus('❌ 程序异常：' + (e && e.message ? e.message : e), 'error');
+    toast('❌ 程序异常：' + (e && e.message ? e.message : e));
+    var btn2 = document.getElementById('xwlbManualBtn');
+    if(btn2){ btn2.disabled = false; btn2.textContent = '✨ 生成 ' + (date || '').slice(5) + ' 总结'; }
+  }
 }
 function callQwenText(userPrompt, sysPrompt, model){
   var key = getQwenKey();
@@ -10340,7 +10349,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'6baa980', date:'2026-08-20', desc:'彻底移除持有收益列内的操作按钮' };
+  window.ver = { git:'ce3de0d', date:'2026-08-20', desc:'新闻生成按钮try-catch+诊断日志' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
