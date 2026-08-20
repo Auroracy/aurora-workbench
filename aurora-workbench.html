@@ -4295,7 +4295,7 @@ function callQwenText(userPrompt, sysPrompt, model){
         response_format: { type: 'json_object' }
       })
     }),
-    new Promise(function(_, reject){ setTimeout(function(){ reject(new Error('请求超时（20s）')); }, 20000); })
+    new Promise(function(_, reject){ setTimeout(function(){ reject(new Error('请求超时（60s）')); }, 60000); })
   ]).then(function(resp){
     if(!resp.ok){
       return resp.text().then(function(t){
@@ -5714,7 +5714,7 @@ function callTextOpenAI(userPrompt, sysPrompt, key, apiUrl, model){
         response_format: { type: 'json_object' }
       })
     }),
-    new Promise(function(_, reject){ setTimeout(function(){ reject(new Error('请求超时（20s）')); }, 20000); })
+    new Promise(function(_, reject){ setTimeout(function(){ reject(new Error('请求超时（60s）')); }, 60000); })
   ]).then(function(resp){
     if(!resp.ok){
       return resp.text().then(function(t){
@@ -10416,7 +10416,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'669ff13', date:'2026-08-20', desc:'新闻联播选日期自动获取节目单+自动生成总结' };
+  window.ver = { git:'VER_PLACEHOLDER', date:'2026-08-20', desc:'AI文本引擎(qwen/OpenAI兼容)超时20s→60s' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
