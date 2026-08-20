@@ -605,9 +605,10 @@ const server = http.createServer(function (req, res) {
       }).catch(function (e) { sendJSON(res, 500, { error: String(e && e.message || e) }); });
     }
     if (req.method === 'POST') {
-      let body = '';
-      req.on('data', function (c) { body += c; if (body.length > 32 * 1024 * 1024) req.destroy(); });
+      let chunks = [];
+      req.on('data', function (c) { chunks.push(c); let size = chunks.reduce(function(s,b){return s+b.length;},0); if (size > 32 * 1024 * 1024) req.destroy(); });
       req.on('end', function () {
+        let body = Buffer.concat(chunks).toString('utf-8');
         if (!body) return sendJSON(res, 400, { error: 'empty body' });
         let parsed;
         try { parsed = JSON.parse(body); } catch (e) { return sendJSON(res, 400, { error: 'invalid JSON' }); }
