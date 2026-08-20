@@ -6905,7 +6905,14 @@ function applyFundVal(f, d){
   if(!_validGsz && d.gsz != null && d.gsz !== ''){
     console.warn('[applyFundVal] ' + (f.code||'?') + ' gsz 异常值已丢弃:', d.gsz, '(有效范围 0.01~100)');
   }
-  f.val = { gsz: _validGsz ? _gsz : (f.val&&f.val.gsz)||null, dwjz: d.dwjz, gszzl: d.gszzl, gztime: d.gztime, jzrq: d.jzrq };
+  f.val = {
+    gsz: _validGsz ? _gsz : (f.val&&f.val.gsz)||null,
+    dwjz: d.dwjz || (d.nav != null ? String(d.nav) : (f.val&&f.val.dwjz)||null),
+    gszzl: d.gszzl,
+    gztime: d.gztime,
+    jzrq: d.jzrq,
+    nav: d.nav != null ? d.nav : (f.val&&f.val.nav)||null
+  };
   if(!f.name || f.name === f.code) f.name = d.name || f.name;
   f.updatedAt = Date.now();
 }
@@ -7982,43 +7989,65 @@ function commitImportFunds(){
 }
 function clearImportPreview(){ pendingImport = []; var box = document.getElementById('fundImportPreview'); if(box) box.innerHTML = ''; }
 
-/* ============ 天天基金估值抓取 ============ */
+/* ============ 基金估值抓取（服务端批量接口） ============ */
+/* 旧接口 fundgz.1234567.com.cn 已失效(404)，改用服务端 /api/fundgz-batch 批量拉取 */
+function fetchFundValuationBatch(codes, cb){
+  if(!codes || !codes.length){ cb(new Error('无基金代码')); return; }
+  var url = apiUrl('/api/fundgz-batch?codes=' + codes.join(','));
+  fetch(url, { credentials: 'same-origin' }).then(function(r){
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  }).then(function(d){
+    if(d.error) throw new Error(d.error);
+    cb(null, d.data || {});   /* { "017745": {name,gsz,gszzl,nav,gztime}, ... } */
+  }).catch(function(e){ cb(e); });
+}
+/* 兼容旧的单只接口（内部转为批量） */
 function fetchFundValuation(code, cb){
-  var target = 'https://fundgz.1234567.com.cn/js/' + code + '.js';
-  var sources = [];
-  if(hasSameOriginApi()) sources.push(apiUrl('/api/fundgz?code=' + code));
-  DCA_PROXIES.forEach(function(p){ sources.push(p + encodeURIComponent(target)); });
-  var i = 0;
-  function next(){
-    if(i >= sources.length){ cb(new Error('估值抓取失败')); return; }
-    var url = sources[i++];
-    fetchTextWithTimeout(url, 12000).then(function(txt){
-      var m = txt.match(/jsonpgz\(([\s\S]*)\)/);
-      if(!m){ next(); return; }
-      try {
-        var d = JSON.parse(m[1]);
-        if(!d || !d.fundcode){ next(); return; }
-        cb(null, d);
-      } catch(e){ next(); }
-    }).catch(function(){ next(); });
-  }
-  next();
+  fetchFundValuationBatch([code], function(err, data){
+    if(err){ cb(err); return; }
+    var item = data[code];
+    if(!item){ cb(new Error('无数据')); return; }
+    /* 转换为旧格式 { fundcode, gsz, gszzl, dwjz, gztime, jzrq } */
+    cb(null, {
+      fundcode: code,
+      name: item.name,
+      gsz: item.gsz,
+      gszzl: item.gszzl,
+      dwjz: item.dwjz || (item.nav != null ? String(item.nav) : null),
+      gztime: item.gztime,
+      jzrq: item.gztime ? item.gztime.slice(0,10) : '',
+      nav: item.nav,
+    });
+  });
 }
 function refreshAllFundValuation(){
   var fs = (DB.market.funds || []).filter(function(f){ return !f.navManual; });
   if(!fs.length){ toast('全部为手动净值，无需联网更新'); return; }
   toast('正在刷新 ' + fs.length + ' 只基金估值...');
-  function step(i){
-    if(i >= fs.length){ saveDb(); renderFunds(); updateFundValTime(); toast('估值刷新完成'); return; }
-    fetchFundValuation(fs[i].code, function(err, d){
-      if(!err && d){
-        var f = DB.market.funds.find(function(x){ return x.code === fs[i].code; });
-        if(f) applyFundVal(f, d);
-      }
-      step(i + 1);
+  var codes = fs.map(function(f){ return f.code; });
+  fetchFundValuationBatch(codes, function(err, data){
+    if(err){ toast('估值刷新失败: ' + err.message); return; }
+    var updated = 0;
+    fs.forEach(function(f){
+      var item = data[f.code];
+      if(!item) return;
+      /* 转为 applyFundVal 期望的格式 */
+      var d = {
+        fundcode: f.code,
+        gsz: item.gsz,
+        gszzl: item.gszzl,
+        dwjz: item.dwjz || (item.nav != null ? String(item.nav) : null),
+        gztime: item.gztime || '',
+        jzrq: (item.gztime || '').slice(0,10),
+        nav: item.nav,
+      };
+      applyFundVal(f, d);
+      updated++;
     });
-  }
-  step(0);
+    saveDb(); renderFunds(); updateFundValTime();
+    toast('估值刷新完成（' + updated + '/' + fs.length + ' 只）');
+  });
 }
 
 /* ============ 基金净值自动刷新 ============ */
@@ -8041,22 +8070,22 @@ function autoFetchFundNavIfNeeded(force){
   if(!force && now - _lastNavFetchTs < 5000) return;
   _lastNavFetchTs = now;
   console.log('[autoNav] 自动抓取', fs.length, '只基金净值...');
-  /* 静默逐只抓取，完成后 saveDb + renderFunds 刷新显示 */
-  var done = 0;
-  fs.forEach(function(f){
-    fetchFundValuation(f.code, function(err, d){
-      done++;
-      if(!err && d){
-        applyFundVal(f, d);
-      }
-      /* 全部完成时保存并渲染 */
-      if(done === fs.length){
-        saveDb();
-        renderFunds();
-        updateFundValTime();
-        console.log('[autoNav] 净值刷新完成');
-      }
+  /* 静默批量抓取，完成后 saveDb + renderFunds 刷新显示 */
+  var codes = fs.map(function(f){ return f.code; });
+  fetchFundValuationBatch(codes, function(err, data){
+    if(err){ console.warn('[autoNav] 批量估值失败:', err.message); return; }
+    fs.forEach(function(f){
+      var item = data[f.code];
+      if(!item) return;
+      applyFundVal(f, {
+        fundcode: f.code,
+        gsz: item.gsz, gszzl: item.gszzl,
+        dwjz: item.dwjz || (item.nav != null ? String(item.nav) : null),
+        gztime: item.gztime || '', jzrq: (item.gztime||'').slice(0,10), nav: item.nav,
+      });
     });
+    saveDb(); renderFunds(); updateFundValTime();
+    console.log('[autoNav] 净值刷新完成');
   });
 }
 
@@ -10416,7 +10445,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'3b8b136', date:'2026-08-20', desc:'新闻联播历史日期自动获取(央视当日+mrxwlb/govopendata第三方归档)' };
+  window.ver = { git:'VER_PLACEHOLDER', date:'2026-08-20', desc:'基金估值批量接口(替代失效fundgz)+NAV净值显示' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');

@@ -302,6 +302,66 @@ function handleFundgz(res, code) {
   proxyRaw(target, 'https://fundf10.eastmoney.com/', res);
 }
 
+// 批量基金估值/净值接口（替代已失效的 fundgz.1234567.com.cn 单只接口）
+// 数据源：东方财富 fundmobapi（一次请求返回多只基金的 GSZ+NAV）
+// GET /api/fundgz-batch?codes=017745,019708,...
+// 返回: { ts, count, data: { "017745": { name, gsz, gszzl, nav, gztime }, ... } }
+const FUND_BATCH_CACHE = { ts: 0, payload: null };
+const FUND_BATCH_TTL = 60 * 1000;  // 交易时间60s缓存，收盘后可更长
+function handleFundgzBatch(res, qs) {
+  const m = qs.match(/(?:^|&)codes=([^&]+)/);
+  if (!m) return sendJSON(res, 400, { error: '缺少 codes 参数（逗号分隔的6位基金代码）' });
+  const raw = decodeURIComponent(m[1]);
+  const codes = raw.split(',').map(function(s){ return s.trim(); }).filter(function(s){ return /^\d{6}$/.test(s); });
+  if (!codes.length) return sendJSON(res, 400, { error: '无有效基金代码' });
+  // 短缓存命中
+  if (FUND_BATCH_CACHE.payload && (Date.now() - FUND_BATCH_CACHE.ts) < FUND_BATCH_TTL) {
+    console.log('[fundgz-batch] 缓存命中');
+    return sendJSON(res, 200, FUND_BATCH_CACHE.payload);
+  }
+  const target = 'https://fundmobapi.eastmoney.com/FundMNewApi/FundMNFInfo'
+    + '?pageIndex=1&pageSize=' + codes.length
+    + '&plat=Android&appType=ttjj&product=EFund&Version=1&deviceid=aurora-workbench&Ession=1'
+    + '&Fcodes=' + codes.join(',');
+  console.log('[fundgz-batch] 拉取', codes.length, '只基金:', codes.join(','));
+  upstreamGet(target, { 'Referer': 'https://fund.eastmoney.com/', 'User-Agent': 'Mozilla/5.0' }, function(err, status, buf) {
+    if (err || !buf || status >= 400) {
+      console.error('[fundgz-batch] 失败:', err || ('HTTP ' + status));
+      return sendJSON(res, 502, { error: '基金估值批量查询失败: ' + (err && err.message || 'HTTP ' + status) });
+    }
+    try {
+      var body = JSON.parse(buf.toString('utf-8'));
+      var items = body.Datas || [];
+      var data = {};
+      for (var i = 0; i < items.length; i++) {
+        var f = items[i];
+        data[f.FCODE] = {
+          name: f.SHORTNAME || '',
+          gsz: f.GSZ != null ? parseFloat(f.GSZ) : null,
+          gszzl: f.GSZZL != null ? parseFloat(f.GSZZL) : null,
+          nav: f.NAV != null ? parseFloat(f.NAV) : null,
+          gztime: f.GZTIME || null,
+          dwjz: f.DWJZ || null,   // 如果接口有单位净值
+        };
+      }
+      var payload = {
+        ts: Date.now(),
+        count: Object.keys(data).length,
+        data: data,
+        source: 'fundmobapi.eastmoney.com',
+        note: items.length < codes.length ? ('缺失 ' + (codes.length - items.length) + ' 只') : '',
+      };
+      FUND_BATCH_CACHE.ts = Date.now();
+      FUND_BATCH_CACHE.payload = payload;
+      console.log('[fundgz-batch] 成功:', payload.count, '/', codes.length);
+      return sendJSON(res, 200, payload);
+    } catch(e) {
+      console.error('[fundgz-batch] 解析失败:', e.message);
+      return sendJSON(res, 502, { error: '响应解析失败: ' + e.message });
+    }
+  });
+}
+
 function handleIfzq(res, param) {
   const target = 'https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=' + param;
   proxyRaw(target, 'https://stockapp.finance.qq.com/', res);
@@ -533,7 +593,7 @@ const server = http.createServer(function (req, res) {
   if (req.method === 'OPTIONS') { res.writeHead(204, CORS); return res.end(); }
 
   if (pathname === '/health') {
-    return sendJSON(res, 200, { ok: true, ts: Date.now(), routes: ['/api/sge', '/api/sina', '/api/eastmoney/ann', '/api/eastmoney/proxy', '/api/fundgz', '/api/ifzq', '/api/qt', '/api/cctv/xwlb', '/api/cctv/xwlb-parse', '/api/db'], store: redisMode ? 'redis' : 'json-file' });
+    return sendJSON(res, 200, { ok: true, ts: Date.now(), routes: ['/api/sge', '/api/sina', '/api/eastmoney/ann', '/api/eastmoney/proxy', '/api/fundgz', '/api/fundgz-batch', '/api/ifzq', '/api/qt', '/api/cctv/xwlb', '/api/cctv/xwlb-parse', '/api/db'], store: redisMode ? 'redis' : 'json-file' });
   }
 
   // 全量数据读写（Redis 优先 / JSON 文件兜底，无需 token）
@@ -572,6 +632,7 @@ const server = http.createServer(function (req, res) {
       const m = qs.match(/(?:^|&)code=([^&]+)/);
       return handleFundgz(res, m ? decodeURIComponent(m[1]) : '');
     }
+    if (pathname === '/api/fundgz-batch') return handleFundgzBatch(res, qs);
     if (pathname === '/api/ifzq') {
       const m = qs.match(/(?:^|&)param=([^&]+)/);
       return handleIfzq(res, m ? decodeURIComponent(m[1]) : '');
