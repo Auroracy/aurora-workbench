@@ -2286,13 +2286,9 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
       .fund-tbl th:first-child,.fund-tbl td:first-child{min-width:80px;white-space:normal;word-break:break-all;}
       /* 估值列：紧凑右对齐 */
       .fund-tbl td:nth-child(3){min-width:78px;text-align:right;}
-      /* 持有收益列允许换行以容纳操作按钮 */
-      .fund-tbl td:nth-child(4){white-space:normal;min-width:100px;}
-      /* 手机端显示持有收益列内的操作按钮 */
-      .show-mobile-op{display:flex !important;}
+      /* 持有收益列允许换行 */
+      .fund-tbl td:nth-child(4){white-space:normal;min-width:80px;}
     }
-    /* 桌面端：强制隐藏移动端操作按钮（!important 覆盖所有可能的样式冲突） */
-    .show-mobile-op{display:none !important;}
     .chip{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;margin:1px 2px;background:#e8f3f1;color:#15A49B;}
     .chip.theme{background:#eaf1fb;color:#2E86C1;}
     .pos{color:#c0392b;font-weight:600;}
@@ -6978,9 +6974,7 @@ function renderFunds(){
             (_validGsz ? '<div style="font-size:14px;font-weight:600;">' + _g.toFixed(4) + '</div><div class="text-sm ' + gzCls + '">' + gzTxt + '</div>' : '<div style="font-size:14px;font-weight:600;color:var(--text-2);">—</div>') +
             '</td>';
         })() +
-        '<td class="' + (hasHpData ? hpCls : '') + '">' + (hasHpData ? fmtMoney(safeHp) + '<br><span class="text-sm">' + fmtPct(safeHpPct) + '</span>' : '<span class="text-muted">待估值</span>') +
-          /* 手机端操作按钮 */ +
-          '<div class="show-mobile-op" style="margin-top:6px;display:none;gap:4px;flex-wrap:wrap;">' + opBtns + '</div>' +
+        '<td class="' + (hasHpData ? hpCls : '') + '">' + (hasHpData ? fmtMoney(safeHp) + '<br><span class="text-sm">' + fmtPct(safeHpPct) + '</span>' : '<span class="text-muted">—</span>') +
         '</td>' +
         '<td class="hide-mobile">' + (hasCost ? fmtMoney(f.cost) : '<span class="text-muted">—</span>') + '</td>' +
         '<td class="hide-mobile">' + (safeDwjz > 0 ? fmtMoney(safeDwjz) : '<span class="text-muted">待净值</span>') + '<br><span class="text-sm text-muted">' + navSrc + '</span></td>' +
@@ -10346,7 +10340,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'c1b946d', date:'2026-08-20', desc:'物理删除自动抓取死代码' };
+  window.ver = { git:'6baa980', date:'2026-08-20', desc:'彻底移除持有收益列内的操作按钮' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
