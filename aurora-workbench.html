@@ -4193,24 +4193,32 @@ function refreshXwlb(){
 }
 function summarizeXwlbManual(date){
   /* date 缺省 = 补当天；可由「历史归档」chip 灰显补录传入指定日期 */
+  console.log('[xwlb] === summarizeXwlbManual START ===');
   try {
     date = date || getXwlbToday();
-    console.log('[xwlb] summarizeXwlbManual called, date=' + date);
+    console.log('[xwlb] date=' + date);
     var ta = document.getElementById('xwlbManualInput');
     var text = (ta ? (ta.value || '').trim() : '');
+    console.log('[xwlb] textarea found=' + !!ta + ' textLen=' + text.length);
   /* 优先使用已有标题（从缓存中的数据），其次才用手动输入 */
-  var cached = DB.xwlb.cache[date];
-  if(!text && cached && cached.titles && cached.titles.length){
-    text = cached.titles.join('\n');
-  }
-  if(!text){
-    /* 醒目提示：高亮文本框 + 状态栏提示 + 聚焦输入 */
-    if(ta){ ta.classList.add('xwlb-input-empty'); ta.focus(); setTimeout(function(){ ta.classList.remove('xwlb-input-empty'); }, 1500); }
-    setXwlbStatus('⚠️ 请先在上方文本框粘贴 ' + date + ' 的《新闻联播》节目单，再点生成', 'warn');
-    toast('❌ 文本框为空，请先粘贴节目单内容');
-    return;
-  }
-  if(!configuredEngines().length){ toast('请先在「☁ 数据同步 → 🤖 AI 引擎配置」配置任一 AI Key'); return; }
+    var cached = (DB && DB.xwlb && DB.xwlb.cache) ? DB.xwlb.cache[date] : null;
+    if(!text && cached && cached.titles && cached.titles.length){
+      text = cached.titles.join('\n');
+      console.log('[xwlb] using cached titles, count=' + cached.titles.length);
+    }
+    if(!text){
+      /* 醒目提示：高亮文本框 + 状态栏提示 + 聚焦输入 + 按钮文字变化 */
+      console.log('[xwlb] EMPTY text, showing warning');
+      var btn0 = document.getElementById('xwlbManualBtn');
+      if(btn0){ var orig = btn0.textContent; btn0.textContent = '⚠️ 请先粘贴内容'; btn0.style.background='#ef4444'; setTimeout(function(){ btn0.textContent = orig; btn0.style.background=''; }, 2500); }
+      if(ta){ ta.classList.add('xwlb-input-empty'); ta.focus(); setTimeout(function(){ ta.classList.remove('xwlb-input-empty'); }, 1500); }
+      setXwlbStatus('⚠️ 请先在上方文本框粘贴 ' + date + ' 的《新闻联播》节目单，再点生成', 'warn');
+      toast('❌ 文本框为空，请先粘贴节目单内容再点生成');
+      return;
+    }
+    var engines = configuredEngines();
+    console.log('[xwlb] engines count=' + engines.length);
+    if(!engines || !engines.length){ toast('❌ 请先在「☁ 数据同步 → 🤖 AI 引擎配置」配置任一 AI Key'); return; }
   var btn = document.getElementById('xwlbManualBtn');
   if(btn){ btn.disabled = true; btn.textContent = '⏳ AI 生成中…'; }
   setXwlbStatus('⏳ AI 引擎生成 ' + date + ' 总结中，请稍候…', 'loading');
@@ -4249,12 +4257,25 @@ function summarizeXwlbManual(date){
       if(btn){ btn.disabled = false; btn.textContent = '✨ 生成 ' + date.slice(5) + ' 总结'; }
     });
   } catch(e) {
-    console.error('[xwlb] summarizeXwlbManual error:', e);
-    setXwlbStatus('❌ 程序异常：' + (e && e.message ? e.message : e), 'error');
-    toast('❌ 程序异常：' + (e && e.message ? e.message : e));
+    console.error('[xwlb] summarizeXwlbManual EXCEPTION:', e);
+    var errMsg = (e && e.message) ? e.message : String(e || '未知错误');
+    setXwlbStatus('❌ 程序异常：' + errMsg, 'error');
+    toast('❌ 程序异常：' + errMsg);
+    /* 按钮状态恢复 */
     var btn2 = document.getElementById('xwlbManualBtn');
     if(btn2){ btn2.disabled = false; btn2.textContent = '✨ 生成 ' + (date || '').slice(5) + ' 总结'; }
+    /* 兜底：在文本框下方显示错误信息（即使 toast 失效也能看到） */
+    var ta2 = document.getElementById('xwlbManualInput');
+    if(ta2 && !ta2.nextSibling || !ta2.nextSibling.classList || !ta2.nextSibling.classList.contains('xwlb-err-inline')){
+      var errDiv = document.createElement('div');
+      errDiv.className = 'xwlb-err-inline';
+      errDiv.style.cssText = 'color:#ef4444;font-size:12px;margin-top:4px;padding:6px 10px;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;';
+      errDiv.textContent = '❌ 错误：' + errMsg;
+      ta2.parentNode.insertBefore(errDiv, ta2.nextSibling);
+      setTimeout(function(){ if(errDiv.parentNode) errDiv.remove(); }, 5000);
+    }
   }
+  console.log('[xwlb] === summarizeXwlbManual END ===');
 }
 function callQwenText(userPrompt, sysPrompt, model){
   var key = getQwenKey();
@@ -10349,7 +10370,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'ce3de0d', date:'2026-08-20', desc:'新闻生成按钮try-catch+诊断日志' };
+  window.ver = { git:'d4a1f2c', date:'2026-08-20', desc:'新闻生成按钮增强反馈+调试日志' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
