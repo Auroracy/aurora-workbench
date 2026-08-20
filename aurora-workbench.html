@@ -4107,65 +4107,8 @@ function fetchXwlbFromServerLocal(date, cb){
 }
 
 /* 数据来源仅 Redis（DB.xwlb.cache）+ 服务器本地磁盘文件 data/xwlb/{date}.json，不再从 GitHub 下载 */
-function parseXwlbHtml(html){
-  if(!html) return [];
-  var re = /\[视频\]([^<"\n]+)/g, m, seen = {}, out = [];
-  while((m = re.exec(html))){
-    var t = (m[1] || '').trim();
-    if(t && !seen[t]){ seen[t] = 1; out.push(t); }
-  }
-  return out;
-}
-function fetchXwlbDirect(date){
-  setXwlbStatus('⏳ 正在抓取央视《新闻联播》节目单…', 'loading');
-  document.getElementById('xwlbFallback').style.display = 'none';
-  var proxyNames = ['服务器代理','allorigins','corsproxy','codetabs','riopr'];
-  tryProxy(0);
-  function tryProxy(i){
-    if(i >= XWLB_PROXIES.length){ afterDirectFail(date); return; }
-    /* 空字符串 = 走自建服务器代理 /api/cctv/xwlb */
-    var isServerProxy = (XWLB_PROXIES[i] === '');
-    var proxyName = proxyNames[i] || ('代理#' + i);
-    var url = isServerProxy ? (API_BASE + '/api/cctv/xwlb') : (XWLB_PROXIES[i] + encodeURIComponent(XWLB_TARGET));
-    setXwlbStatus('⏳ 尝试 ' + proxyName + '…（' + (i+1) + '/' + XWLB_PROXIES.length + '）', 'loading');
-    fetchWithTimeoutXwlb(url, isServerProxy ? 20000 : 12000).then(function(res){
-      if(!res.ok) throw new Error('HTTP ' + res.status);
-      return res.text();
-    }).then(function(html){
-      var titles = parseXwlbHtml(html);
-      if(!titles.length) throw new Error('未解析到节目单(页面可能改版)');
-      /* 用用户已配置的任意可用引擎生成总结（不再硬编码 qwen-plus） */
-      var availEngines = configuredEngines();
-      if(!availEngines.length){
-        setXwlbStatus('ℹ 已抓到 ' + titles.length + ' 条节目单，但未配置任何 AI 引擎 Key。请到左下角「☁ 数据同步 → 🤖 AI 引擎配置」填写 Key 后刷新。', 'info');
-        document.getElementById('xwlbFallback').style.display = 'block';
-        return;
-      }
-      setXwlbStatus('⏳ 已抓到 ' + titles.length + ' 条，AI（' + AI_ENGINES[availEngines[0]].label + '）生成总结中…', 'loading');
-      callText(titles.join('\n'), XWLB_SYS_PROMPT).then(function(summary){
-        var d = { date: date, titles: titles, summary: summary, generatedAt: new Date().toISOString(), note: (isServerProxy ? '服务器代理' : '前端代理') + '(' + proxyName + ') + ' + AI_ENGINES[configuredEngines()[0] || 'qwen'].label };
-        saveXwlbCache(d); renderXwlb(d, isServerProxy ? '服务器代理' : '前端自动'); renderXwlbHistory();
-      }).catch(function(err){
-        setXwlbStatus('ℹ AI 生成暂不可用，可手动粘贴节目单后点「生成总结」', 'info');
-        document.getElementById('xwlbFallback').style.display = 'block';
-      });
-    }).catch(function(err){
-      console.warn('[xwlb] ' + proxyName + ' 失败:', err && err.message || err);
-      tryProxy(i + 1);
-    });
-  }
-}
-function afterDirectFail(date){
-  /* 抓取失败 → 静默降级到补录模式（不弹报错，用户可直接粘贴） */
-  setXwlbStatus('ℹ 自动获取不可用，已切换到手动补录模式', 'info');
-  enterXwlbHistoryEditMode(date);
-}
-function fetchWithTimeoutXwlb(url, ms){
-  return Promise.race([
-    fetch(url, { headers: { 'Accept': 'application/json' } }),
-    new Promise(function(_, reject){ setTimeout(function(){ reject(new Error('请求超时')); }, ms); })
-  ]);
-}
+/* 自动抓取央视节目的逻辑已彻底移除（所有外部代理均不可达，自动抓取只会误导用户）。
+   新闻联播模块现在纯手动补录：用户粘贴节目单后点「生成总结」调用 AI 引擎。 */
 function saveXwlbCache(data){
   if(!data || !data.date) return;
   /* 清洗 AI 生成文本中的散布乱码后再存 */
@@ -10403,7 +10346,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'e30c572', date:'2026-08-20', desc:'新闻联播彻底移除自动抓取' };
+  window.ver = { git:'c1b946d', date:'2026-08-20', desc:'物理删除自动抓取死代码' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
