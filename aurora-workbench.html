@@ -2532,7 +2532,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
         <span id="fundValTime" style="font-size:11px;color:var(--text-2);margin-left:auto;"></span>
       </div>
       <table class="fund-tbl">
-        <thead><tr><th>基金</th><th class="hide-mobile">分类</th><th>估值</th><th>持有收益/率</th><th class="hide-mobile">成本价</th><th class="hide-mobile">净值</th><th class="hide-mobile">操作</th></tr></thead>
+        <thead><tr><th>基金</th><th class="hide-mobile">分类</th><th>估值</th><th>持有收益/率</th><th class="hide-mobile">金额</th><th class="hide-mobile">净值</th><th class="hide-mobile">操作</th></tr></thead>
         <tbody id="fundTableBody"></tbody>
       </table>
       <div id="fundPager"></div>
@@ -7028,7 +7028,9 @@ function renderFunds(){
       var safeHp = safeNum(_rawHp);
       var safeHpPct = safeNum(_rawHpPct);
       var hasNav = safeNav > 0;
-      var hasCost = f.cost > 0;
+      var shares = parseFloat(f.shares) || 0;
+      var gszVal = (f.val && f.val.gsz != null && !isNaN(parseFloat(f.val.gsz))) ? parseFloat(f.val.gsz) : null;
+      var validGsz = gszVal != null && gszVal >= 0.01 && gszVal <= 100;
       var hasGsz = (f.val && f.val.gsz != null && f.val.gsz !== '' && !isNaN(parseFloat(f.val.gsz)));
       var hasYest = (f.val && f.val.prevDwjz != null && f.val.prevDwjz !== '') || (f.val && f.val.gszzl != null && !isNaN(parseFloat(f.val.gszzl)));
       /* 净值列来源标注：手动 / 净值日期 */
@@ -7059,7 +7061,16 @@ function renderFunds(){
         })() +
         '<td class="' + (hasHpData ? hpCls : '') + '">' + (hasHpData ? fmtMoney(safeHp) + '<br><span class="text-sm">' + fmtPct(safeHpPct) + '</span>' : '<span class="text-muted">—</span>') +
         '</td>' +
-        '<td class="hide-mobile">' + (hasCost ? fmtMoney(f.cost) : '<span class="text-muted">—</span>') + '</td>' +
+        '<td class="hide-mobile">' + (function(){
+          /* 金额列：净值市值(确认,优先) + 估值市值(盘面,小字红涨绿跌) */
+          var navAmt = safeDwjz > 0 ? safeDwjz * shares : null;
+          var gzAmt = validGsz ? gszVal * shares : null;
+          var main = navAmt != null ? fmtMoney(navAmt) : (gzAmt != null ? fmtMoney(gzAmt) : '<span class="text-muted">—</span>');
+          var sub = gzAmt != null
+            ? '<span class="text-sm ' + gzCls + '">估值 ' + fmtMoney(gzAmt) + '</span>'
+            : '<span class="text-sm text-muted">估值 —</span>';
+          return main + '<br>' + sub;
+        })() + '</td>' +
         '<td class="hide-mobile">' + (safeDwjz > 0 ? fmtMoney(safeDwjz) : '<span class="text-muted">待净值</span>') + '<br><span class="text-sm text-muted">' + navSrc + '</span></td>' +
         '<td class="hide-mobile">' + opBtns + '</td>' +
       '</tr>';
@@ -10445,7 +10456,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'a711d33', date:'2026-08-20', desc:'基金估值批量接口(替代失效fundgz)+NAV净值显示' };
+  window.ver = { git:'VER_PLACEHOLDER', date:'2026-08-20', desc:'持仓明细新增金额列(净值市值+估值市值),移除成本价列' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
