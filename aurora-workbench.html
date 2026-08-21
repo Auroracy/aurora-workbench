@@ -2532,7 +2532,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
         <span id="fundValTime" style="font-size:11px;color:var(--text-2);margin-left:auto;"></span>
       </div>
       <table class="fund-tbl">
-        <thead><tr><th>基金</th><th class="hide-mobile">分类</th><th>估值</th><th>持有收益/率</th><th class="hide-mobile">金额</th><th class="hide-mobile">净值</th><th class="hide-mobile">操作</th></tr></thead>
+        <thead><tr><th>基金</th><th class="hide-mobile">分类</th><th>估值</th><th>持有收益/率</th><th class="hide-mobile">金额</th><th class="hide-mobile">操作</th></tr></thead>
         <tbody id="fundTableBody"></tbody>
       </table>
       <div id="fundPager"></div>
@@ -7116,16 +7116,7 @@ function renderFunds(){
             : ((importAmt != null && navAmt == null) ? '<span class="text-sm text-muted">导入</span>' : '<span class="text-sm text-muted">估值 —</span>');
           return main + '<br>' + sub;
         })() + '</td>' +
-        /* 净值列：日涨跌幅百分比(红涨绿跌) + 净值日期标注 */
-        '<td class="hide-mobile">' + (function(){
-          var navPct = safeNum(m.yesterdayPct);
-          var navPctCls = navPct > 0 ? 'pos' : (navPct < 0 ? 'neg' : 'text-muted');
-          var navPctTxt = (navPct >= 0 ? '+' : '') + fmtPct(navPct);
-          if(safeDwjz > 0 && navPct !== 0){
-            return '<div style="font-size:15px;font-weight:600;" class="' + navPctCls + '">' + navPctTxt + '</div><div class="text-sm text-muted">' + navSrc + '</div>';
-          }
-          return '<span class="text-muted">' + (safeDwjz > 0 ? '—<br><span class="text-sm text-muted">' + navSrc + '</span>' : '待净值') + '</span>';
-        })() + '</td>' +
+        /* 操作列 */
         '<td class="hide-mobile">' + opBtns + '</td>' +
       '</tr>';
     }).join('');
@@ -10511,7 +10502,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'c9d3e5f', date:'2026-08-21', desc:'修复金额列显示¥0.00:增加f.cost fallback(份额为0时显示导入原始金额)' };
+  window.ver = { git:'d1a2b3c', date:'2026-08-21', desc:'去掉净值列(无实际数据意义),列序:基金|分类|估值|持有收益/率|金额|操作' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
