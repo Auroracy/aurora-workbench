@@ -7296,7 +7296,7 @@ function onFundScreenshot(input){
   }
 }
 function analyzeFundScreenshot(base64, cb){
-  var prompt = '请识别这张基金或股票持仓截图，提取每一只基金的持仓信息。仅返回 JSON 数组，不要任何额外文字与符号。每条格式：{"code":"6位基金代码或null","name":"基金完整全称（必须写完整，不要截断简写）","shares":持有份额(数字,单位份,通常是较大的数如12345.67份),"amount":持有金额(数字,元,即截图中的「金额」列,如3749.95,这是净值×份额的市值),"hp":持有收益(数字,元,正数盈利负数亏损,如-750.05),"hpPct":收益率(数字,百分比,如-16.67表示-16.67%)}。若某项缺失用null。核心规则：(1) code字段：如果截图中无法100%确定基金代码，务必填null，绝对禁止编造/猜测代码！(2) name字段：必须写基金完整官方名称（如"嘉实绿色主题股票发起式证券投资基金C"），禁止截断成简称（如不能只写"嘉实绿色主题"）。(3) 区分份额和金额：份额(shares)是持有份数量（通常几千~几万份），金额(amount)是持仓市值（元）如3749.95元——支付宝/天天基金等App截图里「金额」或「金额/昨日收益」列就是持仓市值，不要把金额误当份额！(4) 持有收益和收益率在截图里通常显示为"持有收益/率"一列，上面是金额(hp)下面是百分比(hpPct)。';
+  var prompt = '请识别这张基金或股票持仓截图，提取每一只基金的持仓信息。仅返回 JSON 数组，不要任何额外文字与符号。每条格式：{"code":"6位基金代码或null","name":"基金完整全称","shares":持有份额数字,"amount":持有金额数字,"hp":持有收益数字,"hpPct":收益率数字}。字段说明（必须严格按此提取）：(1) code: 6位基金代码，不确定则填null，禁止编造！(2) name: 基金完整官方全称，禁止截断简写。(3) shares: 持有份额（份数），通常是较大的数如1682.83、5823.45份（几千~几万份），在截图里通常标为"份额"列。(4) amount: 持有金额/市值（元），即截图中的「金额」列或「金额/昨日收益」上面的数字，如3749.95、1290.13元（这是净值×份额），在支付宝/天天基金App里这列就是持仓市值。(5) hp: 持有收益（元），正数盈利负数亏损，如-3047.71。(6) hpPct: 收益率（%），如-15.16表示-15.16%。特别注意：支付宝截图的列顺序通常是「代码名称 | 份额 | 金额/昨日收益(上面是amount下面是昨日收益) | 持有收益/率(上面是hp下面是hpPct)」，务必逐列对应提取，不要把金额(3749.95这种)误当份额！若某项缺失用null。';
   var imgContent = [{ type: 'text', text: prompt }, { type: 'image_url', image_url: { url: 'data:image/jpeg;base64,' + stripBase64Prefix(base64) } }];
 
   /* 构建尝试队列：先千问所有模型，再其他已配置引擎 */
@@ -7444,7 +7444,7 @@ function analyzeFundScreenshot(base64, cb){
             code: qc || nc,  /* 硬编码优先 > AI识别代码（假代码已被清空） */
             name: rawName,
             shares: parseFloat(x.shares) || 0,
-            cost: parseFloat(x.cost) || 0,
+            cost: parseFloat(x.amount || x.cost) || 0,   /* 兼容新prompt(amount)和旧prompt(cost) */
             hp: parseFloat(x.hp) || null,
             hpPct: parseFloat(x.hpPct) || null,
             codeCorrected: !!qc && !nc,  /* 硬编码命中且AI无代码→标记为已校正 */
@@ -7521,7 +7521,7 @@ function parseFundPasteText(txt){
       arr.forEach(function(x){
         var code = String(x.code || x.fundCode || '').match(/\d{6}/);
         if(!code) return;
-        list.push({ code: code[0], name: sanitizeFundName(x.name || x.fundName), shares: parseFloat(x.shares || x.share) || 0, cost: parseFloat(x.cost || x.costPrice) || 0, hp: parseFloat(x.hp) || null, hpPct: parseFloat(x.hpPct) || null });
+        list.push({ code: code[0], name: sanitizeFundName(x.name || x.fundName), shares: parseFloat(x.shares || x.share) || 0, cost: parseFloat(x.amount || x.cost || x.costPrice) || 0, hp: parseFloat(x.hp) || null, hpPct: parseFloat(x.hpPct) || null });
       });
       if(list.length) return list;
     } catch(e){ }
@@ -10465,7 +10465,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'a4b2c8d', date:'2026-08-21', desc:'导入对话框成本价改为金额,AI识别prompt适配金额列' };
+  window.ver = { git:'d5e7f2b', date:'2026-08-21', desc:'修复AI识别份额/金额为0的映射bug+优化prompt' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
