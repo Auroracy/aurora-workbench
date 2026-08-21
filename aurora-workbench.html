@@ -3090,19 +3090,39 @@ function isCssLikeText(s){
   if(!s) return true;
   s = s.trim();
   if(s.length < 4) return true;
+  /* ====== 第一层：明确代码特征（高置信度） ====== */
   /* CSS 规则特征 */
   if(/[\{\}]/.test(s)) return true;                    /* { } 括号 */
   if(/^\s*[\.\#\[\]]/.test(s)) return true;            /* . # [ ] 选择器开头 */
   if(/:\s*\d+(px|rem|em|%|vw|vh)\b/i.test(s)) return true; /* margin:20px */
   if(/\brgba?\(/i.test(s)) return true;               /* rgb() rgba() */
   if(/#[0-9a-fA-F]{3,6}\b/.test(s) && !/[一二三四五六七八九十]/.test(s)) return true; /* 纯hex色值 */
+  /* CSS 注释 */
+  if(/\/\*/.test(s) || /\*\//.test(s)) return true;    /* /* ... */ */
+  /* CSS 变量 / 函数调用 */
+  if(/var\(--/.test(s)) return true;                   /* var(--space-xxx) */
+  if(/calc\(|clamp\(|min\(|max\(|rgba?\(/i.test(s)) return true;
+  /* JS/DOM 代码模式 */
+  if(/\.(style|className|id|src|height|width|appendChild|addEventListener|getElementById|querySelector|textContent|innerHTML)\s*[/=]/.test(s)) return true;
+  if(/document\./.test(s)) return true;                /* document.body.xxx */
+  if(/window\./.test(s)) return true;                  /* window.addEventListener */
+  if(/if\s*\(.+!==?/.test(s)) return true;            /* if('loading'!==xxx) */
+  if(/else\s+if\s*\(/.test(s)) return true;           /* else if(window.xxx) */
+  /* 属性赋值模式 a.xxx = 'yyy' */
+  if(/^[a-z_]\w*(?:\.[a-z]\w+)*\s*=\s*['"]?(?:none|hidden|absolute|fixed|relative|\d+|0)['"]?$/i.test(s)) return true;
+  /* CDN / script 路径 */
+  if(/\/cdn-|\/scripts\/|\.js['"]/.test(s) && /=/.test(s)) return true;
   /* CSS 属性名开头 */
   if(/^(margin|padding|border|font-size|color|background|display|flex|width|height|gap|align|justify|min-width|max-width|line-height|overflow|position|top|left|right|bottom|text-|white-space|word-break|box-sizing|border-radius|box-shadow|transition|transform|opacity|z-index|cursor|float|clear|vertical-align|font-weight|font-family|letter-spacing|text-decoration|border-top|border-bottom|border-left|border-right|content|visibility|grid|grid-template|flex-wrap|flex-direction|object-fit|box-sizing|filter|backdrop|scroll|text-align|text-indent|list-style|outline|animation|transition|transform-origin|user-select|pointer-events|will-change|contain|aspect-ratio|inset|scrollbar|accent-color|fill|stroke|clip-path|mask|background-image|linear-gradient|radial-gradient|conic-gradient)\b/i.test(s)) return true;
   /* HTML/CSS 标签或类名 */
   if(/^<\/?[\w\-]+/i.test(s) && /^(div|span|p|a|ul|ol|li|h[1-6]|section|article|nav|header|footer|main|aside|figure|img|table|tr|td|th|form|input|button|label|select|option|textarea|style|script|link|meta|head|body|html|title|br|hr|details|summary|nav-btn|date-navigation|article-header|meta-item|article-title|primary-nav|nav-btn-date|nav-btn-label|bottom-nav)/i.test(s)) return true;
   /* 连续多个 CSS 属性值模式（如 "0 auto", "2px solid", "10px !important"） */
   if(/^\d+\s+(auto|solid|dashed|dotted|double|none|inherit|initial|unset|repeat|no-repeat|scroll|fixed|center|left|right|top|bottom|cover|contain|wrap|nowrap|visible|hidden|collapse|separate|!important)$/i.test(s)) return true;
-  /* CSS/HTML 相关中文关键词（第三方源页面结构被误当新闻分类） */
+  /* ====== 第二层：纯数值/CSS单位值（如 "875rem", "6s ease-out", "3s ease"） ====== */
+  if(/^\d+(\.\d+)?(rem|em|px|%|vw|vh|s|ms)$/i.test(s)) return true;       /* 纯单位值 */
+  if(/^\d+(\.\d+)?(rem|em|px|s|ms)\s+\w[\w\-]*$/.test(s)) return true;     /* "875rem" 或 "6s ease-out" */
+  if(/^\d+[a-zA-Z]+\s+[a-zA-Z]+$/.test(s) && s.length <= 15) return true;   /* "3s ease" 类似模式 */
+  /* ====== 第三层：CSS/HTML 相关中文关键词（第三方源页面结构被误当新闻分类） ====== */
   if(/^(CSS|css|Html|html|HTML)[样式|代码|属性|规则|选择器|布局|框架|语法|标签|元素|结构|设计]/.test(s)) return true;
   /* 以 CSS 相关中文词结尾的短文本（分类标题） */
   if(/(样式|属性|间距|尺寸|平滑|脚本|动画效果|字体加粗|字体处理|颜色继承|渐变|模式|both|处理)$/.test(s) && s.length <= 15 && /^(字体|颜色|间距|尺寸|平滑|CSS|css|Html|html|HTML|动画|布局|设计|过渡|兼容|渲染)/.test(s)) return true;
@@ -10603,7 +10623,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'i8j9k0l', date:'2026-08-21', desc:'补强CSS垃圾检测:覆盖平滑处理分类+webkit/moz vendor前缀+放宽英文混合阈值' };
+  window.ver = { git:'m0n1p2q', date:'2026-08-21', desc:'全面加强CSS/JS代码片段检测:覆盖纯单位值+DOM操作+变量+注释+CDN路径' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
