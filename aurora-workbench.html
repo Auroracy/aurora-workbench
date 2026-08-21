@@ -2532,7 +2532,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
         <span id="fundValTime" style="font-size:11px;color:var(--text-2);margin-left:auto;"></span>
       </div>
       <table class="fund-tbl">
-        <thead><tr><th>基金</th><th class="hide-mobile">分类</th><th>估值</th><th>持有收益/率</th><th class="hide-mobile">金额</th><th class="hide-mobile">操作</th></tr></thead>
+        <thead><tr><th>基金</th><th class="hide-mobile">分类</th><th>估值</th><th>持有收益/率</th><th class="hide-mobile">金额</th><th class="hide-mobile">净值</th><th class="hide-mobile">操作</th></tr></thead>
         <tbody id="fundTableBody"></tbody>
       </table>
       <div id="fundPager"></div>
@@ -7088,7 +7088,6 @@ function renderFunds(){
       /* 用 data-id 属性避免 onclick 引号转义问题 */
       var fid = String(f.id).replace(/'/g, '&#39;');
       var opBtns = '<button class="btn btn-sm" data-fid="' + fid + '" onclick="editFund(this.dataset.fid)">编辑</button> ' +
-        '<button class="btn btn-sm" data-fid="' + fid + '" onclick="updateFundNavManual(this.dataset.fid)">净值</button> ' +
         '<button class="btn btn-sm" style="color:#c0392b;border-color:#f5c6cb;" data-fid="' + fid + '" onclick="deleteFund(this.dataset.fid)">删</button>';
       return '<tr>' +
         '<td><b>' + escapeHtml(sanitizeText(f.name)) + '</b><br><span class="text-sm text-muted">' + f.code + '<br>' + fmtNum(f.shares) + '份</span></td>' +
@@ -7115,6 +7114,16 @@ function renderFunds(){
             ? '<span class="text-sm ' + gzCls + '">估值 ' + fmtMoney(gzAmt) + '</span>'
             : ((importAmt != null && navAmt == null) ? '<span class="text-sm text-muted">导入</span>' : '<span class="text-sm text-muted">估值 —</span>');
           return main + '<br>' + sub;
+        })() + '</td>' +
+        /* 净值列：日涨跌幅百分比(红涨绿跌) + 净值日期标注（代码自动计算更新） */
+        '<td class="hide-mobile">' + (function(){
+          var navPct = safeNum(m.yesterdayPct);
+          var navPctCls = navPct > 0 ? 'pos' : (navPct < 0 ? 'neg' : 'text-muted');
+          var navPctTxt = (navPct >= 0 ? '+' : '') + fmtPct(navPct);
+          if(safeDwjz > 0 && navPct !== 0){
+            return '<div style="font-size:15px;font-weight:600;" class="' + navPctCls + '">' + navPctTxt + '</div><div class="text-sm text-muted">' + navSrc + '</div>';
+          }
+          return '<span class="text-muted">' + (safeDwjz > 0 ? '—<br><span class="text-sm text-muted">' + navSrc + '</span>' : '待净值') + '</span>';
         })() + '</td>' +
         /* 操作列 */
         '<td class="hide-mobile">' + opBtns + '</td>' +
@@ -10502,7 +10511,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'d1a2b3c', date:'2026-08-21', desc:'去掉净值列(无实际数据意义),列序:基金|分类|估值|持有收益/率|金额|操作' };
+  window.ver = { git:'e7f8a9b', date:'2026-08-21', desc:'撤销净值列删除:恢复列表净值列(自动计算),去掉操作列手动净值按钮' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
