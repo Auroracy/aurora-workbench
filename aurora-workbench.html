@@ -3085,6 +3085,31 @@ function cleanXwlbText(s){
   s = s.replace(/\uFFFD/g, ' ');
   return s.trim();
 }
+/* 前端防御：检测文本是否为 CSS/HTML 代码（非正常新闻标题） */
+function isCssLikeText(s){
+  if(!s) return true;
+  s = s.trim();
+  if(s.length < 4) return true;
+  /* CSS 规则特征 */
+  if(/[\{\}]/.test(s)) return true;                    /* { } 括号 */
+  if(/^\s*[\.\#\[\]]/.test(s)) return true;            /* . # [ ] 选择器开头 */
+  if(/:\s*\d+(px|rem|em|%|vw|vh)\b/i.test(s)) return true; /* margin:20px */
+  if(/\brgba?\(/i.test(s)) return true;               /* rgb() rgba() */
+  if(/#[0-9a-fA-F]{3,6}\b/.test(s) && !/[一二三四五六七八九十]/.test(s)) return true; /* 纯hex色值 */
+  /* CSS 属性名开头 */
+  if(/^(margin|padding|border|font-size|color|background|display|flex|width|height|gap|align|justify|min-width|max-width|line-height|overflow|position|top|left|right|bottom|text-|white-space|word-break|box-sizing|border-radius|box-shadow|transition|transform|opacity|z-index|cursor|float|clear|vertical-align|font-weight|font-family|letter-spacing|text-decoration|border-top|border-bottom|border-left|border-right|content|visibility|grid|grid-template|flex-wrap|flex-direction|object-fit|box-sizing|filter|backdrop|scroll|text-align|text-indent|list-style|outline|animation|transition|transform-origin|user-select|pointer-events|will-change|contain|aspect-ratio|inset|scrollbar|accent-color|fill|stroke|clip-path|mask|background-image|linear-gradient|radial-gradient|conic-gradient)\b/i.test(s)) return true;
+  /* HTML/CSS 标签或类名 */
+  if(/^<\/?[\w\-]+/i.test(s) && /^(div|span|p|a|ul|ol|li|h[1-6]|section|article|nav|header|footer|main|aside|figure|img|table|tr|td|th|form|input|button|label|select|option|textarea|style|script|link|meta|head|body|html|title|br|hr|details|summary|nav-btn|date-navigation|article-header|meta-item|article-title|primary-nav|nav-btn-date|nav-btn-label|bottom-nav)/i.test(s)) return true;
+  /* 连续多个 CSS 属性值模式（如 "0 auto", "2px solid", "10px !important"） */
+  if(/^\d+\s+(auto|solid|dashed|dotted|double|none|inherit|initial|unset|repeat|no-repeat|scroll|fixed|center|left|right|top|bottom|cover|contain|wrap|nowrap|visible|hidden|collapse|separate|!important)$/i.test(s)) return true;
+  return false;
+}
+/* 过滤数组中的 CSS 垃圾数据，返回干净条目数组和是否检测到垃圾的标记 */
+function filterCssGarbage(arr){
+  if(!Array.isArray(arr)) return { clean: [], hadGarbage: false };
+  var clean = arr.filter(function(t){ return !isCssLikeText(t); });
+  return { clean: clean, hadGarbage: clean.length < arr.length };
+}
 function timeToMin(t){
   if(!t) return 0;
   var p = t.split(':');
@@ -4130,6 +4155,21 @@ function renderXwlb(data, sourceLabel){
   var dot = document.getElementById('xwlbDot');
   dot.className = 'xwlb-dot ' + (data.summary ? 'ok' : ((data.titles && data.titles.length) ? 'warn' : 'warn'));
   var body = document.getElementById('xwlbBody');
+
+  /* ★ 前端防御：过滤已缓存数据中的 CSS/HTML 垃圾（第三方源返回的脏数据可能已被存入 db） */
+  var _fgResult = null;
+  if(data.titles && data.titles.length){
+    _fgResult = filterCssGarbage(data.titles);
+    if(_fgResult.hadGarbage){
+      data.titles = _fgResult.clean;
+      /* 自动清除 db 缓存中的脏数据 */
+      if(DB.xwlb && DB.xwlb.cache && DB.xwlb.cache[date]){
+        DB.xwlb.cache[date].titles = _fgResult.clean;
+        scheduleServerPush();
+      }
+    }
+  }
+
   /* 有 summary → 正常渲染 */
   if(data.summary){
     var s = data.summary;
@@ -4137,7 +4177,8 @@ function renderXwlb(data, sourceLabel){
     if(s.lead) html += '<div class="xwlb-lead">📌 ' + escapeHtml(cleanXwlbText(s.lead)) + '</div>';
     if(Array.isArray(s.groups)){
       html += s.groups.map(function(g){
-        var items = (g.items || []).map(function(it){
+        /* 过滤 summary 分组中的 CSS 垃圾条目 */
+        var items = (g.items || []).filter(function(it){ return it.title && !isCssLikeText(it.title); }).map(function(it){
           return '<li><b>' + escapeHtml(cleanXwlbText(it.title || '')) + '</b>' + (it.point ? ' — ' + escapeHtml(cleanXwlbText(it.point)) : '') + '</li>';
         }).join('');
         return '<div class="xwlb-group"><div class="xwlb-group-cat">' + escapeHtml(cleanXwlbText(g.category || '')) + '</div><ul class="xwlb-group-items">' + items + '</ul></div>';
@@ -4150,13 +4191,14 @@ function renderXwlb(data, sourceLabel){
   }
   /* 无 summary 但有原始条目 → 显示条目列表 + 补录按钮 */
   if(data.titles && data.titles.length){
-    var itemsHtml = '<div class="xwlb-note" style="margin-bottom:8px">ℹ 已有 <b>' + data.titles.length + '</b> 条新闻标题，暂无 AI 总结。</div>';
+    var _garbageNote = (_fgResult && _fgResult.hadGarbage) ? '（已自动过滤 ' + (_fgResult.clean.length === 0 ? '全部' : 'CSS 垃圾数据') + '）' : '';
+    var itemsHtml = '<div class="xwlb-note" style="margin-bottom:8px">ℹ 已有 <b>' + data.titles.length + '</b> 条新闻标题' + _garbageNote + '，暂无 AI 总结。</div>';
     itemsHtml += '<div class="xwlb-raw"><ul style="margin:0;padding-left:18px">';
     itemsHtml += data.titles.map(function(t){ return '<li>' + escapeHtml(cleanXwlbText(t)) + '</li>'; }).join('');
     itemsHtml += '</ul></div>';
     itemsHtml += '<div style="margin-top:10px;text-align:center"><button onclick="summarizeXwlbManual(\'' + date + '\')" style="padding:6px 20px;cursor:pointer;border-radius:6px;border:1px solid #0ea5e9;background:#0ea5e9;color:#fff;font-size:13px">✨ 生成 ' + date.slice(5) + ' 总结</button></div>';
     body.innerHTML = itemsHtml;
-    setXwlbStatus('ℹ 有 ' + data.titles.length + ' 条标题，可点击下方按钮生成总结', 'info');
+    setXwlbStatus('ℹ 有 ' + data.titles.length + ' 条标题' + _garbageNote + '，可点击下方按钮生成总结', 'info');
     refreshXwlbInvestPanel(date);
     return;
   }
@@ -10465,7 +10507,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'d5e7f2b', date:'2026-08-21', desc:'修复AI识别份额/金额为0的映射bug+优化prompt' };
+  window.ver = { git:'a8c3d1f', date:'2026-08-21', desc:'前端CSS垃圾过滤防御:渲染时自动清除已缓存数据中的CSS/HTML代码' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
