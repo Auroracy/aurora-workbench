@@ -7104,13 +7104,16 @@ function renderFunds(){
         '<td class="' + (hasHpData ? hpCls : '') + '">' + (hasHpData ? fmtMoney(safeHp) + '<br><span class="text-sm">' + fmtPct(safeHpPct) + '</span>' : '<span class="text-muted">—</span>') +
         '</td>' +
         '<td class="hide-mobile">' + (function(){
-          /* 金额列：净值市值(确认,优先) + 估值市值(盘面,小字红涨绿跌) */
-          var navAmt = safeDwjz > 0 ? safeDwjz * shares : null;
-          var gzAmt = validGsz ? gszVal * shares : null;
-          var main = navAmt != null ? fmtMoney(navAmt) : (gzAmt != null ? fmtMoney(gzAmt) : '<span class="text-muted">—</span>');
+          /* 金额列：优先净值×份额计算市值，次选估值×份额，fallback显示导入的原始金额(f.cost) */
+          var importAmt = (f.cost != null && f.cost > 0) ? f.cost : null;
+          var navAmt = (safeDwjz > 0 && shares > 0) ? safeDwjz * shares : null;
+          var gzAmt = (validGsz && shares > 0) ? gszVal * shares : null;
+          /* 主值优先级：计算市值 > 导入金额 */
+          var main = navAmt != null ? fmtMoney(navAmt) : (gzAmt != null ? fmtMoney(gzAmt) : (importAmt != null ? fmtMoney(importAmt) : '<span class="text-muted">—</span>'));
+          /* 小字：有估值时显示估算值，否则标注来源 */
           var sub = gzAmt != null
             ? '<span class="text-sm ' + gzCls + '">估值 ' + fmtMoney(gzAmt) + '</span>'
-            : '<span class="text-sm text-muted">估值 —</span>';
+            : ((importAmt != null && navAmt == null) ? '<span class="text-sm text-muted">导入</span>' : '<span class="text-sm text-muted">估值 —</span>');
           return main + '<br>' + sub;
         })() + '</td>' +
         /* 净值列：日涨跌幅百分比(红涨绿跌) + 净值日期标注 */
@@ -10508,7 +10511,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'b2f4c7a', date:'2026-08-21', desc:'修复AI识别金额截断+映射字段名不一致(amount/cost)' };
+  window.ver = { git:'c9d3e5f', date:'2026-08-21', desc:'修复金额列显示¥0.00:增加f.cost fallback(份额为0时显示导入原始金额)' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
