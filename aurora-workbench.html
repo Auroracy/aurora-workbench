@@ -6957,6 +6957,15 @@ function applyFundVal(f, d){
   };
   if(!f.name || f.name === f.code) f.name = d.name || f.name;
   f.updatedAt = Date.now();
+  /* 自动反算份额：份额为0(通常AI未识别/支付宝无份额列)且已导入金额(cost)时，
+   * 用抓取到的单位净值反算一次并固定。份额是买入时固定的，只在为0时反算，
+   * 避免每日净值波动导致份额数字跟着变。 */
+  var _unitNav = parseFloat(d.nav) || parseFloat(d.dwjz) || null;
+  if((f.shares == null || f.shares === 0) && f.cost && f.cost > 0 && _unitNav && _unitNav > 0){
+    f.shares = f.cost / _unitNav;
+    f.sharesDerived = true;
+    console.log('[applyFundVal] ' + (f.code || '?') + ' 自动反算份额: ' + f.shares.toFixed(2) + ' 份 (金额 ' + f.cost + ' ÷ 净值 ' + _unitNav + ')');
+  }
 }
 
 function computeFundMetrics(f){
@@ -10511,7 +10520,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'e7f8a9b', date:'2026-08-21', desc:'撤销净值列删除:恢复列表净值列(自动计算),去掉操作列手动净值按钮' };
+  window.ver = { git:'f2a3b4c', date:'2026-08-21', desc:'导入基金份额自动反算:份额为0且有金额时按净值反算并固定' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
