@@ -3104,9 +3104,12 @@ function isCssLikeText(s){
   if(/^\d+\s+(auto|solid|dashed|dotted|double|none|inherit|initial|unset|repeat|no-repeat|scroll|fixed|center|left|right|top|bottom|cover|contain|wrap|nowrap|visible|hidden|collapse|separate|!important)$/i.test(s)) return true;
   /* CSS/HTML 相关中文关键词（第三方源页面结构被误当新闻分类） */
   if(/^(CSS|css|Html|html|HTML)[样式|代码|属性|规则|选择器|布局|框架|语法|标签|元素|结构|设计]/.test(s)) return true;
-  if(/(样式|属性|间距|尺寸|平滑|脚本|动画效果|字体加粗|字体处理|颜色继承|webkit|moz|渐变|模式|both)$/.test(s) && s.length <= 15) return true;
+  /* 以 CSS 相关中文词结尾的短文本（分类标题） */
+  if(/(样式|属性|间距|尺寸|平滑|脚本|动画效果|字体加粗|字体处理|颜色继承|渐变|模式|both|处理)$/.test(s) && s.length <= 15 && /^(字体|颜色|间距|尺寸|平滑|CSS|css|Html|html|HTML|动画|布局|设计|过渡|兼容|渲染)/.test(s)) return true;
+  /* CSS vendor 前缀 + 中文说明 */
+  if(/-webkit-|-moz-|-ms-|-o-/.test(s)) return true;
   /* 纯英文CSS术语作为标题（如 "fadeinUp动画6秒淡出" 中含CSS类名） */
-  if(/[a-zA-Z]{8,}/.test(s) && /(?:动画|淡出|淡入|效果|秒|px|rem|em|vw|vh|auto|solid|both)/.test(s)) return true;
+  if(/[a-zA-Z]{5,}/.test(s) && /(?:动画|淡出|淡入|效果|秒|px|rem|em|vw|vh|auto|solid|both|平滑|处理|渐变|过渡|兼容|渲染|webkit|moz|ms-|o-)/.test(s)) return true;
   return false;
 }
 /* 过滤数组中的 CSS 垃圾数据，返回干净条目数组和是否检测到垃圾的标记 */
@@ -10600,7 +10603,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'h7i8j9k', date:'2026-08-21', desc:'修复新闻联播CSS垃圾穿透summary分组渲染:过滤category+items+导语,全垃圾时降级无数据' };
+  window.ver = { git:'i8j9k0l', date:'2026-08-21', desc:'补强CSS垃圾检测:覆盖平滑处理分类+webkit/moz vendor前缀+放宽英文混合阈值' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
