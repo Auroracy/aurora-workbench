@@ -7338,7 +7338,7 @@ function onFundScreenshot(input){
   }
 }
 function analyzeFundScreenshot(base64, cb){
-  var prompt = '请识别这张基金或股票持仓截图，提取每一只基金的持仓信息。仅返回 JSON 数组，不要任何额外文字与符号。每条格式：{"code":"6位基金代码或null","name":"基金完整全称","shares":持有份额数字,"amount":持有金额数字,"hp":持有收益数字,"hpPct":收益率数字}。字段说明（必须严格按此提取）：(1) code: 6位基金代码，不确定则填null，禁止编造！(2) name: 基金完整官方全称，禁止截断简写。(3) shares: 持有份额（份数），通常是较大的数如1682.83、5823.45份（几千~几万份），在截图里通常标为"份额"列。(4) amount: 持有金额/市值（元），即截图中的「金额」列或「金额/昨日收益」上面的数字，如3749.95、1290.13元（这是净值×份额），在支付宝/天天基金App里这列就是持仓市值。(5) hp: 持有收益（元），正数盈利负数亏损，如-3047.71。(6) hpPct: 收益率（%），如-15.16表示-15.16%。特别注意：支付宝截图的列顺序通常是「代码名称 | 份额 | 金额/昨日收益(上面是amount下面是昨日收益) | 持有收益/率(上面是hp下面是hpPct)」，务必逐列对应提取，不要把金额(3749.95这种)误当份额！若某项缺失用null。';
+  var prompt = '识别基金持仓截图，返回纯JSON数组（不要markdown代码块标记）。每条：{"code":"6位代码或null","name":"基金完整全称","shares":份额或null,"amount":金额,"hp":收益,"hpPct":"收益率%"}\n\n提取规则（逐列对应）：\n1) code: 截图有6位代码就填，没有或不确定→填null，绝对禁止猜！\n2) name: 基金完整官方名称（如"嘉实绿色主题股票发起式证券投资基金C"），禁止截断。\n3) shares: 持有份数。如果截图里没有"份额"这一列（如支付宝"我的持有"页面只有名称+金额+收益三列），填null即可。\n4) amount: 【最关键】截图「金额」列或「金额/昨日收益」上面的大数字（元），这是持仓市值=净值×份额。\n   ⚠️ 必须保留完整数值含小数点！如17053.18不能写成17，5723.40不能写成5！\n   ⚠️ 数字中的逗号是千分位分隔符要忽略(17,053.18→17053.18)！\n5) hp: 「持有收益」上面的数字（元），负数表示亏损，如-3047.71\n6) hpPct: 「持有收益/率」下面的百分比，如-15.16\n\n示例（支付宝格式）：嘉实绿色主题股票C → amount:17053.18, hp:-3047.71, hpPct:-15.16, shares:null';
   var imgContent = [{ type: 'text', text: prompt }, { type: 'image_url', image_url: { url: 'data:image/jpeg;base64,' + stripBase64Prefix(base64) } }];
 
   /* 构建尝试队列：先千问所有模型，再其他已配置引擎 */
@@ -7486,7 +7486,8 @@ function analyzeFundScreenshot(base64, cb){
             code: qc || nc,  /* 硬编码优先 > AI识别代码（假代码已被清空） */
             name: rawName,
             shares: parseFloat(x.shares) || 0,
-            cost: parseFloat(x.amount || x.cost) || 0,   /* 兼容新prompt(amount)和旧prompt(cost) */
+            amount: parseFloat(x.amount) || parseFloat(x.cost) || 0,   /* 持有金额(元)，来自AI的amount或旧prompt的cost */
+            cost: parseFloat(x.amount) || parseFloat(x.cost) || 0,      /* 兼容旧字段名 */
             hp: parseFloat(x.hp) || null,
             hpPct: parseFloat(x.hpPct) || null,
             codeCorrected: !!qc && !nc,  /* 硬编码命中且AI无代码→标记为已校正 */
@@ -10507,7 +10508,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'a8c3d1f', date:'2026-08-21', desc:'前端CSS垃圾过滤防御:渲染时自动清除已缓存数据中的CSS/HTML代码' };
+  window.ver = { git:'b2f4c7a', date:'2026-08-21', desc:'修复AI识别金额截断+映射字段名不一致(amount/cost)' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
