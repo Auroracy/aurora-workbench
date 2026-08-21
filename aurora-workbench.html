@@ -3098,7 +3098,7 @@ function isCssLikeText(s){
   if(/\brgba?\(/i.test(s)) return true;               /* rgb() rgba() */
   if(/#[0-9a-fA-F]{3,6}\b/.test(s) && !/[一二三四五六七八九十]/.test(s)) return true; /* 纯hex色值 */
   /* CSS 注释 */
-  if(/\/\*/.test(s) || /\*\//.test(s)) return true;    /* /* ... */ */
+  if(/\/\*/.test(s) || /\*\//.test(s)) return true;    /* CSS block comment syntax */
   /* CSS 变量 / 函数调用 */
   if(/var\(--/.test(s)) return true;                   /* var(--space-xxx) */
   if(/calc\(|clamp\(|min\(|max\(|rgba?\(/i.test(s)) return true;
@@ -10623,7 +10623,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'m0n1p2q', date:'2026-08-21', desc:'全面加强CSS/JS代码片段检测:覆盖纯单位值+DOM操作+变量+注释+CDN路径' };
+  window.ver = { git:'a1b2c3d', date:'2026-08-22', desc:'修复JS语法错误:isCssLikeText注释嵌套导致整个script块无法解析' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
