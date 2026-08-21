@@ -3102,6 +3102,11 @@ function isCssLikeText(s){
   if(/^<\/?[\w\-]+/i.test(s) && /^(div|span|p|a|ul|ol|li|h[1-6]|section|article|nav|header|footer|main|aside|figure|img|table|tr|td|th|form|input|button|label|select|option|textarea|style|script|link|meta|head|body|html|title|br|hr|details|summary|nav-btn|date-navigation|article-header|meta-item|article-title|primary-nav|nav-btn-date|nav-btn-label|bottom-nav)/i.test(s)) return true;
   /* 连续多个 CSS 属性值模式（如 "0 auto", "2px solid", "10px !important"） */
   if(/^\d+\s+(auto|solid|dashed|dotted|double|none|inherit|initial|unset|repeat|no-repeat|scroll|fixed|center|left|right|top|bottom|cover|contain|wrap|nowrap|visible|hidden|collapse|separate|!important)$/i.test(s)) return true;
+  /* CSS/HTML 相关中文关键词（第三方源页面结构被误当新闻分类） */
+  if(/^(CSS|css|Html|html|HTML)[样式|代码|属性|规则|选择器|布局|框架|语法|标签|元素|结构|设计]/.test(s)) return true;
+  if(/(样式|属性|间距|尺寸|平滑|脚本|动画效果|字体加粗|字体处理|颜色继承|webkit|moz|渐变|模式|both)$/.test(s) && s.length <= 15) return true;
+  /* 纯英文CSS术语作为标题（如 "fadeinUp动画6秒淡出" 中含CSS类名） */
+  if(/[a-zA-Z]{8,}/.test(s) && /(?:动画|淡出|淡入|效果|秒|px|rem|em|vw|vh|auto|solid|both)/.test(s)) return true;
   return false;
 }
 /* 过滤数组中的 CSS 垃圾数据，返回干净条目数组和是否检测到垃圾的标记 */
@@ -4199,16 +4204,48 @@ function renderXwlb(data, sourceLabel){
 
   /* ★ 前端防御：过滤已缓存数据中的 CSS/HTML 垃圾（第三方源返回的脏数据可能已被存入 db） */
   var _fgResult = null;
+  var _summaryGarbage = false;
+  /* 过滤 data.titles */
   if(data.titles && data.titles.length){
     _fgResult = filterCssGarbage(data.titles);
     if(_fgResult.hadGarbage){
       data.titles = _fgResult.clean;
-      /* 自动清除 db 缓存中的脏数据 */
-      if(DB.xwlb && DB.xwlb.cache && DB.xwlb.cache[date]){
-        DB.xwlb.cache[date].titles = _fgResult.clean;
-        scheduleServerPush();
+      _summaryGarbage = true;
+    }
+  }
+  /* ★ 过滤 data.summary（分组标题 + 条目 + 导语）——这是截图问题的根因！ */
+  if(data.summary){
+    /* 检查导语是否为 CSS 垃圾 */
+    if(data.summary.lead && isCssLikeText(data.summary.lead)){
+      data.summary.lead = null;
+      _summaryGarbage = true;
+    }
+    if(Array.isArray(data.summary.groups)){
+      var _cleanGroups = [];
+      data.summary.groups.forEach(function(g){
+        /* 分组标题本身就是 CSS 垃圾 → 整组丢弃 */
+        if(g.category && isCssLikeText(g.category)){ _summaryGarbage = true; return; }
+        /* 过滤组内条目 */
+        var _cleanItems = (g.items || []).filter(function(it){
+          return it.title && !isCssLikeText(it.title) && !isCssLikeText(it.point || '');
+        });
+        /* 组内无有效条目 → 丢弃整组 */
+        if(_cleanItems.length === 0){ _summaryGarbage = true; return; }
+        _cleanGroups.push({ category: g.category, items: _cleanItems });
+      });
+      /* 所有分组都被过滤掉了 → 整个 summary 标记为无效 */
+      if(_cleanGroups.length === 0 && _summaryGarbage){
+        data.summary = null;
+        if(data.titles && data.titles.length === 0) data.titles = [];
+      } else {
+        data.summary.groups = _cleanGroups;
       }
     }
+  }
+  /* 回写干净数据到 db 缓存 */
+  if(_summaryGarbage && DB.xwlb && DB.xwlb.cache && DB.xwlb.cache[date]){
+    DB.xwlb.cache[date] = data;
+    scheduleServerPush();
   }
 
   /* 有 summary → 正常渲染 */
@@ -10563,7 +10600,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'g4h5i6j', date:'2026-08-21', desc:'乱码检测:页面加载自动扫描◆等UTF-8截断字符并提示用户修正' };
+  window.ver = { git:'h7i8j9k', date:'2026-08-21', desc:'修复新闻联播CSS垃圾穿透summary分组渲染:过滤category+items+导语,全垃圾时降级无数据' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
