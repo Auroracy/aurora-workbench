@@ -3110,6 +3110,47 @@ function filterCssGarbage(arr){
   var clean = arr.filter(function(t){ return !isCssLikeText(t); });
   return { clean: clean, hadGarbage: clean.length < arr.length };
 }
+/* 检测 UTF-8 乱码（◆ 等替换字符），返回 [{field, value, location}] */
+function detectGarbledUtf8(){
+  var issues = [];
+  /* ◆ 是 UTF-8 截断后常见的乱码字符 */
+  var GARBLE_RE = /[\u25C6\u25C7\u25A0\u25A1\uFFFD]{2,}/;
+  function scanObj(obj, path){
+    if(!obj || typeof obj !== 'object') return;
+    for(var k in obj){
+      if(!obj.hasOwnProperty(k)) continue;
+      var v = obj[k];
+      if(typeof v === 'string' && GARBLE_RE.test(v)){
+        issues.push({ field: path + '.' + k, value: v.slice(0, 50) });
+      } else if(Array.isArray(v)){
+        v.forEach(function(item, i){ scanObj(item, path + '.' + k + '[' + i + ']'); });
+      } else if(typeof v === 'object'){
+        scanObj(v, path + '.' + k);
+      }
+    }
+  }
+  /* 扫描读书笔记 */
+  if(DB.reading && DB.reading.books) DB.reading.books.forEach(function(b, i){ scanObj(b, 'reading.books[' + i + ']'); });
+  /* 扫描财富日记 */
+  if(DB.wealth && DB.wealth.successDiary){
+    for(var d in DB.wealth.successDiary){ if(DB.wealth.successDiary.hasOwnProperty(d)){
+      DB.wealth.successDiary[d].forEach(function(entry, i){ scanObj(entry, 'wealth.successDiary[' + d + '][' + i + ']'); });
+    }}
+  }
+  /* 扫描基金名称等 */
+  if(DB.market && DB.market.funds) DB.market.funds.forEach(function(f, i){ scanObj(f, 'market.funds[' + i + ']'); });
+  return issues;
+}
+/* 页面加载时检测并提示乱码数据 */
+function checkGarbledData(){
+  var issues = detectGarbledUtf8();
+  if(!issues.length) return;
+  console.warn('[garble] 检测到 ' + issues.length + ' 处 UTF-8 乱码数据:', issues);
+  var msg = '⚠ 检测到 ' + issues.length + ' 处历史乱码数据（◆ 等），这是修复前存入的损坏文本。\n\n';
+  msg += '受影响字段：\n' + issues.map(function(x){ return '• ' + x.field + ' = "' + x.value + '"'; }).join('\n');
+  msg += '\n\n请点击对应条目的「编辑」按钮重新输入正确文字即可修复。';
+  toast(msg, 8000);
+}
 function timeToMin(t){
   if(!t) return 0;
   var p = t.split(':');
@@ -10472,6 +10513,8 @@ function renderAllOnSync(){
     if(typeof initWealth === 'function' && currentTabNum === 10){ initWealth(); }
     /* 梦想金库 Tab 10 需要完整重初始化（因为涉及多个子模块） */
   } catch(e){}
+  /* 加载完成后检测历史乱码数据（UTF-8 截断导致的 ◆ 等） */
+  if(typeof checkGarbledData === 'function') checkGarbledData();
 }
 function exportBackup(){
   var data = JSON.stringify(DB, null, 2);
@@ -10520,7 +10563,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'f2a3b4c', date:'2026-08-21', desc:'导入基金份额自动反算:份额为0且有金额时按净值反算并固定' };
+  window.ver = { git:'g4h5i6j', date:'2026-08-21', desc:'乱码检测:页面加载自动扫描◆等UTF-8截断字符并提示用户修正' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
