@@ -414,6 +414,20 @@ function xwlbCleanText(s) {
     .replace(/&[a-z]+;/gi, ' ').replace(/&#\d+;/g, ' ')
     .replace(/\s+/g, ' ').trim();
 }
+// 判断文本是否像 CSS/HTML 代码（非正常新闻标题）
+function xwlbIsCssOrCode(s) {
+  if (!s) return true;
+  // CSS 规则特征: { } ; 选择器 .xxx #xxx :伪类 px/rem/em 单位 rgba/hex颜色
+  if (/[\{\}]/.test(s)) return true;
+  if (/^\s*[\.\#\[\]]/.test(s)) return true;           // 以 . # [ ] 开头（CSS选择器）
+  if (/:\s*\d+(px|rem|em|%|vw|vh)\b/i.test(s)) return true; // margin: 20px
+  if (/\brgba?\(/i.test(s)) return true;              // rgb(0,102,204)
+  if (/#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})\b/.test(s) && !/[一二三四五六七八九十]/.test(s)) return true; // 纯hex色值（排除含中文的）
+  if (/^(margin|padding|border|font-size|color|background|display|flex|width|height|gap|align|justify|min-width|max-width|line-height|overflow|position|top|left|right|bottom|text-|white-space|word-break|box-sizing|border-radius|box-shadow|transition|transform|opacity|z-index|cursor|float|clear|vertical-align)\b/i.test(s)) return true;
+  // HTML 标签名
+  if (/^<\/?(div|span|p|a|ul|ol|li|h[1-6]|section|article|nav|header|footer|main|aside|figure|img|table|tr|td|th|form|input|button|label|select|option|textarea|style|script|link|meta|head|body|html|title|br|hr|details|summary|nav-btn|date-navigation|article-header|meta-item|article-title)\b/i.test(s)) return true;
+  return false;
+}
 // 从详情页 HTML 抽取新闻标题列表：优先 li（mrxwlb），不足则按段落/编号兜底（govopendata）
 function xwlbExtractItems(html) {
   const m = html.match(/<(div|article|section)[^>]*class="[^"]*(entry-content|post-content)[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
@@ -423,7 +437,7 @@ function xwlbExtractItems(html) {
   let x;
   while ((x = re.exec(body)) !== null) {
     const t = xwlbCleanText(x[1]);
-    if (t && t.length >= 6 && !/继续阅读|首页|分类目录|归档|标签|上一篇|下一篇/.test(t)) items.push(t);
+    if (t && t.length >= 6 && !/继续阅读|首页|分类目录|归档|标签|上一篇|下一篇/.test(t) && !xwlbIsCssOrCode(t)) items.push(t);
   }
   if (items.length < 3) {
     const pre = html.indexOf('主要内容');
@@ -431,7 +445,7 @@ function xwlbExtractItems(html) {
     const txt = xwlbCleanText(seg);
     const parts = txt.split(/(?:；|;|。|\n|\r|\d+[.、)、])/)
       .map(function (s) { return s.trim(); })
-      .filter(function (s) { return s.length >= 6 && s.length <= 80 && !/继续阅读|主要内容/.test(s); });
+      .filter(function (s) { return s.length >= 6 && s.length <= 80 && !/继续阅读|主要内容/.test(s) && !xwlbIsCssOrCode(s); });
     items = parts.slice(0, 30);
   }
   return items;
