@@ -340,8 +340,14 @@ function handleFundgzBatch(res, qs) {
           gsz: f.GSZ != null ? parseFloat(f.GSZ) : null,
           gszzl: f.GSZZL != null ? parseFloat(f.GSZZL) : null,
           nav: f.NAV != null ? parseFloat(f.NAV) : null,
-          gztime: f.GZTIME || null,
-          dwjz: f.DWJZ || null,   // 如果接口有单位净值
+          /* dwjz: 接口无DWJZ字段, 用NAV(确认净值)作为单位净值 */
+          dwjz: f.DWJZ || (f.NAV != null ? String(f.NAV) : null),
+          /* gztime: 周末GZTIME为空, fallback到PDATE(净值日期) */
+          gztime: f.GZTIME || f.PDATE || null,
+          /* pdate: 净值确认日期(用于前端显示"净值 08-22") */
+          pdate: f.PDATE || null,
+          /* navChgRt: 日涨跌幅%(NAVCHGRT), 周末GSZZL为空时的替代数据源 */
+          navChgRt: f.NAVCHGRT != null ? parseFloat(f.NAVCHGRT) : null,
         };
       }
       var payload = {

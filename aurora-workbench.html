@@ -7052,6 +7052,8 @@ function applyFundVal(f, d){
     gsz: _validGsz ? _gsz : (f.val&&f.val.gsz)||null,
     dwjz: d.dwjz || (d.nav != null ? String(d.nav) : (f.val&&f.val.dwjz)||null),
     gszzl: d.gszzl,
+    /* navChgRt: 日涨跌幅%(NAVCHGRT), 周末GSZZL为空时的替代数据源 */
+    navChgRt: d.navChgRt != null ? d.navChgRt : (f.val&&f.val.navChgRt)||null,
     gztime: d.gztime,
     jzrq: d.jzrq,
     nav: d.nav != null ? d.nav : (f.val&&f.val.nav)||null
@@ -7083,7 +7085,7 @@ function computeFundMetrics(f){
   /* 持有收益：优先用导入原始值，其次用估值计算值 */
   var hp = (f.hpImport != null && f.hpImport !== 0) ? f.hpImport : calcHp;
   var hpPct = (f.hpPctImport != null && f.hpPctImport !== 0) ? f.hpPctImport : calcHpPct;
-  /* 昨日收益：基于确认净值变化(prevDwjz→dwjz)；无历史则退回估值涨跌(盘中临时) */
+  /* 昨日收益：基于确认净值变化(prevDwjz→dwjz)；无历史则退回估值涨跌(盘中临时)；周末用NAVCHGRT */
   var yesterdayProfit = 0, yesterdayPct = 0;
   if(dwjz > 0 && prevDwjz > 0){
     yesterdayProfit = (dwjz - prevDwjz) * shares;
@@ -7093,6 +7095,12 @@ function computeFundMetrics(f){
     if(!_gz || isNaN(_gz)) _gz = 0;
     yesterdayPct = _gz;
     yesterdayProfit = dwjz * yesterdayPct / 100 * shares;  /* gszzl相对dwjz */
+  } else if(dwjz > 0 && f.val && f.val.navChgRt != null){
+    /* 周末/非交易时间: GSZZL为空, 用NAVCHGRT(日涨跌幅%)作为昨日收益 */
+    var _ncr = parseFloat(f.val.navChgRt);
+    if(!_ncr || isNaN(_ncr)) _ncr = 0;
+    yesterdayPct = _ncr;
+    yesterdayProfit = dwjz * _ncr / 100 * shares;
   }
   var gszzl = (f.val && f.val.gszzl != null) ? (isNaN(parseFloat(f.val.gszzl)) ? 0 : parseFloat(f.val.gszzl)) : 0;
   return { nav: nav, gsz: gsz, dwjz: dwjz, mv: isNaN(mv)?0:mv, ct: ct, hp: isNaN(hp)?0:hp, hpPct: isNaN(hpPct)?0:hpPct,
@@ -8218,14 +8226,18 @@ function refreshAllFundValuation(){
       var item = data[f.code];
       if(!item) return;
       /* 转为 applyFundVal 期望的格式 */
+      /* jzrq: 优先用pdate(净值确认日期), fallback到gztime(估值时间) */
+      var _jzrqDate = item.pdate || item.gztime || '';
       var d = {
         fundcode: f.code,
         gsz: item.gsz,
         gszzl: item.gszzl,
         dwjz: item.dwjz || (item.nav != null ? String(item.nav) : null),
-        gztime: item.gztime || '',
-        jzrq: (item.gztime || '').slice(0,10),
+        gztime: item.gztime || _jzrqDate || '',
+        jzrq: _jzrqDate.slice(0,10),
         nav: item.nav,
+        /* navChgRt: 日涨跌幅%(周末GSZZL为空时用NAVCHGRT替代) */
+        navChgRt: item.navChgRt,
       };
       applyFundVal(f, d);
       updated++;
@@ -10632,7 +10644,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'b2c3d4e', date:'2026-08-22', desc:'净值列优化:有dwjz时始终显示日期标注(08-22格式),无变化时也显示—+日期' };
+  window.ver = { git:'c3d4e5f', date:'2026-08-22', desc:'修复周末净值无日期+无涨跌幅:服务端补PDATE/navChgRt,前端三层fallback(gszzl→navChgRt→0)' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
