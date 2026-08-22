@@ -7185,8 +7185,6 @@ function renderFunds(){
       var validGsz = gszVal != null && gszVal >= 0.01 && gszVal <= 100;
       var hasGsz = (f.val && f.val.gsz != null && f.val.gsz !== '' && !isNaN(parseFloat(f.val.gsz)));
       var hasYest = (f.val && f.val.prevDwjz != null && f.val.prevDwjz !== '') || (f.val && f.val.gszzl != null && !isNaN(parseFloat(f.val.gszzl)));
-      /* 净值列来源标注：手动 / 净值日期 */
-      var navSrc = f.navManual ? '手动' : (safeDwjz > 0 ? ('净值 ' + (f.val.jzrq || '')) : '—');
       var hasHpData = hasNav || (f.hpImport != null) || (f.hpPctImport != null);
       var hpCls = clsOf(safeHp);
       /* 昨日收益着色 */
@@ -7225,15 +7223,26 @@ function renderFunds(){
             : ((importAmt != null && navAmt == null) ? '<span class="text-sm text-muted">导入</span>' : '<span class="text-sm text-muted">估值 —</span>');
           return main + '<br>' + sub;
         })() + '</td>' +
-        /* 净值列：日涨跌幅百分比(红涨绿跌) + 净值日期标注（代码自动计算更新） */
+        /* 净值列：日涨跌幅百分比(红涨绿跌) + 净值日期标注（代码自动计算更新）
+         * 有 dwjz 时始终显示日期（即使昨日涨跌幅为0），方便用户确认数据时效性 */
         '<td class="hide-mobile">' + (function(){
           var navPct = safeNum(m.yesterdayPct);
           var navPctCls = navPct > 0 ? 'pos' : (navPct < 0 ? 'neg' : 'text-muted');
           var navPctTxt = (navPct >= 0 ? '+' : '') + fmtPct(navPct);
-          if(safeDwjz > 0 && navPct !== 0){
-            return '<div style="font-size:15px;font-weight:600;" class="' + navPctCls + '">' + navPctTxt + '</div><div class="text-sm text-muted">' + navSrc + '</div>';
+          /* 有净值数据：显示涨跌幅（或—表示无变化）+ 日期标注 */
+          if(safeDwjz > 0){
+            var _jzrq = (f.val && f.val.jzrq) || '';
+            /* 日期格式化：2026-08-22 → 08-22，更紧凑 */
+            var _dateShow = _jzrq ? _jzrq.slice(5) : '';
+            var _dateLabel = _dateShow ? ('净值 ' + _dateShow) : (f.navManual ? '手动' : '净值');
+            if(navPct !== 0){
+              return '<div style="font-size:15px;font-weight:600;" class="' + navPctCls + '">' + navPctTxt + '</div><div class="text-sm text-muted">' + _dateLabel + '</div>';
+            }
+            /* dwjz有值但无变化：仍显示—和日期，让用户知道这是哪天的数据 */
+            return '<div style="font-size:14px;font-weight:600;color:var(--text-2);">—</div><div class="text-sm text-muted">' + _dateLabel + '</div>';
           }
-          return '<span class="text-muted">' + (safeDwjz > 0 ? '—<br><span class="text-sm text-muted">' + navSrc + '</span>' : '待净值') + '</span>';
+          /* 无任何净值数据 */
+          return '<span class="text-muted">待净值</span>';
         })() + '</td>' +
         /* 操作列 */
         '<td class="hide-mobile">' + opBtns + '</td>' +
@@ -10623,7 +10632,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'a1b2c3d', date:'2026-08-22', desc:'修复JS语法错误:isCssLikeText注释嵌套导致整个script块无法解析' };
+  window.ver = { git:'b2c3d4e', date:'2026-08-22', desc:'净值列优化:有dwjz时始终显示日期标注(08-22格式),无变化时也显示—+日期' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
