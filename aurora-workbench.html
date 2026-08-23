@@ -4089,7 +4089,7 @@ function renderDiaryHeat(){
   }
   el.innerHTML = cells.join('');
 }
-/* 点击热力图小方块切换打卡状态 */
+/* 点击热力图小方块：切换打卡 + 跳转到该日期视图 */
 function toggleDiaryCheckin(ds){
   var s = wealth().successDiary;
   if(s[ds] && s[ds].length > 0){
@@ -4097,9 +4097,12 @@ function toggleDiaryCheckin(ds){
     delete s[ds];
   } else {
     /* 未打卡 → 打卡：添加默认记录 */
-    s[ds] = ['✓ 打卡'];
+    if(!s[ds]) s[ds] = [];
+    s[ds].push('✓ 打卡');
   }
   saveDb();
+  /* 切换到该日期，让下方日记列表和日期选择器同步更新 */
+  wealthDiaryDate = ds;
   renderSuccessDiary();
 }
 
@@ -10683,7 +10686,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'g7h8i9j', date:'2026-08-23', desc:'估值列双行:上百分比+下估值计算金额(类似持有收益/率)' };
+  window.ver = { git:'h8i9j0k', date:'2026-08-23', desc:'成功日记热力图:点击格子切换打卡+跳转日期视图' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
