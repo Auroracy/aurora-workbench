@@ -2472,12 +2472,16 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     .fdsp-submit.swap{background:var(--blue-light);color:var(--blue);}
     .fdsp-submit:disabled{opacity:.45;cursor:not-allowed;}
     .fdsp-date-input{
-      border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:14px;
+      border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:15px;
       color:var(--text);background:var(--card);outline:none;cursor:pointer;
       font-family:inherit;min-width:140px;text-align:center;
+      min-height:44px;-webkit-appearance:none;
     }
-    .fdsp-date-input::-webkit-calendar-picker-indicator{cursor:pointer;opacity:.6;}
+    .fdsp-date-input::-webkit-calendar-picker-indicator{cursor:pointer;opacity:.7;display:block;width:24px;height:24px;}
     .fdsp-date-input:focus{border-color:var(--blue);}
+    @media(max-width:700px){
+      .fdsp-date-input{padding:12px 14px;font-size:16px;min-height:48px;}
+    }
     /* 定投卡片 */
     .fdsp-dca-card{
       background:var(--card);border-radius:var(--radius-sm);border:1px solid var(--line-soft);
@@ -7820,7 +7824,7 @@ function renderFdspAdd(f){
 
         '<div class="fdsp-time-row" style="flex-wrap:wrap;gap:8px;">' +
           '<span class="fdsp-time-label" style="width:100%;">原平台买入时间</span>' +
-          '<input id="fdspAddDate" type="date" value="' + todayStr + '" class="fdsp-date-input" style="flex:1;min-width:140px;" onchange="document.getElementById(\'fdspAddDateShow\').textContent=formatDateCN(this.value);updateTimeToggleEffect(\'fdspAdd\')">' +
+          '<input id="fdspAddDate" type="date" value="' + todayStr + '" class="fdsp-date-input" style="flex:1;min-width:140px;" onclick="if(this.showPicker)this.showPicker()" onchange="document.getElementById(\'fdspAddDateShow\').textContent=formatDateCN(this.value);updateTimeToggleEffect(\'fdspAdd\')">' +
         '</div>' +
         '<div class="fdsp-time-toggle">' +
           '<button class="fdsp-time-opt active" id="fdspAddTimeBefore" onclick="toggleTimeOpt(\'fdspAdd\',false)">3点前</button>' +
@@ -7951,7 +7955,7 @@ function renderFdspSub(f){
 
         '<div class="fdsp-time-row" style="flex-wrap:wrap;gap:8px;">' +
           '<span class="fdsp-time-label" style="width:100%;">原平台卖出时间</span>' +
-          '<input id="fdspSubDate" type="date" value="' + todayStr + '" class="fdsp-date-input" style="flex:1;min-width:140px;" onchange="document.getElementById(\'fdspSubDateShow\').textContent=formatDateCN(this.value);updateTimeToggleEffect(\'fdspSub\')">' +
+          '<input id="fdspSubDate" type="date" value="' + todayStr + '" class="fdsp-date-input" style="flex:1;min-width:140px;" onclick="if(this.showPicker)this.showPicker()" onchange="document.getElementById(\'fdspSubDateShow\').textContent=formatDateCN(this.value);updateTimeToggleEffect(\'fdspSub\')">' +
         '</div>' +
         '<div class="fdsp-time-toggle">' +
           '<button class="fdsp-time-opt active" id="fdspSubTimeBefore" onclick="toggleTimeOpt(\'fdspSub\',false)">3点前</button>' +
@@ -8251,7 +8255,7 @@ function renderFdspSwap(f){
       '<div class="fdsp-form-row">' +
         '<div class="fdsp-time-row" style="border-top:none;padding-top:0;padding-left:0;">' +
           '<span class="fdsp-time-label">原平台转换日期：</span>' +
-          '<input id="fdspSwapDate" type="date" value="' + todayStr + '" class="fdsp-date-input" style="flex:1;min-width:140px;" onchange="document.getElementById(\'fdspSwapDateShow\').textContent=formatDateCN(this.value);updateTimeToggleEffect(\'fdspSwap\')">' +
+          '<input id="fdspSwapDate" type="date" value="' + todayStr + '" class="fdsp-date-input" style="flex:1;min-width:140px;" onclick="if(this.showPicker)this.showPicker()" onchange="document.getElementById(\'fdspSwapDateShow\').textContent=formatDateCN(this.value);updateTimeToggleEffect(\'fdspSwap\')">' +
         '</div>' +
         '<div class="fdsp-time-toggle">' +
           '<button class="fdsp-time-opt active" id="fdspSwapTimeBefore" onclick="toggleTimeOpt(\'fdspSwap\',false)">3点前</button>' +
@@ -11660,7 +11664,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'987a600', date:'2026-08-23', desc:'修复确认按钮无响应(toast层级+renderFundDetail未定义),加仓/减仓/转换按3点规则记录交易+交易记录列表' };
+  window.ver = { git:'d2k9m8p', date:'2026-08-23', desc:'修复日期选择器点没反应(showPicker+加大触控区)' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
