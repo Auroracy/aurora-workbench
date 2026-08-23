@@ -3989,7 +3989,9 @@ function gooseAutoSave(){
 function renderSuccessDiary(){
   var date = wealthDiaryDate;
   document.getElementById('diaryDate').textContent = date;
-  var entries = wealth().successDiary[date] ? wealth().successDiary[date].slice() : [];
+  var raw = wealth().successDiary[date] ? wealth().successDiary[date].slice() : [];
+  /* 过滤掉'✓ 打卡'，不在列表中显示 */
+  var entries = raw.filter(function(x){ return x && x.trim() !== '✓ 打卡'; });
   var box = document.getElementById('diaryEntries');
   box.innerHTML = '';
   /* 只渲染已填写的条目，不强制铺开 5 个空框 */
@@ -4077,8 +4079,10 @@ function renderDiaryStats(){
   var monthDays = 0, monthEntries = 0, totalDays = 0, totalEntries = 0;
   for(var k in s){
     if(!s[k] || !s[k].length) continue;
-    totalDays++; totalEntries += s[k].length;
-    if(k.slice(0, 7) === ym){ monthDays++; monthEntries += s[k].length; }
+    var realK = s[k].filter(function(x){ return x && x.trim() !== '✓ 打卡'; });
+    if(realK.length > 0) totalDays++;
+    totalEntries += realK.length;
+    if(k.slice(0, 7) === ym){ if(realK.length > 0) monthDays++; monthEntries += realK.length; }
   }
   el.innerHTML = '本月打卡 <b>' + monthDays + '</b> 天 · 本月记录 <b>' + monthEntries + '</b> 条 · 累计 <b>' + totalDays + '</b> 天 / <b>' + totalEntries + '</b> 条成功';
 }
@@ -4091,7 +4095,10 @@ function renderDiaryHeat(){
   for(var i = 55; i >= 0; i--){
     var d = new Date(today); d.setDate(d.getDate() - i);
     var ds = toDateStr(d);
-    var n = (s[ds] && s[ds].length) ? s[ds].length : 0;
+    var raw = s[ds] || [];
+    /* '✓ 打卡'不算真实内容，热力图保持灰色 */
+    var realEntries = raw.filter(function(x){ return x && x.trim() !== '✓ 打卡'; });
+    var n = realEntries.length;
     var lv = n >= 5 ? 3 : (n >= 3 ? 2 : (n >= 1 ? 1 : 0));
     /* 黄色框跟随当前查看日期(wealthDiaryDate)，非固定今天 */
     var isActive = (ds === wealthDiaryDate) ? ' active' : '';
@@ -10687,7 +10694,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'m3n4o5p', date:'2026-08-23', desc:'成功日记:保留✓打卡记录正常计入颜色统计,代码不再自动添加' };
+  window.ver = { git:'n4o5p6q', date:'2026-08-23', desc:'成功日记:✓打卡完全不显示(列表+热力图+统计全过滤),代码不自动添加' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
