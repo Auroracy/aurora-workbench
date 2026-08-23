@@ -7238,12 +7238,17 @@ function renderFunds(){
       return '<tr>' +
         '<td><b>' + escapeHtml(sanitizeText(f.name)) + '</b><br><span class="text-sm text-muted">' + f.code + '<br>' + fmtNum(f.shares) + '份</span></td>' +
         '<td class="hide-mobile"><span class="chip">' + f.type + '</span><span class="chip theme">' + cleanTheme(f.theme) + '</span></td>' +
-        /* 估值列：涨跌幅百分比(红涨绿跌)；gsz 合理性校验(0.01~100为有效净值范围) */
+        /* 估值列：上=涨跌幅百分比(红涨绿跌)，下=估值计算金额(gsz×份额) */
         (function(){
           var _g = (f.val && f.val.gsz != null) ? safeNum(parseFloat(f.val.gsz)) : 0;
           var _validGsz = hasGsz && _g >= 0.01 && _g <= 100;
+          /* 估值计算金额 */
+          var gzAmt = (_validGsz && shares > 0) ? gszVal * shares : null;
+          var gzAmtCls = gzAmt > 0 ? 'pos' : (gzAmt < 0 ? 'neg' : 'text-muted');
           return '<td>' +
-            (_validGsz ? '<div style="font-size:15px;font-weight:600;" class="' + gzCls + '">' + gzTxt + '</div>' : '<div style="font-size:14px;font-weight:600;color:var(--text-2);">—</div>') +
+            (_validGsz
+              ? '<div style="font-size:15px;font-weight:600;" class="' + gzCls + '">' + gzTxt + '</div>' + '<div class="text-sm ' + gzAmtCls + '">' + (gzAmt != null ? fmtMoney(gzAmt) : '—') + '</div>'
+              : '<span class="text-muted">—</span>') +
             '</td>';
         })() +
         '<td class="' + (hasHpData ? hpCls : '') + '">' + (hasHpData ? fmtMoney(safeHp) + '<br><span class="text-sm">' + fmtPct(safeHpPct) + '</span>' : '<span class="text-muted">—</span>') +
@@ -10678,7 +10683,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'f6g7h8i', date:'2026-08-23', desc:'成功日记:热力图小方块可点击切换打卡状态(打卡/取消)' };
+  window.ver = { git:'g7h8i9j', date:'2026-08-23', desc:'估值列双行:上百分比+下估值计算金额(类似持有收益/率)' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
