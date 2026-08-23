@@ -2425,6 +2425,22 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     }
     .fdsp-time-label{font-size:14px;color:var(--text-2);}
     .fdsp-time-value{font-size:14px;color:var(--text);font-weight:500;cursor:pointer;display:flex;align-items:center;gap:4px;}
+    /* 3点前/后切换器 */
+    .fdsp-time-toggle{
+      display:inline-flex;align-items:center;background:var(--input-bg);
+      border-radius:20px;padding:2px;gap:0;margin-top:8px;
+    }
+    .fdsp-time-opt{
+      padding:5px 14px;border-radius:18px;font-size:13px;font-weight:600;
+      cursor:pointer;transition:all .15s;border:none;background:none;color:var(--text-3);
+      user-select:none;-webkit-user-select:none;
+    }
+    .fdsp-time-opt.active{background:var(--card);color:var(--blue);box-shadow:0 1px 4px rgba(0,0,0,.08);}
+    .fdsp-effective-date{
+      margin-top:8px;font-size:13px;color:var(--text-2);padding:8px 12px;
+      background:#F0F7FF;border-radius:8px;border-left:3px solid var(--blue);
+    }
+    .fdsp-effective-date b{color:var(--blue);}
     /* 比例按钮组 */
     .fdsp-fraction-btns{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
     .fdsp-frac-btn{
@@ -7763,11 +7779,15 @@ function renderFdspAdd(f){
           '</div>' +
         '</div>' +
 
-        '<div class="fdsp-time-row">' +
-          '<span class="fdsp-time-label">原平台买入时间</span>' +
-          '<input id="fdspAddDate" type="date" value="' + todayStr + '" class="fdsp-date-input" onchange="document.getElementById(\'fdspAddDateShow\').textContent=formatDateCN(this.value)">' +
+        '<div class="fdsp-time-row" style="flex-wrap:wrap;gap:8px;">' +
+          '<span class="fdsp-time-label" style="width:100%;">原平台买入时间</span>' +
+          '<input id="fdspAddDate" type="date" value="' + todayStr + '" class="fdsp-date-input" style="flex:1;min-width:140px;" onchange="document.getElementById(\'fdspAddDateShow\').textContent=formatDateCN(this.value);updateTimeToggleEffect(\'fdspAdd\')">' +
         '</div>' +
-        '<div class="fdsp-hint" style="margin-top:-6px;margin-bottom:4px;">已选：<b id="fdspAddDateShow" style="color:var(--text);">' + todayShow + '</b> 下午3点后估值更新</div>' +
+        '<div class="fdsp-time-toggle">' +
+          '<button class="fdsp-time-opt active" id="fdspAddTimeBefore" onclick="toggleTimeOpt(\'fdspAdd\',false)">3点前</button>' +
+          '<button class="fdsp-time-opt" id="fdspAddTimeAfter" onclick="toggleTimeOpt(\'fdspAdd\',true)">3点后</button>' +
+        '</div>' +
+        '<div class="fdsp-effective-date" id="fdspAddEffect"></div>' +
 
         '<div class="fdsp-hint">手动加仓太麻烦？可以试试 <a href="javascript:void(0)" onclick="toast(\'一键同步功能开发中\')">一键同步加仓</a></div>' +
       '</div>' +
@@ -7782,6 +7802,8 @@ function renderFdspAdd(f){
 
   /* 监听金额输入计算手续费 */
   document.getElementById('fdspAddAmt').addEventListener('input', calcAddFee);
+  /* 初始化时间切换器显示 */
+  updateTimeToggleEffect('fdspAdd');
 }
 function calcAddFee(){
   var amt = parseFloat(document.getElementById('fdspAddAmt').value) || 0;
@@ -7876,11 +7898,15 @@ function renderFdspSub(f){
           '</div>' +
         '</div>' +
 
-        '<div class="fdsp-time-row">' +
-          '<span class="fdsp-time-label">原平台卖出时间</span>' +
-          '<input id="fdspSubDate" type="date" value="' + todayStr + '" class="fdsp-date-input" onchange="document.getElementById(\'fdspSubDateShow\').textContent=formatDateCN(this.value)">' +
+        '<div class="fdsp-time-row" style="flex-wrap:wrap;gap:8px;">' +
+          '<span class="fdsp-time-label" style="width:100%;">原平台卖出时间</span>' +
+          '<input id="fdspSubDate" type="date" value="' + todayStr + '" class="fdsp-date-input" style="flex:1;min-width:140px;" onchange="document.getElementById(\'fdspSubDateShow\').textContent=formatDateCN(this.value);updateTimeToggleEffect(\'fdspSub\')">' +
         '</div>' +
-        '<div class="fdsp-hint" style="margin-top:-6px;margin-bottom:4px;">已选：<b id="fdspSubDateShow" style="color:var(--text);">' + todayShow + '</b> 下午3点后估值更新</div>' +
+        '<div class="fdsp-time-toggle">' +
+          '<button class="fdsp-time-opt active" id="fdspSubTimeBefore" onclick="toggleTimeOpt(\'fdspSub\',false)">3点前</button>' +
+          '<button class="fdsp-time-opt" id="fdspSubTimeAfter" onclick="toggleTimeOpt(\'fdspSub\',true)">3点后</button>' +
+        '</div>' +
+        '<div class="fdsp-effective-date" id="fdspSubEffect"></div>' +
 
         '<div class="fdsp-hint">手动减仓太麻烦？可以试试 <a href="javascript:void(0)" onclick="toast(\'一键同步功能开发中\')">一键同步减仓</a></div>' +
       '</div>' +
@@ -7892,6 +7918,7 @@ function renderFdspSub(f){
   page.innerHTML = html;
   page.classList.add('active');
   document.body.style.overflow = 'hidden';
+  updateTimeToggleEffect('fdspSub');
 }
 function setFrac(btn, totalShares){
   var frac = parseFloat(btn.getAttribute('data-frac'));
@@ -8161,9 +8188,13 @@ function renderFdspSwap(f){
       '<div class="fdsp-form-row">' +
         '<div class="fdsp-time-row" style="border-top:none;padding-top:0;padding-left:0;">' +
           '<span class="fdsp-time-label">原平台转换日期：</span>' +
-          '<input id="fdspSwapDate" type="date" value="' + todayStr + '" class="fdsp-date-input" onchange="document.getElementById(\'fdspSwapDateShow\').textContent=formatDateCN(this.value)">' +
+          '<input id="fdspSwapDate" type="date" value="' + todayStr + '" class="fdsp-date-input" style="flex:1;min-width:140px;" onchange="document.getElementById(\'fdspSwapDateShow\').textContent=formatDateCN(this.value);updateTimeToggleEffect(\'fdspSwap\')">' +
         '</div>' +
-        '<div class="fdsp-hint" style="margin-top:-6px;margin-bottom:4px;">已选：<b id="fdspSwapDateShow" style="color:var(--text);">' + todayShow + '</b></div>' +
+        '<div class="fdsp-time-toggle">' +
+          '<button class="fdsp-time-opt active" id="fdspSwapTimeBefore" onclick="toggleTimeOpt(\'fdspSwap\',false)">3点前</button>' +
+          '<button class="fdsp-time-opt" id="fdspSwapTimeAfter" onclick="toggleTimeOpt(\'fdspSwap\',true)">3点后</button>' +
+        '</div>' +
+        '<div class="fdsp-effective-date" id="fdspSwapEffect"></div>' +
       '</div>' +
 
       '<div class="fdsp-tutorial">不知道怎么填写？<a href="javascript:void(0)" onclick="toast(\'教程：1.在原平台完成转换 2.查看转出/转入确认金额 3.在此记录即可\')">点击查看教程</a></div>' +
@@ -8175,6 +8206,7 @@ function renderFdspSwap(f){
   page.innerHTML = html;
   page.classList.add('active');
   document.body.style.overflow = 'hidden';
+  updateTimeToggleEffect('fdspSwap');
 }
 function confirmSwap(sourceFid){
   try {
@@ -8235,6 +8267,42 @@ function formatDateCN(dateStr){
   var parts = dateStr.split('-');
   if(parts.length === 3) return parts[1] + '月' + parts[2] + '日';
   return dateStr;
+}
+/* 计算有效净值日期（考虑3点前后 + 跳过周末） */
+function calcEffectiveNavDate(dateStr, isAfter3pm){
+  if(!dateStr) return { raw: '', show: '', desc: '' };
+  var d = new Date(dateStr + 'T15:00:00'); /* 用15:00基准避免时区偏移 */
+  if(isAfter3pm){
+    d.setDate(d.getDate() + 1); /* 3点后 → 算下一个交易日 */
+  }
+  /* 跳过周末 */
+  var dow = d.getDay();
+  if(dow === 0){ d.setDate(d.getDate() + 1); }       /* 周日 → 周一 */
+  else if(dow === 6){ d.setDate(d.getDate() + 2); }   /* 周六 → 周一 */
+  var y = d.getFullYear(); var m = String(d.getMonth()+1).padStart(2,'0'); var dd = String(d.getDate()).padStart(2,'0');
+  var raw = y + '-' + m + '-' + dd;
+  var show = m + '月' + dd + '日';
+  var desc = isAfter3pm ? '3点后买入，按下一个交易日（' + show + '）净值计算份额' : '3点前买入，按当日（' + show + '）净值计算份额';
+  return { raw: raw, show: show, desc: desc };
+}
+/* 更新时间切换器显示（通用） */
+function updateTimeToggleEffect(prefix){
+  var dateEl = document.getElementById(prefix + 'Date');
+  var afterEl = document.getElementById(prefix + 'TimeAfter');
+  var effectEl = document.getElementById(prefix + 'Effect');
+  if(!dateEl || !effectEl) return;
+  var isAfter = afterEl ? afterEl.classList.contains('active') : false;
+  var eff = calcEffectiveNavDate(dateEl.value, isAfter);
+  effectEl.innerHTML = '<b>📌 ' + eff.desc + '</b>';
+}
+/* 切换3点前/后 */
+function toggleTimeOpt(prefix, isAfter){
+  var beforeBtn = document.getElementById(prefix + 'TimeBefore');
+  var afterBtn = document.getElementById(prefix + 'TimeAfter');
+  if(!beforeBtn || !afterBtn) return;
+  beforeBtn.classList.toggle('active', !isAfter);
+  afterBtn.classList.toggle('active', isAfter);
+  updateTimeToggleEffect(prefix);
 }
 function deleteFund(id){
   if(!confirm('确定删除该基金？')) return;
@@ -11477,7 +11545,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'ddb962a', date:'2026-08-23', desc:'修复子页面:日期选择器+确认按钮无响应+try-catch防护' };
+  window.ver = { git:'e1f2g3h4', date:'2026-08-23', desc:'子页面增加3点前/后切换器+有效净值日期计算' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
