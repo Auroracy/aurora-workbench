@@ -2444,6 +2444,13 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     .fdsp-submit.sub{background:var(--blue-light);color:var(--blue);}
     .fdsp-submit.swap{background:var(--blue-light);color:var(--blue);}
     .fdsp-submit:disabled{opacity:.45;cursor:not-allowed;}
+    .fdsp-date-input{
+      border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:14px;
+      color:var(--text);background:var(--card);outline:none;cursor:pointer;
+      font-family:inherit;min-width:140px;text-align:center;
+    }
+    .fdsp-date-input::-webkit-calendar-picker-indicator{cursor:pointer;opacity:.6;}
+    .fdsp-date-input:focus{border-color:var(--blue);}
     /* 定投卡片 */
     .fdsp-dca-card{
       background:var(--card);border-radius:var(--radius-sm);border:1px solid var(--line-soft);
@@ -7758,11 +7765,9 @@ function renderFdspAdd(f){
 
         '<div class="fdsp-time-row">' +
           '<span class="fdsp-time-label">原平台买入时间</span>' +
-          '<span class="fdsp-time-value" onclick="document.getElementById(\'fdspAddDate\').showPicker && document.getElementById(\'fdspAddDate\').showPicker()">' +
-            '<span id="fdspAddDateShow">' + todayShow + '</span> 下午3点后 ∨' +
-            '<input id="fdspAddDate" type="date" value="' + todayStr + '" style="position:absolute;opacity:0;pointer-events:none;" onchange="document.getElementById(\'fdspAddDateShow\').textContent=formatDateCN(this.value)">' +
-          '</span>' +
+          '<input id="fdspAddDate" type="date" value="' + todayStr + '" class="fdsp-date-input" onchange="document.getElementById(\'fdspAddDateShow\').textContent=formatDateCN(this.value)">' +
         '</div>' +
+        '<div class="fdsp-hint" style="margin-top:-6px;margin-bottom:4px;">已选：<b id="fdspAddDateShow" style="color:var(--text);">' + todayShow + '</b> 下午3点后估值更新</div>' +
 
         '<div class="fdsp-hint">手动加仓太麻烦？可以试试 <a href="javascript:void(0)" onclick="toast(\'一键同步功能开发中\')">一键同步加仓</a></div>' +
       '</div>' +
@@ -7785,32 +7790,44 @@ function calcAddFee(){
   document.getElementById('fdspAddFeeAmt').textContent = fee.toFixed(2);
 }
 function confirmAdd(fid){
-  var amt = parseFloat(document.getElementById('fdspAddAmt').value);
-  if(!amt || amt <= 0){ toast('请输入加仓金额'); return; }
-  var f = DB.market.funds.find(function(x){ return x.id === fid; });
-  if(!f) return;
+  try {
+    var amtEl = document.getElementById('fdspAddAmt');
+    if(!amtEl){ toast('页面异常，请重试'); return; }
+    var amt = parseFloat(amtEl.value);
+    if(!amt || amt <= 0){ toast('请输入加仓金额'); return; }
+    var f = DB.market.funds.find(function(x){ return x.id === fid; });
+    if(!f){ toast('基金数据未找到'); return; }
 
-  /* 用当前估值或净值计算新增份额 */
-  var m = computeFundMetrics(f);
-  var price = m.gsz > 0 ? m.gsz : m.nav;
-  if(price <= 0){ toast('暂无估值/净值，无法计算份额'); return; }
-  var newShares = amt / price;
+    /* 用当前估值或净值计算新增份额 */
+    var m = computeFundMetrics(f);
+    var price = m.gsz > 0 ? m.gsz : m.nav;
+    /* 无估值/净值时：尝试用最近一次已知净值 */
+    if(price <= 0 && f.dwjz) price = parseFloat(f.dwjz);
+    if(price <= 0){
+      toast('暂无净值数据，无法计算份额（周末/节假日可先填入，等更新后自动修正）');
+      return;
+    }
+    var newShares = amt / price;
 
-  f.shares = safeNum(f.shares) + newShares;
-  /* 更新成本：加权平均 */
-  var oldCost = parseFloat(f.cost) || 0;
-  var oldTotal = oldCost * (safeNum(f.shares) - newShares);
-  f.cost = (oldTotal + amt) / safeNum(f.shares);
+    f.shares = safeNum(f.shares) + newShares;
+    /* 更新成本：加权平均 */
+    var oldCost = parseFloat(f.cost) || 0;
+    var oldTotal = oldCost * (safeNum(f.shares) - newShares);
+    f.cost = (oldTotal + amt) / safeNum(f.shares);
 
-  saveDb(); renderFunds();
-  closeFdsp('fdspAdd');
+    saveDb(); renderFunds();
+    closeFdsp('fdspAdd');
 
-  /* 刷新详情页 */
-  if(document.getElementById('fundDetailPage').classList.contains('active')){
-    renderFundDetail(fid);
+    /* 刷新详情页 */
+    if(document.getElementById('fundDetailPage').classList.contains('active')){
+      renderFundDetail(fid);
+    }
+
+    toast('已加仓 ¥' + amt.toFixed(2) + '，+' + newShares.toFixed(2) + '份');
+  } catch(e){
+    console.error('[confirmAdd]', e);
+    toast('操作出错：' + e.message);
   }
-
-  toast('已加仓 ¥' + amt.toFixed(2) + '，+' + newShares.toFixed(2) + '份');
 }
 
 /* ---- 同步减仓 ---- */
@@ -7861,11 +7878,9 @@ function renderFdspSub(f){
 
         '<div class="fdsp-time-row">' +
           '<span class="fdsp-time-label">原平台卖出时间</span>' +
-          '<span class="fdsp-time-value" onclick="document.getElementById(\'fdspSubDate\').showPicker && document.getElementById(\'fdspSubDate\').showPicker()">' +
-            '<span id="fdspSubDateShow">' + todayShow + '</span> 下午3点后 ∨' +
-            '<input id="fdspSubDate" type="date" value="' + todayStr + '" style="position:absolute;opacity:0;pointer-events:none;" onchange="document.getElementById(\'fdspSubDateShow\').textContent=formatDateCN(this.value)">' +
-          '</span>' +
+          '<input id="fdspSubDate" type="date" value="' + todayStr + '" class="fdsp-date-input" onchange="document.getElementById(\'fdspSubDateShow\').textContent=formatDateCN(this.value)">' +
         '</div>' +
+        '<div class="fdsp-hint" style="margin-top:-6px;margin-bottom:4px;">已选：<b id="fdspSubDateShow" style="color:var(--text);">' + todayShow + '</b> 下午3点后估值更新</div>' +
 
         '<div class="fdsp-hint">手动减仓太麻烦？可以试试 <a href="javascript:void(0)" onclick="toast(\'一键同步功能开发中\')">一键同步减仓</a></div>' +
       '</div>' +
@@ -7890,24 +7905,31 @@ function clearFracActive(){
   document.querySelectorAll('.fdsp-frac-btn').forEach(function(b){ b.classList.remove('active'); });
 }
 function confirmSub(fid, maxShares){
-  var sellShares = parseFloat(document.getElementById('fdspSubShares').value);
-  if(!sellShares || sellShares <= 0){ toast('请输入卖出份额'); return; }
-  if(sellShares > maxShares){ toast('卖出份额不能超过持有份额 ' + maxShares.toFixed(2)); return; }
+  try {
+    var el = document.getElementById('fdspSubShares');
+    if(!el){ toast('页面异常，请重试'); return; }
+    var sellShares = parseFloat(el.value);
+    if(!sellShares || sellShares <= 0){ toast('请输入卖出份额'); return; }
+    if(sellShares > maxShares){ toast('卖出份额不能超过持有份额 ' + maxShares.toFixed(2)); return; }
 
-  var f = DB.market.funds.find(function(x){ return x.id === fid; });
-  if(!f) return;
+    var f = DB.market.funds.find(function(x){ return x.id === fid; });
+    if(!f){ toast('基金数据未找到'); return; }
 
-  f.shares = safeNum(f.shares) - sellShares;
-  if(f.shares < 0.001) f.shares = 0;
+    f.shares = safeNum(f.shares) - sellShares;
+    if(f.shares < 0.001) f.shares = 0;
 
-  saveDb(); renderFunds();
-  closeFdsp('fdspSub');
+    saveDb(); renderFunds();
+    closeFdsp('fdspSub');
 
-  if(document.getElementById('fundDetailPage').classList.contains('active')){
-    renderFundDetail(fid);
+    if(document.getElementById('fundDetailPage').classList.contains('active')){
+      renderFundDetail(fid);
+    }
+
+    toast('已减仓 ' + sellShares.toFixed(2) + '份，剩余 ' + f.shares.toFixed(2) + '份');
+  } catch(e){
+    console.error('[confirmSub]', e);
+    toast('操作出错：' + e.message);
   }
-
-  toast('已减仓 ' + sellShares.toFixed(2) + '份，剩余 ' + f.shares.toFixed(2) + '份');
 }
 
 /* ---- 同步定投 ---- */
@@ -8139,11 +8161,9 @@ function renderFdspSwap(f){
       '<div class="fdsp-form-row">' +
         '<div class="fdsp-time-row" style="border-top:none;padding-top:0;padding-left:0;">' +
           '<span class="fdsp-time-label">原平台转换日期：</span>' +
-          '<span class="fdsp-time-value" onclick="document.getElementById(\'fdspSwapDate\').showPicker && document.getElementById(\'fdspSwapDate\').showPicker()">' +
-            '<span id="fdspSwapDateShow">' + todayShow + '</span> 📅' +
-            '<input id="fdspSwapDate" type="date" value="' + todayStr + '" style="position:absolute;opacity:0;pointer-events:none;" onchange="document.getElementById(\'fdspSwapDateShow\').textContent=formatDateCN(this.value)">' +
-          '</span>' +
+          '<input id="fdspSwapDate" type="date" value="' + todayStr + '" class="fdsp-date-input" onchange="document.getElementById(\'fdspSwapDateShow\').textContent=formatDateCN(this.value)">' +
         '</div>' +
+        '<div class="fdsp-hint" style="margin-top:-6px;margin-bottom:4px;">已选：<b id="fdspSwapDateShow" style="color:var(--text);">' + todayShow + '</b></div>' +
       '</div>' +
 
       '<div class="fdsp-tutorial">不知道怎么填写？<a href="javascript:void(0)" onclick="toast(\'教程：1.在原平台完成转换 2.查看转出/转入确认金额 3.在此记录即可\')">点击查看教程</a></div>' +
@@ -8157,46 +8177,56 @@ function renderFdspSwap(f){
   document.body.style.overflow = 'hidden';
 }
 function confirmSwap(sourceFid){
-  var outAmt = parseFloat(document.getElementById('fdspSwapOutAmt').value);
-  var inAmt = parseFloat(document.getElementById('fdspSwapInAmt').value);
-  var targetId = document.getElementById('fdspSwapTarget').value;
+  try {
+    var outEl = document.getElementById('fdspSwapOutAmt');
+    var inEl = document.getElementById('fdspSwapInAmt');
+    var tgtEl = document.getElementById('fdspSwapTarget');
+    if(!outEl || !inEl || !tgtEl){ toast('页面异常，请重试'); return; }
 
-  if(!outAmt || outAmt <= 0){ toast('请输入转出金额'); return; }
-  if(!targetId){ toast('请选择转入基金'); return; }
-  if(!inAmt || inAmt <= 0){ toast('请输入转入金额'); return; }
+    var outAmt = parseFloat(outEl.value);
+    var inAmt = parseFloat(inEl.value);
+    var targetId = tgtEl.value;
 
-  var srcF = DB.market.funds.find(function(x){ return x.id === sourceFid; });
-  var tgtF = DB.market.funds.find(function(x){ return x.id === targetId; });
-  if(!srcF || !tgtF) return;
+    if(!outAmt || outAmt <= 0){ toast('请输入转出金额'); return; }
+    if(!targetId){ toast('请选择转入基金'); return; }
+    if(!inAmt || inAmt <= 0){ toast('请输入转入金额'); return; }
 
-  /* 转出：减少源基金份额 */
-  var srcM = computeFundMetrics(srcF);
-  var srcPrice = srcM.gsz > 0 ? srcM.gsz : srcM.nav;
-  if(srcPrice > 0){
-    var outShares = outAmt / srcPrice;
-    srcF.shares = Math.max(0, safeNum(srcF.shares) - outShares);
+    var srcF = DB.market.funds.find(function(x){ return x.id === sourceFid; });
+    var tgtF = DB.market.funds.find(function(x){ return x.id === targetId; });
+    if(!srcF || !tgtF){ toast('基金数据未找到'); return; }
+
+    /* 转出：减少源基金份额 */
+    var srcM = computeFundMetrics(srcF);
+    var srcPrice = srcM.gsz > 0 ? srcM.gsz : srcM.nav;
+    if(srcPrice > 0){
+      var outShares = outAmt / srcPrice;
+      srcF.shares = Math.max(0, safeNum(srcF.shares) - outShares);
+    }
+
+    /* 转入：增加目标基金份额 */
+    var tgtM = computeFundMetrics(tgtF);
+    var tgtPrice = tgtM.gsz > 0 ? tgtM.gsz : tgtM.nav;
+    if(tgtPrice > 0){
+      var inShares = inAmt / tgtPrice;
+      tgtF.shares = safeNum(tgtF.shares) + inShares;
+      /* 更新成本 */
+      var oldCost = parseFloat(tgtF.cost) || 0;
+      var oldTotal = oldCost * (safeNum(tgtF.shares) - inShares);
+      tgtF.cost = (oldTotal + inAmt) / safeNum(tgtF.shares);
+    }
+
+    saveDb(); renderFunds();
+    closeFdsp('fdspSwap');
+
+    if(document.getElementById('fundDetailPage').classList.contains('active')){
+      renderFundDetail(sourceFid);
+    }
+
+    toast('转换记录已保存');
+  } catch(e){
+    console.error('[confirmSwap]', e);
+    toast('操作出错：' + e.message);
   }
-
-  /* 转入：增加目标基金份额 */
-  var tgtM = computeFundMetrics(tgtF);
-  var tgtPrice = tgtM.gsz > 0 ? tgtM.gsz : tgtM.nav;
-  if(tgtPrice > 0){
-    var inShares = inAmt / tgtPrice;
-    tgtF.shares = safeNum(tgtF.shares) + inShares;
-    /* 更新成本 */
-    var oldCost = parseFloat(tgtF.cost) || 0;
-    var oldTotal = oldCost * (safeNum(tgtF.shares) - inShares);
-    tgtF.cost = (oldTotal + inAmt) / safeNum(tgtF.shares);
-  }
-
-  saveDb(); renderFunds();
-  closeFdsp('fdspSwap');
-
-  if(document.getElementById('fundDetailPage').classList.contains('active')){
-    renderFundDetail(sourceFid);
-  }
-
-  toast('转换记录已保存');
 }
 
 /* 工具函数：格式化日期为中文显示 */
@@ -11447,7 +11477,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'bf985c6', date:'2026-08-23', desc:'实现4个操作子页面:加仓/减仓/定投/转换(仿支付宝)' };
+  window.ver = { git:'c7d8e9f0', date:'2026-08-23', desc:'修复子页面:日期选择器+确认按钮无响应+try-catch防护' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
