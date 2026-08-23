@@ -543,7 +543,7 @@ function handleCctvXwlbParse(res, qs) {
     }
   }
   const hit = XWLB_PARSE_CACHE[norm];
-  if (hit && (Date.now() - hit.ts) < XWLB_PARSE_TTL) {
+  if (hit && (Date.now() - hit.ts) < (hit.ttl || XWLB_PARSE_TTL)) {
     console.log('[cctv/xwlb-parse] 内存缓存命中，count=' + hit.payload.count);
     return sendJSON(res, 200, hit.payload);
   }
@@ -555,8 +555,10 @@ function handleCctvXwlbParse(res, qs) {
     payload.count = payload.titles ? payload.titles.length : 0;
     if (!payload.note) payload.note = '';
     payload.fetchedAt = new Date().toISOString();
-    XWLB_PARSE_CACHE[norm] = { ts: Date.now(), payload: payload };
-    console.log('[cctv/xwlb-parse] 完成 source=' + payload.source + ' count=' + payload.count);
+    /* 当天 found:false 的结果不缓存（或只缓存2分钟），因为 19:30 后应该重试获取真实数据 */
+    var cacheTtl = (!payload.found && norm === todayStr) ? 2 * 60 * 1000 : XWLB_PARSE_TTL;
+    XWLB_PARSE_CACHE[norm] = { ts: Date.now(), payload: payload, ttl: cacheTtl };
+    console.log('[cctv/xwlb-parse] 完成 source=' + payload.source + ' count=' + payload.count + (payload.found ? '' : ' [negative, ttl=' + (cacheTtl/1000) + 's]'));
     return sendJSON(res, 200, payload);
   }
   function finishThirdParty() {

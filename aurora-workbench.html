@@ -4430,14 +4430,15 @@ function generateXwlbByDate(){
   var date = (dp && dp.value) ? dp.value : getXwlbToday();
   currentXwlbView = date;
   syncXwlbDatePicker(date);
-  /* 检查是否已有缓存数据 */
+  /* 检查是否已有缓存数据（有完整 summary 才直接渲染） */
   var cached = DB.xwlb.cache[date];
   if(cached && cached.summary){
     renderXwlb(cached, '缓存');
     return;
   }
-  /* 无缓存 → 直接进入补录模式 */
-  enterXwlbHistoryEditMode(date);
+  /* 无 summary → 尝试从服务器自动抓取（即使之前缓存了 found:false 也重试，
+     因为可能是 19:30 前的时间守卫导致的空结果，现在已经过 19:30 了） */
+  autoFetchProgramList(date, true);
 }
 
 /* 从服务器本地 data/xwlb/{date}.json 恢复（Redis 清空后的磁盘兜底） */
@@ -4812,8 +4813,11 @@ function autoFetchProgramList(date, autoGen){
             setXwlbStatus('✅ 已自动获取 ' + j.titles.length + ' 条节目单，可点击「生成总结」', 'success');
           }
         } else {
-          console.log('[xwlb] autoFetch found=false');
+          console.log('[xwlb] autoFetch found=false, note=' + (j && j.note));
           setXwlbStatus('ℹ ' + (j && j.note ? j.note : '未能自动获取该日期节目单') + '，可手动粘贴后点生成', 'info');
+          /* 回退到补录模式，让用户可以手动粘贴 */
+          enterXwlbHistoryEditMode(date);
+          if(j && j.note) setXwlbStatus('ℹ ' + j.note, 'info');
         }
       })
       .catch(function(e){
@@ -11664,7 +11668,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'0953f9e', date:'2026-08-23', desc:'修复日期选择器点没反应(showPicker+加大触控区)' };
+  window.ver = { git:'s3n7d9k', date:'2026-08-23', desc:'修复新闻联播当日生成无内容(生成按钮改为先抓取+服务端负缓存缩短TTL)' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
