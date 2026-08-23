@@ -7200,7 +7200,7 @@ function renderFunds(){
       var yestTxt = (safeYestP >= 0 ? '+' : '') + fmtMoney(safeYestP);
       /* 估值着色 */
       var gzCls = safeGszl > 0 ? 'pos' : (safeGszl < 0 ? 'neg' : 'text-muted');
-      var gzTxt = (safeGszl >= 0 ? '+' : '') + fmtPct(safeGszl);
+      var gzTxt = fmtPct(safeGszl);  /* fmtPct内部已处理+/-前缀 */
       /* 用 data-id 属性避免 onclick 引号转义问题 */
       var fid = String(f.id).replace(/'/g, '&#39;');
       var opBtns = '<button class="btn btn-sm" data-fid="' + fid + '" onclick="editFund(this.dataset.fid)">编辑</button> ' +
@@ -7219,16 +7219,20 @@ function renderFunds(){
         '<td class="' + (hasHpData ? hpCls : '') + '">' + (hasHpData ? fmtMoney(safeHp) + '<br><span class="text-sm">' + fmtPct(safeHpPct) + '</span>' : '<span class="text-muted">—</span>') +
         '</td>' +
         '<td class="hide-mobile">' + (function(){
-          /* 金额列：优先净值×份额计算市值，次选估值×份额，fallback显示导入的原始金额(f.cost) */
+          /* 金额列：主值=市值(净值×份额或估值×份额或导入金额)
+           * 副值=昨日收益金额(基于净值变化计算,红涨绿跌) */
           var importAmt = (f.cost != null && f.cost > 0) ? f.cost : null;
           var navAmt = (safeDwjz > 0 && shares > 0) ? safeDwjz * shares : null;
           var gzAmt = (validGsz && shares > 0) ? gszVal * shares : null;
           /* 主值优先级：计算市值 > 导入金额 */
           var main = navAmt != null ? fmtMoney(navAmt) : (gzAmt != null ? fmtMoney(gzAmt) : (importAmt != null ? fmtMoney(importAmt) : '<span class="text-muted">—</span>'));
-          /* 小字：有估值时显示估算值，否则标注来源 */
-          var sub = gzAmt != null
-            ? '<span class="text-sm ' + gzCls + '">估值 ' + fmtMoney(gzAmt) + '</span>'
-            : ((importAmt != null && navAmt == null) ? '<span class="text-sm text-muted">导入</span>' : '<span class="text-sm text-muted">估值 —</span>');
+          /* 副值：昨日收益金额(基于NAV变化), 样式参考截图2: -¥381.42 */
+          var yestProfit = safeNum(m.yesterdayProfit);
+          var yestProfitCls = yestProfit > 0 ? 'pos' : (yestProfit < 0 ? 'neg' : 'text-muted');
+          var yestProfitTxt = (yestProfit >= 0 ? '+' : '') + '¥' + Math.abs(yestProfit).toFixed(2);
+          var sub = (yestProfit !== 0 && safeDwjz > 0)
+            ? '<span class="text-sm ' + yestProfitCls + '">' + yestProfitTxt + '</span>'
+            : ((importAmt != null && navAmt == null) ? '<span class="text-sm text-muted">导入</span>' : '<span class="text-sm text-muted">—</span>');
           return main + '<br>' + sub;
         })() + '</td>' +
         /* 净值列：日涨跌幅百分比(红涨绿跌) + 净值日期标注（代码自动计算更新）
@@ -7236,7 +7240,7 @@ function renderFunds(){
         '<td class="hide-mobile">' + (function(){
           var navPct = safeNum(m.yesterdayPct);
           var navPctCls = navPct > 0 ? 'pos' : (navPct < 0 ? 'neg' : 'text-muted');
-          var navPctTxt = (navPct >= 0 ? '+' : '') + fmtPct(navPct);
+          var navPctTxt = fmtPct(navPct);  /* fmtPct内部已处理+/-前缀 */
           /* 有净值数据：显示涨跌幅（或—表示无变化）+ 日期标注 */
           if(safeDwjz > 0){
             var _jzrq = (f.val && f.val.jzrq) || '';
@@ -10644,7 +10648,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'c3d4e5f', date:'2026-08-22', desc:'修复周末净值无日期+无涨跌幅:服务端补PDATE/navChgRt,前端三层fallback(gszzl→navChgRt→0)' };
+  window.ver = { git:'d4e5f6g', date:'2026-08-23', desc:'修复双+号bug+金额列显示昨日收益金额' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
