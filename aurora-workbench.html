@@ -4088,22 +4088,20 @@ function renderDiaryHeat(){
     /* 黄色框跟随当前查看日期(wealthDiaryDate)，非固定今天 */
     var isActive = (ds === wealthDiaryDate) ? ' active' : '';
     /* 点击：切换打卡 + 跳转到该日期视图 */
-    cells.push('<div class="cell lv' + lv + isActive + ' clickable" title="' + ds + '：' + n + ' 条（点击切换）" data-date="' + ds + '" onclick="toggleDiaryCheckin(\'' + ds + '\')"></div>');
+    cells.push('<div class="cell lv' + lv + isActive + ' clickable" title="' + ds + '：' + n + ' 条' + (n > 0 ? '（点击查看）' : '（点击打卡）') + '" data-date="' + ds + '" onclick="toggleDiaryCheckin(\'' + ds + '\')"></div>');
   }
   el.innerHTML = cells.join('');
 }
-/* 点击热力图小方块：切换打卡 + 跳转到该日期视图 */
+/* 点击热力图小方块：空格子→打卡，有记录→仅查看(不取消) */
 function toggleDiaryCheckin(ds){
   var s = wealth().successDiary;
-  if(s[ds] && s[ds].length > 0){
-    /* 已打卡 → 取消：删除该日所有记录 */
-    delete s[ds];
-  } else {
-    /* 未打卡 → 打卡：添加默认记录 */
+  if(!s[ds] || !s[ds].length){
+    /* 空格子 → 打卡 */
     if(!s[ds]) s[ds] = [];
     s[ds].push('✓ 打卡');
+    saveDb();
   }
-  saveDb();
+  /* 有记录的格子 → 只跳转查看，不删除（保持蓝色） */
   /* 切换到该日期，让下方日记列表和日期选择器同步更新 */
   wealthDiaryDate = ds;
   renderSuccessDiary();
@@ -10689,7 +10687,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'i9j0k1l', date:'2026-08-23', desc:'成功日记热力图:蓝色系+黄色框跟随选中日期' };
+  window.ver = { git:'j0k1l2m', date:'2026-08-23', desc:'成功日记热力图:有记录只查看不取消,空格子才打卡' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
