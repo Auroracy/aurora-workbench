@@ -1848,6 +1848,9 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
 .diary-stats b{color:var(--accent);}
 .diary-heat{display:grid;grid-template-columns:repeat(28,1fr);gap:3px;margin:6px 0 4px;}
 .diary-heat .cell{aspect-ratio:1;border-radius:3px;background:#e3e9ed;}
+.diary-heat .cell.clickable{cursor:pointer;transition:transform 0.1s,opacity 0.15s;position:relative;}
+.diary-heat .cell.clickable:hover{transform:scale(1.25);z-index:1;opacity:0.8;}
+.diary-heat .cell.clickable:active{transform:scale(0.95);}
 .diary-heat .cell.lv1{background:#bfe3df;}
 .diary-heat .cell.lv2{background:#7fc9c1;}
 .diary-heat .cell.lv3{background:#2E86C1;}
@@ -4081,9 +4084,23 @@ function renderDiaryHeat(){
     var n = (s[ds] && s[ds].length) ? s[ds].length : 0;
     var lv = n >= 5 ? 3 : (n >= 3 ? 2 : (n >= 1 ? 1 : 0));
     var isToday = (i === 0) ? ' today' : '';
-    cells.push('<div class="cell lv' + lv + isToday + '" title="' + ds + '：' + n + ' 条"></div>');
+    /* 点击切换打卡：有记录→删除(取消打卡)，无记录→添加默认打卡 */
+    cells.push('<div class="cell lv' + lv + isToday + ' clickable" title="' + ds + '：' + n + ' 条（点击切换）" data-date="' + ds + '" onclick="toggleDiaryCheckin(\'' + ds + '\')"></div>');
   }
   el.innerHTML = cells.join('');
+}
+/* 点击热力图小方块切换打卡状态 */
+function toggleDiaryCheckin(ds){
+  var s = wealth().successDiary;
+  if(s[ds] && s[ds].length > 0){
+    /* 已打卡 → 取消：删除该日所有记录 */
+    delete s[ds];
+  } else {
+    /* 未打卡 → 打卡：添加默认记录 */
+    s[ds] = ['✓ 打卡'];
+  }
+  saveDb();
+  renderSuccessDiary();
 }
 
 /* ====== Tab 9: 新闻联播每日总结 ====== */
@@ -10661,7 +10678,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'e5f6g7h', date:'2026-08-23', desc:'XWLB:加强服务端CSS过滤+当天19:30前不自动抓取' };
+  window.ver = { git:'f6g7h8i', date:'2026-08-23', desc:'成功日记:热力图小方块可点击切换打卡状态(打卡/取消)' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
