@@ -735,7 +735,7 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
   font-size:13px;
   opacity:0;
   transition:all 0.3s;
-  z-index:9999;
+  z-index:20000;
   pointer-events:none;
 }
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
@@ -2364,6 +2364,17 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     .fd-action-btn.fd-sub{color:var(--green);border-color:rgba(45,171,102,.25);background:var(--green-bg);}
     .fd-action-btn.fd-auto{color:var(--blue);border-color:rgba(46,134,193,.25);background:var(--blue-bg);}
     .fd-action-btn.fd-swap{color:var(--amber);border-color:rgba(212,147,60,.25);background:var(--amber-bg);}
+    /* 交易记录列表 */
+    .fd-trade-list{margin-top:8px;display:flex;flex-direction:column;gap:8px;}
+    .fd-trade-item{background:var(--input-bg);border-radius:10px;padding:10px 12px;}
+    .fd-trade-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;}
+    .fd-trade-type{font-size:13px;font-weight:700;}
+    .fd-trade-type.pos{color:var(--red);}
+    .fd-trade-type.neg{color:var(--green);}
+    .fd-trade-date{font-size:12px;color:var(--text-3);}
+    .fd-trade-pending{background:rgba(212,147,60,.15);color:var(--amber);border-radius:8px;padding:1px 6px;font-size:11px;margin-left:4px;}
+    .fd-trade-detail{font-size:13px;color:var(--text-2);}
+    .fd-trade-empty{margin-top:8px;font-size:12px;color:var(--text-3);background:var(--input-bg);border-radius:10px;padding:12px;text-align:center;}
 
     /* ====== 基金操作子页面（加仓/减仓/定投/转换） ====== */
     .fd-sub-page{
@@ -7373,6 +7384,7 @@ var fundCurrentPage = 1;
 var compareCurrentPage = 1;
 var FUND_PAGE_SIZE = 10;
 function renderFunds(){
+  recomputePendingTrades();
   var funds = DB.market.funds || [];
   var totals = { mv: 0, gzTotal: 0, ct: 0, hp: 0, yesterdayProfit: 0 };
   var metricsArr = {}; var typeMap = {}; var themeMap = {};
@@ -7713,7 +7725,9 @@ function openFundDetail(f){
       '<button class="fd-action-btn fd-sub" onclick="fdAction(\'' + f.id + '\',\'sub\')">同步减仓</button>' +
       '<button class="fd-action-btn fd-auto" onclick="fdAction(\'' + f.id + '\',\'auto\')">同步定投</button>' +
       '<button class="fd-action-btn fd-swap" onclick="fdAction(\'' + f.id + '\',\'swap\')">同步转换</button>' +
-    '</div>';
+    '</div>' +
+
+    tradeListHtml(f);
 
   document.getElementById('fundDetailBody').innerHTML = html;
   document.getElementById('fundDetailPage').classList.add('active');
@@ -7735,6 +7749,31 @@ function closeFdsp(id){
   var el = document.getElementById(id);
   if(el){ el.classList.remove('active'); el.innerHTML = ''; }
   document.body.style.overflow = '';
+}
+/* 持仓详情页：交易记录列表（含3点前后→有效净值日期） */
+function tradeListHtml(f){
+  var trades = (f.trades || []).slice(0, 12);
+  if(!trades.length){
+    return '<div class="fd-section-title" style="margin-top:18px;">交易记录</div>' +
+           '<div class="fd-trade-empty">暂无交易记录（加仓/减仓/转换会自动归集到这里）</div>';
+  }
+  var rows = trades.map(function(t){
+    var typeCls = { '加仓':'pos', '减仓':'neg', '转换转出':'neg', '转换转入':'pos' }[t.type] || '';
+    var amtTxt = (t.amount > 0 ? '+' : '') + (t.amount !== 0 ? fmtMoney(Math.abs(t.amount)).replace('¥','¥') : '—');
+    var amtCell = t.amount > 0 ? ('<span class="pos">+' + fmtMoney(t.amount) + '</span>')
+                  : (t.amount < 0 ? ('<span class="neg">-' + fmtMoney(Math.abs(t.amount)) + '</span>') : '—');
+    var shCell = t.sharesDelta ? (t.sharesDelta > 0 ? '+' : '') + t.sharesDelta.toFixed(2) + '份' : '—';
+    var effShow = t.effectiveDate ? t.effectiveDate.slice(5).replace('-','月') + '日' : '';
+    var pendingTag = t.pendingNav ? ' <span class="fd-trade-pending">待净值</span>' : '';
+    var timeTag = t.isAfter3pm ? '3点后' : '3点前';
+    return '<div class="fd-trade-item">' +
+      '<div class="fd-trade-top"><span class="fd-trade-type ' + typeCls + '">' + t.type + '</span>' +
+        '<span class="fd-trade-date">' + (t.date || '').slice(5).replace('-','月') + '日 ' + timeTag + pendingTag + '</span></div>' +
+      '<div class="fd-trade-detail">金额 ' + amtCell + ' · 份额 ' + shCell + (effShow ? ' · 按' + effShow + '净值' : '') + '</div>' +
+    '</div>';
+  }).join('');
+  return '<div class="fd-section-title" style="margin-top:18px;">交易记录</div>' +
+         '<div class="fd-trade-list">' + rows + '</div>';
 }
 
 /* ---- 同步加仓 ---- */
@@ -7820,32 +7859,44 @@ function confirmAdd(fid){
     var f = DB.market.funds.find(function(x){ return x.id === fid; });
     if(!f){ toast('基金数据未找到'); return; }
 
-    /* 用当前估值或净值计算新增份额 */
-    var m = computeFundMetrics(f);
-    var price = m.gsz > 0 ? m.gsz : m.nav;
-    /* 无估值/净值时：尝试用最近一次已知净值 */
-    if(price <= 0 && f.dwjz) price = parseFloat(f.dwjz);
-    if(price <= 0){
-      toast('暂无净值数据，无法计算份额（周末/节假日可先填入，等更新后自动修正）');
-      return;
-    }
-    var newShares = amt / price;
+    /* 读取日期 + 3点前后 → 计算有效净值日期（遵循交易规则） */
+    var dateEl = document.getElementById('fdspAddDate');
+    var afterEl = document.getElementById('fdspAddTimeAfter');
+    var isAfter = afterEl ? afterEl.classList.contains('active') : false;
+    var selDate = dateEl ? dateEl.value : today();
+    var eff = calcEffectiveNavDate(selDate, isAfter);
 
-    f.shares = safeNum(f.shares) + newShares;
-    /* 更新成本：加权平均 */
-    var oldCost = parseFloat(f.cost) || 0;
-    var oldTotal = oldCost * (safeNum(f.shares) - newShares);
-    f.cost = (oldTotal + amt) / safeNum(f.shares);
+    var m = computeFundMetrics(f);
+    var price = m.gsz > 0 ? m.gsz : (m.nav > 0 ? m.nav : m.dwjz);
+    var newShares = 0, pending = false;
+    if(price > 0){ newShares = amt / price; }
+    else { pending = true; }
+
+    /* 始终记录这笔交易（含有效净值日期） */
+    var feeEl = document.getElementById('fdspAddFeeAmt');
+    recordTrade(f, {
+      type: '加仓', date: selDate, isAfter3pm: isAfter, effectiveDate: eff.raw,
+      amount: amt, sharesDelta: newShares, fee: feeEl ? (parseFloat(feeEl.textContent) || 0) : 0,
+      pendingNav: pending
+    });
+
+    if(!pending){
+      f.shares = safeNum(f.shares) + newShares;
+      /* 更新成本：加权平均 */
+      var oldCost = parseFloat(f.cost) || 0;
+      var oldTotal = oldCost * (safeNum(f.shares) - newShares);
+      f.cost = (oldTotal + amt) / safeNum(f.shares);
+    }
 
     saveDb(); renderFunds();
     closeFdsp('fdspAdd');
+    refreshFundDetailIfOpen(fid);
 
-    /* 刷新详情页 */
-    if(document.getElementById('fundDetailPage').classList.contains('active')){
-      renderFundDetail(fid);
+    if(pending){
+      toast('已记录加仓 ¥' + amt.toFixed(2) + '（按 ' + eff.show + ' 净值，待更新后自动计算份额）');
+    } else {
+      toast('已加仓 ¥' + amt.toFixed(2) + '，+' + newShares.toFixed(2) + '份（按 ' + eff.show + ' 净值）');
     }
-
-    toast('已加仓 ¥' + amt.toFixed(2) + '，+' + newShares.toFixed(2) + '份');
   } catch(e){
     console.error('[confirmAdd]', e);
     toast('操作出错：' + e.message);
@@ -7942,17 +7993,29 @@ function confirmSub(fid, maxShares){
     var f = DB.market.funds.find(function(x){ return x.id === fid; });
     if(!f){ toast('基金数据未找到'); return; }
 
+    /* 读取日期 + 3点前后 → 有效净值日期 */
+    var dateEl = document.getElementById('fdspSubDate');
+    var afterEl = document.getElementById('fdspSubTimeAfter');
+    var isAfter = afterEl ? afterEl.classList.contains('active') : false;
+    var selDate = dateEl ? dateEl.value : today();
+    var eff = calcEffectiveNavDate(selDate, isAfter);
+
     f.shares = safeNum(f.shares) - sellShares;
     if(f.shares < 0.001) f.shares = 0;
 
+    /* 记录卖出交易（含有效净值日期） */
+    var feeEl = document.getElementById('fdspSubFeeRate');
+    recordTrade(f, {
+      type: '减仓', date: selDate, isAfter3pm: isAfter, effectiveDate: eff.raw,
+      amount: -(sellShares * (computeFundMetrics(f).dwjz || 0)), sharesDelta: -sellShares,
+      fee: (feeEl ? parseFloat(feeEl.value) || 0 : 0), pendingNav: false
+    });
+
     saveDb(); renderFunds();
     closeFdsp('fdspSub');
+    refreshFundDetailIfOpen(fid);
 
-    if(document.getElementById('fundDetailPage').classList.contains('active')){
-      renderFundDetail(fid);
-    }
-
-    toast('已减仓 ' + sellShares.toFixed(2) + '份，剩余 ' + f.shares.toFixed(2) + '份');
+    toast('已减仓 ' + sellShares.toFixed(2) + '份，剩余 ' + f.shares.toFixed(2) + '份（按 ' + eff.show + ' 净值）');
   } catch(e){
     console.error('[confirmSub]', e);
     toast('操作出错：' + e.message);
@@ -8227,34 +8290,46 @@ function confirmSwap(sourceFid){
     var tgtF = DB.market.funds.find(function(x){ return x.id === targetId; });
     if(!srcF || !tgtF){ toast('基金数据未找到'); return; }
 
+    /* 读取日期 + 3点前后 → 有效净值日期 */
+    var dateEl = document.getElementById('fdspSwapDate');
+    var afterEl = document.getElementById('fdspSwapTimeAfter');
+    var isAfter = afterEl ? afterEl.classList.contains('active') : false;
+    var selDate = dateEl ? dateEl.value : today();
+    var eff = calcEffectiveNavDate(selDate, isAfter);
+
     /* 转出：减少源基金份额 */
     var srcM = computeFundMetrics(srcF);
-    var srcPrice = srcM.gsz > 0 ? srcM.gsz : srcM.nav;
-    if(srcPrice > 0){
-      var outShares = outAmt / srcPrice;
+    var srcPrice = srcM.gsz > 0 ? srcM.gsz : (srcM.nav > 0 ? srcM.nav : srcM.dwjz);
+    var outShares = 0, outPending = false;
+    if(srcPrice > 0){ outShares = outAmt / srcPrice; }
+    else { outPending = true; }
+    if(!outPending){
       srcF.shares = Math.max(0, safeNum(srcF.shares) - outShares);
     }
 
     /* 转入：增加目标基金份额 */
     var tgtM = computeFundMetrics(tgtF);
-    var tgtPrice = tgtM.gsz > 0 ? tgtM.gsz : tgtM.nav;
-    if(tgtPrice > 0){
-      var inShares = inAmt / tgtPrice;
+    var tgtPrice = tgtM.gsz > 0 ? tgtM.gsz : (tgtM.nav > 0 ? tgtM.nav : tgtM.dwjz);
+    var inShares = 0, inPending = false;
+    if(tgtPrice > 0){ inShares = inAmt / tgtPrice; }
+    else { inPending = true; }
+    if(!inPending){
       tgtF.shares = safeNum(tgtF.shares) + inShares;
-      /* 更新成本 */
+      /* 更新成本：加权平均 */
       var oldCost = parseFloat(tgtF.cost) || 0;
       var oldTotal = oldCost * (safeNum(tgtF.shares) - inShares);
       tgtF.cost = (oldTotal + inAmt) / safeNum(tgtF.shares);
     }
 
+    /* 记录两条交易（含有效净值日期） */
+    recordTrade(srcF, { type: '转换转出', date: selDate, isAfter3pm: isAfter, effectiveDate: eff.raw, amount: outAmt, sharesDelta: outPending ? 0 : -outShares, fee: 0, pendingNav: outPending });
+    recordTrade(tgtF, { type: '转换转入', date: selDate, isAfter3pm: isAfter, effectiveDate: eff.raw, amount: inAmt, sharesDelta: inPending ? 0 : inShares, fee: 0, pendingNav: inPending });
+
     saveDb(); renderFunds();
     closeFdsp('fdspSwap');
+    refreshFundDetailIfOpen(sourceFid);
 
-    if(document.getElementById('fundDetailPage').classList.contains('active')){
-      renderFundDetail(sourceFid);
-    }
-
-    toast('转换记录已保存');
+    toast('转换记录已保存（按 ' + eff.show + ' 净值）');
   } catch(e){
     console.error('[confirmSwap]', e);
     toast('操作出错：' + e.message);
@@ -8303,6 +8378,46 @@ function toggleTimeOpt(prefix, isAfter){
   beforeBtn.classList.toggle('active', !isAfter);
   afterBtn.classList.toggle('active', isAfter);
   updateTimeToggleEffect(prefix);
+}
+/* 记录一笔交易（含3点前后→有效净值日期），用于持仓明细与历史 */
+function recordTrade(f, rec){
+  if(!f) return;
+  if(!f.trades) f.trades = [];
+  rec.id = Date.now().toString(36) + Math.floor(Math.random()*1000).toString(36);
+  rec.ts = new Date().toISOString();
+  f.trades.unshift(rec);
+  if(f.trades.length > 200) f.trades.length = 200;
+}
+/* 待净值交易：估值/净值更新后自动补算份额 */
+function recomputePendingTrades(){
+  var changed = false;
+  (DB.market.funds || []).forEach(function(f){
+    if(!f.trades || !f.trades.length) return;
+    var m = computeFundMetrics(f);
+    var price = m.gsz > 0 ? m.gsz : (m.nav > 0 ? m.nav : m.dwjz);
+    if(price <= 0) return;
+    f.trades.forEach(function(t){
+      if(t.pendingNav && t.amount > 0){
+        var sh = t.amount / price;
+        t.sharesDelta = sh;
+        t.pendingNav = false;
+        if(t.type === '加仓' || t.type === '转换转入'){
+          f.shares = safeNum(f.shares) + sh;
+          var oldCost = parseFloat(f.cost) || 0;
+          var oldTotal = oldCost * (safeNum(f.shares) - sh);
+          f.cost = (oldTotal + t.amount) / safeNum(f.shares);
+        }
+        changed = true;
+      }
+    });
+  });
+  if(changed){ saveDb(); }
+}
+/* 若持仓详情页正打开，用最新数据刷新它（替代不存在的 renderFundDetail） */
+function refreshFundDetailIfOpen(fid){
+  if(!document.getElementById('fundDetailPage').classList.contains('active')) return;
+  var ff = DB.market.funds.find(function(x){ return x.id === fid; });
+  if(ff) openFundDetail(ff);
 }
 function deleteFund(id){
   if(!confirm('确定删除该基金？')) return;
@@ -11545,7 +11660,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'b3a1277', date:'2026-08-23', desc:'子页面增加3点前/后切换器+有效净值日期计算' };
+  window.ver = { git:'c0nf1rm', date:'2026-08-23', desc:'修复确认按钮无响应(toast层级+renderFundDetail未定义),加仓/减仓/转换按3点规则记录交易+交易记录列表' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
