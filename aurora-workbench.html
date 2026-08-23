@@ -1787,8 +1787,11 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
 .diary-add-row{display:flex;align-items:center;gap:8px;margin-top:4px;}
 .diary-add-row input{flex:1;border:1px dashed var(--border);background:transparent;border-radius:10px;padding:7px 10px;font-size:14px;color:var(--text);outline:none;font-family:inherit;transition:border-color .2s;}
 .diary-add-row input:focus{border-color:var(--accent);border-style:solid;}
-.diary-add-row .btn-add{flex:0 0 auto;cursor:pointer;border:1px solid var(--accent);background:transparent;color:var(--accent);border-radius:50%;width:28px;height:28px;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .2s;}
-.diary-add-row .btn-add:hover{background:var(--accent);color:#fff;}
+/* +按钮：有真实内容时才显示主题色，否则灰色 */
+.diary-add-row .btn-add{flex:0 0 auto;cursor:pointer;border:1px solid var(--text-3,#c0c5cb);background:transparent;color:var(--text-3,#c0c5cb);border-radius:50%;width:28px;height:28px;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .2s;}
+.diary-add-row .btn-add:hover{background:var(--text-3,#c0c5cb);color:#fff;}
+.diary-add-row.has-data .btn-add{border-color:var(--accent);color:var(--accent);}
+.diary-add-row.has-data .btn-add:hover{background:var(--accent);color:#fff;}
 
 /* 移动端日记适配 */
 @media(max-width:600px){
@@ -4007,6 +4010,9 @@ function renderSuccessDiary(){
   }
   /* 底部：一行"添加新条目"输入 */
   var addRow = document.createElement('div'); addRow.className = 'diary-add-row';
+  /* 判断是否有真实内容（非纯打卡标记） */
+  var hasRealContent = entries.some(function(x){ return x && x.trim() && x.trim() !== '✓ 打卡'; });
+  if(hasRealContent) addRow.className += ' has-data';
   var addInp = document.createElement('input'); addInp.type = 'text';
   addInp.placeholder = '今天做成的一件事…（回车添加）';
   addInp.onkeydown = function(e){ if(e.key === 'Enter' && addInp.value.trim()){ addDiaryEntryText(addInp.value.trim()); addInp.value = ''; } };
@@ -4014,9 +4020,11 @@ function renderSuccessDiary(){
   addBtn.onclick = function(){ if(addInp.value.trim()){ addDiaryEntryText(addInp.value.trim()); addInp.value = ''; } };
   addRow.appendChild(addInp); addRow.appendChild(addBtn);
   box.appendChild(addRow);
-  /* 统计 */
+  /* 统计：有真实内容时高亮，否则灰色 */
   var filled = entries.filter(function(x){ return x && x.trim(); }).length;
-  document.getElementById('diaryProgress').textContent = '今日 ' + filled + ' / ' + Math.max(filled, entries.length);
+  var progressEl = document.getElementById('diaryProgress');
+  progressEl.textContent = '今日 ' + filled + ' / ' + Math.max(filled, entries.length);
+  progressEl.style.color = hasRealContent ? 'var(--accent)' : 'var(--text-2)';
   document.getElementById('diaryStreak').textContent = '连续打卡 ' + diaryStreak() + ' 天';
   renderDiaryStats();
   renderDiaryHeat();
@@ -10687,7 +10695,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'j0k1l2m', date:'2026-08-23', desc:'成功日记热力图:有记录只查看不取消,空格子才打卡' };
+  window.ver = { git:'k1l2m3n', date:'2026-08-23', desc:'成功日记:有真实内容才显示颜色,否则灰色' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
