@@ -2536,7 +2536,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     <!-- 总览仪表盘 -->
     <div class="metric-grid" style="margin-top:16px;" id="fundOverviewGrid">
       <div class="metric-tile"><div class="metric-label">基金数量</div><div class="metric-value mini-num" id="fFundCount">0</div></div>
-      <div class="metric-tile"><div class="metric-label">持仓市值</div><div class="metric-value mini-num" id="fTotalAsset">—</div></div>
+      <div class="metric-tile"><div class="metric-label">估值总额</div><div class="metric-value mini-num" id="fTotalAsset">—</div></div>
       <div class="metric-tile"><div class="metric-label">累计收益</div><div class="metric-value mini-num" id="fTotalProfit">—</div><div class="metric-change" id="fTotalPct">—</div></div>
       <div class="metric-tile accent"><div class="metric-label">昨日收益</div><div class="metric-value mini-num" id="fTodayProfit">—</div></div>
     </div>
@@ -7164,8 +7164,11 @@ function computeFundMetrics(f){
     yesterdayProfit = dwjz * _ncr / 100 * shares;
   }
   var gszzl = (f.val && f.val.gszzl != null) ? (isNaN(parseFloat(f.val.gszzl)) ? 0 : parseFloat(f.val.gszzl)) : 0;
+  /* 纯估值金额：gsz × 份额（用于"持仓市值"展示为每天估值总额） */
+  var rawGsz = (f.val && f.val.gsz != null) ? parseFloat(f.val.gsz) : 0;
+  var gzAmt = (!isNaN(rawGsz) && rawGsz > 0 && shares > 0) ? rawGsz * shares : 0;
   return { nav: nav, gsz: gsz, dwjz: dwjz, mv: isNaN(mv)?0:mv, ct: ct, hp: isNaN(hp)?0:hp, hpPct: isNaN(hpPct)?0:hpPct,
-           gszzl: gszzl, yesterdayProfit: isNaN(yesterdayProfit)?0:yesterdayProfit, yesterdayPct: yesterdayPct };
+           gszzl: gszzl, yesterdayProfit: isNaN(yesterdayProfit)?0:yesterdayProfit, yesterdayPct: yesterdayPct, gzAmt: gzAmt };
 }
 
 /* ============ 渲染基金总览/配置/列表/对比/建议 ============ */
@@ -7174,12 +7177,13 @@ var compareCurrentPage = 1;
 var FUND_PAGE_SIZE = 10;
 function renderFunds(){
   var funds = DB.market.funds || [];
-  var totals = { mv: 0, ct: 0, hp: 0, yesterdayProfit: 0 };
+  var totals = { mv: 0, gzTotal: 0, ct: 0, hp: 0, yesterdayProfit: 0 };
   var metricsArr = {}; var typeMap = {}; var themeMap = {};
   funds.forEach(function(f){
     var m = computeFundMetrics(f); metricsArr[f.id] = m;
     /* 所有累加值用 safeNum 防护 */
     totals.mv += safeNum(m.mv);
+    totals.gzTotal += safeNum(m.gzAmt);
     totals.ct += safeNum(m.ct);
     totals.hp += safeNum(m.hp);
     totals.yesterdayProfit += safeNum(m.yesterdayProfit);
@@ -7189,7 +7193,7 @@ function renderFunds(){
   totals.hpPct = totals.ct > 0 ? totals.hp / totals.ct * 100 : 0;
 
   setText('fFundCount', funds.length);
-  setText('fTotalAsset', fmtMoney(safeNum(totals.mv)));
+  setText('fTotalAsset', fmtMoney(safeNum(totals.gzTotal)));
   var tp = document.getElementById('fTotalProfit'); if(tp){ tp.textContent = fmtMoney(safeNum(totals.hp)); tp.className = 'metric-change ' + clsOf(totals.hp); }
   var tpp = document.getElementById('fTotalPct'); if(tpp){ tpp.textContent = fmtPct(safeNum(totals.hpPct)); tpp.className = 'metric-change ' + clsOf(totals.hpPct); }
   var tdp = document.getElementById('fTodayProfit'); if(tdp){ var _yp = safeNum(totals.yesterdayProfit); tdp.textContent = (_yp >= 0 ? '+' : '') + fmtMoney(_yp); tdp.className = 'metric-value mini-num ' + clsOf(_yp); }
@@ -10714,7 +10718,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'3e31829', date:'2026-08-23', desc:'基金名称列横向滑动固定' };
+  window.ver = { git:'p1q2r3s', date:'2026-08-23', desc:'持仓市值改为估值总额(gsz×份额求和)' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
