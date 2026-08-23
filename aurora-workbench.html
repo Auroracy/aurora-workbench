@@ -2286,21 +2286,24 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     .fund-tbl th,.fund-tbl td{padding:8px 6px;border-bottom:1px solid #e2ebf0;text-align:right;white-space:nowrap;}
     .fund-tbl th:first-child,.fund-tbl td:first-child{text-align:left;}
     .fund-tbl th{color:#5a6b75;font-weight:600;background:#f6fafb;}
-    /* 移动端：隐藏分类和操作列，保留 基金|估值|持有收益/率|金额|净值 */
+    /* 移动端：隐藏分类列，保留 基金|估值|持有收益/率|金额|净值|操作；基金名缩略 */
     @media(max-width:700px){
-      .fund-tbl .hide-mobile{display:none !important;}
-      .fund-tbl{font-size:11px;table-layout:auto;min-width:560px;}
+      .fund-tbl .hide-mobile{display:none !important;} /* 仅隐藏“分类”列 */
+      .fund-tbl{font-size:11px;table-layout:auto;}
       .fund-tbl th,.fund-tbl td{padding:7px 3px;}
-      .fund-tbl th:first-child,.fund-tbl td:first-child{min-width:72px;white-space:normal;word-break:break-all;}
+      .fund-tbl th:first-child,.fund-tbl td:first-child{text-align:left;min-width:0;max-width:88px;}
+      /* 基金名缩略：超长省略 */
+      .fund-tbl td:first-child .fund-name-cell{display:block;max-width:84px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
       /* 各列最小宽度 */
       .fund-tbl td:nth-child(2){display:none;} /* 分类始终隐藏 */
-      .fund-tbl td:nth-child(3){min-width:70px;text-align:right;} /* 估值 */
-      .fund-tbl td:nth-child(4){white-space:normal;min-width:70px;} /* 持有收益 */
-      .fund-tbl td:nth-child(5){min-width:65px;} /* 金额 */
-      .fund-tbl td:nth-child(6){min-width:65px;} /* 净值 */
-      .fund-tbl td:nth-child(7){display:none;} /* 操作始终隐藏 */
+      .fund-tbl td:nth-child(3){min-width:64px;text-align:right;} /* 估值 */
+      .fund-tbl td:nth-child(4){white-space:normal;min-width:64px;} /* 持有收益 */
+      .fund-tbl td:nth-child(5){min-width:62px;} /* 金额 */
+      .fund-tbl td:nth-child(6){min-width:62px;} /* 净值 */
+      .fund-tbl td:nth-child(7){min-width:56px;white-space:nowrap;} /* 操作：手机端显示 */
+      .fund-tbl td:nth-child(7) .btn{font-size:10px;padding:2px 5px;}
       .fund-tbl th:nth-child(2){display:none;} /* 分类 */
-      .fund-tbl th:nth-child(7){display:none;} /* 操作 */
+      .fund-tbl th:nth-child(7){white-space:nowrap;} /* 操作显示 */
     }
     .chip{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;margin:1px 2px;background:#e8f3f1;color:#15A49B;}
     .chip.theme{background:#eaf1fb;color:#2E86C1;}
@@ -2546,7 +2549,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
       </div>
       <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
       <table class="fund-tbl">
-        <thead><tr><th>基金</th><th class="hide-mobile">分类</th><th>估值</th><th>持有收益/率</th><th>金额</th><th>净值</th><th class="hide-mobile">操作</th></tr></thead>
+        <thead><tr><th>基金</th><th class="hide-mobile">分类</th><th>估值</th><th>持有收益/率</th><th>金额</th><th>净值</th><th>操作</th></tr></thead>
         <tbody id="fundTableBody"></tbody>
       </table>
       </div>
@@ -7254,7 +7257,7 @@ function renderFunds(){
       var opBtns = '<button class="btn btn-sm" data-fid="' + fid + '" onclick="editFund(this.dataset.fid)">编辑</button> ' +
         '<button class="btn btn-sm" style="color:#c0392b;border-color:#f5c6cb;" data-fid="' + fid + '" onclick="deleteFund(this.dataset.fid)">删</button>';
       return '<tr>' +
-        '<td><b>' + escapeHtml(sanitizeText(f.name)) + '</b><br><span class="text-sm text-muted">' + f.code + '<br>' + fmtNum(f.shares) + '份</span></td>' +
+        '<td><b class="fund-name-cell">' + escapeHtml(sanitizeText(f.name)) + '</b><br><span class="text-sm text-muted">' + f.code + '<br>' + fmtNum(f.shares) + '份</span></td>' +
         '<td class="hide-mobile"><span class="chip">' + f.type + '</span><span class="chip theme">' + cleanTheme(f.theme) + '</span></td>' +
         /* 估值列：上=涨跌幅百分比(红涨绿跌)，下=估值计算金额(gsz×份额) */
         (function(){
@@ -7310,7 +7313,7 @@ function renderFunds(){
           return '<span class="text-muted">待净值</span>';
         })() + '</td>' +
         /* 操作列 */
-        '<td class="hide-mobile">' + opBtns + '</td>' +
+        '<td>' + opBtns + '</td>' +
       '</tr>';
     }).join('');
     /* ★★ 渲染后兜底：移除任何泄漏到 HTML 中的字面量 "NaN" 文本 ★★ */
@@ -10701,7 +10704,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'o5p6q7r', date:'2026-08-23', desc:'基金表手机端显示金额+净值列,横向滚动' };
+  window.ver = { git:'m3n4k5j', date:'2026-08-23', desc:'手机端基金名缩略,操作列显示' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
