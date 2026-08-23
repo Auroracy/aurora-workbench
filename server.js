@@ -420,18 +420,36 @@ function xwlbCleanText(s) {
     .replace(/&[a-z]+;/gi, ' ').replace(/&#\d+;/g, ' ')
     .replace(/\s+/g, ' ').trim();
 }
-// 判断文本是否像 CSS/HTML 代码（非正常新闻标题）
+// 判断文本是否像 CSS/HTML 代码（非正常新闻标题）—— 与客户端 isCssLikeText 保持同步
 function xwlbIsCssOrCode(s) {
   if (!s) return true;
+  s = s.trim();
+  if (s.length < 4) return true;
   // CSS 规则特征: { } ; 选择器 .xxx #xxx :伪类 px/rem/em 单位 rgba/hex颜色
   if (/[\{\}]/.test(s)) return true;
   if (/^\s*[\.\#\[\]]/.test(s)) return true;           // 以 . # [ ] 开头（CSS选择器）
   if (/:\s*\d+(px|rem|em|%|vw|vh)\b/i.test(s)) return true; // margin: 20px
   if (/\brgba?\(/i.test(s)) return true;              // rgb(0,102,204)
   if (/#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})\b/.test(s) && !/[一二三四五六七八九十]/.test(s)) return true; // 纯hex色值（排除含中文的）
-  if (/^(margin|padding|border|font-size|color|background|display|flex|width|height|gap|align|justify|min-width|max-width|line-height|overflow|position|top|left|right|bottom|text-|white-space|word-break|box-sizing|border-radius|box-shadow|transition|transform|opacity|z-index|cursor|float|clear|vertical-align)\b/i.test(s)) return true;
+  // CSS 注释
+  if (/\/\*/.test(s) || /\*\//.test(s)) return true;
+  // CSS 变量 / 函数调用
+  if (/var\(--/.test(s)) return true;
+  if (/calc\(|clamp\(|min\(|max\(|rgba?\(/i.test(s)) return true;
+  // 完整 CSS 属性名列表（与客户端同步，含 animation/pointer-events 等）
+  if (/^(margin|padding|border|font-size|color|background|display|flex|width|height|gap|align|justify|min-width|max-width|line-height|overflow|position|top|left|right|bottom|text-|white-space|word-break|box-sizing|border-radius|box-shadow|transition|transform|opacity|z-index|cursor|float|clear|vertical-align|font-weight|font-family|letter-spacing|text-decoration|border-top|border-bottom|border-left|border-right|content|visibility|grid|grid-template|flex-wrap|flex-direction|object-fit|filter|backdrop|scroll|text-align|text-indent|list-style|outline|animation|transition|transform-origin|user-select|pointer-events|will-change|contain|aspect-ratio|inset|scrollbar|accent-color|fill|stroke|clip-path|mask|background-image|linear-gradient|radial-gradient|conic-gradient|animation-fill-mode|animation-delay|animation-duration|animation-timing-function|animation-name)\b/i.test(s)) return true;
+  // 纯单位值: "875rem", "6s ease-out", "3s ease"
+  if (/^\d+(\.\d+)?(rem|em|px|%|vw|vh|s|ms)$/i.test(s)) return true;
+  if (/^\d+(\.\d+)?(rem|em|px|s|ms)\s+\w[\w\-]*$/.test(s)) return true;
+  if (/^\d+[a-zA-Z]+\s+[a-zA-Z]+$/.test(s) && s.length <= 15) return true;
+  // JS/DOM 操作模式
+  if (/\.(style|className|id|src|height|width|appendChild|addEventListener|getElementById|querySelector|textContent|innerHTML)\s*[/=]/.test(s)) return true;
+  if (/document\./.test(s)) return true;
+  if (/window\./.test(s)) return true;
+  // vendor 前缀
+  if (/-webkit-|-moz-|-ms-|-o-/.test(s)) return true;
   // HTML 标签名
-  if (/^<\/?(div|span|p|a|ul|ol|li|h[1-6]|section|article|nav|header|footer|main|aside|figure|img|table|tr|td|th|form|input|button|label|select|option|textarea|style|script|link|meta|head|body|html|title|br|hr|details|summary|nav-btn|date-navigation|article-header|meta-item|article-title)\b/i.test(s)) return true;
+  if (/^<\/?(div|span|p|a|ul|ol|li|h[1-6]|section|article|nav|header|footer|main|aside|figure|img|table|tr|td|th|form|input|button|label|select|option|textarea|style|script|link|meta|head|body|html|title|br|hr|details|summary|nav-btn|date-navigation|article-header|meta-item|article-title)\b/i.test(s)) return false;
   return false;
 }
 // 从详情页 HTML 抽取新闻标题列表：优先 li（mrxwlb），不足则按段落/编号兜底（govopendata）
@@ -513,6 +531,17 @@ function handleCctvXwlbParse(res, qs) {
   const norm = dm[1] + '-' + dm[2] + '-' + dm[3];
   const slashDate = norm.replace(/-/g, '/');
   console.log('[cctv/xwlb-parse] date=' + norm + ' slash=' + slashDate);
+  /* 时间守卫：当天日期在19:30(北京时间)前不抓取，避免返回CSS代码片段 */
+  const nowBeijing = new Date(Date.now() + (8 * 60 * 60 * 1000) + (new Date().getTimezoneOffset() * 60 * 1000));
+  const todayStr = nowBeijing.getFullYear() + '-' + String(nowBeijing.getMonth()+1).padStart(2,'0') + '-' + String(nowBeijing.getDate()).padStart(2,'0');
+  if (norm === todayStr) {
+    const bh = nowBeijing.getHours();
+    const bm = nowBeijing.getMinutes();
+    if (bh < 19 || (bh === 19 && bm < 30)) {
+      console.log('[cctv/xwlb-parse] 当天 ' + norm + ' 未到19:30北京时(' + bh + ':' + String(bm).padStart(2,'0') + ')，跳过');
+      return finish({ found: false, titles: [], source: 'none', note: '当日新闻尚未播出（19:00开播），请于播出后再试' });
+    }
+  }
   const hit = XWLB_PARSE_CACHE[norm];
   if (hit && (Date.now() - hit.ts) < XWLB_PARSE_TTL) {
     console.log('[cctv/xwlb-parse] 内存缓存命中，count=' + hit.payload.count);

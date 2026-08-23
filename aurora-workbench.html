@@ -4515,6 +4515,19 @@ function autoFetchProgramList(date, autoGen){
   try {
     var base = serverBase();
     if(!base){ console.log('[xwlb] no serverBase, skip auto-fetch'); return; }
+    /* 时间守卫：当天日期在新闻播出前(19:30)不自动抓取，避免抓到CSS/JS代码片段
+     * 新闻联播每日19:00播出，约19:30结束，之后CCTV页面才会更新为当日内容 */
+    var now = new Date();
+    var todayStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+    if(date === todayStr){
+      var hour = now.getHours();
+      var min = now.getMinutes();
+      if(hour < 19 || (hour === 19 && min < 30)){
+        console.log('[xwlb] 当天 ' + date + ' 未到19:30(' + hour + ':' + String(min).padStart(2,'0') + ')，跳过自动抓取');
+        setXwlbStatus('ℹ ' + date + ' 新闻尚未播出（19:00开播），将在播出后自动获取，或手动粘贴节目单后点「生成总结」', 'info');
+        return;
+      }
+    }
     var ta = document.getElementById('xwlbManualInput');
     setXwlbStatus('⏳ 正在自动获取 ' + date + ' 节目单…', 'loading');
     var url = base.replace(/\/+$/, '') + '/api/cctv/xwlb-parse?date=' + encodeURIComponent(date);
@@ -10648,7 +10661,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'d4e5f6g', date:'2026-08-23', desc:'修复双+号bug+金额列显示昨日收益金额' };
+  window.ver = { git:'e5f6g7h', date:'2026-08-23', desc:'XWLB:加强服务端CSS过滤+当天19:30前不自动抓取' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
