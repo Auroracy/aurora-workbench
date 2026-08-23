@@ -2305,6 +2305,16 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
       .fund-tbl th:nth-child(2){display:none;} /* 分类 */
       .fund-tbl th:nth-child(7){white-space:nowrap;} /* 操作显示 */
     }
+    /* 基金名称列：横向滑动时固定在左侧 */
+    .fund-tbl th:first-child,
+    .fund-tbl td:first-child{position:sticky;left:0;z-index:2;}
+    .fund-tbl th:first-child{background:#f6fafb;z-index:3;}
+    .fund-tbl td:first-child{background:#fff;}
+    .fund-tbl th:first-child::after,
+    .fund-tbl td:first-child::after{
+      content:'';position:absolute;top:0;right:0;bottom:0;width:1px;background:#e2ebf0;
+      box-shadow:2px 0 4px rgba(0,0,0,.05);
+    }
     .chip{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;margin:1px 2px;background:#e8f3f1;color:#15A49B;}
     .chip.theme{background:#eaf1fb;color:#2E86C1;}
     .pos{color:#c0392b;font-weight:600;}
@@ -2539,7 +2549,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     </div>
 
     <!-- 基金列表 -->
-    <div style="margin-top:16px;overflow-x:auto;">
+    <div style="margin-top:16px;">
       <div class="card-title" style="font-size:15px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
         <span>持仓明细</span>
         <span id="fundVerBadge" style="font-size:10px;color:#888;border:1px solid #ddd;border-radius:4px;padding:0 4px;display:none;">v—</span>
@@ -10704,7 +10714,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'a302370', date:'2026-08-23', desc:'手机端基金名缩略,操作列显示' };
+  window.ver = { git:'x9y8z7w', date:'2026-08-23', desc:'基金名称列横向滑动固定' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
