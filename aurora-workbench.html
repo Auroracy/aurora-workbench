@@ -2319,6 +2319,51 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     .chip.theme{background:#eaf1fb;color:#2E86C1;}
     .pos{color:#c0392b;font-weight:600;}
     .neg{color:#1e8e4e;font-weight:600;}
+
+    /* ====== 基金详情页（全屏覆盖） ====== */
+    .fund-detail-page{
+      position:fixed;inset:0;z-index:9999;background:var(--bg);
+      display:none;flex-direction:column;overflow-y:auto;-webkit-overflow-scrolling:touch;
+      animation:fdIn .22s ease-out;
+    }
+    .fund-detail-page.active{display:flex;}
+    @keyframes fdIn{from{opacity:0;transform:translateX(100%);}to{opacity:1;transform:translateX(0);}}
+    .fd-header{
+      position:sticky;top:0;z-index:10;background:var(--card);
+      border-bottom:1px solid var(--line-soft);
+      padding:12px 16px;display:flex;align-items:center;gap:12px;
+      box-shadow:0 1px 6px rgba(0,0,0,.04);
+    }
+    .fd-back{font-size:22px;cursor:pointer;color:var(--text-2);padding:4px;border-radius:50%;background:none;border:none;line-height:1;}
+    .fd-back:hover,.fd-back:active{color:var(--text);background:var(--input-bg);}
+    .fd-title{font-size:16px;font-weight:600;color:var(--text);flex:1;text-align:center;margin-right:32px;}
+    .fd-body{padding:16px;flex:1;}
+    .fd-fund-name{font-size:18px;font-weight:700;color:var(--text);margin-bottom:2px;}
+    .fd-fund-code{font-size:14px;color:var(--accent);font-family:var(--mono);letter-spacing:.5px;}
+    .fd-nav-row{
+      margin-top:12px;padding:12px 16px;background:var(--card);border-radius:var(--radius-sm);
+      border:1px solid var(--line-soft);display:flex;align-items:center;justify-content:space-between;
+    }
+    .fd-nav-label{font-size:13px;color:var(--text-2);}
+    .fd-nav-value{font-size:20px;font-weight:700;}
+    .fd-section-title{font-size:14px;font-weight:600;color:var(--accent);margin:18px 0 10px;display:flex;align-items:center;gap:6px;}
+    .fd-info-card{
+      background:var(--card);border-radius:var(--radius-sm);border:1px solid var(--line-soft);
+      padding:14px 16px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;
+    }
+    .fd-info-label{font-size:13px;color:var(--text-2);}
+    .fd-info-value{font-size:17px;font-weight:700;}
+    .fd-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:20px;}
+    .fd-action-btn{
+      background:var(--card);border:1px solid var(--line-soft);border-radius:var(--radius-sm);
+      padding:16px 12px;font-size:15px;font-weight:600;cursor:pointer;text-align:center;
+      transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px;
+    }
+    .fd-action-btn:active{transform:scale(.97);}
+    .fd-action-btn.fd-add{color:var(--red);border-color:rgba(219,107,107,.25);background:var(--red-bg);}
+    .fd-action-btn.fd-sub{color:var(--green);border-color:rgba(45,171,102,.25);background:var(--green-bg);}
+    .fd-action-btn.fd-auto{color:var(--blue);border-color:rgba(46,134,193,.25);background:var(--blue-bg);}
+    .fd-action-btn.fd-swap{color:var(--amber);border-color:rgba(212,147,60,.25);background:var(--amber-bg);}
     .alloc-bar{display:flex;height:18px;border-radius:9px;overflow:hidden;margin:6px 0;background:#eef3f6;}
     .alloc-seg{height:100%;}
     .alloc-legend{display:flex;flex-wrap:wrap;gap:10px;font-size:12px;color:#5a6b75;}
@@ -2582,6 +2627,15 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     </div>
   </div>
 </section>
+
+<!-- 基金详情页（全屏覆盖） -->
+<div class="fund-detail-page" id="fundDetailPage">
+  <div class="fd-header">
+    <button class="fd-back" onclick="closeFundDetail()">‹</button>
+    <div class="fd-title">修改持仓</div>
+  </div>
+  <div class="fd-body" id="fundDetailBody"></div>
+</div>
 
 <!-- ========== Tab 5: Python ========== -->
 <section id="tab5" class="tab-section">
@@ -7468,14 +7522,72 @@ function addFundManual(){
 }
 function editFund(id){
   var f = DB.market.funds.find(function(x){ return x.id === id; }); if(!f) return;
-  document.getElementById('fundCode').value = f.code;
-  document.getElementById('fundName').value = f.name === f.code ? '' : f.name;
-  document.getElementById('fundShares').value = f.shares;
-  document.getElementById('fundCost').value = f.cost;
-  editingFundId = id;
-  switchFundImport('manual');
-  document.getElementById('importManual').scrollIntoView({ behavior: 'smooth', block: 'center' });
-  toast('编辑中，改完点「添加」保存');
+  openFundDetail(f);
+}
+function openFundDetail(f){
+  var m = computeFundMetrics(f);
+  var dwjz = safeNum(m.dwjz);
+  var gsz = (f.val && f.val.gsz != null) ? parseFloat(f.val.gsz) : 0;
+  var shares = parseFloat(f.shares) || 0;
+  /* 净值行：优先 dwjz，其次 gsz */
+  var navVal = dwjz > 0 ? dwjz : (gsz > 0 ? gsz : 0);
+  /* 涨跌幅 */
+  var chgPct = safeNum(m.yesterdayPct);
+  var chgCls = chgPct > 0 ? 'pos' : (chgPct < 0 ? 'neg' : '');
+  var chgTxt = fmtPct(chgPct);
+  /* 日期 */
+  var jzrq = (f.val && f.val.jzrq) || '';
+  var dateShow = jzrq ? jzrq.slice(5) : '';
+  /* 持有金额：估值×份额 */
+  var holdAmt = (gsz > 0 && shares > 0) ? gsz * shares : ((navVal > 0 && shares > 0) ? navVal * shares : 0);
+  /* 持有收益 */
+  var hp = safeNum(m.hp);
+  var hpCls = hp >= 0 ? 'pos' : 'neg';
+  /* 持有天数 */
+  var days = 0;
+  if(f.updatedAt){
+    var diff = Date.now() - f.updatedAt;
+    days = Math.max(1, Math.floor(diff / 86400000));
+  }
+  if(days < 1 && holdAmt > 0) days = 1;
+
+  var html =
+    '<div class="fd-fund-name">' + escapeHtml(sanitizeText(f.name)) + '</div>' +
+    '<div class="fd-fund-code">' + f.code + '</div>' +
+    '<div class="fd-nav-row">' +
+      '<span class="fd-nav-label">最新净值' + (dateShow ? '（' + dateShow + '）' : '') + '</span>' +
+      '<span class="fd-nav-value ' + chgCls + '">' + (navVal > 0 ? navVal.toFixed(4) : '—') + '  ' + (navVal > 0 ? chgTxt : '') + '</span>' +
+    '</div>' +
+
+    '<div class="fd-section-title">↔ 份额</div>' +
+
+    '<div class="fd-info-card"><span class="fd-info-label">持有金额</span><span class="fd-info-value">' + (holdAmt > 0 ? fmtMoney(holdAmt) : '—') + '</span></div>' +
+    '<div class="fd-info-card"><span class="fd-info-label">持有收益</span><span class="fd-info-value ' + hpCls + '">' + fmtMoney(hp) + '</span></div>' +
+    '<div class="fd-info-card" style="cursor:pointer;" onclick="toast(\'暂无详情\')"><span class="fd-info-label">持有天数</span><span class="fd-info-value" style="color:var(--text-2);font-weight:500;">' + days + '天  ›</span></div>' +
+
+    '<div class="fd-actions">' +
+      '<button class="fd-action-btn fd-add" onclick="fdAction(\'' + f.id + '\',\'add\')">同步加仓</button>' +
+      '<button class="fd-action-btn fd-sub" onclick="fdAction(\'' + f.id + '\',\'sub\')">同步减仓</button>' +
+      '<button class="fd-action-btn fd-auto" onclick="fdAction(\'' + f.id + '\',\'auto\')">同步定投</button>' +
+      '<button class="fd-action-btn fd-swap" onclick="fdAction(\'' + f.id + '\',\'swap\')">同步转换</button>' +
+    '</div>';
+
+  document.getElementById('fundDetailBody').innerHTML = html;
+  document.getElementById('fundDetailPage').classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+function closeFundDetail(){
+  document.getElementById('fundDetailPage').classList.remove('active');
+  document.body.style.overflow = '';
+}
+function fdAction(fid, type){
+  closeFundDetail();
+  if(type === 'add'){ toast('加仓：请在券商 App 操作后，在此更新份额'); }
+  else if(type === 'sub'){ toast('减仓：请在券商 App 操作后，在此更新份额'); }
+  else if(type === 'auto'){ toast('定投记录功能开发中…'); }
+  else if(type === 'swap'){ toast('转换功能开发中…'); }
+  /* 回到编辑表单 */
+  setTimeout(function(){ editFund(fid); }, 300);
 }
 function deleteFund(id){
   if(!confirm('确定删除该基金？')) return;
@@ -10718,7 +10830,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'b95c1a3', date:'2026-08-23', desc:'持仓市值改为估值总额(gsz×份额求和)' };
+  window.ver = { git:'d4e5f6g', date:'2026-08-23', desc:'编辑按钮改为全屏基金详情页(仿支付宝修改持仓)' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
