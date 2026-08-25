@@ -2748,7 +2748,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     <!-- 总览仪表盘 -->
     <div class="metric-grid" style="margin-top:16px;" id="fundOverviewGrid">
       <div class="metric-tile"><div class="metric-label">基金数量</div><div class="metric-value mini-num" id="fFundCount">0</div></div>
-      <div class="metric-tile"><div class="metric-label">估值总额</div><div class="metric-value mini-num" id="fTotalAsset">—</div></div>
+      <div class="metric-tile"><div class="metric-label">估值盈亏</div><div class="metric-value mini-num" id="fTotalAsset">—</div><div class="metric-change" id="fTotalAssetPct">—</div></div>
       <div class="metric-tile"><div class="metric-label">累计收益</div><div class="metric-value mini-num" id="fTotalProfit">—</div><div class="metric-change" id="fTotalPct">—</div></div>
       <div class="metric-tile accent"><div class="metric-label">昨日收益</div><div class="metric-value mini-num" id="fTodayProfit">—</div></div>
     </div>
@@ -7435,13 +7435,13 @@ var FUND_PAGE_SIZE = 10;
 function renderFunds(){
   recomputePendingTrades();
   var funds = DB.market.funds || [];
-  var totals = { mv: 0, gzTotal: 0, ct: 0, hp: 0, yesterdayProfit: 0 };
+  var totals = { mv: 0, gzProfit: 0, ct: 0, hp: 0, yesterdayProfit: 0 };
   var metricsArr = {}; var typeMap = {}; var themeMap = {};
   funds.forEach(function(f){
     var m = computeFundMetrics(f); metricsArr[f.id] = m;
     /* 所有累加值用 safeNum 防护 */
     totals.mv += safeNum(m.mv);
-    totals.gzTotal += safeNum(m.gzAmt);
+    totals.gzProfit += safeNum(m.mv) - safeNum(m.ct);
     totals.ct += safeNum(m.ct);
     totals.hp += safeNum(m.hp);
     totals.yesterdayProfit += safeNum(m.yesterdayProfit);
@@ -7451,7 +7451,12 @@ function renderFunds(){
   totals.hpPct = totals.ct > 0 ? totals.hp / totals.ct * 100 : 0;
 
   setText('fFundCount', funds.length);
-  setText('fTotalAsset', fmtMoney(safeNum(totals.gzTotal)));
+  var _gap = safeNum(totals.gzProfit);
+  var _gapPct = totals.ct > 0 ? _gap / totals.ct * 100 : 0;
+  var faEl = document.getElementById('fTotalAsset');
+  if(faEl){ faEl.textContent = (_gap >= 0 ? '+' : '') + fmtMoney(_gap); faEl.className = 'metric-value mini-num ' + clsOf(_gap); }
+  var faPct = document.getElementById('fTotalAssetPct');
+  if(faPct){ faPct.textContent = fmtPct(_gapPct); faPct.className = 'metric-change ' + clsOf(_gapPct); }
   var tp = document.getElementById('fTotalProfit'); if(tp){ tp.textContent = fmtMoney(safeNum(totals.hp)); tp.className = 'metric-change ' + clsOf(totals.hp); }
   var tpp = document.getElementById('fTotalPct'); if(tpp){ tpp.textContent = fmtPct(safeNum(totals.hpPct)); tpp.className = 'metric-change ' + clsOf(totals.hpPct); }
   var tdp = document.getElementById('fTodayProfit'); if(tdp){ var _yp = safeNum(totals.yesterdayProfit); tdp.textContent = (_yp >= 0 ? '+' : '') + fmtMoney(_yp); tdp.className = 'metric-value mini-num ' + clsOf(_yp); }
