@@ -7380,9 +7380,12 @@ function computeFundMetrics(f){
     yesterdayProfit = dwjz * _ncr / 100 * shares;
   }
   var gszzl = (f.val && f.val.gszzl != null) ? (isNaN(parseFloat(f.val.gszzl)) ? 0 : parseFloat(f.val.gszzl)) : 0;
-  /* 纯估值金额：gsz × 份额（用于"持仓市值"展示为每天估值总额） */
+  /* 纯估值金额：优先 gsz×份额（盘中估算），GSZ 为空(非交易时段)时 fallback 到 dwjz×份额(确认净值计算) */
   var rawGsz = (f.val && f.val.gsz != null) ? parseFloat(f.val.gsz) : 0;
-  var gzAmt = (!isNaN(rawGsz) && rawGsz > 0 && shares > 0) ? rawGsz * shares : 0;
+  var rawDwjz = (f.val && f.val.dwjz != null && f.val.dwjz !== '') ? parseFloat(f.val.dwjz) : 0;
+  var gzAmt = (shares > 0)
+    ? ((!isNaN(rawGsz) && rawGsz > 0) ? rawGsz * shares : ((rawDwjz > 0) ? rawDwjz * shares : 0))
+    : 0;
   return { nav: nav, gsz: gsz, dwjz: dwjz, mv: isNaN(mv)?0:mv, ct: ct, hp: isNaN(hp)?0:hp, hpPct: isNaN(hpPct)?0:hpPct,
            gszzl: gszzl, yesterdayProfit: isNaN(yesterdayProfit)?0:yesterdayProfit, yesterdayPct: yesterdayPct, gzAmt: gzAmt };
 }
@@ -11676,7 +11679,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'a3b8c2d', date:'2026-08-25', desc:'修复估值列收盘后显示为空(fallback到确认净值NAV)' };
+  window.ver = { git:'c1d9f0a', date:'2026-08-25', desc:'估值列/估值总额非交易时段fallback到确认净值(GSZ仅交易时段有值)' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
