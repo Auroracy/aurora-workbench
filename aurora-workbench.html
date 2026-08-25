@@ -1861,6 +1861,27 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
 /* 黄色框 = 当前选中的查看日期（非固定今天） */
 .diary-heat .cell.active{border:2px solid var(--amber,#E8A33D) !important;box-shadow:0 0 0 1px rgba(232,163,61,0.3);}
 
+/* ===== 基金今日加/减仓建议 ===== */
+.fa-grid{display:flex;flex-direction:column;gap:8px;}
+.fa-row{display:grid;grid-template-columns:1.4fr 0.7fr 1fr 2.4fr 0.7fr;gap:10px;align-items:center;background:var(--card);border:1px solid var(--line-soft);border-radius:var(--radius-sm);padding:10px 12px;font-size:13px;}
+.fa-row .fa-name b{font-size:13px;}
+.fa-row .fa-pct{font-weight:700;font-variant-numeric:tabular-nums;}
+.fa-badge{display:inline-block;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:600;}
+.fa-badge.add{background:var(--red-bg,#FDECEA);color:var(--red,#C0392B);}
+.fa-badge.reduce{background:var(--green-bg,#E8F6EF);color:var(--green,#1E8E6E);}
+.fa-badge.hold{background:var(--input-bg,#F4F6F8);color:var(--text-2,#7A8699);}
+.fa-reasons ul{margin:0;padding-left:16px;color:var(--text-2);line-height:1.5;}
+.fa-reasons li{margin:1px 0;}
+.fa-score{text-align:right;font-variant-numeric:tabular-nums;color:var(--text-3);white-space:nowrap;}
+.fa-foot{margin-top:10px;font-size:11px;color:var(--text-3);line-height:1.6;background:var(--input-bg);border-radius:var(--radius-sm);padding:8px 10px;}
+@media(max-width:700px){
+  .fa-row{grid-template-columns:1.3fr 0.6fr 0.9fr;grid-template-areas:"name pct action" "reasons reasons reasons" "score score score";gap:6px 8px;font-size:12px;}
+  .fa-row .fa-name{grid-area:name;}
+  .fa-row .fa-pct{grid-area:pct;}
+  .fa-row .fa-action{grid-area:action;text-align:right;}
+  .fa-row .fa-reasons{grid-area:reasons;}
+  .fa-row .fa-score{grid-area:score;text-align:left;}
+}
 </style>
 </head>
 <body>
@@ -2755,6 +2776,23 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
       </table>
       </div>
       <div id="fundPager"></div>
+    </div>
+
+    <!-- 今日加/减仓建议 -->
+    <div style="margin-top:16px;">
+      <div class="card-title" style="font-size:15px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;cursor:pointer;" onclick="toggleFundAdvice()">
+        <span>📊 今日加/减仓建议</span>
+        <span class="text-sm text-muted">（量化评分 · 点击展开）</span>
+      </div>
+      <div id="fundAdviceBox" style="display:none;margin-top:10px;">
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
+          <span class="text-sm text-muted">今日机动加仓预算</span>
+          <input id="fundAdviceBudget" type="number" min="0" step="100" style="width:90px;padding:5px 8px;border:1px solid var(--line);border-radius:6px;font-size:13px;" onchange="setFundAdviceBudget(this.value);renderFundAdvice();" />
+          <span class="text-sm text-muted">元</span>
+          <button class="btn btn-sm" onclick="autoFetchFundNavIfNeeded(true);setTimeout(renderFundAdvice,1200);">🔄 刷新数据</button>
+        </div>
+        <div id="fundAdviceBody"></div>
+      </div>
     </div>
 
     <!-- 重合 & 合并 -->
@@ -7567,6 +7605,120 @@ function renderFunds(){
   renderFundPagination(funds.length);
   if(typeof updateFundValTime === 'function') updateFundValTime();
 }
+
+/* ============ 基金今日加/减仓量化建议 ============ */
+function fclamp(v, lo, hi){ return v < lo ? lo : (v > hi ? hi : v); }
+
+/* 今日机动加仓预算（localStorage 持久化，默认 1000 元/日机动额度） */
+function getFundAdviceBudget(){
+  var v = parseFloat(localStorage.getItem('aurora_fund_advice_budget'));
+  if(isNaN(v) || v <= 0) return 1000;
+  return v;
+}
+function setFundAdviceBudget(v){
+  var n = parseFloat(v);
+  if(!isNaN(n) && n > 0) localStorage.setItem('aurora_fund_advice_budget', String(n));
+}
+
+/* 计算单只基金今日加/减仓建议评分
+ * ctx: { today:'YYYY-MM-DD', totalMv:number, budget:number }
+ * 返回 { action:'add'|'reduce'|'hold', score, pct, reasons[], suggestAmount, mv, hpPct, isDcaDay } */
+function computeFundAdvice(f, ctx){
+  var m = computeFundMetrics(f);
+  var pct = safeNum(m.yesterdayPct);                                  /* 当日涨跌幅% */
+  var shares = parseFloat(f.shares) || 0;
+  var price = safeNum(m.gsz) > 0 ? safeNum(m.gsz) : (safeNum(m.nav) > 0 ? safeNum(m.nav) : safeNum(m.dwjz));
+  var mv = price > 0 && shares > 0 ? price * shares : 0;
+  var hpPct = safeNum(m.hpPct);                                       /* 持有收益率% */
+  var score = 0, reasons = [];
+
+  /* 因子1：当日涨跌幅 —— 跌加仓(摊低成本)、涨减仓(落袋)；±2%封顶±40分 */
+  score += fclamp(pct * 20, -40, 40);
+  if(pct <= -1)      reasons.push('今日' + fmtPct(pct) + '，下跌可分批加仓');
+  else if(pct >= 1)  reasons.push('今日' + fmtPct(pct) + '，逢高可减仓');
+
+  /* 因子2：定投日纪律 —— 今日达到/超过定投扣款日，强制加仓信号(+30) */
+  var dcaPlan = (f.dcaPlans || []).find(function(p){ return p.status === 'active'; });
+  var isDcaDay = false;
+  if(dcaPlan && ctx.today >= String(dcaPlan.nextDate || '').slice(0,10)){
+    isDcaDay = true; score += 30;
+    reasons.push('今日为定投扣款日（计划 ¥' + fmtNum(dcaPlan.amount || 0) + '）');
+  }
+
+  /* 因子3：持有盈亏位置 —— 深套(+10)/大幅盈利(-10) */
+  if(hpPct <= -10){ score += 10; reasons.push('持有收益' + fmtPct(hpPct) + '，低位可分批加仓'); }
+  else if(hpPct >= 20){ score -= 10; reasons.push('持有收益' + fmtPct(hpPct) + '，盈利可部分减仓'); }
+
+  /* 因子4：持仓占比再平衡 —— 偏高减仓/偏低加仓 */
+  if(ctx.totalMv > 0 && mv > 0){
+    var ratio = mv / ctx.totalMv;
+    if(ratio > 0.35){ score -= 8; reasons.push('占比' + (ratio*100).toFixed(0) + '%偏高，再平衡减仓'); }
+    else if(ratio < 0.08){ score += 8; reasons.push('占比' + (ratio*100).toFixed(0) + '%偏低，可加仓'); }
+  }
+
+  /* A股规则提示（不计入评分，仅标注） */
+  if(pct <= -9.5) reasons.push('⚠ 接近跌停，买盘或难成交');
+  else if(pct >= 9.5) reasons.push('⚠ 接近涨停，卖盘或难成交');
+
+  /* 决策：≥+25 加仓，≤-25 减仓，其余持有 */
+  var action = 'hold';
+  if(score >= 25) action = 'add';
+  else if(score <= -25) action = 'reduce';
+
+  /* 建议金额 */
+  var suggestAmount = 0;
+  if(action === 'add') suggestAmount = isDcaDay ? (dcaPlan.amount || 0) : Math.round(ctx.budget * 0.4);
+  else if(action === 'reduce') suggestAmount = Math.round(mv * 0.1);
+
+  return { f:f, pct:pct, score:Math.round(score), action:action, reasons:reasons,
+           suggestAmount:suggestAmount, mv:mv, hpPct:hpPct, isDcaDay:isDcaDay };
+}
+
+/* 渲染今日加/减仓建议面板（按信号强度排序） */
+function renderFundAdvice(){
+  var el = document.getElementById('fundAdviceBody'); if(!el) return;
+  var funds = (DB.market.funds || []).filter(function(f){ return f && f.name && f.code; });
+  if(!funds.length){ el.innerHTML = '<div class="text-muted">还没有基金，先导入持仓</div>'; return; }
+  /* 总市值（再平衡因子用） */
+  var totalMv = 0;
+  funds.forEach(function(f){ var m = computeFundMetrics(f); totalMv += safeNum(m.mv); });
+  var ctx = { today: new Date().toISOString().slice(0,10), totalMv: totalMv, budget: getFundAdviceBudget() };
+  var advice = funds.map(function(f){ return computeFundAdvice(f, ctx); });
+  advice.sort(function(a,b){ return Math.abs(b.score) - Math.abs(a.score); });
+
+  var html = advice.map(function(a){
+    var f = a.f;
+    var badge = a.action === 'add' ? '<span class="fa-badge add">建议加仓</span>'
+              : a.action === 'reduce' ? '<span class="fa-badge reduce">建议减仓</span>'
+              : '<span class="fa-badge hold">持有不动</span>';
+    var pctCls = a.pct > 0 ? 'pos' : (a.pct < 0 ? 'neg' : 'text-muted');
+    var reasons = a.reasons.map(function(r){ return '<li>' + r + '</li>'; }).join('');
+    return '<div class="fa-row">' +
+      '<div class="fa-name"><b>' + escapeHtml(sanitizeText(f.name)) + '</b><br><span class="text-sm text-muted">' + f.code + '</span></div>' +
+      '<div class="fa-pct ' + pctCls + '">' + fmtPct(a.pct) + '</div>' +
+      '<div class="fa-action">' + badge + (a.suggestAmount > 0 ? '<div class="text-sm text-muted">' + (a.action==='add'?'加 ¥':'减 ¥') + fmtNum(a.suggestAmount) + '</div>' : '') + '</div>' +
+      '<div class="fa-reasons"><ul>' + reasons + '</ul></div>' +
+      '<div class="fa-score">信号 ' + (a.score>0?'+':'') + a.score + '</div>' +
+      '</div>';
+  }).join('');
+
+  el.innerHTML = '<div class="fa-grid">' + html + '</div>' +
+    '<div class="fa-foot">评分规则：当日涨跌幅(±2%封顶±40) + 定投日(+30) + 深套(+10)/大赚(-10) + 占比再平衡(±8)；≥+25加仓，≤-25减仓。⚠ 仅量化参考，不构成投资建议；A股T+1，建议3点前下单。</div>';
+}
+
+/* 展开/收起建议面板 */
+function toggleFundAdvice(){
+  var box = document.getElementById('fundAdviceBox'); if(!box) return;
+  var open = box.style.display !== 'none';
+  if(open){ box.style.display = 'none'; return; }
+  box.style.display = '';
+  var inp = document.getElementById('fundAdviceBudget');
+  if(inp) inp.value = getFundAdviceBudget();
+  autoFetchFundNavIfNeeded(true);          /* 展开即用最新净值 */
+  renderFundAdvice();
+  setTimeout(renderFundAdvice, 1200);       /* 刷新回调后再算一次 */
+}
+
 function renderFundPagination(total){
   var el = document.getElementById('fundPager'); if(!el) return;
   var totalPages = Math.ceil(total / FUND_PAGE_SIZE);
@@ -9279,6 +9431,7 @@ function refreshAllFundValuation(){
       updated++;
     });
     saveDb(); renderFunds(); updateFundValTime();
+    if(document.getElementById('fundAdviceBox') && document.getElementById('fundAdviceBox').style.display !== 'none') renderFundAdvice();
     toast('估值刷新完成（' + updated + '/' + fs.length + ' 只）');
   });
 }
@@ -9318,6 +9471,7 @@ function autoFetchFundNavIfNeeded(force){
       });
     });
     saveDb(); renderFunds(); updateFundValTime();
+    if(document.getElementById('fundAdviceBox') && document.getElementById('fundAdviceBox').style.display !== 'none') renderFundAdvice();
     console.log('[autoNav] 净值刷新完成');
   });
 }
@@ -11680,7 +11834,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'d2e4a7b', date:'2026-08-25', desc:'估值列下方改为当日增减额(涨跌幅%×市值),非交易时段fallback到NAV' };
+  window.ver = { git:'e6f1a3c', date:'2026-08-25', desc:'新增基金今日加/减仓量化建议(涨跌幅+定投日+盈亏+再平衡4因子评分)' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
