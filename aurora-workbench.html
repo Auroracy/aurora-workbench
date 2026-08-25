@@ -7490,16 +7490,24 @@ function renderFunds(){
       return '<tr>' +
         '<td><b class="fund-name-cell">' + escapeHtml(sanitizeText(f.name)) + '</b><br><span class="text-sm text-muted">' + f.code + '<br>' + fmtNum(f.shares) + '份</span></td>' +
         '<td class="hide-mobile"><span class="chip">' + f.type + '</span><span class="chip theme">' + cleanTheme(f.theme) + '</span></td>' +
-        /* 估值列：上=涨跌幅百分比(红涨绿跌)，下=估值计算金额(gsz×份额) */
+        /* 估值列：上=涨跌幅百分比(红涨绿跌)，下=估值计算金额(价格×份额)
+         * 优先用 GSZ(盘中估算净值)；收盘后 GSZ 为空时 fallback 到 DWJZ/NAV(确认净值) */
         (function(){
           var _g = (f.val && f.val.gsz != null) ? safeNum(parseFloat(f.val.gsz)) : 0;
           var _validGsz = hasGsz && _g >= 0.01 && _g <= 100;
+          /* fallback 价格：gsz无效时用确认净值(dwjz>nav优先) */
+          var showPrice = _validGsz ? gszVal : (safeDwjz > 0 ? safeDwjz : (safeNav > 0 ? safeNav : null));
+          /* fallback 涨跌幅：gszzl无效时用navChgRt(日涨跌幅%) */
+          var showPct = _validGsz ? safeGszl : (safeGszl !== 0 ? safeGszl : ((f.val && f.val.navChgRt != null) ? safeNum(parseFloat(f.val.navChgRt)) : 0));
+          var showPctCls = showPct > 0 ? 'pos' : (showPct < 0 ? 'neg' : 'text-muted');
+          var showPctTxt = fmtPct(showPct);
           /* 估值计算金额 */
-          var gzAmt = (_validGsz && shares > 0) ? gszVal * shares : null;
+          var gzAmt = (showPrice != null && showPrice > 0 && shares > 0) ? showPrice * shares : null;
           var gzAmtCls = gzAmt > 0 ? 'pos' : (gzAmt < 0 ? 'neg' : 'text-muted');
+          var isFallback = !_validGsz && showPrice != null;
           return '<td>' +
-            (_validGsz
-              ? '<div style="font-size:15px;font-weight:600;" class="' + gzCls + '">' + gzTxt + '</div>' + '<div class="text-sm ' + gzAmtCls + '">' + (gzAmt != null ? fmtMoney(gzAmt) : '—') + '</div>'
+            (showPrice != null
+              ? '<div style="font-size:15px;font-weight:600;" class="' + showPctCls + '">' + showPctTxt + '</div>' + '<div class="text-sm ' + gzAmtCls + '">' + (gzAmt != null ? fmtMoney(gzAmt) : '—') + (isFallback ? '<span class="text-muted" style="font-size:10px;"> 净值</span>' : '') + '</div>'
               : '<span class="text-muted">—</span>') +
             '</td>';
         })() +
@@ -11668,7 +11676,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'f087d68', date:'2026-08-23', desc:'修复新闻联播当日生成无内容(生成按钮改先抓取+服务端负缓存缩短TTL)' };
+  window.ver = { git:'a3b8c2d', date:'2026-08-25', desc:'修复估值列收盘后显示为空(fallback到确认净值NAV)' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
