@@ -7620,6 +7620,39 @@ function setFundAdviceBudget(v){
   if(!isNaN(n) && n > 0) localStorage.setItem('aurora_fund_advice_budget', String(n));
 }
 
+/* 基金历史净值抓取（带本地当天缓存，用于"近月净值位置/网格加仓"因子） */
+function fetchFundHistory(code, cb){
+  var url = apiUrl('/api/fund-history?code=' + encodeURIComponent(code) + '&days=30');
+  fetch(url, { credentials: 'same-origin' }).then(function(r){
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  }).then(function(d){
+    if(d.error) throw new Error(d.error);
+    if(!d.list || !d.list.length) throw new Error('空数据');
+    if(!DB.market.fundHistory) DB.market.fundHistory = {};
+    DB.market.fundHistory[code] = { list: d.list, updated: new Date().toISOString() };
+    saveDb();
+    cb(null);
+  }).catch(function(e){ cb(e); });
+}
+/* 批量确保历史净值（当天缓存命中则跳过），done(failCount) */
+function ensureFundHistory(codes, done){
+  var today = new Date().toISOString().slice(0,10);
+  var need = codes.filter(function(c){
+    var h = (DB.market.fundHistory || {})[c];
+    return !h || !h.list || !h.list.length || !h.updated || h.updated.slice(0,10) !== today;
+  });
+  if(!need.length){ done(0); return; }
+  var pending = need.length, fail = 0;
+  need.forEach(function(c){
+    fetchFundHistory(c, function(err){
+      pending--;
+      if(err) fail++;
+      if(pending <= 0) done(fail);
+    });
+  });
+}
+
 /* 计算单只基金今日加/减仓建议评分
  * ctx: { today:'YYYY-MM-DD', totalMv:number, budget:number }
  * 返回 { action:'add'|'reduce'|'hold', score, pct, reasons[], suggestAmount, mv, hpPct, isDcaDay } */
@@ -7656,6 +7689,33 @@ function computeFundAdvice(f, ctx){
     else if(ratio < 0.08){ score += 8; reasons.push('占比' + (ratio*100).toFixed(0) + '%偏低，可加仓'); }
   }
 
+  /* 因子5：近月净值位置 / 网格加仓 —— 相对近N日净值区间位置(均值回归) + 近20日动量反转 */
+  var curNav = safeNum(m.nav) > 0 ? safeNum(m.nav) : safeNum(m.dwjz);
+  var hist5 = (ctx.historyMap && ctx.historyMap[f.code]) || [];
+  if(curNav > 0 && hist5.length >= 5){
+    var vals5 = hist5.map(function(it){ return it.dwjz; }).filter(function(v){ return v > 0; });
+    var minN = Math.min.apply(null, vals5), maxN = Math.max.apply(null, vals5);
+    if(maxN > minN){
+      var posN = (curNav - minN) / (maxN - minN);            /* 0=区间最低位, 1=最高位 */
+      var gridScore = fclamp((0.5 - posN) * 50, -15, 15);    /* 越低越加仓 */
+      var momScore = 0, momTxt = '';
+      var n20 = Math.min(20, vals5.length);
+      var oldV = vals5[Math.min(n20 - 1, vals5.length - 1)];
+      if(oldV > 0){
+        var mom20 = (curNav / oldV - 1) * 100;
+        momScore = fclamp(-mom20 * 1.5, -10, 10);            /* 跌多→+, 涨多→- */
+        if(mom20 <= -5) momTxt = '近' + n20 + '日累计' + fmtPct(mom20) + '，回落加仓';
+        else if(mom20 >= 8) momTxt = '近' + n20 + '日累计' + fmtPct(mom20) + '，涨幅偏高';
+      }
+      score += gridScore + momScore;
+      var gridTxt = posN < 0.2 ? ('处近月净值低位（区间' + (posN*100).toFixed(0) + '%位），网格加仓窗口')
+                   : posN > 0.8 ? ('处近月净值高位（区间' + (posN*100).toFixed(0) + '%位），逢高减仓')
+                   : '';
+      var full5 = [gridTxt, momTxt].filter(Boolean).join('；');
+      if(full5) reasons.push(full5);
+    }
+  }
+
   /* A股规则提示（不计入评分，仅标注） */
   if(pct <= -9.5) reasons.push('⚠ 接近跌停，买盘或难成交');
   else if(pct >= 9.5) reasons.push('⚠ 接近涨停，卖盘或难成交');
@@ -7682,7 +7742,11 @@ function renderFundAdvice(){
   /* 总市值（再平衡因子用） */
   var totalMv = 0;
   funds.forEach(function(f){ var m = computeFundMetrics(f); totalMv += safeNum(m.mv); });
-  var ctx = { today: new Date().toISOString().slice(0,10), totalMv: totalMv, budget: getFundAdviceBudget() };
+  /* 历史净值映射（本地缓存，当天有效） */
+  var historyMap = {};
+  var fhist = DB.market.fundHistory || {};
+  funds.forEach(function(f){ if(fhist[f.code] && fhist[f.code].list) historyMap[f.code] = fhist[f.code].list; });
+  var ctx = { today: new Date().toISOString().slice(0,10), totalMv: totalMv, budget: getFundAdviceBudget(), historyMap: historyMap };
   var advice = funds.map(function(f){ return computeFundAdvice(f, ctx); });
   advice.sort(function(a,b){ return Math.abs(b.score) - Math.abs(a.score); });
 
@@ -7703,7 +7767,7 @@ function renderFundAdvice(){
   }).join('');
 
   el.innerHTML = '<div class="fa-grid">' + html + '</div>' +
-    '<div class="fa-foot">评分规则：当日涨跌幅(±2%封顶±40) + 定投日(+30) + 深套(+10)/大赚(-10) + 占比再平衡(±8)；≥+25加仓，≤-25减仓。⚠ 仅量化参考，不构成投资建议；A股T+1，建议3点前下单。</div>';
+    '<div class="fa-foot">评分规则：当日涨跌幅(±2%封顶±40) + 定投日(+30) + 深套(+10)/大赚(-10) + 占比再平衡(±8) + 近月净值位置/网格(±25)；≥+25加仓，≤-25减仓。⚠ 量化参考，不构成投资建议；A股T+1，建议3点前下单。</div>';
 }
 
 /* 展开/收起建议面板 */
@@ -7715,8 +7779,13 @@ function toggleFundAdvice(){
   var inp = document.getElementById('fundAdviceBudget');
   if(inp) inp.value = getFundAdviceBudget();
   autoFetchFundNavIfNeeded(true);          /* 展开即用最新净值 */
-  renderFundAdvice();
-  setTimeout(renderFundAdvice, 1200);       /* 刷新回调后再算一次 */
+  renderFundAdvice();                      /* 先用已有数据渲染（历史可能为空） */
+  /* 补全缺失的历史净值（本地当天缓存命中则跳过），完成后重渲染 */
+  var codes = (DB.market.funds || []).filter(function(f){ return f && f.code; }).map(function(f){ return f.code; });
+  ensureFundHistory(codes, function(fail){
+    renderFundAdvice();
+    if(fail > 0) toast('部分基金历史净值获取失败，网格信号可能缺失');
+  });
 }
 
 function renderFundPagination(total){

@@ -368,6 +368,54 @@ function handleFundgzBatch(res, qs) {
   });
 }
 
+// 基金历史净值（近 N 日确认净值），用于量化建议的"近月净值位置/网格加仓"因子
+// 数据源：东方财富 f10/lsjz（确认净值序列）
+// GET /api/fund-history?code=016963&days=30
+// 返回: { code, days, count, list:[ { date:'YYYY-MM-DD', dwjz:Number, navChgRt:Number }, ... ] }（降序：最新在前）
+const FUND_HISTORY_CACHE = {};
+const FUND_HISTORY_TTL = 60 * 60 * 1000;  // 历史净值慢变，缓存1小时
+function handleFundHistory(res, qs) {
+  const mCode = qs.match(/(?:^|&)code=([^&]+)/);
+  if (!mCode) return sendJSON(res, 400, { error: '缺少 code 参数' });
+  const code = decodeURIComponent(mCode[1]).trim();
+  if (!/^\d{6}$/.test(code)) return sendJSON(res, 400, { error: '基金代码格式错误' });
+  const mDays = qs.match(/(?:^|&)days=(\d+)/);
+  const days = mDays ? Math.min(parseInt(mDays[1], 10), 90) : 30;
+  const now = Date.now();
+  if (FUND_HISTORY_CACHE[code] && (now - FUND_HISTORY_CACHE[code].ts) < FUND_HISTORY_TTL) {
+    return sendJSON(res, 200, FUND_HISTORY_CACHE[code].payload);
+  }
+  const target = 'https://api.fund.eastmoney.com/f10/lsjz?fundCode=' + code
+    + '&pageIndex=1&pageSize=' + days + '&startDate=&endDate=&_=' + now;
+  upstreamGet(target, {
+    'Referer': 'http://fundf10.eastmoney.com/f10/jjjz_' + code + '.html',
+    'User-Agent': 'Mozilla/5.0',
+  }, function(err, status, buf) {
+    if (err || !buf || status >= 400) {
+      console.error('[fund-history] 失败:', err || ('HTTP ' + status));
+      return sendJSON(res, 502, { error: '历史净值查询失败: ' + (err && err.message || 'HTTP ' + status) });
+    }
+    try {
+      const body = JSON.parse(buf.toString('utf-8'));
+      const list0 = (body.Data && body.Data.LSJZList) || [];
+      const list = list0.map(function(it){
+        return {
+          date: (it.FSRQ || '').slice(0, 10),
+          dwjz: it.DWJZ != null ? parseFloat(it.DWJZ) : null,
+          navChgRt: it.JZZZL != null ? parseFloat(it.JZZZL) : null,
+        };
+      }).filter(function(it){ return it.date && it.dwjz > 0; });
+      const payload = { code: code, days: days, count: list.length, list: list, ts: now };
+      FUND_HISTORY_CACHE[code] = { ts: now, payload: payload };
+      console.log('[fund-history]', code, '成功', list.length, '条');
+      sendJSON(res, 200, payload);
+    } catch(e) {
+      console.error('[fund-history] 解析失败:', e.message);
+      sendJSON(res, 502, { error: '响应解析失败: ' + e.message });
+    }
+  });
+}
+
 function handleIfzq(res, param) {
   const target = 'https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=' + param;
   proxyRaw(target, 'https://stockapp.finance.qq.com/', res);
@@ -644,7 +692,7 @@ const server = http.createServer(function (req, res) {
   if (req.method === 'OPTIONS') { res.writeHead(204, CORS); return res.end(); }
 
   if (pathname === '/health') {
-    return sendJSON(res, 200, { ok: true, ts: Date.now(), routes: ['/api/sge', '/api/sina', '/api/eastmoney/ann', '/api/eastmoney/proxy', '/api/fundgz', '/api/fundgz-batch', '/api/ifzq', '/api/qt', '/api/cctv/xwlb', '/api/cctv/xwlb-parse', '/api/db'], store: redisMode ? 'redis' : 'json-file' });
+    return sendJSON(res, 200, { ok: true, ts: Date.now(), routes: ['/api/sge', '/api/sina', '/api/eastmoney/ann', '/api/eastmoney/proxy', '/api/fundgz', '/api/fundgz-batch', '/api/fund-history', '/api/ifzq', '/api/qt', '/api/cctv/xwlb', '/api/cctv/xwlb-parse', '/api/db'], store: redisMode ? 'redis' : 'json-file' });
   }
 
   // 全量数据读写（Redis 优先 / JSON 文件兜底，无需 token）
@@ -685,6 +733,7 @@ const server = http.createServer(function (req, res) {
       return handleFundgz(res, m ? decodeURIComponent(m[1]) : '');
     }
     if (pathname === '/api/fundgz-batch') return handleFundgzBatch(res, qs);
+    if (pathname === '/api/fund-history') return handleFundHistory(res, qs);
     if (pathname === '/api/ifzq') {
       const m = qs.match(/(?:^|&)param=([^&]+)/);
       return handleIfzq(res, m ? decodeURIComponent(m[1]) : '');
