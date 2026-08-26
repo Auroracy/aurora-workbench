@@ -368,6 +368,65 @@ function handleFundgzBatch(res, qs) {
   });
 }
 
+// ★ 基金实时估算净值（真正的盘中估算，替代 fundmobapi 空GSZ问题）
+// 数据源：东方财富 fundgz JSONP 接口（天天基金 App 同源）
+// GET /api/fund-gsz?codes=017811,016874,...
+// 返回: { ts, count, source, data: { "017811": { name, gsz, gszzl, dwjz, gztime }, ... } }
+// 特点：交易时段返回实时估算(GSZ/GSZZL)，收盘后返回当日最终估算，全天有值
+const FUND_GSZ_CACHE = { ts: 0, payload: null };
+const FUND_GSZ_TTL = 55 * 1000;  // 交易时段55s缓存
+function handleFundGszRealtime(res, qs) {
+  const m = qs.match(/(?:^|&)codes=([^&]+)/);
+  if (!m) return sendJSON(res, 400, { error: '缺少 codes 参数' });
+  const raw = decodeURIComponent(m[1]);
+  const codes = raw.split(',').map(function(s){ return s.trim(); }).filter(function(s){ return /^\d{6}$/.test(s); });
+  if (!codes.length) return sendJSON(res, 400, { error: '无有效基金代码' });
+  if (FUND_GSZ_CACHE.payload && (Date.now() - FUND_GSZ_CACHE.ts) < FUND_GSZ_TTL) {
+    return sendJSON(res, 200, FUND_GSZ_CACHE.payload);
+  }
+  /* 并发请求所有基金的 fundgz JSONP */
+  var results = {};
+  var pending = codes.length;
+  var done = function() {
+    pending--;
+    if (pending === 0) {
+      var payload = { ts: Date.now(), count: Object.keys(results).length, source: 'fundgz.eastmoney.com', data: results };
+      FUND_GSZ_CACHE.ts = Date.now();
+      FUND_GSZ_CACHE.payload = payload;
+      console.log('[fund-gsz] 成功:', payload.count, '/', codes.length);
+      return sendJSON(res, 200, payload);
+    }
+  };
+  codes.forEach(function(code) {
+    var url = 'https://fundgz.01823.xyz/js/' + code + '.js';
+    upstreamGet(url, { 'Referer': 'https://fund.eastmoney.com/', 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' }, function(err, status, buf) {
+      if (err || !buf) { done(); return; }
+      try {
+        var text = buf.toString('utf-8');
+        /* JSONP 格式: jsonpgz({...}); 提取中间的JSON */
+        var jsonStr = text.replace(/^[^(]*\(/, '').replace(/\)\s*;?\s*$/, '');
+        var d = JSON.parse(jsonStr);
+        /* 解析 gszzl 字符串如 "-0.88%" 为数字 */
+        var gszzlRaw = d.gszzl || '';
+        var gszzlNum = parseFloat(gszzlRaw.toString().replace('%', ''));
+        results[code] = {
+          name: d.name || '',
+          gsz: d.gsz != null ? parseFloat(d.gsz) : null,
+          gszzl: !isNaN(gszzlNum) ? gszzlNum : null,
+          dwjz: d.dwjz != null ? parseFloat(d.dwjz) : null,
+          gztime: d.gztime || null,
+          jzrq: d.jzrq || null,
+          /* 原始字符串保留(用于调试) */
+          _rawGszzl: gszzlRaw,
+        };
+      } catch(e) {
+        console.warn('[fund-gsz] 解析失败 ' + code + ':', e.message);
+      }
+      done();
+    });
+  });
+}
+
 // 基金历史净值（近 N 日确认净值），用于量化建议的"近月净值位置/网格加仓"因子
 // 数据源：东方财富 f10/lsjz（确认净值序列）
 // GET /api/fund-history?code=016963&days=30
@@ -692,7 +751,7 @@ const server = http.createServer(function (req, res) {
   if (req.method === 'OPTIONS') { res.writeHead(204, CORS); return res.end(); }
 
   if (pathname === '/health') {
-    return sendJSON(res, 200, { ok: true, ts: Date.now(), routes: ['/api/sge', '/api/sina', '/api/eastmoney/ann', '/api/eastmoney/proxy', '/api/fundgz', '/api/fundgz-batch', '/api/fund-history', '/api/ifzq', '/api/qt', '/api/cctv/xwlb', '/api/cctv/xwlb-parse', '/api/db'], store: redisMode ? 'redis' : 'json-file' });
+    return sendJSON(res, 200, { ok: true, ts: Date.now(), routes: ['/api/sge', '/api/sina', '/api/eastmoney/ann', '/api/eastmoney/proxy', '/api/fundgz', '/api/fundgz-batch', '/api/fund-gsz', '/api/fund-history', '/api/ifzq', '/api/qt', '/api/cctv/xwlb', '/api/cctv/xwlb-parse', '/api/db'], store: redisMode ? 'redis' : 'json-file' });
   }
 
   // 全量数据读写（Redis 优先 / JSON 文件兜底，无需 token）
@@ -733,6 +792,7 @@ const server = http.createServer(function (req, res) {
       return handleFundgz(res, m ? decodeURIComponent(m[1]) : '');
     }
     if (pathname === '/api/fundgz-batch') return handleFundgzBatch(res, qs);
+    if (pathname === '/api/fund-gsz') return handleFundGszRealtime(res, qs);
     if (pathname === '/api/fund-history') return handleFundHistory(res, qs);
     if (pathname === '/api/ifzq') {
       const m = qs.match(/(?:^|&)param=([^&]+)/);

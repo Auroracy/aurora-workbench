@@ -9457,14 +9457,38 @@ function clearImportPreview(){ pendingImport = []; var box = document.getElement
 /* 旧接口 fundgz.1234567.com.cn 已失效(404)，改用服务端 /api/fundgz-batch 批量拉取 */
 function fetchFundValuationBatch(codes, cb){
   if(!codes || !codes.length){ cb(new Error('无基金代码')); return; }
-  var url = apiUrl('/api/fundgz-batch?codes=' + codes.join(','));
-  fetch(url, { credentials: 'same-origin' }).then(function(r){
-    if(!r.ok) throw new Error('HTTP ' + r.status);
+  /* ★ 优先用 /api/fund-gsz (fundgz JSONP 实时估算，全天有值)
+   * fallback 到 /api/fundgz-batch (fundmobapi，GSZ可能为空) */
+  var gszUrl = apiUrl('/api/fund-gsz?codes=' + codes.join(','));
+  fetch(gszUrl, { credentials: 'same-origin' }).then(function(r){
+    if(!r.ok) throw new Error('GSZ HTTP ' + r.status);
     return r.json();
   }).then(function(d){
     if(d.error) throw new Error(d.error);
-    cb(null, d.data || {});   /* { "017745": {name,gsz,gszzl,nav,gztime}, ... } */
-  }).catch(function(e){ cb(e); });
+    if(d.count > 0){
+      console.log('[fetchVal] ★ fundgz实时估算成功:', d.count, '只, source=', d.source);
+      cb(null, d.data || {});
+      return;
+    }
+    /* fundgz 返回0条 → fallback 到 fundmobapi */
+    console.log('[fetchVal] fundgz返回0条, fallback到fundmobapi');
+    doFallback();
+  }).catch(function(err){
+    console.warn('[fetchVal] fundgz失败:', err.message, ', fallback到fundmobapi');
+    doFallback();
+  });
+
+  function doFallback(){
+    var url = apiUrl('/api/fundgz-batch?codes=' + codes.join(','));
+    fetch(url, { credentials: 'same-origin' }).then(function(r){
+      if(!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    }).then(function(d){
+      if(d.error) throw new Error(d.error);
+      console.log('[fetchVal] fundmobapi fallback成功:', Object.keys(d.data||{}).length, '只');
+      cb(null, d.data || {});
+    }).catch(function(e){ cb(e); });
+  }
 }
 /* 兼容旧的单只接口（内部转为批量） */
 function fetchFundValuation(code, cb){
@@ -9496,9 +9520,9 @@ function refreshAllFundValuation(){
     fs.forEach(function(f){
       var item = data[f.code];
       if(!item) return;
-      /* 转为 applyFundVal 期望的格式 */
-      /* jzrq: 优先用pdate(净值确认日期), fallback到gztime(估值时间) */
-      var _jzrqDate = item.pdate || item.gztime || '';
+      /* 转为 applyFundVal 期望的格式（兼容 fundgz实时 + fundmobapi 两种数据源） */
+      /* jzrq: fundgz用jzrq, fundmobapi用pdate, 都没有则从gztime提取 */
+      var _jzrqDate = item.pdate || item.jzrq || (item.gztime ? item.gztime.slice(0,10) : '');
       var d = {
         fundcode: f.code,
         gsz: item.gsz,
@@ -9507,8 +9531,8 @@ function refreshAllFundValuation(){
         gztime: item.gztime || _jzrqDate || '',
         jzrq: _jzrqDate.slice(0,10),
         nav: item.nav,
-        /* navChgRt: 日涨跌幅%(周末GSZZL为空时用NAVCHGRT替代) */
-        navChgRt: item.navChgRt,
+        /* navChgRt: fundmobapi有此字段; fundgz无(其gszzl本身就是实时估算%) */
+        navChgRt: item.navChgRt || null,
       };
       applyFundVal(f, d);
       updated++;
@@ -11932,7 +11956,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'d1e5f3a', date:'2026-08-26', desc:'估值列自计算优化(去净值标签+统一用NAVCHGRT×市值算增减额)' };
+  window.ver = { git:'e8a2b1c', date:'2026-08-26', desc:'估值列切换fundgz实时估算数据源(替代fundmobapi空GSZ问题,server新增/api/fund-gsz端点)' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
