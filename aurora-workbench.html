@@ -7394,7 +7394,8 @@ function computeFundMetrics(f){
   var shares = parseFloat(f.shares) || 0;
   var cost = parseFloat(f.cost) || 0;
   var mv = nav * shares;
-  var ct = cost * shares;
+  /* ct = f.cost 即总投入金额(元)，不需要再乘以 shares(cost 不是单位成本) */
+  var ct = cost;
   var calcHp = mv - ct;
   var calcHpPct = ct > 0 ? calcHp / ct * 100 : 0;
   /* 持有收益：优先用导入原始值，其次用估值计算值 */
@@ -11923,7 +11924,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'a8c3d1e', date:'2026-08-26', desc:'修复估值刷新时间不更新(接口gztime为空时用当前时间填充+updatedAt兜底显示)' };
+  window.ver = { git:'b4e7f2a', date:'2026-08-26', desc:'修复估值盈亏天文数字bug(cost不应乘shares+估值刷新时间不更新)' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
