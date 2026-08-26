@@ -4357,10 +4357,19 @@ function diaryToday(){ wealthDiaryDate = today(); renderSuccessDiary(); }
 function diaryStreak(){
   var s = wealth().successDiary;
   var d = new Date();
-  var streak = 0;
+  /* 阶段1: 跳过没有真实记录的日子，定位到最近一次打卡日 */
   for(;;){
     var ds = toDateStr(d);
-    if(diaryRealEntries(s[ds]).length){ streak++; d.setDate(d.getDate() - 1); }
+    if(diaryRealEntries(s[ds]).length) break;
+    d.setDate(d.getDate() - 1);
+    /* 防止无限回溯（最多查一年） */
+    if(new Date() - d > 365*864e5) return 0;
+  }
+  /* 阶段2: 从该打卡日开始连续往前计数 */
+  var streak = 0;
+  for(;;){
+    var ds2 = toDateStr(d);
+    if(diaryRealEntries(s[ds2]).length){ streak++; d.setDate(d.getDate() - 1); }
     else break;
   }
   return streak;
