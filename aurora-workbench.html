@@ -4183,7 +4183,7 @@ function renderWealthOverview(){
     { num: '¥' + piggyTotal.toLocaleString(), label: '梦想储蓄已存', cls: 'accent' },
     { num: piggyGoal > 0 ? Math.round(piggyTotal / piggyGoal * 100) + '%' : '—', label: '储蓄总进度', cls: '' },
     { num: '¥' + gooseBal.toLocaleString(), label: '金鹅余额', cls: 'accent' },
-    { num: days + ' 天', label: '成功日记天数', cls: '' },
+    { num: days + ' 天', label: '打卡天数', cls: '' },
     { num: totalEntries + ' 条', label: '累计成功记录', cls: '' }
   ];
   grid.innerHTML = cells.map(function(c){
@@ -4320,7 +4320,7 @@ function renderSuccessDiary(){
   /* 统计：有真实内容时高亮，否则灰色 */
   var filled = entries.filter(function(x){ return x && x.trim(); }).length;
   var progressEl = document.getElementById('diaryProgress');
-  progressEl.textContent = '今日 ' + filled + ' / ' + Math.max(filled, entries.length);
+  progressEl.textContent = (hasRealContent ? '✅ ' : '○ ') + date + (hasRealContent ? ' 已打卡' : ' 未打卡') + ' · 已写 ' + filled + ' 条';
   progressEl.style.color = hasRealContent ? 'var(--accent)' : 'var(--text-2)';
   document.getElementById('diaryStreak').textContent = '连续打卡 ' + diaryStreak() + ' 天';
   renderDiaryStats();
@@ -4360,7 +4360,7 @@ function diaryStreak(){
   var streak = 0;
   for(;;){
     var ds = toDateStr(d);
-    if(s[ds] && s[ds].length){ streak++; d.setDate(d.getDate() - 1); }
+    if(diaryRealEntries(s[ds]).length){ streak++; d.setDate(d.getDate() - 1); }
     else break;
   }
   return streak;
@@ -4379,7 +4379,7 @@ function renderDiaryStats(){
     totalEntries += real.length;
     if(k.slice(0, 7) === ym){ monthDays++; monthEntries += real.length; }
   }
-  el.innerHTML = '本月记录 <b>' + monthDays + '</b> 天 · 本月成功 <b>' + monthEntries + '</b> 条 · 累计 <b>' + totalDays + '</b> 天 / <b>' + totalEntries + '</b> 条成功';
+  el.innerHTML = '本月打卡 <b>' + monthDays + '</b> 天 · 本月成功 <b>' + monthEntries + '</b> 条 · 累计打卡 <b>' + totalDays + '</b> 天 / <b>' + totalEntries + '</b> 条';
 }
 function renderDiaryHeat(){
   var el = document.getElementById('diaryHeat');
@@ -4397,7 +4397,7 @@ function renderDiaryHeat(){
     /* 黄色框跟随当前查看日期(wealthDiaryDate)，非固定今天 */
     var isActive = (ds === wealthDiaryDate) ? ' active' : '';
     /* 点击：切换打卡 + 跳转到该日期视图 */
-    cells.push('<div class="cell lv' + lv + isActive + ' clickable" title="' + ds + '：' + n + ' 条' + (n > 0 ? '（点击查看）' : '（无记录）') + '" data-date="' + ds + '" onclick="toggleDiaryCheckin(\'' + ds + '\')"></div>');
+    cells.push('<div class="cell lv' + lv + isActive + ' clickable" title="' + ds + '：' + (n > 0 ? '已打卡 ' + n + ' 条' : '未打卡') + '（点击查看）' + '" data-date="' + ds + '" onclick="toggleDiaryCheckin(\'' + ds + '\')"></div>');
   }
   el.innerHTML = cells.join('');
 }
