@@ -7436,24 +7436,30 @@ var FUND_PAGE_SIZE = 10;
 function renderFunds(){
   recomputePendingTrades();
   var funds = DB.market.funds || [];
-  var totals = { mv: 0, gzProfit: 0, ct: 0, hp: 0, yesterdayProfit: 0 };
+  var totals = { mv: 0, gzProfit: 0, ct: 0, hp: 0, yesterdayProfit: 0, validCt: 0 };
   var metricsArr = {}; var typeMap = {}; var themeMap = {};
   funds.forEach(function(f){
     var m = computeFundMetrics(f); metricsArr[f.id] = m;
+    var _mv = safeNum(m.mv);
+    var _ct = safeNum(m.ct);
     /* 所有累加值用 safeNum 防护 */
-    totals.mv += safeNum(m.mv);
-    totals.gzProfit += safeNum(m.mv) - safeNum(m.ct);
-    totals.ct += safeNum(m.ct);
+    totals.mv += _mv;
+    totals.ct += _ct;
     totals.hp += safeNum(m.hp);
     totals.yesterdayProfit += safeNum(m.yesterdayProfit);
-    typeMap[f.type] = (typeMap[f.type] || 0) + safeNum(m.mv);
-    themeMap[f.theme] = (themeMap[f.theme] || 0) + safeNum(m.mv);
+    /* 估值盈亏：仅统计有有效市值的基金(排除 shares=0/nav=0 的不完整数据) */
+    if(_mv > 0){
+      totals.gzProfit += _mv - _ct;
+      totals.validCt += _ct;
+    }
+    typeMap[f.type] = (typeMap[f.type] || 0) + _mv;
+    themeMap[f.theme] = (themeMap[f.theme] || 0) + _mv;
   });
   totals.hpPct = totals.ct > 0 ? totals.hp / totals.ct * 100 : 0;
 
   setText('fFundCount', funds.length);
   var _gap = safeNum(totals.gzProfit);
-  var _gapPct = totals.ct > 0 ? _gap / totals.ct * 100 : 0;
+  var _gapPct = totals.validCt > 0 ? _gap / totals.validCt * 100 : 0;
   var faEl = document.getElementById('fTotalAsset');
   if(faEl){ faEl.textContent = (_gap >= 0 ? '+' : '') + fmtMoney(_gap); faEl.className = 'metric-value mini-num ' + clsOf(_gap); }
   var faPct = document.getElementById('fTotalAssetPct');
@@ -7555,7 +7561,7 @@ function renderFunds(){
           var isFallback = !_validGsz && showPrice != null;
           return '<td>' +
             (showPrice != null
-              ? '<div style="font-size:15px;font-weight:600;" class="' + showPctCls + '">' + showPctTxt + '</div>' + '<div class="text-sm ' + gzAmtCls + '">' + (gzAmt != null ? ((gzAmt >= 0 ? '+' : '') + '¥' + Math.abs(gzAmt).toFixed(2)) : '—') + (isFallback ? '<span class="text-muted" style="font-size:10px;"> 净值</span>' : '') + '</div>'
+              ? '<div style="font-size:15px;font-weight:600;" class="' + showPctCls + '">' + showPctTxt + '</div>' + '<div class="text-sm ' + gzAmtCls + '">' + (gzAmt != null ? fmtMoney(gzAmt) : '—') + (isFallback ? '<span class="text-muted" style="font-size:10px;"> 净值</span>' : '') + '</div>'
               : '<span class="text-muted">—</span>') +
             '</td>';
         })() +
@@ -11924,7 +11930,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'b4e7f2a', date:'2026-08-26', desc:'修复估值盈亏天文数字bug(cost不应乘shares+估值刷新时间不更新)' };
+  window.ver = { git:'c9d4e8f', date:'2026-08-26', desc:'修复估值列缺负号(MathAbs)+估值盈亏排除不完整数据(mv=0基金)' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
