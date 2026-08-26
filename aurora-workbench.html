@@ -7369,7 +7369,7 @@ function applyFundVal(f, d){
     gszzl: d.gszzl,
     /* navChgRt: 日涨跌幅%(NAVCHGRT), 周末GSZZL为空时的替代数据源 */
     navChgRt: d.navChgRt != null ? d.navChgRt : (f.val&&f.val.navChgRt)||null,
-    gztime: d.gztime,
+    gztime: d.gztime || new Date().toISOString().replace('T', ' ').slice(0,16),
     jzrq: d.jzrq,
     nav: d.nav != null ? d.nav : (f.val&&f.val.nav)||null
   };
@@ -9554,12 +9554,27 @@ function autoFetchFundNavIfNeeded(force){
 function updateFundValTime(){
   var el = document.getElementById('fundValTime'); if(!el) return;
   var funds = DB.market.funds || [];
+  /* 优先用 gztime（接口返回的估值时间），全空时 fallback 到 updatedAt（本地最近抓取时间） */
   var valid = funds.filter(function(f){ return f.val && f.val.gztime; });
-  if(!valid.length){ el.textContent = ''; return; }
-  /* 取最新估值时间 */
-  var latest = valid.map(function(f){ return f.val.gztime || ''; }).sort().pop();
-  var short = latest ? latest.replace(/^\d{4}-/, '').replace(' ', ' ') : '';
-  el.textContent = '估值更新于 ' + short + '（每日自动刷新）';
+  if(valid.length){
+    var latest = valid.map(function(f){ return f.val.gztime || ''; }).sort().pop();
+    var short = latest ? latest.replace(/^\d{4}-/, '').replace(' ', ' ') : '';
+    el.textContent = '估值更新于 ' + short + '（每日自动刷新）';
+  } else {
+    /* 无gztime时用updatedAt显示最后刷新时刻 */
+    var updated = funds.filter(function(f){ return f.updatedAt; });
+    if(updated.length){
+      var latestTs = Math.max.apply(null, updated.map(function(f){ return f.updatedAt; }));
+      var d = new Date(latestTs);
+      var m = (d.getMonth()+1).toString().padStart(2,'0');
+      var day = d.getDate().toString().padStart(2,'0');
+      var h = d.getHours().toString().padStart(2,'0');
+      var min = d.getMinutes().toString().padStart(2,'0');
+      el.textContent = '估值更新于 ' + m + '-' + day + ' ' + h + ':' + min + '（每日自动刷新）';
+    } else {
+      el.textContent = '';
+    }
+  }
 }
 
 /* 启动交易时间定时刷新（每5分钟，仅在交易日9:00-15:15） */
@@ -11908,7 +11923,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'2fb20bf', date:'2026-08-25', desc:'概览卡片估值总额改为估值盈亏(用净值×份额-成本实时计算浮动盈亏)' };
+  window.ver = { git:'a8c3d1e', date:'2026-08-26', desc:'修复估值刷新时间不更新(接口gztime为空时用当前时间填充+updatedAt兜底显示)' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
