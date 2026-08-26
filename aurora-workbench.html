@@ -7480,9 +7480,10 @@ function renderFunds(){
     totals.ct += _ct;
     totals.hp += safeNum(m.hp);
     totals.yesterdayProfit += safeNum(m.yesterdayProfit);
-    /* 估值盈亏：仅统计有有效市值的基金(排除 shares=0/nav=0 的不完整数据) */
-    if(_mv > 0){
-      totals.gzProfit += _mv - _ct;
+    /* 估值盈亏：用 gzAmt（gsz×份额，fallback dwjz×份额）减去成本；排除无市值的不完整基金 */
+    var _gzAmt = safeNum(m.gzAmt);
+    if(_gzAmt > 0){
+      totals.gzProfit += _gzAmt - _ct;
       totals.validCt += _ct;
     }
     typeMap[f.type] = (typeMap[f.type] || 0) + _mv;
