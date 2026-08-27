@@ -7458,13 +7458,8 @@ function computeFundMetrics(f){
   var gzAmt = (shares > 0)
     ? ((!isNaN(rawGsz) && rawGsz > 0) ? rawGsz * shares : ((rawDwjz > 0) ? rawDwjz * shares : 0))
     : 0;
-  /* 估值盈亏：优先用估算/净值市值-成本(独立计算)；无市值数据时fallback到hpImport */
-  var gzProfit = 0;
-  if(gzAmt > 0){
-    gzProfit = gzAmt - ct;
-  } else if(f.hpImport != null && f.hpImport !== 0){
-    gzProfit = f.hpImport;
-  }
+  /* 估值盈亏 = 持有收益(hp/hpImport) + 当日估算变动(yesterdayProfit)，以真实导入值为基准 */
+  var gzProfit = hp + yesterdayProfit;
   return { nav: nav, gsz: gsz, dwjz: dwjz, mv: isNaN(mv)?0:mv, ct: ct, hp: isNaN(hp)?0:hp, hpPct: isNaN(hpPct)?0:hpPct,
            gszzl: gszzl, yesterdayProfit: isNaN(yesterdayProfit)?0:yesterdayProfit, yesterdayPct: yesterdayPct,
            gzAmt: gzAmt, gzProfit: isNaN(gzProfit)?0:gzProfit };
@@ -7488,9 +7483,9 @@ function renderFunds(){
     totals.ct += _ct;
     totals.hp += safeNum(m.hp);
     totals.yesterdayProfit += safeNum(m.yesterdayProfit);
-    /* 估值盈亏：gzAmt>0走估算市值-cost, 否则fallback hpImport；全部参与汇总 */
+    /* 估值盈亏 = 持有收益 + 当日估算变动，全部基金参与汇总 */
     totals.gzProfit += safeNum(m.gzProfit);
-    if(safeNum(m.gzAmt) > 0) totals.validCt += _ct;
+    totals.validCt += _ct;
     typeMap[f.type] = (typeMap[f.type] || 0) + _mv;
     themeMap[f.theme] = (themeMap[f.theme] || 0) + _mv;
   });
