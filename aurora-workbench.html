@@ -11996,7 +11996,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'80ef9e4', date:'2026-08-27', desc:'估值盈亏以hpImport为基准+当日估算变动,修复与累计收益大幅偏离' };
+  window.ver = { git:'57bcd8a', date:'2026-08-27', desc:'估值盈亏改为gzAmt-cost独立计算+hpImport兜底,不再退化为累计收益副本' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
