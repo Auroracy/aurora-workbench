@@ -7458,8 +7458,17 @@ function computeFundMetrics(f){
   var gzAmt = (shares > 0)
     ? ((!isNaN(rawGsz) && rawGsz > 0) ? rawGsz * shares : ((rawDwjz > 0) ? rawDwjz * shares : 0))
     : 0;
-  /* 估值盈亏 = 持有收益(hp/hpImport) + 当日估算变动(yesterdayProfit)，以真实导入值为基准 */
-  var gzProfit = hp + yesterdayProfit;
+  /* 估值盈亏：有 hpImport 时以导入值为基准 + 当日估算变动(用gszzl%×确认市值,避免shares不准)；无导入时走 gzAmt-cost */
+  var gzProfit = 0;
+  var confirmedMv = (shares > 0 && rawDwjz > 0) ? rawDwjz * shares : 0;
+  if(f.hpImport != null && f.hpImport !== 0 && confirmedMv > 0){
+    /* 以导入真实盈亏为基准，叠加当日估算涨跌幅度(gszzl是百分比精度高，不受shares误差影响) */
+    gzProfit = f.hpImport + confirmedMv * gszzl / 100;
+  } else if(gzAmt > 0){
+    gzProfit = gzAmt - ct;
+  } else if(f.hpImport != null && f.hpImport !== 0){
+    gzProfit = f.hpImport;
+  }
   return { nav: nav, gsz: gsz, dwjz: dwjz, mv: isNaN(mv)?0:mv, ct: ct, hp: isNaN(hp)?0:hp, hpPct: isNaN(hpPct)?0:hpPct,
            gszzl: gszzl, yesterdayProfit: isNaN(yesterdayProfit)?0:yesterdayProfit, yesterdayPct: yesterdayPct,
            gzAmt: gzAmt, gzProfit: isNaN(gzProfit)?0:gzProfit };
