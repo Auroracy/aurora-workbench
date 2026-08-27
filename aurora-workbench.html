@@ -7458,14 +7458,12 @@ function computeFundMetrics(f){
   var gzAmt = (shares > 0)
     ? ((!isNaN(rawGsz) && rawGsz > 0) ? rawGsz * shares : ((rawDwjz > 0) ? rawDwjz * shares : 0))
     : 0;
-  /* 估值盈亏：有 hpImport(导入真实值)的基金以它为基准+当日估算变动；无导入的走 gzAmt-cost */
-  var confirmedMv = (shares > 0 && rawDwjz > 0) ? rawDwjz * shares : 0;
+  /* 估值盈亏：优先用估算/净值市值-成本(独立计算)；无市值数据时fallback到hpImport */
   var gzProfit = 0;
-  if(f.hpImport != null && f.hpImport !== 0){
-    /* 基准=导入真实盈亏 + (当前估算市值 - 上次确认净值市值)=当日浮动增量 */
-    gzProfit = f.hpImport + (gzAmt - confirmedMv);
-  } else {
+  if(gzAmt > 0){
     gzProfit = gzAmt - ct;
+  } else if(f.hpImport != null && f.hpImport !== 0){
+    gzProfit = f.hpImport;
   }
   return { nav: nav, gsz: gsz, dwjz: dwjz, mv: isNaN(mv)?0:mv, ct: ct, hp: isNaN(hp)?0:hp, hpPct: isNaN(hpPct)?0:hpPct,
            gszzl: gszzl, yesterdayProfit: isNaN(yesterdayProfit)?0:yesterdayProfit, yesterdayPct: yesterdayPct,
@@ -7490,12 +7488,9 @@ function renderFunds(){
     totals.ct += _ct;
     totals.hp += safeNum(m.hp);
     totals.yesterdayProfit += safeNum(m.yesterdayProfit);
-    /* 估值盈亏：用 computeFundMetrics 内置的 gzProfit（有hpImport的以导入值为基准+当日变动，无导入的走gzAmt-cost） */
-    var _gzP = safeNum(m.gzProfit);
-    if(_gzP !== 0 || safeNum(m.gzAmt) > 0){
-      totals.gzProfit += _gzP;
-      totals.validCt += _ct;
-    }
+    /* 估值盈亏：gzAmt>0走估算市值-cost, 否则fallback hpImport；全部参与汇总 */
+    totals.gzProfit += safeNum(m.gzProfit);
+    if(safeNum(m.gzAmt) > 0) totals.validCt += _ct;
     typeMap[f.type] = (typeMap[f.type] || 0) + _mv;
     themeMap[f.theme] = (themeMap[f.theme] || 0) + _mv;
   });
