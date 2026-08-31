@@ -650,8 +650,9 @@ function handleCctvXwlbParse(res, qs) {
     }
   }
   const hit = XWLB_PARSE_CACHE[norm];
-  if (hit && (Date.now() - hit.ts) < (hit.ttl || XWLB_PARSE_TTL)) {
-    console.log('[cctv/xwlb-parse] 内存缓存命中，count=' + hit.payload.count);
+  const forceBust = (qs.force === '1' || qs.force === 'true');
+  if (!forceBust && hit && (Date.now() - hit.ts) < (hit.ttl || XWLB_PARSE_TTL)) {
+    console.log('[cctv/xwlb-parse] 内存缓存命中，count=' + hit.payload.count + (forceBust ? ' (force-bust)' : ''));
     return sendJSON(res, 200, hit.payload);
   }
   const target = 'https://tv.cctv.com/lm/xwlb/';

@@ -3163,6 +3163,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
       <input type="date" id="xwlbDatePicker" class="form-input" style="width:auto;font-size:13px;padding:4px 8px;" onchange="onXwlbDatePick(this.value)">
       <button class="btn btn-primary btn-sm" id="xwlbGenBtn" onclick="generateXwlbByDate()">🤖 生成所选日期</button>
+      <button class="btn btn-ghost btn-sm" onclick="forceFetchXwlb()">🔁 强制重新抓取</button>
       <button class="btn btn-ghost btn-sm" onclick="refreshXwlb()">🔄 刷新</button>
     </div>
   </div>
@@ -4840,18 +4841,32 @@ function viewXwlbDate(d){
     enterXwlbHistoryEditMode(d);
   });
 }
+/* 强制重新抓取（绕过服务端缓存，用于抓取到垃圾数据后重试） */
+function forceFetchXwlb(){
+  var d = curXwlbDate();
+  /* 先清除前端缓存，确保不会命中旧数据 */
+  if(DB && DB.xwlb && DB.xwlb.cache && DB.xwlb.cache[d]){
+    delete DB.xwlb.cache[d];
+    saveDb();
+    console.log('[xwlb] forceFetch 已清除前端缓存 date=' + d);
+  }
+  setXwlbStatus('🔁 正在强制重新抓取 ' + d + '（绕过缓存）…', 'loading');
+  autoFetchProgramList(d, true, true);
+}
 /* 选日期即自动获取节目单：调用服务端 /api/cctv/xwlb-parse（央视栏目页服务端解析，避开 CORS）
-   autoGen=true 时，若取到标题且已配置 AI 引擎，自动触发 AI 总结（恢复「选日期就出」体验）。 */
-function autoFetchProgramList(date, autoGen){
-  console.log('[xwlb] autoFetchProgramList START date=' + date + ' autoGen=' + autoGen);
+   autoGen=true 时，若取到标题且已配置 AI 引擎，自动触发 AI 总结（恢复「选日期就出」体验）。
+   forceBust=true 时，URL 加 ?force=1 绕过服务端内存缓存。 */
+function autoFetchProgramList(date, autoGen, forceBust){
+  console.log('[xwlb] autoFetchProgramList START date=' + date + ' autoGen=' + autoGen + ' forceBust=' + !!forceBust);
   try {
     var base = serverBase();
     if(!base){ console.log('[xwlb] no serverBase, skip auto-fetch'); return; }
     /* 时间守卫：当天日期在新闻播出前(19:30)不自动抓取，避免抓到CSS/JS代码片段
-     * 新闻联播每日19:00播出，约19:30结束，之后CCTV页面才会更新为当日内容 */
+     * 新闻联播每日19:00播出，约19:30结束，之后CCTV页面才会更新为当日内容
+     * 注意：forceBust 模式下跳过时间守卫（用户明确要强制抓取） */
     var now = new Date();
     var todayStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
-    if(date === todayStr){
+    if(!forceBust && date === todayStr){
       var hour = now.getHours();
       var min = now.getMinutes();
       if(hour < 19 || (hour === 19 && min < 30)){
@@ -4861,8 +4876,8 @@ function autoFetchProgramList(date, autoGen){
       }
     }
     var ta = document.getElementById('xwlbManualInput');
-    setXwlbStatus('⏳ 正在自动获取 ' + date + ' 节目单…', 'loading');
-    var url = base.replace(/\/+$/, '') + '/api/cctv/xwlb-parse?date=' + encodeURIComponent(date);
+    setXwlbStatus('⏳ 正在自动获取 ' + date + ' 节目单' + (forceBust ? '（强制刷新）' : '') + '…', 'loading');
+    var url = base.replace(/\/+$/, '') + '/api/cctv/xwlb-parse?date=' + encodeURIComponent(date) + (forceBust ? '&force=1' : '');
     fetch(url, { headers: { 'Accept': 'application/json' } })
       .then(function(r){ return r.json(); })
       .then(function(j){
