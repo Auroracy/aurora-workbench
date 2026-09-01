@@ -3110,7 +3110,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
       <span class="lbl">💰 每月总预算</span>
       <span class="right"><input type="number" id="dcaBudget" class="dca-budget-input" oninput="onBudgetChange()" min="0" step="100"><span class="unit">元</span></span>
     </div>
-    <div class="dca-avg-note">数据来源：纳斯达克100=纳指100指数(us.NDX) · 中证500=中证500指数(000905) · 黄金=黄金ETF(518880)，经腾讯财经月线接口自动取：<b>当前点位</b> = 当月（最新一条）月线开盘价（每月1号附近开价） · <b>30月均线</b> = 最近30个完整月收盘价算术平均。数据全联网自动获取，无须手动填。</div>
+    <div class="dca-avg-note">数据来源：纳斯达克100=纳指100指数(us.NDX) · 中证500=中证500指数(000905) · 黄金=黄金ETF(518880场内价,元/份)，经腾讯财经月线接口自动取：<b>当前点位</b> = 当月（最新一条）月线开盘价（每月1号附近开价） · <b>30月均值</b> = 最近30个完整月收盘价算术平均（自动剔除离群点，防御脏数据）。数据全联网自动获取，无须手动填。</div>
     <div class="dca-calc-table">
       <div class="dca-calc-head">
         <span>品种</span><span>当前点位</span><span>30月均值</span><span>比值</span><span>权重</span><span>本月应投</span>
@@ -11399,11 +11399,11 @@ function fetchDcaAverages(done){
     tryNext();
   });
 }
-// 显示用格式化：黄金ETF场内 0.01元/份 → ×100 以"分"展示；其余品种原值；三品种统一四舍五入到整数位
+// 显示用格式化：黄金ETF场内价按"元/份"原值+2位小数（保持与纳指/中证同列对比直觉）；其余品种原值四舍五入到整数+千分位
 function formatDcaDisplay(key, raw){
   var v = parseFloat(raw);
   if(isNaN(v) || v <= 0) return '—';
-  if(key === 'gold') v = v * 100;
+  if(key === 'gold') return v.toFixed(2);  // 9.13 / 7.48（元/份场内价）
   return Math.round(v).toLocaleString('zh-CN');
 }
 function getDcaBudget(){ return (DB.dca.budget && !isNaN(parseFloat(DB.dca.budget))) ? parseFloat(DB.dca.budget) : 3000; }
