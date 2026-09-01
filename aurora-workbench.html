@@ -11412,7 +11412,8 @@ function fetchDcaAverages(done){
 
 // 抓 SGE Au99.99：DCA 当前点位取 SGE 实时价（f43/100），30 月均线取 SGE 官方日线按月聚合后的最后一日收盘均值（与 C 哥公式口径一致）
 function fetchSgeDcaItem(it, done){
-  var url = apiUrl('/api/sge');
+  // 加时间戳避免浏览器/CDN 缓存命中旧的 /api/sge 响应（旧响应没有 kline，会导致 30月均线无法刷新）
+  var url = apiUrl('/api/sge') + '&_t=' + Date.now();
   fetchTextWithTimeout(url, 15000).then(function(txt){
     var data = null; try { data = JSON.parse(txt); } catch(e){}
     if(!data || data.error){ return done(false); }
@@ -11510,9 +11511,9 @@ function renderDcaCurrentPoints(){
 }
 
 function initDca(){
-  // 黄金口径迁移：旧版 current.gold 为现货元/克口径(>50)，现由联网抓取黄金ETF点位，无须手动
-  if(DB.dca.current && DB.dca.current.gold && parseFloat(DB.dca.current.gold) > 50){
-    DB.dca.current.gold = '';
+  // 黄金口径迁移（ETF 场内价 < 50 视为旧口径，自动清空由 SGE 联网重算；上次>50 误删 SGE 现价的迁移已废除）
+  if(DB.dca.avgs && DB.dca.avgs.gold != null && parseFloat(DB.dca.avgs.gold) > 0 && parseFloat(DB.dca.avgs.gold) < 50){
+    DB.dca.avgs.gold = null;
     saveDb();
   }
   // 0) 还原每月总预算（默认 3000，可修改）

@@ -289,7 +289,8 @@ function handleSge(res) {
       payload.kline = err ? null : months;
       payload.klineSrc = err ? ('err:'+err.message) : 'sge.com.cn/graph/Dailyhq';
       payload.klineCount = months ? months.length : 0;
-      sendJSON(res, 200, payload);
+      // 禁用浏览器/中间缓存：保证前端 fetchSgeDcaItem 每次拿到最新 kline（防御旧响应的 kline 字段缺失导致 30月均线卡在老值）
+      sendJSON(res, 200, payload, { 'Cache-Control': 'no-store, must-revalidate' });
     });
   }
   const attempt = function () {
