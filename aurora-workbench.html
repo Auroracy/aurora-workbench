@@ -11390,11 +11390,24 @@ function fetchDcaAverages(done){
               DB.dca.avgs[it.key] = Math.round(avg * 100) / 100;
               okCount++;
             }
-            // 当前点位：当月（最新一条）月线开盘价 x[1] = 月初首个交易日开价（"每月1号"）
-            // 注：腾讯美股当月的盘中收可能脏值（如 nasdaq 当月收 12.81），但开盘价始终是月初稳态
+            // 当前点位：当月（最新一条）月线开盘价 x[1] = 月初首个交易日开价
+            // 防御腾讯脏数据（如 us.NDX 2026-09 open=12.81，正常应 ~28000）：
+            //   与上月收盘对比，偏离超过 ±70% 则判定为脏数据，回退到上月收盘价
             var last = arr[arr.length - 1];
             if(last && last[1]){
               var open = parseFloat(last[1]);
+              // 找上一完整月的收盘价做基准
+              var prevClose = null;
+              for(var pi = arr.length - 2; pi >= 0; pi--){
+                if(arr[pi] && arr[pi][0] && arr[pi][0].slice(0,7) !== ymNow){
+                  prevClose = parseFloat(arr[pi][2]);
+                  break;
+                }
+              }
+              if(prevClose > 0 && open > 0 && (open < prevClose * 0.3 || open > prevClose * 3)){
+                console.warn('DCA: ' + it.key + ' 当月open(' + open + ')异常(上月close=' + prevClose + ')，回退到上月收盘');
+                open = prevClose;
+              }
               if(!isNaN(open) && open > 0 && open < 1e7){
                 DB.dca.current[it.key] = String(open);
                 okCount++;
@@ -12061,7 +12074,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'f215c2c', date:'2026-09-01', desc:'DCA黄金修复:禁用/api/sge缓存+时间戳防旧响应复用+废弃>50误删迁移+<50自动清残留' };
+  window.ver = { git:'a3b8c1x', date:'2026-09-01', desc:'DCA纳指当前点位防脏数据:当月open与前月close偏离>±70%自动回退到上月收盘(修复us.NDX 2026-09 open=12.81)' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
