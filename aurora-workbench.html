@@ -11424,39 +11424,89 @@ function fetchDcaAverages(done){
 }
 
 // 抓 SGE Au99.99：DCA 当前点位取 SGE 实时价（f43/100），30 月均线取 SGE 官方日线按月聚合后的最后一日收盘均值（与 C 哥公式口径一致）
+// Fallback 链：①同源 /api/sge（自托管 server.js，含 price+kline） ②SGE 官方 Dailyhq 经 CORS 代理（客户端按月聚合） ③兜底用当前点位
 function fetchSgeDcaItem(it, done){
+  var wrote = false;
   // 加时间戳避免浏览器/CDN 缓存命中旧的 /api/sge 响应（旧响应没有 kline，会导致 30月均线无法刷新）
   var url = apiUrl('/api/sge') + '&_t=' + Date.now();
-  fetchTextWithTimeout(url, 15000).then(function(txt){
-    var data = null; try { data = JSON.parse(txt); } catch(e){}
-    if(!data || data.error){ return done(false); }
-    var wrote = false;
-    // 当前点位：用最新价（f43/100）= SGE 行情价（元/克），与 C 哥表当前点位口径一致
-    if(isFinite(data.price) && data.price > 0){
-      DB.dca.current[it.key] = String(data.price);
-      wrote = true;
+
+  // Step 1：尝试同源 /api/sge（最完整：price + kline 一次返回）
+  function tryApiSge(){
+    return fetchTextWithTimeout(url, 10000).then(function(txt){
+      var data = null; try { data = JSON.parse(txt); } catch(e){}
+      if(!data || data.error) throw new Error('sge_api_empty');
+      var w = false;
+      if(isFinite(data.price) && data.price > 0){ DB.dca.current[it.key] = String(data.price); w = true; }
+      if(Array.isArray(data.kline) && data.kline.length && computeAvgFromKline(data.kline)){ w = true; }
+      if(w){ wrote = true; done(true); } else throw new Error('sge_no_data');
+    });
+  }
+
+  // Step 2：Fallback — 直接调 SGE 官方 Dailyhq 接口，客户端按月聚合 kline（与 server.js fetchSgeDailyhq 同逻辑）
+  function trySgeDirect(){
+    // SGE POST /graph/Dailyhq 返回 GBK 编码的 JSON，需通过 CORS 代理
+    var sgeUrl = 'https://www.sge.com.cn/graph/Dailyhq';
+    var body = 'instid=Au99.99';
+    var pIdx = 0;
+    function nextProxy(){
+      if(pIdx >= GOLD_PROXIES.length) return Promise.reject(new Error('sge_direct_all_fail'));
+      var proxyUrl = GOLD_PROXIES[pIdx++](sgeUrl);
+      return fetchWithTimeout(proxyUrl, 12000).then(function(r){ return r.arrayBuffer(); })
+        .then(function(buf){
+          var decoder;
+          try { decoder = new TextDecoder('gbk'); } catch(e){ decoder = new TextDecoder('utf-8'); }
+          var txt = decoder.decode(buf);
+          var j; try { j = JSON.parse(txt); } catch(e){ throw new Error('sge_parse_err'); }
+          var arr = j && j.time;
+          if(!Array.isArray(arr) || !arr.length) throw new Error('sge_empty_arr');
+          // 按月聚合最后一日收盘（与 server.js fetchSgeDailyhq 完全一致）
+          var buckets = {};
+          arr.forEach(function(row){
+            if(!row || !row[0]) return;
+            var ym = String(row[0]).slice(0,7);
+            var close = parseFloat(row[2]);
+            if(!ym || isNaN(close) || close <= 0) return;
+            buckets[ym] = close;
+          });
+          var months = Object.keys(buckets).sort().map(function(ym){ return { ym: ym, close: Math.round(buckets[ym]*100)/100 }; });
+          if(!months.length) throw new Error('sge_no_months');
+          // 写当前点位（取最近一个月最后一天收盘）
+          var lastMonth = months[months.length - 1];
+          if(lastMonth && lastMonth.close > 0){ DB.dca.current[it.key] = String(lastMonth.close); }
+          // 写 30 月均线
+          if(computeAvgFromKline(months)){ wrote = true; done(true); }
+          else throw new Error('sge_avg_fail');
+        });
     }
-    // 30 月均线：data.kline = [{ym, close}, ...]（每月最后一个交易日收盘，按月聚合）
-    if(Array.isArray(data.kline) && data.kline.length){
-      var ymNow = new Date().getFullYear() + '-' + ('0' + (new Date().getMonth() + 1)).slice(-2);
-      var validCloses = data.kline.filter(function(m){ return m && m.ym !== ymNow && isFinite(m.close) && m.close > 0 && m.close < 1e7; })
-        .map(function(m){ return m.close; });
-      if(validCloses.length >= 12){
-        var recent = validCloses.slice(-12).slice().sort(function(a,b){ return a-b; });
-        var med = recent[Math.floor(recent.length / 2)];
-        if(med > 0){
-          validCloses = validCloses.filter(function(v){ return v >= med * 0.5 && v <= med * 2; });
-        }
-      }
-      var closes = validCloses.slice(-30);
-      if(closes.length){
-        var avg = closes.reduce(function(s, v){ return s + v; }, 0) / closes.length;
-        DB.dca.avgs[it.key] = Math.round(avg * 100) / 100;
-        wrote = true;
-      }
+    return nextProxy().catch(function(){ return nextProxy(); }); // 重试下一个代理
+  }
+
+  // 公共：从 kline 数组计算 30 月均线并写入 DB.dca.avgs（被 Step 1 和 Step 2 共享）
+  function computeAvgFromKline(kline){
+    if(!Array.isArray(kline) || !kline.length) return false;
+    var ymNow = new Date().getFullYear() + '-' + ('0' + (new Date().getMonth() + 1)).slice(-2);
+    var validCloses = kline.filter(function(m){ return m && m.ym !== ymNow && isFinite(m.close) && m.close > 0 && m.close < 1e7; })
+      .map(function(m){ return m.close; });
+    if(validCloses.length >= 12){
+      var recent = validCloses.slice(-12).slice().sort(function(a,b){ return a-b; });
+      var med = recent[Math.floor(recent.length / 2)];
+      if(med > 0){ validCloses = validCloses.filter(function(v){ return v >= med * 0.5 && v <= med * 2; }); }
     }
-    done(wrote);
-  }).catch(function(){ done(false); });
+    var closes = validCloses.slice(-30);
+    if(!closes.length) return false;
+    var avg = closes.reduce(function(s, v){ return s + v; }, 0) / closes.length;
+    DB.dca.avgs[it.key] = Math.round(avg * 100) / 100;
+    return true;
+  }
+
+  // 执行 fallback 链
+  tryApiSge()
+    .catch(function(){ return trySgeDirect(); })
+    .catch(function(e){
+      console.warn('[DCA] SGE 全部 fallback 失败:', e.message || e);
+      // 兜底：如果当前点位有值但均线没有，至少保证不阻断其他两品种的计算
+      done(wrote);
+    });
 }
 // 显示用格式化：黄金=SGE Au99.99现货价（元/克），与纳指/中证同为绝对点位，统一四舍五入到整数+千分位
 function formatDcaDisplay(key, raw){
@@ -12074,7 +12124,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'f2a9b3d', date:'2026-09-01', desc:'DCA黄金行名称修复:表格模板硬编码黄金ETF→黄金(与DCA_ITEMS一致),修复浏览器缓存旧版显示+30月均线不计算' };
+  window.ver = { git:'c4d8e2f', date:'2026-09-01', desc:'DCA黄金30月均线修复:fetchSgeDcaItem增加fallback链(同源api/sge→SGE Dailyhq经CORS代理客户端聚合),解决GitHub Pages下/api/sge不可达导致均线为—' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
