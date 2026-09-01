@@ -3110,7 +3110,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
       <span class="lbl">💰 每月总预算</span>
       <span class="right"><input type="number" id="dcaBudget" class="dca-budget-input" oninput="onBudgetChange()" min="0" step="100"><span class="unit">元</span></span>
     </div>
-    <div class="dca-avg-note">数据来源：纳斯达克100=纳指100指数(us.NDX) · 中证500=中证500指数(000905) · 黄金=黄金ETF(518880场内价,元/份)，经腾讯财经月线接口自动取：<b>当前点位</b> = 当月（最新一条）月线开盘价（每月1号附近开价） · <b>30月均值</b> = 最近30个完整月收盘价算术平均（自动剔除离群点，防御脏数据）。数据全联网自动获取，无须手动填。</div>
+    <div class="dca-avg-note">数据来源：纳斯达克100=纳指100指数(us.NDX) · 中证500=中证500指数(000905) · 黄金=上金所SGE Au99.99现货（元/克），经东方财富/SGE官方接口自动取：<b>当前点位</b> = 黄金取 SGE 最新成交价（元/克），纳指/中证取当月（最新一条）月线开盘价（每月1号附近开价） · <b>30月均值</b> = 最近30个完整月收盘价算术平均（自动剔除离群点，防御脏数据）。数据全联网自动获取，无须手动填。</div>
     <div class="dca-calc-table">
       <div class="dca-calc-head">
         <span>品种</span><span>当前点位</span><span>30月均值</span><span>比值</span><span>权重</span><span>本月应投</span>
@@ -11306,11 +11306,13 @@ function closeRecipeDetail(){ var o = document.getElementById('recipeDetailOverl
    Tab 8: Monthly DCA Calculator (C哥20年定投公式)
    ============================================================ */
 // 30月均线由联网抓取历史月线自动计算（见 fetchDcaAverages）
-// sym 为腾讯财经代码：纳指用 ETF 513100、中证500 用指数 000905、黄金用 ETF 518880 近似
+// sym 标记说明：
+//   - 腾讯财经代码（如 us.NDX / sh000905）：走 ifzq 月线接口
+//   - 'sge.AU9999'：上金所现货 Au99.99，走 server.js /api/sge（实时 + 月线聚合）
 var DCA_ITEMS = [
-  { key: 'nasdaq', name: '纳斯达克100', sym: 'us.NDX', approx: '纳指100指数 us.NDX' },
-  { key: 'zz500',  name: '中证500',     sym: 'sh000905', approx: '中证500指数 000905' },
-  { key: 'gold',   name: '黄金',        sym: 'sh518880', approx: '黄金ETF 518880' }
+  { key: 'nasdaq', name: '纳斯达克100', sym: 'us.NDX',     approx: '纳指100指数 us.NDX' },
+  { key: 'zz500',  name: '中证500',     sym: 'sh000905',  approx: '中证500指数 000905' },
+  { key: 'gold',   name: '黄金',        sym: 'sge.AU9999', approx: 'SGE Au99.99 现货（元/克）' }
 ];
 
 // ——— 30月均线：联网抓取历史月线自动计算 ———
@@ -11346,6 +11348,14 @@ function fetchDcaAverages(done){
   function saveIfOk(){ if(okCount > 0) saveDb(); }
   function finish(){ if(pending === 0){ saveIfOk(); if(done) done(okCount >= DCA_ITEMS.length); } }
   DCA_ITEMS.forEach(function(it){
+    // SGE Au99.99 走专用分支：同源 /api/sge 返回实时价 + kline 月度聚合
+    if(typeof it.sym === 'string' && it.sym.indexOf('sge.') === 0){
+      fetchSgeDcaItem(it, function(ok){
+        if(ok) okCount++;
+        pending--; finish();
+      });
+      return;
+    }
     var target = 'https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=' + it.sym + ',month,,,40,qfq';
     var sources = [];
     if(hasSameOriginApi()) sources.push(apiUrl('/api/ifzq?param=' + encodeURIComponent(it.sym + ',month,,,40,qfq')));
@@ -11399,11 +11409,45 @@ function fetchDcaAverages(done){
     tryNext();
   });
 }
-// 显示用格式化：黄金ETF场内价按"元/份"原值+2位小数（保持与纳指/中证同列对比直觉）；其余品种原值四舍五入到整数+千分位
+
+// 抓 SGE Au99.99：DCA 当前点位取 SGE 实时价（f43/100），30 月均线取 SGE 官方日线按月聚合后的最后一日收盘均值（与 C 哥公式口径一致）
+function fetchSgeDcaItem(it, done){
+  var url = apiUrl('/api/sge');
+  fetchTextWithTimeout(url, 15000).then(function(txt){
+    var data = null; try { data = JSON.parse(txt); } catch(e){}
+    if(!data || data.error){ return done(false); }
+    var wrote = false;
+    // 当前点位：用最新价（f43/100）= SGE 行情价（元/克），与 C 哥表当前点位口径一致
+    if(isFinite(data.price) && data.price > 0){
+      DB.dca.current[it.key] = String(data.price);
+      wrote = true;
+    }
+    // 30 月均线：data.kline = [{ym, close}, ...]（每月最后一个交易日收盘，按月聚合）
+    if(Array.isArray(data.kline) && data.kline.length){
+      var ymNow = new Date().getFullYear() + '-' + ('0' + (new Date().getMonth() + 1)).slice(-2);
+      var validCloses = data.kline.filter(function(m){ return m && m.ym !== ymNow && isFinite(m.close) && m.close > 0 && m.close < 1e7; })
+        .map(function(m){ return m.close; });
+      if(validCloses.length >= 12){
+        var recent = validCloses.slice(-12).slice().sort(function(a,b){ return a-b; });
+        var med = recent[Math.floor(recent.length / 2)];
+        if(med > 0){
+          validCloses = validCloses.filter(function(v){ return v >= med * 0.5 && v <= med * 2; });
+        }
+      }
+      var closes = validCloses.slice(-30);
+      if(closes.length){
+        var avg = closes.reduce(function(s, v){ return s + v; }, 0) / closes.length;
+        DB.dca.avgs[it.key] = Math.round(avg * 100) / 100;
+        wrote = true;
+      }
+    }
+    done(wrote);
+  }).catch(function(){ done(false); });
+}
+// 显示用格式化：黄金=SGE Au99.99现货价（元/克），与纳指/中证同为绝对点位，统一四舍五入到整数+千分位
 function formatDcaDisplay(key, raw){
   var v = parseFloat(raw);
   if(isNaN(v) || v <= 0) return '—';
-  if(key === 'gold') return v.toFixed(2);  // 9.13 / 7.48（元/份场内价）
   return Math.round(v).toLocaleString('zh-CN');
 }
 function getDcaBudget(){ return (DB.dca.budget && !isNaN(parseFloat(DB.dca.budget))) ? parseFloat(DB.dca.budget) : 3000; }

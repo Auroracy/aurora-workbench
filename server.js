@@ -233,14 +233,65 @@ function proxyRaw(target, referer, res) {
 
 // 上金所 Au99.99 国内基准金价
 //   数据源：东方财富行情接口（push2delay 主用，push2 兜底），免鉴权、实时
-//   secid 118.AU9999 = 上海黄金交易所现货频道 Au99.99，单位「元/克」，接口编码 ×100
-//   字段：f43 最新价 f60 昨收 f169 涨跌额 f170 涨跌幅(%) f44 最高 f45 最低 f86 时间 f58 名称
-//   返回结构与前版一致，前端 fetchGoldQuotes 无需改动即可消费
+// 拉 SGE 官方日线 + 按月聚合最后一日收盘价，返回 [{ym:'YYYY-MM', close:Number}]
+function fetchSgeDailyhq(cb){
+  const body = 'instid=Au99.99';
+  const opts = {
+    method: 'POST',
+    hostname: 'www.sge.com.cn',
+    path: '/graph/Dailyhq',
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+      'Referer': 'https://www.sge.com.cn/',
+      'X-Requested-With': 'XMLHttpRequest',
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Content-Length': Buffer.byteLength(body)
+    }
+  };
+  const req = require('https').request(opts, function(r){
+    let buf = '';
+    r.on('data', function(c){ buf += c; });
+    r.on('end', function(){
+      try {
+        const j = JSON.parse(buf);
+        const arr = j && j.time;
+        if(!Array.isArray(arr) || !arr.length){ return cb(new Error('SGE dailyhq empty')); }
+        // 字段: [date, open, close, low, high]
+        const buckets = {};
+        arr.forEach(function(row){
+          if(!row || !row[0]) return;
+          const ym = String(row[0]).slice(0,7);
+          const close = parseFloat(row[2]);
+          if(!ym || isNaN(close) || close <= 0) return;
+          buckets[ym] = close;  // 后者覆盖 = 取该月最后一个交易日收盘
+        });
+        const months = Object.keys(buckets).sort().map(function(ym){ return { ym: ym, close: Math.round(buckets[ym]*100)/100 }; });
+        cb(null, months);
+      } catch(e){ cb(e); }
+    });
+  });
+  req.on('error', function(e){ cb(e); });
+  req.write(body);
+  req.end();
+}
+
 function handleSge(res) {
+  // secid 118.AU9999 = 上海黄金交易所现货频道 Au99.99，单位「元/克」，接口编码 ×100
+  // 字段：f43 最新价 f60 昨收 f169 涨跌额 f170 涨跌幅(%) f44 最高 f45 最低 f86 时间 f58 名称
+  // 增强：同时拉 SGE 官方日线 POST /graph/Dailyhq，按月聚合最后一日收盘价 → kline[]
+  //       用于前端 DCA 定投计算器 30 月均线（与 C 哥公式口径一致：SGE Au99.99 元/克）
   const SECID = '118.AU9999';
   const HOSTS = ['push2delay.eastmoney.com', 'push2.eastmoney.com'];
   let idx = 0;
   const r2 = function (n) { return Math.round(n * 100) / 100; };
+  function respond(payload){
+    fetchSgeDailyhq(function(err, months){
+      payload.kline = err ? null : months;
+      payload.klineSrc = err ? ('err:'+err.message) : 'sge.com.cn/graph/Dailyhq';
+      payload.klineCount = months ? months.length : 0;
+      sendJSON(res, 200, payload);
+    });
+  }
   const attempt = function () {
     if (idx >= HOSTS.length) {
       return sendJSON(res, 502, { error: 'SGE 上游全部失败（Eastmoney Au99.99）' });
@@ -255,19 +306,15 @@ function handleSge(res) {
       try { j = JSON.parse(buf.toString('utf-8')); } catch (e) { return attempt(); }
       const d = j && j.data;
       if (!d || d.f43 == null) { return attempt(); }
-      const price = d.f43 / 100;   // 元/克
-      const prev = d.f60 / 100;    // 昨收 元/克
-      const chg = d.f169 / 100;    // 涨跌额 元/克
-      const chgPct = d.f170 / 100; // 涨跌幅 %
-      sendJSON(res, 200, {
-        price: r2(price),
-        prev: r2(prev),
-        chg: r2(chg),
-        chgPct: r2(chgPct),
+      respond({
+        price: r2(d.f43 / 100),
+        prev:  r2(d.f60 / 100),
+        chg:   r2(d.f169 / 100),
+        chgPct: r2(d.f170 / 100),
         name: d.f58 || 'SGE Au99.99',
         unit: '元/克',
         high: r2((d.f44 || 0) / 100),
-        low: r2((d.f45 || 0) / 100),
+        low:  r2((d.f45 || 0) / 100),
         time: d.f86 || '',
         ts: Date.now(),
       });
