@@ -3132,7 +3132,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
         <span class="dca-amount" id="dca_amount_zz500">—</span>
       </div>
       <div class="dca-calc-row">
-        <span class="dca-name">黄金ETF</span>
+        <span class="dca-name">黄金</span>
         <span class="dca-point" id="dca_gold">—</span>
         <span class="dca-avg" id="dca_avg_gold">—</span>
         <span class="dca-ratio" id="dca_ratio_gold">—</span>
@@ -12074,7 +12074,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'a3b8c1x', date:'2026-09-01', desc:'DCA纳指当前点位防脏数据:当月open与前月close偏离>±70%自动回退到上月收盘(修复us.NDX 2026-09 open=12.81)' };
+  window.ver = { git:'f2a9b3d', date:'2026-09-01', desc:'DCA黄金行名称修复:表格模板硬编码黄金ETF→黄金(与DCA_ITEMS一致),修复浏览器缓存旧版显示+30月均线不计算' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
