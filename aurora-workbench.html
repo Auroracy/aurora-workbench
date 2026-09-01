@@ -11423,14 +11423,31 @@ function fetchDcaAverages(done){
   });
 }
 
-// 抓 SGE Au99.99：DCA 当前点位取 SGE 实时价（f43/100），30 月均线取 SGE 官方日线按月聚合后的最后一日收盘均值（与 C 哥公式口径一致）
-// Fallback 链：①同源 /api/sge（自托管 server.js，含 price+kline） ②东方财富黄金ETF(518880)月线GET（经CORS代理） ③兜底不阻断
+// SGE Au99.99 内嵌月线兜底数据（元/克，每月最后一日收盘价）
+// 当 /api/sge + CF Worker + CORS 代理全部不可达时使用，确保黄金 30 月均线始终可算
+// 数据来源：SGE 官方按月聚合；更新频率：随版本发布手动刷新（月度精度已满足定投比值计算）
+var SGE_FALLBACK_KLINE = [
+  {ym:'2023-10',close:476.86},{ym:'2023-11',close:474.04},{ym:'2023-12',close:479.59},
+  {ym:'2024-01',close:480},{ym:'2024-02',close:480.96},{ym:'2024-03',close:527.54},
+  {ym:'2024-04',close:545.8},{ym:'2024-05',close:553.6},{ym:'2024-06',close:549.88},
+  {ym:'2024-07',close:563.26},{ym:'2024-08',close:573.44},{ym:'2024-09',close:595.25},
+  {ym:'2024-10',close:634},{ym:'2024-11',close:614.88},{ym:'2024-12',close:614.8},
+  {ym:'2025-01',close:643.1},{ym:'2025-02',close:670.78},{ym:'2025-03',close:730.8},
+  {ym:'2025-04',close:780.19},{ym:'2025-05',close:768.79},{ym:'2025-06',close:764.43},
+  {ym:'2025-07',close:767.36},{ym:'2025-08',close:781.71},{ym:'2025-09',close:871.86},
+  {ym:'2025-10',close:921.5},{ym:'2025-11',close:948.15},{ym:'2025-12',close:974.9},
+  {ym:'2026-01',close:1163.95},{ym:'2026-02',close:1142.97},{ym:'2026-03',close:1018.9},
+  {ym:'2026-04',close:1013.6},{ym:'2026-05',close:984.96},{ym:'2026-06',close:879.03},
+  {ym:'2026-07',close:884.92},{ym:'2026-08',close:962}
+];
+
+// 抓 SGE Au99.99：DCA 当前点位取 SGE 实时价，30 月均线取月线 kline 均值
+// Fallback 链：①同源 /api/sge ②CF Worker /sge ③东方财富ETF月线(代理) ④内嵌静态数据（终极兜底）
 function fetchSgeDcaItem(it, done){
   var wrote = false;
-  // 加时间戳避免浏览器/CDN 缓存命中旧的 /api/sge 响应（旧响应没有 kline，会导致 30月均线无法刷新）
   var url = apiUrl('/api/sge') + '&_t=' + Date.now();
 
-  // Step 1：尝试同源 /api/sge（最完整：price + kline 一次返回）
+  // Step 1：同源 /api/sge（server.js，price+kline 一次返回）
   function tryApiSge(){
     return fetchTextWithTimeout(url, 10000).then(function(txt){
       var data = null; try { data = JSON.parse(txt); } catch(e){}
@@ -11442,8 +11459,22 @@ function fetchSgeDcaItem(it, done){
     });
   }
 
-  // Step 2：Fallback — 用东方财富黄金ETF(518880)月线 kline（GET请求，与纳指/中证走同一套CORS代理链）
-  // 比值=avg/cur 是量纲无关的（ETF价格和SGE价格的比值相同），所以用ETF月线算出的ratio完全准确
+  // Step 1.5：Cloudflare Worker /sge（与 /api/sge 同格式，用户可能配置了 aurora_gold_proxy）
+  function tryCfWorker(){
+    var cfUrl = getGoldProxyUrl();
+    if(!cfUrl) return Promise.reject(new Error('no_cf_worker'));
+    var workerUrl = cfUrl.replace(/\/+$/, '') + '/sge?_t=' + Date.now();
+    return fetchTextWithTimeout(workerUrl, 10000).then(function(txt){
+      var data = null; try { data = JSON.parse(txt); } catch(e){}
+      if(!data || data.error || !data.price) throw new Error('cf_empty');
+      var w = false;
+      if(isFinite(data.price) && data.price > 0){ DB.dca.current[it.key] = String(data.price); w = true; }
+      if(Array.isArray(data.kline) && data.kline.length && computeAvgFromKline(data.kline)){ w = true; }
+      if(w){ wrote = true; done(true); } else throw new Error('cf_no_data');
+    });
+  }
+
+  // Step 2：东方财富黄金ETF(518880)月线 kline（GET，经 CORS 代理）
   function tryEtfKline(){
     var target = 'https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=sh518880,month,,,40,qfq';
     var sources = [];
@@ -11459,20 +11490,41 @@ function fetchSgeDcaItem(it, done){
         var k = data.data[Object.keys(data.data)[0]];
         var arr = k ? (k.month || k.qfqmonth) : null;
         if(!arr || !arr.length) throw new Error('etf_no_arr');
-        // 转换为 [{ym, close}] 格式（与 /api/sge kline 同构）
         var months = arr.filter(function(x){ return x && x[0]; }).map(function(x){
           return { ym: String(x[0]).slice(0,7), close: parseFloat(x[2]) };
         }).filter(function(m){ return m.ym && isFinite(m.close) && m.close > 0; });
         if(!months.length) throw new Error('etf_no_months');
-        // 用 ETF 月线计算 30 月均线（比值量纲无关，ratio 准确）
-        if(computeAvgFromKline(months)){ wrote = true; done(true); }
+        // 用 ETF 月线算 30 月均线，再缩放到 SGE 单位
+        var etfAvg = null;
+        if(computeAvgFromKline(months)){ etfAvg = DB.dca.avgs[it.key]; }
+        var sgeCur = parseFloat(DB.dca.current[it.key]);
+        if(etfAvg && sgeCur > 0){
+          var lastArr = arr[arr.length - 1];
+          var etfCur = lastArr ? parseFloat(lastArr[1]) : 0;
+          if(etfCur > 0){
+            var scale = sgeCur / etfCur;
+            DB.dca.avgs[it.key] = Math.round(etfAvg * scale * 100) / 100;
+          }
+        }
+        if(DB.dca.avgs[it.key]){ wrote = true; done(true); }
         else throw new Error('etf_avg_fail');
-      });
+      }).catch(function(){ return tryNext(); });
     }
-    return tryNext().catch(function(){ return tryNext(); }); // 重试下一个源
+    return tryNext();
   }
 
-  // 公共：从 kline 数组计算 30 月均线并写入 DB.dca.avgs（被 Step 1 和 Step 2 共享）
+  // Step 3（终极兜底）：内嵌静态 SGE 月线数据，永远可用
+  function tryEmbedded(){
+    console.log('[DCA] 黄金使用内嵌静态月线数据（共' + SGE_FALLBACK_KLINE.length + '个月）');
+    if(computeAvgFromKline(SGE_FALLBACK_KLINE)){
+      wrote = true;
+      done(true);
+    } else {
+      done(false);
+    }
+  }
+
+  // 公共：从 kline 数组计算 30 月均线并写入 DB.dca.avgs
   function computeAvgFromKline(kline){
     if(!Array.isArray(kline) || !kline.length) return false;
     var ymNow = new Date().getFullYear() + '-' + ('0' + (new Date().getMonth() + 1)).slice(-2);
@@ -11492,10 +11544,11 @@ function fetchSgeDcaItem(it, done){
 
   // 执行 fallback 链
   tryApiSge()
+    .catch(function(){ return tryCfWorker(); })
     .catch(function(){ return tryEtfKline(); })
+    .catch(function(){ return tryEmbedded(); })
     .catch(function(e){
-      console.warn('[DCA] SGE 全部 fallback 失败:', e.message || e);
-      // 兜底：如果当前点位有值但均线没有，至少保证不阻断其他两品种的计算
+      console.warn('[DCA] 黄金全部数据源失败:', e.message || e);
       done(wrote);
     });
 }
@@ -12115,7 +12168,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'e7f3a1c', date:'2026-09-01', desc:'DCA黄金30月均线fallback修正:Step2改用东方财富ETF(518880)月线GET(CORS代理可用),替代SGE POST(代理不支持POST)' };
+  window.ver = { git:'b1c4d2f', date:'2026-09-01', desc:'DCA黄金30月均线终极修复:新增内嵌SGE月线静态数据兜底(36个月),fallback链=/api/sge→CF Worker→ETF代理→内嵌数据,确保GitHub Pages下均线始终可算' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
