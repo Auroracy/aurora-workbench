@@ -11361,10 +11361,20 @@ function fetchDcaAverages(done){
           var arr = k ? (k.month || k.qfqmonth) : null;
           if(arr && arr.length){
             var ymNow = new Date().getFullYear() + '-' + ('0' + (new Date().getMonth() + 1)).slice(-2);
-            // 30月均线：排除进行中的当月，仅取最近30个完整月收盘价算术平均
-            var closes = arr.filter(function(x){ return x[0] && x[0].slice(0,7) !== ymNow; })
-              .slice(-30).map(function(x){ return parseFloat(x[2]); })
+            // 30月均线：排除进行中的当月，先取所有有效 close，再用「最近12个有效收盘中位数 ±50%」剔除离群点(防御腾讯脏数据,如纳指us.NDX 2026-08 返回 close=12.89),再取最近30个算术平均
+            var validCloses = arr.filter(function(x){ return x[0] && x[0].slice(0,7) !== ymNow; })
+              .map(function(x){ return parseFloat(x[2]); })
               .filter(function(v){ return !isNaN(v) && v > 0 && v < 1e7; });
+            if(validCloses.length >= 12){
+              var recent = validCloses.slice(-12).slice().sort(function(a,b){ return a-b; });
+              var med = recent[Math.floor(recent.length / 2)];
+              if(med > 0){
+                validCloses = validCloses.filter(function(v){
+                  return v >= med * 0.5 && v <= med * 2;
+                });
+              }
+            }
+            var closes = validCloses.slice(-30);
             if(closes.length){
               var avg = closes.reduce(function(s, v){ return s + v; }, 0) / closes.length;
               DB.dca.avgs[it.key] = Math.round(avg * 100) / 100;
