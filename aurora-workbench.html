@@ -9506,37 +9506,74 @@ function clearImportPreview(){ pendingImport = []; var box = document.getElement
 /* 旧接口 fundgz.1234567.com.cn 已失效(404)，改用服务端 /api/fundgz-batch 批量拉取 */
 function fetchFundValuationBatch(codes, cb){
   if(!codes || !codes.length){ cb(new Error('无基金代码')); return; }
-  /* ★ 优先用 /api/fund-gsz (fundgz JSONP 实时估算，全天有值)
-   * fallback 到 /api/fundgz-batch (fundmobapi，GSZ可能为空) */
-  var gszUrl = apiUrl('/api/fund-gsz?codes=' + codes.join(','));
-  fetch(gszUrl, { credentials: 'same-origin' }).then(function(r){
-    if(!r.ok) throw new Error('GSZ HTTP ' + r.status);
-    return r.json();
-  }).then(function(d){
-    if(d.error) throw new Error(d.error);
-    if(d.count > 0){
-      console.log('[fetchVal] ★ fundgz实时估算成功:', d.count, '只, source=', d.source);
-      cb(null, d.data || {});
-      return;
-    }
-    /* fundgz 返回0条 → fallback 到 fundmobapi */
-    console.log('[fetchVal] fundgz返回0条, fallback到fundmobapi');
-    doFallback();
-  }).catch(function(err){
-    console.warn('[fetchVal] fundgz失败:', err.message, ', fallback到fundmobapi');
-    doFallback();
+  /* Fallback 链：
+   * ① /api/fund-gsz (server.js → fundgz JSONP, 盘中实时估算 GSZ/GSZZL)
+   * ② /api/fundgz-batch (server.js → fundmobapi, 确认净值 NAV + 涨跌幅)
+   * ③ 东方财富 fundmobapi 直连（经 CORS 代理，GitHub Pages 兜底）
+   */
+  var joined = codes.join(',');
+
+  // Step 1：同源 /api/fund-gsz（最优：实时估算）
+  tryApi('/api/fund-gsz?codes=' + joined, 'fundgz', function(){
+    // Step 2：同源 /api/fundgz-batch（次优：确认净值+涨跌幅）
+    tryApi('/api/fundgz-batch?codes=' + joined, 'fundmobapi', function(){
+      // Step 3：CORS 代理 → fundmobapi.eastmoney.com（GitHub Pages 兜底）
+      tryProxyFallback(joined);
+    });
   });
 
-  function doFallback(){
-    var url = apiUrl('/api/fundgz-batch?codes=' + codes.join(','));
+  function tryApi(url, label, onFail){
     fetch(url, { credentials: 'same-origin' }).then(function(r){
-      if(!r.ok) throw new Error('HTTP ' + r.status);
+      if(!r.ok) throw new Error(label + ' HTTP ' + r.status);
       return r.json();
     }).then(function(d){
       if(d.error) throw new Error(d.error);
-      console.log('[fetchVal] fundmobapi fallback成功:', Object.keys(d.data||{}).length, '只');
-      cb(null, d.data || {});
-    }).catch(function(e){ cb(e); });
+      if(d.count > 0){
+        console.log('[fetchVal] ★ ' + label + '成功:', d.count, '只, source=', d.source);
+        cb(null, d.data || {});
+        return;
+      }
+      console.log('[fetchVal] ' + label + '返回0条, 继续fallback');
+      onFail();
+    }).catch(function(err){
+      console.warn('[fetchVal] ' + label + '失败:', err.message, ', 继续fallback');
+      onFail();
+    });
+  }
+
+  function tryProxyFallback(codesStr){
+    /* 东方财富 fundmobapi（GET，返回 JSON，含 NAV/GSZ/NAVCHGRT/PDATE） */
+    var target = 'https://fundmobapi.eastmoney.com/FundMNewApi/FundMNFInfo'
+      + '?pageIndex=1&pageSize=' + codes.length
+      + '&plat=Android&appType=ttjj&product=EFund&Version=1&deviceid=aurora-workbench&Ession=1'
+      + '&Fcodes=' + codesStr;
+    var sources = [];
+    DCA_PROXIES.forEach(function(p){ sources.push(p + encodeURIComponent(target)); });
+    var i = 0;
+    function next(){
+      if(i >= sources.length){ cb(new Error('全部数据源不可达(server挂了+CORS代理全挂)')); return; }
+      var u = sources[i++];
+      fetchTextWithTimeout(u, 12000).then(function(txt){
+        var d = null; try { d = JSON.parse(txt); } catch(e){ throw new Error('parse'); }
+        if(!d || !d.Datas) throw new Error('no_data');
+        var data = {};
+        (d.Datas || []).forEach(function(f){
+          data[f.FCODE] = {
+            name: f.SHORTNAME || '',
+            gsz: f.GSZ != null ? parseFloat(f.GSZ) : null,
+            gszzl: f.GSZZL != null ? parseFloat(f.GSZZL) : null,
+            nav: f.NAV != null ? parseFloat(f.NAV) : null,
+            dwjz: f.DWJZ || (f.NAV != null ? String(f.NAV) : null),
+            gztime: f.GZTIME || f.PDATE || null,
+            pdate: f.PDATE || null,
+            navChgRt: f.NAVCHGRT != null ? parseFloat(f.NAVCHGRT) : null,
+          };
+        });
+        console.log('[fetchVal] ★ CORS代理 fundmobapi 成功:', Object.keys(data).length, '只');
+        cb(null, data);
+      }).catch(function(){ next(); }); // 重试下一个代理
+    }
+    next();
   }
 }
 /* 兼容旧的单只接口（内部转为批量） */
@@ -12168,7 +12205,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'b1c4d2f', date:'2026-09-01', desc:'DCA黄金30月均线终极修复:新增内嵌SGE月线静态数据兜底(36个月),fallback链=/api/sge→CF Worker→ETF代理→内嵌数据,确保GitHub Pages下均线始终可算' };
+  window.ver = { git:'c5d6e7f', date:'2026-09-02', desc:'基金估值刷新修复:fetchFundValuationBatch增加CORS代理fallback链(/api/fund-gsz→/api/fundgz-batch→fundmobapi直连),解决GitHub Pages/server挂了时估值停在旧日期' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
