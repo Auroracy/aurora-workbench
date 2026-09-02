@@ -9547,33 +9547,47 @@ function fetchFundValuationBatch(codes, cb){
       + '?pageIndex=1&pageSize=' + codes.length
       + '&plat=Android&appType=ttjj&product=EFund&Version=1&deviceid=aurora-workbench&Ession=1'
       + '&Fcodes=' + codesStr;
-    var sources = [];
-    DCA_PROXIES.forEach(function(p){ sources.push(p + encodeURIComponent(target)); });
-    var i = 0;
-    function next(){
-      if(i >= sources.length){ cb(new Error('全部数据源不可达(server挂了+CORS代理全挂)')); return; }
-      var u = sources[i++];
-      fetchTextWithTimeout(u, 12000).then(function(txt){
-        var d = null; try { d = JSON.parse(txt); } catch(e){ throw new Error('parse'); }
-        if(!d || !d.Datas) throw new Error('no_data');
-        var data = {};
-        (d.Datas || []).forEach(function(f){
-          data[f.FCODE] = {
-            name: f.SHORTNAME || '',
-            gsz: f.GSZ != null ? parseFloat(f.GSZ) : null,
-            gszzl: f.GSZZL != null ? parseFloat(f.GSZZL) : null,
-            nav: f.NAV != null ? parseFloat(f.NAV) : null,
-            dwjz: f.DWJZ || (f.NAV != null ? String(f.NAV) : null),
-            gztime: f.GZTIME || f.PDATE || null,
-            pdate: f.PDATE || null,
-            navChgRt: f.NAVCHGRT != null ? parseFloat(f.NAVCHGRT) : null,
-          };
-        });
-        console.log('[fetchVal] ★ CORS代理 fundmobapi 成功:', Object.keys(data).length, '只');
-        cb(null, data);
-      }).catch(function(){ next(); }); // 重试下一个代理
+    /* ① 先直连（东方财富公开API通常允许浏览器CORS，GitHub Pages无需代理即可拿到确认净值+涨跌幅） */
+    fetchTextWithTimeout(target, 10000).then(function(txt){
+      var d = null; try { d = JSON.parse(txt); } catch(e){ throw new Error('parse'); }
+      if(!d || !d.Datas) throw new Error('no_data');
+      var data = buildFundmobData(d);
+      console.log('[fetchVal] ★ 直连 fundmobapi 成功:', Object.keys(data).length, '只');
+      cb(null, data);
+    }).catch(function(e){
+      console.warn('[fetchVal] 直连 fundmobapi 失败:', e.message, ', 走CORS代理');
+      /* ② 失败再走 CORS 代理链 */
+      var sources = [];
+      DCA_PROXIES.forEach(function(p){ sources.push(p + encodeURIComponent(target)); });
+      var i = 0;
+      (function next(){
+        if(i >= sources.length){ cb(new Error('全部数据源不可达(server挂了+CORS代理全挂)')); return; }
+        var u = sources[i++];
+        fetchTextWithTimeout(u, 12000).then(function(txt){
+          var d = null; try { d = JSON.parse(txt); } catch(err){ throw new Error('parse'); }
+          if(!d || !d.Datas) throw new Error('no_data');
+          var data = buildFundmobData(d);
+          console.log('[fetchVal] ★ CORS代理 fundmobapi 成功:', Object.keys(data).length, '只');
+          cb(null, data);
+        }).catch(function(){ next(); }); // 重试下一个代理
+      })();
+    });
+    function buildFundmobData(d){
+      var data = {};
+      (d.Datas || []).forEach(function(f){
+        data[f.FCODE] = {
+          name: f.SHORTNAME || '',
+          gsz: f.GSZ != null ? parseFloat(f.GSZ) : null,
+          gszzl: f.GSZZL != null ? parseFloat(f.GSZZL) : null,
+          nav: f.NAV != null ? parseFloat(f.NAV) : null,
+          dwjz: f.DWJZ || (f.NAV != null ? String(f.NAV) : null),
+          gztime: f.GZTIME || f.PDATE || null,
+          pdate: f.PDATE || null,
+          navChgRt: f.NAVCHGRT != null ? parseFloat(f.NAVCHGRT) : null,
+        };
+      });
+      return data;
     }
-    next();
   }
 }
 /* 兼容旧的单只接口（内部转为批量） */
@@ -12205,7 +12219,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'c5d6e7f', date:'2026-09-02', desc:'基金估值刷新修复:fetchFundValuationBatch增加CORS代理fallback链(/api/fund-gsz→/api/fundgz-batch→fundmobapi直连),解决GitHub Pages/server挂了时估值停在旧日期' };
+  window.ver = { git:'sina01', date:'2026-09-02', desc:'基金实时估值源切换为新浪hq.sinajs.cn(替代已挂fundgz.01823.xyz);前端Step3优先直连fundmobapi提升GitHub Pages刷新成功率;server已支持CORS跨域(配aurora_api_base即用今日实时估算)' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');

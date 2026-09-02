@@ -432,46 +432,54 @@ function handleFundGszRealtime(res, qs) {
   if (FUND_GSZ_CACHE.payload && (Date.now() - FUND_GSZ_CACHE.ts) < FUND_GSZ_TTL) {
     return sendJSON(res, 200, FUND_GSZ_CACHE.payload);
   }
-  /* 并发请求所有基金的 fundgz JSONP */
-  var results = {};
-  var pending = codes.length;
-  var done = function() {
-    pending--;
-    if (pending === 0) {
-      var payload = { ts: Date.now(), count: Object.keys(results).length, source: 'fundgz.eastmoney.com', data: results };
+  /* 新浪基金盘中实时估算（批量一次请求，替代已挂的 fundgz.01823.xyz）
+   * 数据源：hq.sinajs.cn/list=fu_017811,fu_000369,...  (GBK 编码)
+   * 返回：var hq_str_fu_017811="名称,时间,估算净值,昨收单位净值,今开,成交量,涨跌幅%,日期,?,?";
+   * 说明：数字/日期字段为 ASCII 不乱码；仅中文名 GBK 乱码 → name 置空，前端回退用户配置名 */
+  var sinaList = codes.map(function(c){ return 'fu_' + c; }).join(',');
+  var url = 'https://hq.sinajs.cn/list=' + sinaList;
+  upstreamGet(url, { 'Referer': 'https://finance.sina.com.cn/', 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' }, function(err, status, buf) {
+    if (err || !buf || status >= 400) {
+      console.error('[fund-gsz] 新浪接口失败:', err || ('HTTP ' + status));
+      return sendJSON(res, 502, { error: '新浪基金估算接口失败: ' + (err && err.message || 'HTTP ' + status) });
+    }
+    try {
+      var text = buf.toString('utf-8');
+      var results = {};
+      var re = /hq_str_fu_(\d{6})="([^"]*)"/g;
+      var mm;
+      while ((mm = re.exec(text)) !== null) {
+        var code = mm[1];
+        var f = mm[2].split(',');
+        if (f.length < 8) continue;
+        var gsz = parseFloat(f[2]);    // 当前估算净值
+        var dwjz = parseFloat(f[3]);   // 昨收单位净值
+        var gszzl = parseFloat(f[6]);  // 估算涨跌幅 %
+        var date = f[7];              // 净值日期 YYYY-MM-DD
+        var time = f[1];              // 时间 HH:MM:SS
+        results[code] = {
+          name: '',                   // 新浪 GBK 名乱码，不采用，前端用自身配置名
+          gsz: isNaN(gsz) ? null : gsz,
+          gszzl: isNaN(gszzl) ? null : gszzl,
+          dwjz: isNaN(dwjz) ? null : dwjz,
+          gztime: (date && time) ? (date + ' ' + time) : (date || null),
+          jzrq: date || null,
+        };
+      }
+      var payload = {
+        ts: Date.now(),
+        count: Object.keys(results).length,
+        source: 'sina hq.sinajs.cn',
+        data: results,
+      };
       FUND_GSZ_CACHE.ts = Date.now();
       FUND_GSZ_CACHE.payload = payload;
-      console.log('[fund-gsz] 成功:', payload.count, '/', codes.length);
+      console.log('[fund-gsz] 新浪成功:', payload.count, '/', codes.length);
       return sendJSON(res, 200, payload);
+    } catch(e) {
+      console.error('[fund-gsz] 解析失败:', e.message);
+      return sendJSON(res, 502, { error: '响应解析失败: ' + e.message });
     }
-  };
-  codes.forEach(function(code) {
-    var url = 'https://fundgz.01823.xyz/js/' + code + '.js';
-    upstreamGet(url, { 'Referer': 'https://fund.eastmoney.com/', 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' }, function(err, status, buf) {
-      if (err || !buf) { done(); return; }
-      try {
-        var text = buf.toString('utf-8');
-        /* JSONP 格式: jsonpgz({...}); 提取中间的JSON */
-        var jsonStr = text.replace(/^[^(]*\(/, '').replace(/\)\s*;?\s*$/, '');
-        var d = JSON.parse(jsonStr);
-        /* 解析 gszzl 字符串如 "-0.88%" 为数字 */
-        var gszzlRaw = d.gszzl || '';
-        var gszzlNum = parseFloat(gszzlRaw.toString().replace('%', ''));
-        results[code] = {
-          name: d.name || '',
-          gsz: d.gsz != null ? parseFloat(d.gsz) : null,
-          gszzl: !isNaN(gszzlNum) ? gszzlNum : null,
-          dwjz: d.dwjz != null ? parseFloat(d.dwjz) : null,
-          gztime: d.gztime || null,
-          jzrq: d.jzrq || null,
-          /* 原始字符串保留(用于调试) */
-          _rawGszzl: gszzlRaw,
-        };
-      } catch(e) {
-        console.warn('[fund-gsz] 解析失败 ' + code + ':', e.message);
-      }
-      done();
-    });
   });
 }
 
