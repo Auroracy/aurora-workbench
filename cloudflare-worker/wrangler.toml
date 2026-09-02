@@ -1,0 +1,8 @@
+name = "aurora-fund-proxy"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+
+# 如需绑定自定义域，取消下方注释并替换为你自己的域名：
+# routes = [
+#   { pattern = "fund.你的域名.com", custom_domain = true }
+# ]

@@ -9513,10 +9513,10 @@ function fetchFundValuationBatch(codes, cb){
    */
   var joined = codes.join(',');
 
-  // Step 1：同源 /api/fund-gsz（最优：实时估算）
-  tryApi('/api/fund-gsz?codes=' + joined, 'fundgz', function(){
-    // Step 2：同源 /api/fundgz-batch（次优：确认净值+涨跌幅）
-    tryApi('/api/fundgz-batch?codes=' + joined, 'fundmobapi', function(){
+  // Step 1：/api/fund-gsz（最优：实时估算；经 apiUrl 走同源 server 或 GitHub Pages 默认 Worker）
+  tryApi(apiUrl('/api/fund-gsz?codes=' + joined), 'fundgz', function(){
+    // Step 2：/api/fundgz-batch（次优：确认净值+涨跌幅）
+    tryApi(apiUrl('/api/fundgz-batch?codes=' + joined), 'fundmobapi', function(){
       // Step 3：CORS 代理 → fundmobapi.eastmoney.com（GitHub Pages 兜底）
       tryProxyFallback(joined);
     });
@@ -12219,7 +12219,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'69101cd', date:'2026-09-02', desc:'基金实时估值源切换为新浪hq.sinajs.cn(替代已挂fundgz.01823.xyz);前端Step3优先直连fundmobapi提升GitHub Pages刷新成功率;server已支持CORS跨域(配aurora_api_base即用今日实时估算)' };
+  window.ver = { git:'pending', date:'2026-09-02', desc:'基金实时估值源切换为新浪hq.sinajs.cn(替代已挂fundgz.01823.xyz);前端Step3优先直连fundmobapi提升GitHub Pages刷新成功率;server已支持CORS跨域(配aurora_api_base即用今日实时估算)' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
