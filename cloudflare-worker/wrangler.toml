@@ -1,6 +1,11 @@
 name = "aurora-fund-proxy"
 main = "worker.js"
 compatibility_date = "2025-01-01"
+# account_id / token 从环境变量注入，部署前执行：
+#   export CLOUDFLARE_API_TOKEN="<你的API Token>"
+#   export CLOUDFLARE_ACCOUNT_ID="<你的账号ID>"
+# 这样无需在文件里写死敏感信息。
+account_id = "${CLOUDFLARE_ACCOUNT_ID}"
 
 # 如需绑定自定义域，取消下方注释并替换为你自己的域名：
 # routes = [
