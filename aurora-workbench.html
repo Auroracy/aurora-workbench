@@ -10523,8 +10523,19 @@ var DEFAULT_WORKER_BASE = (function(){
   } catch(e){}
   return 'https://aurora-fund-proxy.rogue-basketball-fd5.workers.dev'; /* 已部署 Cloudflare Worker（临时账号，请尽快认领 claim URL 以长期保有） */
 })();
-/* 基金估值专用：优先 Worker 基地址，其次自建 server(apiUrl)，两者皆空则相对路径→404→fallback */
-function fundApiUrl(p){ return (DEFAULT_WORKER_BASE || API_BASE || '') + p; }
+/* 基金估值专用 URL 解析（优先级）：
+   ① 用户显式配置的自建 server（localStorage aurora_api_base）→ apiUrl
+   ② 自建 server 同源打开（如 http://106.14.223.116:9000）→ 相对路径 /api/，零跨域、零混合内容
+   ③ 纯静态托管（github.io / file:// 无同源后端）→ Cloudflare Worker（DEFAULT_WORKER_BASE）
+   注意：GitHub Pages 是 https，若 ② 的 server 是 http 会被混合内容策略拦截；此时应在服务器同源
+   打开本页，或给 server 配 https。worker(dev).workers.dev 在中国大陆不可达，仅作 github.io 兜底。 */
+function fundApiUrl(p){
+  if(API_BASE) return apiUrl(p);                       // ① 显式自建 server
+  if(/github\.io$/i.test(location.hostname) || location.protocol === 'file:'){
+    return (DEFAULT_WORKER_BASE || '') + p;            // ③ 纯静态托管走 Worker
+  }
+  return p;                                            // ② 自建 server 同源 /api/
+}
 
 function tryFetchOnce(url, charset){
   /* charset: 'utf-8' (默认) | 'gbk' | 'gb18030' — 新浪/腾讯接口返回 GBK/GB18030 */
@@ -12234,7 +12245,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'9906f93', date:'2026-09-03', desc:'基金估值已接驳 Cloudflare Worker(DEFAULT_WORKER_BASE=aurora-fund-proxy.rogue-basketball-fd5.workers.dev):GitHub Pages默认走Worker拿新浪盘中实时估值;Worker不可达自动回退fundmobapi直连。请认领claim URL转永久' };
+  window.ver = { git:'pending', date:'2026-09-03', desc:'修复基金估值路由优先级:自建服务器同源(106.14.223.116:9000)优先于Cloudflare Worker,解决服务器部署场景下估值恒走不可达Worker导致失败;GitHub Pages(https)访问http服务器受混合内容限制,建议服务器同源打开本页' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
