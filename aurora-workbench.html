@@ -12234,7 +12234,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'3b01c54', date:'2026-09-03', desc:'基金估值已接驳 Cloudflare Worker(DEFAULT_WORKER_BASE 指向已部署 aurora-fund-proxy.rogue-basketball-fd5.workers.dev):GitHub Pages 用户默认经 Worker 拿新浪盘中实时估值;Worker 不可达自动回退 fundmobapi 直连。Worker 由临时账号部署,请尽快认领 claim URL 以长期保有' };
+  window.ver = { git:'9906f93', date:'2026-09-03', desc:'基金估值已接驳 Cloudflare Worker(DEFAULT_WORKER_BASE=aurora-fund-proxy.rogue-basketball-fd5.workers.dev):GitHub Pages默认走Worker拿新浪盘中实时估值;Worker不可达自动回退fundmobapi直连。请认领claim URL转永久' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
