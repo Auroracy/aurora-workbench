@@ -7475,9 +7475,11 @@ function computeFundMetrics(f){
     : 0;
   /* 估值盈亏：独立重算 = 当前估算市值(gsz/dwjz×份额) - 总成本，不依赖hpImport */
   var gzProfit = (gzAmt > 0) ? (gzAmt - ct) : 0;
+  /* 今日估值变动额(¥) = 估算市值 × 估值涨跌幅% / 100（与列表"估值"列口径一致，盘中实时变动） */
+  var gzDayAmt = (gzAmt > 0) ? gzAmt * gszzl / 100 : 0;
   return { nav: nav, gsz: gsz, dwjz: dwjz, mv: isNaN(mv)?0:mv, ct: ct, hp: isNaN(hp)?0:hp, hpPct: isNaN(hpPct)?0:hpPct,
            gszzl: gszzl, yesterdayProfit: isNaN(yesterdayProfit)?0:yesterdayProfit, yesterdayPct: yesterdayPct,
-           gzAmt: gzAmt, gzProfit: isNaN(gzProfit)?0:gzProfit };
+           gzAmt: gzAmt, gzProfit: isNaN(gzProfit)?0:gzProfit, gzDayAmt: isNaN(gzDayAmt)?0:gzDayAmt };
 }
 
 /* ============ 渲染基金总览/配置/列表/对比/建议 ============ */
@@ -7487,7 +7489,7 @@ var FUND_PAGE_SIZE = 10;
 function renderFunds(){
   recomputePendingTrades();
   var funds = DB.market.funds || [];
-  var totals = { mv: 0, gzProfit: 0, ct: 0, hp: 0, yesterdayProfit: 0, validCt: 0 };
+  var totals = { mv: 0, gzProfit: 0, gzDayAmt: 0, gzDayBase: 0, ct: 0, hp: 0, yesterdayProfit: 0, validCt: 0 };
   var metricsArr = {}; var typeMap = {}; var themeMap = {};
   funds.forEach(function(f){
     var m = computeFundMetrics(f); metricsArr[f.id] = m;
@@ -7500,15 +7502,17 @@ function renderFunds(){
     totals.yesterdayProfit += safeNum(m.yesterdayProfit);
     /* 估值盈亏：独立重算(gzAmt-cost)，仅统计有市值的基金 */
     totals.gzProfit += safeNum(m.gzProfit);
-    if(safeNum(m.gzAmt) > 0) totals.validCt += _ct;
+    totals.gzDayAmt += safeNum(m.gzDayAmt);
+    if(safeNum(m.gzAmt) > 0){ totals.validCt += _ct; totals.gzDayBase += safeNum(m.gzAmt); }
     typeMap[f.type] = (typeMap[f.type] || 0) + _mv;
     themeMap[f.theme] = (themeMap[f.theme] || 0) + _mv;
   });
   totals.hpPct = totals.ct > 0 ? totals.hp / totals.ct * 100 : 0;
 
   setText('fFundCount', funds.length);
-  var _gap = safeNum(totals.gzProfit);
-  var _gapPct = totals.validCt > 0 ? _gap / totals.validCt * 100 : 0;
+  /* 估值盈亏 = 今日估值变动额合计 = Σ(估算市值×涨跌幅%)，与列表"估值"列金额口径一致(盘中实时) */
+  var _gap = safeNum(totals.gzDayAmt);
+  var _gapPct = totals.gzDayBase > 0 ? _gap / totals.gzDayBase * 100 : 0;
   var faEl = document.getElementById('fTotalAsset');
   if(faEl){ faEl.textContent = (_gap >= 0 ? '+' : '') + fmtMoney(_gap); faEl.className = 'metric-value mini-num ' + clsOf(_gap); }
   var faPct = document.getElementById('fTotalAssetPct');
@@ -12288,7 +12292,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'pending', date:'2026-09-04', desc:'修复净值列与估值列重复:净值列改用东财NAVCHGRT(真实昨日涨跌幅)+PDATE(正确净值日期),估值列仍用新浪gszzl(盘中实时);fetchFundValuationBatch改为新浪+东财并行合并,服务器同源两接口零跨域' };
+  window.ver = { git:'pending', date:'2026-09-04', desc:'估值盈亏口径修正:顶部卡片改为今日估值变动额合计=Σ(估算市值×涨跌幅%),与列表"估值"列金额一致,盘中实时变动;另含净值列改用东财NAVCHGRT+PDATE与估值列区分' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
