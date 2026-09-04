@@ -7792,13 +7792,45 @@ function computeFundAdvice(f, ctx){
   if(score >= 25) action = 'add';
   else if(score <= -25) action = 'reduce';
 
-  /* 建议金额 */
+  /* 建议金额：减仓按市值10%定；加仓金额不在此逐只定（旧逻辑每只独立拿预算40%，N只即N×400、总额远超预算），
+   * 改由 renderFundAdvice 收集全部"建议加仓"后，按"今日机动加仓预算"总额统一分配（distributeAddBudget）。 */
   var suggestAmount = 0;
-  if(action === 'add') suggestAmount = isDcaDay ? (dcaPlan.amount || 0) : Math.round(ctx.budget * 0.4);
-  else if(action === 'reduce') suggestAmount = Math.round(mv * 0.1);
+  if(action === 'reduce') suggestAmount = Math.round(mv * 0.1);
 
   return { f:f, pct:pct, score:Math.round(score), action:action, reasons:reasons,
-           suggestAmount:suggestAmount, mv:mv, hpPct:hpPct, isDcaDay:isDcaDay };
+           suggestAmount:suggestAmount, mv:mv, hpPct:hpPct, isDcaDay:isDcaDay,
+           dcaAmt: (isDcaDay && dcaPlan) ? (dcaPlan.amount || 0) : 0 };
+}
+
+/* 把"今日机动加仓预算"作为总额池，分配到所有建议加仓的基金：
+ * ① 定投扣款日的基金优先保留其计划金额(从预算池扣除；若定投合计超预算则等比压缩到预算)；
+ * ② 剩余额度按信号强度(score)权重分配给其余建议加仓基金；
+ * ③ rounding 差额补给信号最高者，确保所有"建议加仓"金额合计 ≤ 预算。 */
+function distributeAddBudget(advice, budget){
+  var adds = advice.filter(function(a){ return a.action === 'add'; });
+  if(!adds.length) return;
+  budget = safeNum(budget);
+  if(budget <= 0){ adds.forEach(function(a){ a.suggestAmount = 0; }); return; }
+  /* ① DCA 计划金额优先 */
+  var dcaTotal = 0;
+  adds.forEach(function(a){ if(a.isDcaDay && a.dcaAmt > 0){ a.suggestAmount = a.dcaAmt; dcaTotal += a.dcaAmt; } });
+  if(dcaTotal > budget){
+    var k = budget / dcaTotal;
+    adds.forEach(function(a){ if(a.isDcaDay && a.dcaAmt > 0) a.suggestAmount = Math.round(a.suggestAmount * k); });
+    dcaTotal = budget;
+  }
+  var remain = Math.max(0, budget - dcaTotal);
+  /* ② 非 DCA 建议加仓按 score 权重分配剩余额度 */
+  var disc = adds.filter(function(a){ return !(a.isDcaDay && a.dcaAmt > 0); });
+  var wsum = disc.reduce(function(s,a){ return s + Math.max(1, a.score); }, 0);
+  var allocated = 0, top = null;
+  disc.forEach(function(a){
+    a.suggestAmount = wsum > 0 ? Math.round(remain * Math.max(1, a.score) / wsum) : 0;
+    allocated += a.suggestAmount;
+    if(!top || a.score > top.score) top = a;
+  });
+  /* ③ rounding 差额补给信号最高者 */
+  if(top) top.suggestAmount += (remain - allocated);
 }
 
 /* 渲染今日加/减仓建议面板（按信号强度排序） */
@@ -7816,6 +7848,7 @@ function renderFundAdvice(){
   var ctx = { today: new Date().toISOString().slice(0,10), totalMv: totalMv, budget: getFundAdviceBudget(), historyMap: historyMap };
   var advice = funds.map(function(f){ return computeFundAdvice(f, ctx); });
   advice.sort(function(a,b){ return Math.abs(b.score) - Math.abs(a.score); });
+  distributeAddBudget(advice, ctx.budget);  /* 加仓金额按预算总额统一分配，合计≤预算 */
 
   var html = advice.map(function(a){
     var f = a.f;
@@ -7834,7 +7867,7 @@ function renderFundAdvice(){
   }).join('');
 
   el.innerHTML = '<div class="fa-grid">' + html + '</div>' +
-    '<div class="fa-foot">评分规则：当日涨跌幅(±2%封顶±40) + 定投日(+30) + 深套(+10)/大赚(-10) + 占比再平衡(±8) + 近月净值位置/网格(±25)；≥+25加仓，≤-25减仓。⚠ 量化参考，不构成投资建议；A股T+1，建议3点前下单。</div>';
+    '<div class="fa-foot">评分规则：当日涨跌幅(±2%封顶±40) + 定投日(+30) + 深套(+10)/大赚(-10) + 占比再平衡(±8) + 近月净值位置/网格(±25)；≥+25加仓，≤-25减仓。所有"建议加仓"金额按今日机动加仓预算总额分配（定投日优先保留计划金额，余额按信号强度分配，合计≤预算）。⚠ 量化参考，不构成投资建议；A股T+1，建议3点前下单。</div>';
 }
 
 /* 展开/收起建议面板 */
@@ -12292,7 +12325,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'pending', date:'2026-09-04', desc:'估值盈亏口径修正:顶部卡片改为今日估值变动额合计=Σ(估算市值×涨跌幅%),与列表"估值"列金额一致,盘中实时变动;另含净值列改用东财NAVCHGRT+PDATE与估值列区分' };
+  window.ver = { git:'pending', date:'2026-09-04', desc:'加仓建议金额按预算总额分配:修复每只建议加仓独立拿预算40%导致总额超预算,改为定投日优先保留计划金额+余额按信号强度分配,所有建议加仓合计≤机动加仓预算;另含估值盈亏/净值列口径修正' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
