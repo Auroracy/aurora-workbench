@@ -7451,20 +7451,20 @@ function computeFundMetrics(f){
   var hpPct = (f.hpPctImport != null && f.hpPctImport !== 0) ? f.hpPctImport : calcHpPct;
   /* 昨日收益：基于确认净值变化(prevDwjz→dwjz)；无历史则退回估值涨跌(盘中临时)；周末用NAVCHGRT */
   var yesterdayProfit = 0, yesterdayPct = 0;
-  if(dwjz > 0 && prevDwjz > 0){
+  if(dwjz > 0 && f.val && f.val.navChgRt != null && !isNaN(parseFloat(f.val.navChgRt))){
+    /* 东财确认净值日涨跌幅(NAVCHGRT)：净值列应显示的真实昨日涨跌，与估值列gszzl(盘中估算)区分 */
+    var _ncr = parseFloat(f.val.navChgRt);
+    yesterdayPct = _ncr;
+    yesterdayProfit = dwjz * _ncr / 100 * shares;
+  } else if(dwjz > 0 && prevDwjz > 0){
     yesterdayProfit = (dwjz - prevDwjz) * shares;
     yesterdayPct = prevDwjz > 0 ? (dwjz - prevDwjz) / prevDwjz * 100 : 0;
   } else if(dwjz > 0 && f.val && f.val.gszzl != null){
+    /* 东财不可用/周末等无确认涨跌幅时，才退回估值gszzl */
     var _gz = parseFloat(f.val.gszzl);
     if(!_gz || isNaN(_gz)) _gz = 0;
     yesterdayPct = _gz;
     yesterdayProfit = dwjz * yesterdayPct / 100 * shares;  /* gszzl相对dwjz */
-  } else if(dwjz > 0 && f.val && f.val.navChgRt != null){
-    /* 周末/非交易时间: GSZZL为空, 用NAVCHGRT(日涨跌幅%)作为昨日收益 */
-    var _ncr = parseFloat(f.val.navChgRt);
-    if(!_ncr || isNaN(_ncr)) _ncr = 0;
-    yesterdayPct = _ncr;
-    yesterdayProfit = dwjz * _ncr / 100 * shares;
   }
   var gszzl = (f.val && f.val.gszzl != null) ? (isNaN(parseFloat(f.val.gszzl)) ? 0 : parseFloat(f.val.gszzl)) : 0;
   /* 纯估值金额：优先 gsz×份额（盘中估算），GSZ 为空(非交易时段)时 fallback 到 dwjz×份额(确认净值计算) */
@@ -9513,14 +9513,57 @@ function fetchFundValuationBatch(codes, cb){
    */
   var joined = codes.join(',');
 
-  // Step 1：/api/fund-gsz（最优：盘中实时估算。优先走 Cloudflare Worker，其次同源 server/apiUrl）
-  tryApi(fundApiUrl('/api/fund-gsz?codes=' + joined), 'fundgz', function(){
-    // Step 2：/api/fundgz-batch（次优：确认净值+涨跌幅）
-    tryApi(fundApiUrl('/api/fundgz-batch?codes=' + joined), 'fundmobapi', function(){
-      // Step 3：CORS 代理 → fundmobapi.eastmoney.com（GitHub Pages 兜底）
-      tryProxyFallback(joined);
+  // Step 1：/api/fund-gsz（新浪盘中实时估算 GSZ/GSZZL；优先 Worker/同源 server/apiUrl）
+  // 成功后**并拉** /api/fundgz-batch（东财确认净值 DWJZ/NAVCHGRT/PDATE）做合并：
+  // 估值列用新浪 gszzl(实时)，净值列用东财 navChgRt+pdate(确认)，二者不再重复。
+  fetch(fundApiUrl('/api/fund-gsz?codes=' + joined), { credentials: 'same-origin' })
+    .then(function(r){ if(!r.ok) throw new Error('fundgz HTTP ' + r.status); return r.json(); })
+    .then(function(d){
+      if(d.error || !(d.count > 0)) throw new Error(d.error || 'fundgz 0条');
+      var sinaData = d.data || {};
+      console.log('[fetchVal] ★ fundgz(新浪实时)成功:', d.count, '只');
+      // 并拉东财确认净值（失败不影响估值列，仅净值列退回旧逻辑）
+      fetch(fundApiUrl('/api/fundgz-batch?codes=' + joined), { credentials: 'same-origin' })
+        .then(function(r2){ return r2.json(); })
+        .then(function(d2){
+          var emData = (d2 && !d2.error && d2.count > 0) ? d2.data : null;
+          if(emData) console.log('[fetchVal] ★ fundgz-batch(东财确认净值)合并:', d2.count, '只');
+          cb(null, mergeSinaEm(sinaData, emData));
+        })
+        .catch(function(){ cb(null, mergeSinaEm(sinaData, null)); });
+    })
+    .catch(function(err){
+      console.warn('[fetchVal] fundgz(新浪)失败:', err.message, ', 走东财 fundgz-batch');
+      // Step 2：/api/fundgz-batch（东财确认净值+涨跌幅）
+      tryApi(fundApiUrl('/api/fundgz-batch?codes=' + joined), 'fundmobapi', function(){
+        // Step 3：CORS 代理 → fundmobapi.eastmoney.com（GitHub Pages 兜底）
+        tryProxyFallback(joined);
+      });
     });
-  });
+
+  /* 合并新浪实时估值(gsz/gszzl)与东财确认净值(dwjz/navChgRt/pdate)。
+   * 估值列用 gszzl(新浪实时)，净值列用 navChgRt+pdate(东财确认)，避免两列重复。
+   * 日期：东财 pdate 是真实净值日期(如 09-03)；新浪 jzrq 盘中会错标当天(09-04)，故日期优先东财。 */
+  function mergeSinaEm(sina, em){
+    var out = {}, codeset = {};
+    if(sina) Object.keys(sina).forEach(function(c){ codeset[c] = 1; });
+    if(em) Object.keys(em).forEach(function(c){ codeset[c] = 1; });
+    Object.keys(codeset).forEach(function(c){
+      var s = sina ? sina[c] : null, e = em ? em[c] : null;
+      out[c] = {
+        name: (s && s.name) || (e && e.name) || '',
+        gsz: (s && s.gsz != null) ? s.gsz : (e ? e.gsz : null),
+        gszzl: (s && s.gszzl != null) ? s.gszzl : (e ? e.gszzl : null),
+        dwjz: (e && e.dwjz != null) ? e.dwjz : (s ? s.dwjz : null),
+        navChgRt: (e && e.navChgRt != null) ? e.navChgRt : null,
+        pdate: (e && e.pdate) || (s && s.jzrq) || null,
+        gztime: (s && s.gztime) || (e && e.gztime) || null,
+        jzrq: (e && e.pdate) || (s && s.jzrq) || null,
+        nav: (e && e.nav != null) ? e.nav : (s ? s.nav : null),
+      };
+    });
+    return out;
+  }
 
   function tryApi(url, label, onFail){
     fetch(url, { credentials: 'same-origin' }).then(function(r){
@@ -12245,7 +12288,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'pending', date:'2026-09-03', desc:'修复基金估值路由优先级:自建服务器同源(106.14.223.116:9000)优先于Cloudflare Worker,解决服务器部署场景下估值恒走不可达Worker导致失败;GitHub Pages(https)访问http服务器受混合内容限制,建议服务器同源打开本页' };
+  window.ver = { git:'pending', date:'2026-09-04', desc:'修复净值列与估值列重复:净值列改用东财NAVCHGRT(真实昨日涨跌幅)+PDATE(正确净值日期),估值列仍用新浪gszzl(盘中实时);fetchFundValuationBatch改为新浪+东财并行合并,服务器同源两接口零跨域' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
