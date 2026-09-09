@@ -7725,7 +7725,9 @@ function ensureFundHistory(codes, done){
  * 返回 { action:'add'|'reduce'|'hold', score, pct, reasons[], suggestAmount, mv, hpPct, isDcaDay } */
 function computeFundAdvice(f, ctx){
   var m = computeFundMetrics(f);
-  var pct = safeNum(m.yesterdayPct);                                  /* 当日涨跌幅% */
+  /* 当日涨跌幅%：优先今日盘中实时估值gszzl(新浪,点"刷新数据"即更新)；无估值数据(新导入/源缺失)才退回昨日确认涨跌幅 */
+  var pct = (f.val && f.val.gszzl != null && !isNaN(parseFloat(f.val.gszzl)))
+    ? parseFloat(f.val.gszzl) : safeNum(m.yesterdayPct);
   var shares = parseFloat(f.shares) || 0;
   var price = safeNum(m.gsz) > 0 ? safeNum(m.gsz) : (safeNum(m.nav) > 0 ? safeNum(m.nav) : safeNum(m.dwjz));
   var mv = price > 0 && shares > 0 ? price * shares : 0;
@@ -9750,11 +9752,13 @@ function autoFetchFundNavIfNeeded(force){
     fs.forEach(function(f){
       var item = data[f.code];
       if(!item) return;
+      var _jzrqDate = item.pdate || item.jzrq || (item.gztime ? item.gztime.slice(0,10) : '');
       applyFundVal(f, {
         fundcode: f.code,
         gsz: item.gsz, gszzl: item.gszzl,
         dwjz: item.dwjz || (item.nav != null ? String(item.nav) : null),
-        gztime: item.gztime || '', jzrq: (item.gztime||'').slice(0,10), nav: item.nav,
+        gztime: item.gztime || '', jzrq: _jzrqDate.slice(0,10), nav: item.nav,
+        navChgRt: item.navChgRt || null,  /* 东财确认涨跌幅+净值真实日期，与refreshAllFundValuation同口径 */
       });
     });
     saveDb(); renderFunds(); updateFundValTime();
@@ -12325,7 +12329,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'pending', date:'2026-09-04', desc:'加仓建议金额按预算总额分配:修复每只建议加仓独立拿预算40%导致总额超预算,改为定投日优先保留计划金额+余额按信号强度分配,所有建议加仓合计≤机动加仓预算;另含估值盈亏/净值列口径修正' };
+  window.ver = { git:'pending', date:'2026-09-09', desc:'加/减仓建议改用今日实时估值gszzl评分(此前误用昨日确认涨跌幅);autoFetchFundNavIfNeeded回调补齐navChgRt/pdate透传;点刷新数据即按最新估值重算建议' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
