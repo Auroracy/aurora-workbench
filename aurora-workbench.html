@@ -1044,6 +1044,86 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 .word-history-chip.mark-unknown{background:var(--red-bg);color:var(--red);}
 .word-history-chip.none{opacity:0.6;}
 
+/* ====== Tab3: 单词闯关（游戏化） ====== */
+.word-mode-switch{display:flex;gap:4px;margin-bottom:12px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:4px;width:fit-content;max-width:100%;}
+.word-mode-btn{border:none;background:transparent;color:var(--text-2);font-size:13px;font-weight:600;padding:7px 18px;border-radius:999px;cursor:pointer;transition:all 0.2s;white-space:nowrap;font-family:inherit;}
+.word-mode-btn:hover{color:var(--accent);}
+.word-mode-btn.active{background:var(--accent-grad);color:#fff;box-shadow:0 2px 10px rgba(21,164,155,0.28);}
+
+.word-hud{display:grid;grid-template-columns:minmax(190px,1fr) auto;gap:16px;align-items:center;background:linear-gradient(120deg,var(--accent-bg),var(--blue-bg));border:1px solid var(--line);border-radius:var(--radius);padding:14px 18px;margin-bottom:14px;}
+.hud-level{display:flex;align-items:center;gap:12px;min-width:0;}
+.hud-avatar{width:46px;height:46px;flex:0 0 46px;border-radius:50%;background:var(--accent-grad);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:700;box-shadow:0 4px 14px rgba(21,164,155,0.3);letter-spacing:-0.3px;}
+.hud-xp{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px;}
+.hud-xp-row{display:flex;justify-content:space-between;font-size:11.5px;color:var(--text-2);font-variant-numeric:tabular-nums;}
+.hud-xp-track{height:8px;background:rgba(255,255,255,0.75);border-radius:4px;overflow:hidden;}
+.hud-xp-fill{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--blue));border-radius:4px;transition:width 0.5s;}
+.hud-stats{display:flex;gap:8px;flex-wrap:wrap;}
+.hud-stat{display:flex;flex-direction:column;align-items:center;gap:1px;background:rgba(255,255,255,0.7);border:1px solid var(--glass-border);border-radius:var(--radius-sm);padding:7px 14px;min-width:64px;}
+.hud-stat .hs-ico{font-size:14px;line-height:1.2;}
+.hud-stat b{font-size:15px;color:var(--text);font-variant-numeric:tabular-nums;}
+.hud-stat i{font-size:10.5px;color:var(--text-3);font-style:normal;}
+@media(max-width:680px){.word-hud{grid-template-columns:1fr;gap:12px;}.hud-stats{justify-content:space-between;}.hud-stat{flex:1;min-width:0;padding:7px 4px;}}
+
+.word-quest{padding:20px 22px;}
+.wq-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:10px;}
+.wq-title{font-size:15px;font-weight:700;color:var(--text);}
+.wq-hearts{font-size:15px;letter-spacing:2px;}
+.wq-steps{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;}
+.wq-step{width:26px;height:26px;border-radius:50%;border:1.5px solid var(--line);background:var(--card-2);color:var(--text-3);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;transition:all 0.25s;}
+.wq-step.done{background:var(--green);border-color:var(--green);color:#fff;}
+.wq-step.wrong{background:var(--red-bg);border-color:var(--red);color:var(--red);}
+.wq-step.current{border-color:var(--accent);color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg);transform:scale(1.08);}
+.wq-qtype{display:inline-block;font-size:11px;font-weight:600;padding:2px 9px;border-radius:10px;background:var(--blue-bg);color:var(--blue);margin-bottom:10px;}
+.wq-prompt{font-size:clamp(16px,1.7vw,21px);font-weight:700;color:var(--text);line-height:1.6;margin-bottom:6px;word-break:break-word;}
+.wq-sub{font-size:13px;color:var(--text-2);line-height:1.75;margin-bottom:12px;}
+.wq-blank{color:var(--accent);font-weight:700;letter-spacing:2px;}
+.wq-options{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px;}
+.wq-opt{border:1.5px solid var(--line);background:var(--card-2);border-radius:var(--radius-sm);padding:13px 14px;font-size:14px;color:var(--text);cursor:pointer;transition:all 0.18s;text-align:left;line-height:1.5;font-family:inherit;}
+.wq-opt:hover{border-color:var(--accent);background:var(--accent-bg);}
+.wq-opt.right{border-color:var(--green);background:var(--green-bg);color:var(--green);font-weight:600;}
+.wq-opt.bad{border-color:var(--red);background:var(--red-bg);color:var(--red);}
+.wq-opt.disabled{pointer-events:none;opacity:0.6;}
+.wq-opt.right.disabled{opacity:1;}
+@media(max-width:560px){.wq-options{grid-template-columns:1fr;}}
+.wq-input-row{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+.wq-input-row input{flex:1;min-width:140px;padding:11px 13px;border:1px solid var(--input-border);border-radius:var(--radius-sm);background:var(--input-bg);font-size:15px;color:var(--text);font-family:var(--mono);letter-spacing:0.5px;}
+.wq-input-row input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg);}
+.wq-feedback{margin-top:14px;border-radius:var(--radius-sm);padding:12px 14px;font-size:13.5px;line-height:1.7;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+.wq-feedback.ok{background:var(--green-bg);color:var(--green);}
+.wq-feedback.no{background:var(--red-bg);color:var(--red);}
+.wq-feedback b{font-weight:700;}
+.wq-actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;}
+.wq-actions .btn{flex:1;min-width:120px;}
+.wq-intro{text-align:center;padding:16px 6px 6px;}
+.wq-intro .wq-emoji{font-size:44px;margin-bottom:8px;}
+.wq-intro h4{font-size:16px;color:var(--text);margin-bottom:6px;}
+.wq-intro p{font-size:12.5px;color:var(--text-2);line-height:1.85;margin-bottom:14px;}
+.wq-result{text-align:center;padding:6px 4px 4px;}
+.wq-rank{font-size:56px;font-weight:800;line-height:1.1;background:var(--accent-grad);-webkit-background-clip:text;background-clip:text;color:transparent;margin:4px 0 8px;}
+.wq-result-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0;}
+.wq-result-grid div{background:var(--card-2);border:1px solid var(--line);border-radius:var(--radius-sm);padding:10px 4px;}
+.wq-result-grid b{display:block;font-size:17px;color:var(--accent);font-variant-numeric:tabular-nums;}
+.wq-result-grid i{font-style:normal;font-size:11px;color:var(--text-3);}
+@media(max-width:520px){.wq-result-grid{grid-template-columns:repeat(2,1fr);}}
+
+#wordBadgeCard .word-badge-body{display:none;}
+#wordBadgeCard .word-badge-body.open{display:block;}
+#wordBadgeCard .chevron{transition:transform 0.2s;}
+#wordBadgeCard.open .chevron{transform:rotate(180deg);}
+.word-badge-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;padding-top:10px;}
+.word-badge{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:var(--radius-sm);padding:10px 12px;background:var(--card-2);opacity:0.5;filter:grayscale(1);transition:all 0.25s;}
+.word-badge.got{opacity:1;filter:none;border-color:var(--accent);background:linear-gradient(120deg,var(--accent-bg),var(--blue-bg));}
+.word-badge .wb-ico{font-size:22px;flex:0 0 auto;}
+.word-badge .wb-name{font-size:12.5px;font-weight:700;color:var(--text);}
+.word-badge .wb-desc{font-size:10.5px;color:var(--text-3);line-height:1.45;}
+
+@keyframes wqFloatUp{0%{opacity:0;transform:translate(-50%,8px) scale(0.9);}15%{opacity:1;}100%{opacity:0;transform:translate(-50%,-70px) scale(1.15);}}
+.wq-float{position:fixed;left:50%;top:110px;z-index:9999;font-size:17px;font-weight:800;color:var(--green);text-shadow:0 2px 10px rgba(255,255,255,0.9);pointer-events:none;animation:wqFloatUp 1.4s ease-out forwards;}
+@keyframes wqShake{0%,100%{transform:translateX(0);}25%{transform:translateX(-7px);}75%{transform:translateX(7px);}}
+.wq-shake{animation:wqShake 0.3s;}
+.wq-confetti{position:fixed;top:-14px;width:9px;height:14px;z-index:9998;pointer-events:none;border-radius:2px;}
+@keyframes wqFall{to{transform:translateY(105vh) rotate(720deg);opacity:0.2;}}
+
 /* ====== Tab4: Market ====== */
 .disclaimer{
   background:var(--amber-bg);
@@ -2228,6 +2308,28 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     </div>
   </div>
 
+  <!-- 模式切换 + 游戏化 HUD -->
+  <div class="word-mode-switch">
+    <button class="word-mode-btn active" data-mode="study" onclick="setWordMode('study')">📖 精练模式</button>
+    <button class="word-mode-btn" data-mode="quest" onclick="setWordMode('quest')">🎮 闯关模式</button>
+  </div>
+
+  <div class="word-hud">
+    <div class="hud-level">
+      <div class="hud-avatar" id="wgLevel">Lv.1</div>
+      <div class="hud-xp">
+        <div class="hud-xp-row"><span id="wgXpText">0 / 100 XP</span><span id="wgRankText">见习学徒</span></div>
+        <div class="hud-xp-track"><div class="hud-xp-fill" id="wgXpFill"></div></div>
+      </div>
+    </div>
+    <div class="hud-stats">
+      <div class="hud-stat"><span class="hs-ico">🔥</span><b id="wgCombo">0</b><i>连击</i></div>
+      <div class="hud-stat"><span class="hs-ico">📅</span><b id="wgStreak">0 天</b><i>连续</i></div>
+      <div class="hud-stat"><span class="hs-ico">📚</span><b id="wgMaster">0</b><i>已掌握</i></div>
+      <div class="hud-stat"><span class="hs-ico">🏆</span><b id="wgBadge">0 / 10</b><i>徽章</i></div>
+    </div>
+  </div>
+
   <!-- 单词练习大卡片（逐词呈现） -->
   <div class="card word-flashcard" id="wordFlashcard">
     <div class="word-flashcard-head">
@@ -2265,6 +2367,16 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     </div>
   </div>
 
+  <!-- 闯关模式面板 -->
+  <div class="card word-quest" id="wordQuestPanel" style="display:none;">
+    <div class="wq-head">
+      <div class="wq-title">🎮 今日闯关 · 10 关</div>
+      <div class="wq-hearts" id="wqHearts">❤️❤️❤️</div>
+    </div>
+    <div class="wq-steps" id="wqSteps"></div>
+    <div id="wordQuestBody"></div>
+  </div>
+
   <!-- 学习便签与打卡 -->
   <div class="card">
     <div class="card-title">学习便签</div>
@@ -2276,6 +2388,16 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
         <span class="radio-item" data-val="review" onclick="setWordStatus(this)">明日待复习</span>
       </div>
     </div>
+  </div>
+
+  <!-- 成就徽章（折叠式） -->
+  <div class="card" id="wordBadgeCard">
+    <div class="card-title-row" onclick="toggleWordBadges()">
+      <span>成就徽章</span>
+      <span class="sub" id="wordBadgeCount"></span>
+      <span class="chevron" id="wordBadgeChevron">▾</span>
+    </div>
+    <div class="word-badge-body" id="wordBadgeBody"></div>
   </div>
 
   <!-- 记忆历史（折叠式） -->
@@ -3366,7 +3488,7 @@ var defaultDb = {
     meals: [], weights: [], exercises: [],
     recipeIdx: 0
   },
-  words: { dailyRecords: {} },
+  words: { dailyRecords: {}, game: { xp:0, level:1, combo:0, bestCombo:0, streak:0, lastDay:'', clears:0, totalCorrect:0, totalWrong:0, badges:[], masteredWords:[], questBest:{}, quest:null, mode:'study' } },
   market: { news: [], tracking: [], sentiment: {}, notes: [], favNewsIds: [], newsLastUpdate: '', gold: null, funds: [], techWatch: [], earnings: [], techManual: [], fundOverlap: null },
   python: {
     progress: { basics: false, functions: false, files: false, data: false, projects: false },
@@ -6488,9 +6610,8 @@ function renderWordFlashcard(){
     }
     var safeText = escapeHtml(ex.text);
     if(ex.isMain){
-      // 挖空本词（大小写不敏感，匹配一次）
-      var re = new RegExp('\\b' + word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i');
-      var blanked = safeText.replace(re, '<span class="word-blank" data-main="1"></span>');
+      // 挖空本词（兼容屈折变形：abandoned / applied / committed 等）
+      var blanked = wqBlankTo(safeText, word, '<span class="word-blank" data-main="1"></span>');
       html += '<div class="word-sentence">' + blanked + '</div>';
     } else {
       html += '<div class="word-sentence" style="color:var(--text-2);">' + safeText + '</div>';
@@ -6587,6 +6708,7 @@ function checkSpelling(){
     input.classList.add('correct');
     // 答对自动标记为"已掌握"（用户可手动覆盖）
     setWordMarkAuto('known');
+    try{ wordGameCorrect(); }catch(e){}
   } else {
     hint.textContent = '✗ 拼写错误，正确答案是：' + word;
     hint.className = 'word-spelling-hint wrong';
@@ -6606,6 +6728,7 @@ function setWordMarkAuto(mark){
   var prev = DB.words.dailyRecords[dateStr].perWord[currentWordIndex] || {};
   if(!prev.mark){
     DB.words.dailyRecords[dateStr].perWord[currentWordIndex] = { mark: mark };
+    try{ trackMasteredWord(mark); }catch(e){}
     saveDb();
     renderWordHero();
     renderWordFlashcard();
@@ -6641,8 +6764,10 @@ function setWordMark(btn){
   var val = wasActive ? '' : btn.dataset.val;
   if(val){
     DB.words.dailyRecords[dateStr].perWord[currentWordIndex] = { mark: val };
+    try{ trackMasteredWord(val); }catch(e){}
   } else {
     delete DB.words.dailyRecords[dateStr].perWord[currentWordIndex];
+    try{ trackMasteredWord(''); }catch(e){}
   }
   saveDb();
   renderWordHero();
@@ -6730,6 +6855,481 @@ function jumpToWordDate(dateStr){
   currentWordOffset = Math.round((target - today) / 86400000);
   currentWordIndex = 0;
   renderWords();
+}
+
+/* ============================================================
+   Tab3-Extra: 单词闯关（游戏化）
+   ============================================================ */
+var wordMode = 'study';   // 'study' | 'quest'
+
+var WORD_BADGES = [
+  { id:'first_blood', icon:'🌱', name:'初出茅庐', desc:'答对第 1 个单词' },
+  { id:'clear1',      icon:'🏁', name:'首次通关', desc:'完成一次 10 词闯关' },
+  { id:'clear5',      icon:'🎖️', name:'闯关达人', desc:'累计完成 5 次闯关' },
+  { id:'perfect',     icon:'💯', name:'完美通关', desc:'单次闯关 10 题全对' },
+  { id:'speedrun',    icon:'⚡', name:'疾风通关', desc:'3 分钟内完成闯关' },
+  { id:'combo10',     icon:'🔥', name:'十连击',   desc:'连击达到 10' },
+  { id:'streak3',     icon:'📅', name:'三日不辍', desc:'连续学习 3 天' },
+  { id:'streak7',     icon:'🗓️', name:'七日成习', desc:'连续学习 7 天' },
+  { id:'lv5',         icon:'⭐', name:'五级学者', desc:'等级达到 Lv.5' },
+  { id:'master50',    icon:'📚', name:'词汇五十', desc:'累计掌握 50 词' }
+];
+var WORD_RANKS = [[1,'见习学徒'],[3,'词汇新秀'],[5,'单词猎人'],[7,'词林高手'],[10,'词汇大师'],[15,'词海行者']];
+
+function ensureWordGame(){
+  if(!DB.words) DB.words = { dailyRecords: {} };
+  if(!DB.words.dailyRecords) DB.words.dailyRecords = {};
+  var g = DB.words.game;
+  if(!g || typeof g !== 'object') g = {};
+  var d = { xp:0, level:1, combo:0, bestCombo:0, streak:0, lastDay:'', clears:0,
+            totalCorrect:0, totalWrong:0, badges:[], masteredWords:[], questBest:{}, quest:null, mode:'study' };
+  for(var k in d){ if(g[k] === undefined) g[k] = d[k]; }
+  if(!Array.isArray(g.badges)) g.badges = [];
+  if(!Array.isArray(g.masteredWords)) g.masteredWords = [];
+  if(!g.questBest || typeof g.questBest !== 'object') g.questBest = {};
+  DB.words.game = g;
+  return g;
+}
+function wordXpNeed(lv){ return 100 + (lv - 1) * 60; }
+function wordRankName(lv){
+  var name = WORD_RANKS[0][1];
+  for(var i = 0; i < WORD_RANKS.length; i++){ if(lv >= WORD_RANKS[i][0]) name = WORD_RANKS[i][1]; }
+  return name;
+}
+function touchStreak(){
+  var g = ensureWordGame();
+  var today = getWordDateStr(0);
+  if(g.lastDay === today) return;
+  g.streak = (g.lastDay === getWordDateStr(-1)) ? (g.streak || 0) + 1 : 1;
+  g.lastDay = today;
+}
+function addWordXp(n){
+  var g = ensureWordGame();
+  g.xp += n;
+  var need = wordXpNeed(g.level);
+  var guard = 0;
+  while(g.xp >= need && guard++ < 50){
+    g.xp -= need; g.level++; need = wordXpNeed(g.level);
+    toast('🎉 升级！Lv.' + g.level + ' · ' + wordRankName(g.level));
+  }
+}
+function checkWordBadges(){
+  var g = ensureWordGame();
+  var add = function(id){
+    if(g.badges.indexOf(id) >= 0) return;
+    g.badges.push(id);
+    var b = null;
+    for(var i = 0; i < WORD_BADGES.length; i++){ if(WORD_BADGES[i].id === id) b = WORD_BADGES[i]; }
+    if(b) setTimeout(function(){ toast('🏆 解锁徽章：' + b.name); }, 400);
+  };
+  if((g.totalCorrect || 0) >= 1) add('first_blood');
+  if((g.clears || 0) >= 1) add('clear1');
+  if((g.clears || 0) >= 5) add('clear5');
+  if(g.perfect) add('perfect');
+  if(g.speedrun) add('speedrun');
+  if((g.bestCombo || 0) >= 10) add('combo10');
+  if((g.streak || 0) >= 3) add('streak3');
+  if((g.streak || 0) >= 7) add('streak7');
+  if(g.level >= 5) add('lv5');
+  if((g.masteredWords || []).length >= 50) add('master50');
+}
+function wordFloatXp(txt){
+  var d = document.createElement('div');
+  d.className = 'wq-float';
+  d.textContent = txt;
+  document.body.appendChild(d);
+  setTimeout(function(){ if(d.parentNode) d.remove(); }, 1500);
+}
+function wordConfetti(){
+  var colors = ['#15A49B','#2E86C1','#2DAB66','#D4933C','#DB6B6B','#9B6BD6'];
+  for(var i = 0; i < 26; i++){
+    (function(i){
+      var d = document.createElement('div');
+      d.className = 'wq-confetti';
+      d.style.left = (Math.random() * 100) + 'vw';
+      d.style.background = colors[i % colors.length];
+      d.style.animation = 'wqFall ' + (1.6 + Math.random() * 1.2) + 's linear ' + (Math.random() * 0.5) + 's forwards';
+      document.body.appendChild(d);
+      setTimeout(function(){ if(d.parentNode) d.remove(); }, 3600);
+    })(i);
+  }
+}
+function speakThisWord(w){
+  if(!w) return;
+  if(!('speechSynthesis' in window)){ toast('当前浏览器不支持朗读'); return; }
+  try{
+    window.speechSynthesis.cancel();
+    var u = new SpeechSynthesisUtterance(w);
+    u.lang = 'en-US'; u.rate = 0.85;
+    window.speechSynthesis.speak(u);
+  }catch(e){}
+}
+/* 记录"已掌握"词表（用于徽章统计，跨天去重） */
+function trackMasteredWord(mark){
+  var g = ensureWordGame();
+  var w = WORD_BANK[getCurrentWordBankIdx()][0];
+  var pos = g.masteredWords.indexOf(w);
+  if(mark === 'known'){ if(pos < 0) g.masteredWords.push(w); }
+  else if(pos >= 0){ g.masteredWords.splice(pos, 1); }
+}
+function wordGameCorrect(){
+  var g = ensureWordGame();
+  g.combo = (g.combo || 0) + 1;
+  if(g.combo > (g.bestCombo || 0)) g.bestCombo = g.combo;
+  g.totalCorrect = (g.totalCorrect || 0) + 1;
+  var gain = Math.round(10 * (1 + Math.min(g.combo, 5) * 0.1));
+  addWordXp(gain);
+  touchStreak();
+  checkWordBadges();
+  wordFloatXp('+' + gain + ' XP' + (g.combo >= 3 ? '  🔥 ' + g.combo + ' 连击' : ''));
+  renderWordHud();
+}
+function wordGameWrong(){
+  var g = ensureWordGame();
+  g.combo = 0;
+  g.totalWrong = (g.totalWrong || 0) + 1;
+  addWordXp(2);
+  renderWordHud();
+}
+function renderWordHud(){
+  var g = ensureWordGame();
+  var set = function(id, v){ var e = document.getElementById(id); if(e) e.textContent = v; };
+  set('wgLevel', 'Lv.' + g.level);
+  var need = wordXpNeed(g.level);
+  set('wgXpText', g.xp + ' / ' + need + ' XP');
+  set('wgRankText', wordRankName(g.level));
+  var fill = document.getElementById('wgXpFill');
+  if(fill) fill.style.width = Math.min(100, g.xp / need * 100) + '%';
+  set('wgCombo', (g.combo || 0) + (g.bestCombo ? ' · 最高 ' + g.bestCombo : ''));
+  set('wgStreak', (g.streak || 0) + ' 天');
+  set('wgMaster', (g.masteredWords || []).length);
+  set('wgBadge', (g.badges || []).length + ' / ' + WORD_BADGES.length);
+}
+function setWordMode(m){
+  wordMode = m;
+  var g = ensureWordGame();
+  g.mode = m;
+  saveDb();
+  document.querySelectorAll('.word-mode-btn').forEach(function(b){
+    b.classList.toggle('active', b.dataset.mode === m);
+  });
+  applyWordMode();
+}
+function applyWordMode(){
+  var flash = document.getElementById('wordFlashcard');
+  var quest = document.getElementById('wordQuestPanel');
+  if(flash) flash.style.display = (wordMode === 'study') ? '' : 'none';
+  if(quest) quest.style.display = (wordMode === 'quest') ? '' : 'none';
+  if(wordMode === 'quest') renderWordQuest();
+}
+
+function wqShuffle(a){
+  var arr = a.slice();
+  for(var i = arr.length - 1; i > 0; i--){
+    var j = Math.floor(Math.random() * (i + 1));
+    var t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+  }
+  return arr;
+}
+function wqDistractors(idx, n){
+  var pc = parsePosCn(WORD_BANK[idx][1]);
+  var same = [], other = [];
+  for(var i = 0; i < WORD_BANK.length; i++){
+    if(i === idx) continue;
+    if(parsePosCn(WORD_BANK[i][1]).pos === pc.pos) same.push(i);
+    else other.push(i);
+  }
+  var res = [], seen = {};
+  seen[idx] = 1;
+  var pool = wqShuffle(same).concat(wqShuffle(other));
+  for(var j = 0; j < pool.length && res.length < n; j++){
+    if(!seen[pool[j]]){ seen[pool[j]] = 1; res.push(pool[j]); }
+  }
+  return res;
+}
+function wqPickType(i){
+  if(i === 0) return 'cn2en';
+  var r = Math.random();
+  if(r < 0.26) return 'spell';
+  if(r < 0.50) return 'cn2en';
+  if(r < 0.70) return 'en2cn';
+  if(r < 0.86) return 'listen';
+  return 'cloze';
+}
+/* 单词的常见屈折形式（用于例句挖空）：abandon→abandoned / apply→applied / commit→committed */
+function wqWordForms(w){
+  var lower = (w || '').toLowerCase();
+  var f = [lower];
+  if(/e$/.test(lower)) f.push(lower.slice(0, -1) + 'es', lower.slice(0, -1) + 'ed', lower.slice(0, -1) + 'ing');
+  if(/y$/.test(lower)) f.push(lower.slice(0, -1) + 'ies', lower.slice(0, -1) + 'ied', lower.slice(0, -1) + 'ying');
+  var last = lower.slice(-1);
+  f.push(lower + 's', lower + 'es', lower + 'ed', lower + 'd', lower + 'ing', lower + last + 'ed', lower + last + 'ing');
+  var seen = {}, out = [];
+  for(var i = 0; i < f.length; i++){ if(!seen[f[i]]){ seen[f[i]] = 1; out.push(f[i]); } }
+  out.sort(function(a, b){ return b.length - a.length; });
+  return out;
+}
+function wqBlankTo(sent, word, replacement){
+  var text = sent || '';
+  var forms = wqWordForms(word);
+  for(var i = 0; i < forms.length; i++){
+    var re = new RegExp('\\b' + forms[i].replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i');
+    if(re.test(text)) return text.replace(re, replacement);
+  }
+  /* 兜底：匹配同词根的长单词（如 facilitate→facilitates 之外的变形） */
+  var stem = (word || '').slice(0, Math.max(3, (word || '').length - 3)).toLowerCase();
+  if(stem.length >= 3){
+    var re2 = new RegExp('\\b' + stem.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '[a-z]*\\b', 'i');
+    if(re2.test(text)) return text.replace(re2, replacement);
+  }
+  return text;
+}
+function wqBlank(sent, word){ return wqBlankTo(sent, word, '________'); }
+function wqBuildQuestion(idx, type){
+  var w = WORD_BANK[idx];
+  var pc = parsePosCn(w[1]);
+  var q = { type:type, idx:idx, word:w[0], cn:pc.cn, pos:pc.pos, sent:w[2] };
+  var opts;
+  if(type === 'cn2en' || type === 'listen' || type === 'cloze'){
+    opts = wqShuffle([{ label:w[0], ok:true }].concat(wqDistractors(idx, 3).map(function(i){ return { label:WORD_BANK[i][0], ok:false }; })));
+    q.options = opts;
+  } else if(type === 'en2cn'){
+    opts = wqShuffle([{ label:pc.cn, ok:true }].concat(wqDistractors(idx, 3).map(function(i){ return { label:parsePosCn(WORD_BANK[i][1]).cn, ok:false }; })));
+    q.options = opts;
+  }
+  if(type === 'spell'){ q.prompt = pc.cn; q.sub = wqBlank(w[2], w[0]); }
+  else if(type === 'cn2en'){ q.title = '选出对应的英文单词'; q.prompt = pc.cn + (pc.pos ? '（' + pc.pos + '）' : ''); }
+  else if(type === 'en2cn'){ q.title = '选出正确的中文释义'; q.prompt = w[0]; }
+  else if(type === 'listen'){ q.title = '听发音，选出正确的单词'; q.prompt = ''; }
+  else { q.title = '例句填空：选出合适的单词'; q.prompt = wqBlank(w[2], w[0]); }
+  return q;
+}
+function startWordQuest(force){
+  var g = ensureWordGame();
+  var dateStr = getWordDateStr(currentWordOffset);
+  if(!force && g.quest && g.quest.dateStr === dateStr && !g.quest.finished && g.quest.qs && g.quest.idx < g.quest.qs.length){
+    renderWordQuest();
+    return;
+  }
+  var words = getWordsForOffset(currentWordOffset);
+  var qs = [];
+  for(var i = 0; i < words.length; i++){
+    var bi = -1;
+    for(var j = 0; j < WORD_BANK.length; j++){ if(WORD_BANK[j][0] === words[i][0]){ bi = j; break; } }
+    if(bi < 0) bi = 0;
+    qs.push(wqBuildQuestion(bi, wqPickType(i)));
+  }
+  g.quest = { dateStr:dateStr, idx:0, hearts:3, correct:0, startTs:Date.now(), qs:qs, log:[], finished:false, failed:false, answered:false, result:null };
+  saveDb();
+  renderWordQuest();
+}
+function renderQuestMeta(q){
+  var steps = document.getElementById('wqSteps');
+  var hearts = document.getElementById('wqHearts');
+  if(!steps) return;
+  if(!q || !q.qs){ steps.innerHTML = ''; if(hearts) hearts.innerHTML = '❤️❤️❤️'; return; }
+  var html = '';
+  for(var i = 0; i < q.qs.length; i++){
+    var attempted = (i < q.idx) || (q.log && q.log[i] != null);
+    var cls = 'wq-step';
+    if(attempted) cls += (q.log && q.log[i] === false) ? ' wrong' : ' done';
+    else if(i === q.idx && !q.finished) cls += ' current';
+    html += '<div class="' + cls + '">' + (i + 1) + '</div>';
+  }
+  steps.innerHTML = html;
+  if(hearts){
+    var h = Math.max(0, q.hearts);
+    hearts.innerHTML = new Array(h + 1).join('❤️') + new Array(Math.max(0, 3 - h) + 1).join('🖤');
+  }
+}
+function fmtQuestTime(sec){
+  var m = Math.floor(sec / 60), s = sec % 60;
+  return m + '\'' + (s < 10 ? '0' : '') + s + '"';
+}
+var WQ_TYPE_LABEL = { spell:'✍️ 拼写题', cn2en:'🔤 中译英', en2cn:'📖 英译中', listen:'🔊 听音选词', cloze:'🧩 例句填空' };
+function renderQuestFeedback(q, cur){
+  var g = ensureWordGame();
+  var right = !!q.lastOk;
+  var ans = (cur.type === 'en2cn') ? cur.cn : cur.word;
+  var h = Math.max(0, q.hearts);
+  var fb = '<div class="wq-feedback ' + (right ? 'ok' : 'no') + '">' +
+      '<span>' + (right ? '✅ 答对了！' : '❌ 正确答案：') + ' <b>' + escapeHtml(ans) + '</b></span>' +
+      '<span style="font-size:12px;opacity:.85;">连击 ' + (g.combo || 0) + ' · ' + (new Array(h + 1).join('❤️') || '💔') + '</span>' +
+    '</div>';
+  var last = q.idx >= q.qs.length - 1;
+  fb += '<div class="wq-actions"><button class="btn btn-primary" onclick="questNext()">' + (last ? '完成闯关 →' : '下一关 →') + '</button></div>';
+  return fb;
+}
+function renderWordQuest(){
+  var body = document.getElementById('wordQuestBody');
+  if(!body) return;
+  var g = ensureWordGame();
+  var q = g.quest;
+  var dateStr = getWordDateStr(currentWordOffset);
+  if(!q || !q.qs || q.dateStr !== dateStr){
+    renderQuestMeta(null);
+    body.innerHTML =
+      '<div class="wq-intro">' +
+        '<div class="wq-emoji">🎯</div>' +
+        '<h4>今日闯关 · 10 关</h4>' +
+        '<p>5 种题型随机出现：拼写 / 中译英 / 英译中 / 听音选词 / 例句填空<br>' +
+        '答对累计连击加成（最高 +50%），答错扣 1 颗心，共 3 颗心<br>' +
+        '通关按正确率与用时评级 S / A / B / C / D，额外奖励 XP</p>' +
+        '<button class="btn btn-primary" onclick="startWordQuest(true)">开始闯关</button>' +
+      '</div>';
+    return;
+  }
+  renderQuestMeta(q);
+  if(q.finished){
+    if(q.failed){
+      body.innerHTML = '<div class="wq-result">' +
+        '<div style="font-size:44px;">💔</div>' +
+        '<h4 style="font-size:16px;color:var(--text);margin:8px 0 4px;">闯关失败</h4>' +
+        '<p style="color:var(--text-2);font-size:12.5px;line-height:1.8;">三颗心都用完了～本次答对 <b>' + q.correct + ' / ' + q.qs.length + '</b><br>先回精练模式过一遍，再来挑战吧！</p>' +
+        '<div class="wq-actions">' +
+          '<button class="btn btn-primary" onclick="startWordQuest(true)">重新挑战</button>' +
+          '<button class="btn btn-ghost" onclick="setWordMode(\'study\')">回精练模式</button>' +
+        '</div></div>';
+      return;
+    }
+    var r = q.result || {};
+    body.innerHTML = '<div class="wq-result">' +
+      '<div style="font-size:44px;">' + (r.rank === 'S' ? '🏆' : r.rank === 'A' ? '🎉' : '👏') + '</div>' +
+      '<div style="font-size:13px;color:var(--text-2);">闯关完成 · ' + q.dateStr + '</div>' +
+      '<div class="wq-rank">' + r.rank + '</div>' +
+      '<div class="wq-result-grid">' +
+        '<div><b>' + r.correct + ' / 10</b><i>答对</i></div>' +
+        '<div><b>' + fmtQuestTime(r.time || 0) + '</b><i>用时</i></div>' +
+        '<div><b>+' + r.bonus + '</b><i>奖励 XP</i></div>' +
+        '<div><b>' + (g.bestCombo || 0) + '</b><i>最高连击</i></div>' +
+      '</div>' +
+      '<div class="wq-actions">' +
+        '<button class="btn btn-primary" onclick="startWordQuest(true)">再玩一次</button>' +
+        '<button class="btn btn-ghost" onclick="setWordMode(\'study\')">回精练模式</button>' +
+      '</div></div>';
+    return;
+  }
+  var cur = q.qs[q.idx];
+  var html = '<div class="wq-qtype">第 ' + (q.idx + 1) + ' 关 · ' + (WQ_TYPE_LABEL[cur.type] || '题目') + '</div>';
+  if(cur.type === 'spell'){
+    html += '<div class="wq-prompt">' + escapeHtml(cur.cn) +
+      (cur.pos ? ' <span style="font-size:12px;color:var(--text-3);font-weight:500;">' + escapeHtml(cur.pos) + '</span>' : '') + '</div>';
+    html += '<div class="wq-sub">' + escapeHtml(cur.sub) + '</div>';
+    if(q.answered){
+      html += renderQuestFeedback(q, cur);
+    } else {
+      html += '<div class="wq-input-row">' +
+        '<input id="wqSpellInput" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="拼出这个单词..." onkeydown="if(event.key===\'Enter\')questSubmitSpell()">' +
+        '<button class="btn btn-primary" onclick="questSubmitSpell()">提交</button>' +
+        '<button class="btn btn-ghost" onclick="speakThisWord(\'' + cur.word + '\')">🔊</button>' +
+      '</div>' +
+      '<div class="wq-actions"><button class="btn btn-ghost" onclick="questAnswer(false,null)">跳过（扣 1 心）</button></div>';
+    }
+  } else {
+    html += '<div class="wq-sub" style="margin-bottom:2px;font-size:12px;">' + escapeHtml(cur.title) + '</div>';
+    if(cur.prompt) html += '<div class="wq-prompt">' + escapeHtml(cur.prompt) + '</div>';
+    if(cur.type === 'listen') html += '<div style="margin:6px 0 2px;"><button class="btn btn-ghost btn-sm" onclick="speakThisWord(\'' + cur.word + '\')">🔊 再听一次</button></div>';
+    html += '<div class="wq-options">';
+    cur.options.forEach(function(o, i){
+      var cls = 'wq-opt';
+      if(q.answered){ cls += ' disabled'; if(o.ok) cls += ' right'; else if(o.picked) cls += ' bad'; }
+      html += '<button class="' + cls + '" onclick="questAnswer(' + (o.ok ? 'true' : 'false') + ',' + i + ')">' + escapeHtml(o.label) + '</button>';
+    });
+    html += '</div>';
+    if(q.answered) html += renderQuestFeedback(q, cur);
+  }
+  body.innerHTML = html;
+  if(cur.type === 'listen' && !q.answered){ setTimeout(function(){ speakThisWord(cur.word); }, 280); }
+  if(!q.answered && cur.type === 'spell'){
+    var inp = document.getElementById('wqSpellInput');
+    if(inp) inp.focus();
+  }
+}
+function questAnswer(isRight, optIdx){
+  var g = ensureWordGame();
+  var q = g.quest;
+  if(!q || q.finished || q.answered || !q.qs) return;
+  var cur = q.qs[q.idx];
+  q.answered = true;
+  q.lastOk = !!isRight;
+  q.log[q.idx] = !!isRight;
+  if(optIdx != null && cur.options){ for(var i = 0; i < cur.options.length; i++){ if(i === optIdx) cur.options[i].picked = true; } }
+  if(isRight){
+    q.correct++;
+    wordGameCorrect();
+  } else {
+    q.hearts--;
+    wordGameWrong();
+    var b = document.getElementById('wordQuestBody');
+    if(b){ b.classList.add('wq-shake'); setTimeout(function(){ b.classList.remove('wq-shake'); }, 320); }
+  }
+  saveDb();
+  renderWordQuest();
+}
+function questSubmitSpell(){
+  var g = ensureWordGame();
+  var q = g.quest;
+  if(!q || q.answered || !q.qs) return;
+  var el = document.getElementById('wqSpellInput');
+  var typed = (el && el.value ? el.value : '').trim();
+  if(!typed){ toast('请先拼写单词'); if(el) el.focus(); return; }
+  questAnswer(typed.toLowerCase() === q.qs[q.idx].word.toLowerCase(), null);
+}
+function questNext(){
+  var g = ensureWordGame();
+  var q = g.quest;
+  if(!q || !q.qs) return;
+  if(q.hearts <= 0){
+    q.finished = true; q.failed = true;
+    saveDb(); renderWordQuest(); return;
+  }
+  q.idx++;
+  q.answered = false;
+  if(q.idx >= q.qs.length){ finishWordQuest(); return; }
+  saveDb();
+  renderWordQuest();
+}
+function finishWordQuest(){
+  var g = ensureWordGame();
+  var q = g.quest;
+  var cost = Math.round((Date.now() - (q.startTs || Date.now())) / 1000);
+  var c = q.correct;
+  var rank = c >= 10 ? 'S' : c >= 8 ? 'A' : c >= 6 ? 'B' : c >= 4 ? 'C' : 'D';
+  var bonus = 30 + c * 5 + (c === 10 ? 30 : 0);
+  addWordXp(bonus);
+  g.clears = (g.clears || 0) + 1;
+  if(c === 10) g.perfect = true;
+  if(cost <= 180) g.speedrun = true;
+  q.finished = true; q.failed = false;
+  q.result = { correct:c, rank:rank, time:cost, bonus:bonus };
+  var best = g.questBest[q.dateStr];
+  if(!best || c > best.correct) g.questBest[q.dateStr] = { correct:c, rank:rank, time:cost };
+  checkWordBadges();
+  saveDb();
+  renderWordHud();
+  if(rank === 'S' || rank === 'A') wordConfetti();
+  renderWordQuest();
+}
+function toggleWordBadges(){
+  var card = document.getElementById('wordBadgeCard');
+  var body = document.getElementById('wordBadgeBody');
+  if(!card || !body) return;
+  var open = card.classList.toggle('open');
+  body.classList.toggle('open', open);
+}
+function renderWordBadges(){
+  var box = document.getElementById('wordBadgeBody');
+  if(!box) return;
+  var g = ensureWordGame();
+  var cnt = document.getElementById('wordBadgeCount');
+  if(cnt) cnt.textContent = (g.badges || []).length + ' / ' + WORD_BADGES.length + ' 已解锁';
+  box.innerHTML = '<div class="word-badge-grid">' + WORD_BADGES.map(function(b){
+    var got = (g.badges || []).indexOf(b.id) >= 0;
+    return '<div class="word-badge' + (got ? ' got' : '') + '">' +
+      '<span class="wb-ico">' + b.icon + '</span>' +
+      '<div><div class="wb-name">' + b.name + '</div><div class="wb-desc">' + b.desc + '</div></div>' +
+    '</div>';
+  }).join('') + '</div>';
 }
 
 /* ============================================================
@@ -12158,7 +12758,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'pending', date:'2026-09-11', desc:'移除 市场瞭望 中的「财报关注日历」模块(卡片+renderMarket触发);另移除 05 代码研习室标签页' };
+  window.ver = { git:'pending', date:'2026-09-02', desc:'英语模块游戏化：新增 闯关模式(5 题型/10关/3心/连击/评级)、等级XP HUD、成就徽章;修复例句挖空不兼容屈折变形(40/100 词漏答案)' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
