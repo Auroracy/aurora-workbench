@@ -2629,58 +2629,6 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     <div id="watchList"></div>
   </div>
 
-  <!-- B3. 财报关注日历（自动抓取） -->
-  <div class="card">
-    <div class="card-title">财报关注日历</div>
-    <div class="section-desc" style="margin-bottom:10px;">自动抓取近 30 天 A 股科技公司财报/业绩预告/业绩快报（东方财富公告接口直连 + 代理兜底），按报告期分类展示</div>
-    <div class="form-row" style="margin-bottom:10px;">
-      <div class="form-group auto"><label class="form-label">范围</label>
-        <select id="earnRangeSel" onchange="fetchEarnings()">
-          <option value="14">近 14 天</option>
-          <option value="30" selected>近 30 天</option>
-          <option value="60">近 60 天</option>
-        </select>
-      </div>
-      <div class="form-group"><label class="form-label">市场</label>
-        <select id="earnMarketSel" onchange="fetchEarnings()">
-          <option value="A" selected>沪深全市场</option>
-          <option value="SHA">沪市主板</option>
-          <option value="SZA">深市主板</option>
-          <option value="CYB">创业板</option>
-          <option value="BJA">北交所</option>
-        </select>
-      </div>
-      <div class="form-group"><label class="form-label">报告类型</label>
-        <select id="earnTypeSel" onchange="EARN_PAGE_IDX=1;renderEarningsList()">
-          <option value="all" selected>全部</option>
-          <option value="年报">年报</option>
-          <option value="半年报">半年报</option>
-          <option value="一季报">一季报</option>
-          <option value="三季报">三季报</option>
-          <option value="业绩快报">业绩快报</option>
-          <option value="业绩预告">业绩预告</option>
-          <option value="业绩预增">业绩预增</option>
-          <option value="业绩预减">业绩预减</option>
-          <option value="扭亏">扭亏</option>
-        </select>
-      </div>
-      <div class="auto" style="align-self:flex-end;"><button class="btn btn-primary btn-sm" onclick="fetchEarnings()">🔄 刷新财报</button></div>
-    </div>
-    <div id="earnStats" class="earn-stats"></div>
-    <div id="earnList"></div>
-    <div class="earn-manual-toggle">
-      <a class="form-link" onclick="toggleEarnManual()">⚙ 手动添加自定义项（折叠）</a>
-    </div>
-    <div id="earnManualForm" class="earn-manual-form" style="display:none;">
-      <div class="form-row">
-        <div class="form-group auto"><label class="form-label">日期</label><input type="date" id="earnDate"></div>
-        <div class="form-group"><label class="form-label">公司</label><input type="text" id="earnCompany" placeholder="如 英伟达 / 腾讯"></div>
-        <div class="form-group"><label class="form-label">关注要点</label><input type="text" id="earnNote" placeholder="如 数据中心营收、毛利率"></div>
-        <div class="auto" style="align-self:flex-end;"><button class="btn btn-sm" onclick="addEarning()">添加</button></div>
-      </div>
-    </div>
-  </div>
-
   <!-- C. 我的基金诊断中心 -->
   <div class="card">
     <div class="card-title">我的基金 · 诊断中心</div>
@@ -7155,14 +7103,6 @@ function renderMarket(){
   var wcb = document.getElementById('watchAutoRefresh');
   if(wcb && wcb.checked && !watchRefreshTimer){
     watchRefreshTimer = setInterval(function(){ fetchWatchQuotes(false); }, 60000);
-  }
-  /* 财报日历：30 分钟内已抓取复用 + 统计区渲染 */
-  var stats = document.getElementById('earnStats');
-  if(EARNINGS_FETCHED.length && (Date.now() - EARNINGS_FETCHED_TS < 30 * 60 * 1000)){
-    if(stats) stats.innerHTML = computeEarnStats(EARNINGS_FETCHED);
-    renderEarningsList();
-  } else {
-    fetchEarnings();
   }
   if(TECH_NEWS.length > 0){ renderTechNews(); } else { fetchTechNews(false); }
 }
@@ -12218,7 +12158,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'pending', date:'2026-09-11', desc:'移除 05 代码研习室·Python 标签页(导航项+内容面板+tab切换调度),其余标签序号顺延为01-09;加/减仓建议改用今日实时估值评分' };
+  window.ver = { git:'pending', date:'2026-09-11', desc:'移除 市场瞭望 中的「财报关注日历」模块(卡片+renderMarket触发);另移除 05 代码研习室标签页' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
