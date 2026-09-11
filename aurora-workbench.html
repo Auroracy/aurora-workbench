@@ -6576,6 +6576,39 @@ function getCurrentExamples(){
 }
 
 function renderWordFlashcard(){
+  /* 关键：重渲染前先暂存"瞬时交互状态"。
+     触发本函数重渲染的来源不止用户切词，还有：
+       ① 答对/答错时的 setWordMarkAuto()（自动标记后回写界面）
+       ② 后台每 20s 的云端静默同步 renderAllOnSync() → renderWords()
+       ③ 切回标签页时的 visibilitychange 同步
+     这些"非用户主动切词"的重渲染若直接清空输入框/提示/填空，就会出现
+     "点完『验证拼写』后输入框和反馈凭空消失"的现象。故此处按词缓存并回填。 */
+  var _fbCard = document.getElementById('wordFlashcard');
+  var _fbIdx = getCurrentWordBankIdx();
+  var _fbKeep = null;
+  if(_fbCard && _fbCard.getAttribute('data-widx') === String(_fbIdx)){
+    var _ki = document.getElementById('wordSpellingInput');
+    var _kh = document.getElementById('wordSpellingHint');
+    var _kb = document.querySelector('#wordSentences .word-blank[data-main="1"]');
+    var _ke = document.getElementById('wordFlashEn');
+    var _hasState = (_ki && (_ki.value || _ki.classList.contains('correct') || _ki.classList.contains('wrong')))
+                 || (_kh && _kh.textContent);
+    if(_hasState){
+      var _focused = _ki && document.activeElement === _ki;
+      _fbKeep = {
+        value: _ki ? _ki.value : '',
+        cls: _ki ? (_ki.classList.contains('correct') ? 'correct' : _ki.classList.contains('wrong') ? 'wrong' : '') : '',
+        hint: _kh ? _kh.textContent : '',
+        hintCls: _kh ? _kh.className : 'word-spelling-hint',
+        blankText: _kb ? _kb.textContent : '',
+        blankCls: _kb ? _kb.className : '',
+        enRevealed: _ke ? _ke.classList.contains('revealed') : false,
+        focused: !!_focused,
+        caret: _focused && _ki.selectionStart != null ? _ki.selectionStart : null
+      };
+    }
+  }
+
   var dateStr = getWordDateStr(currentWordOffset);
   var rec = DB.words.dailyRecords[dateStr] || {};
   if(!rec.perWord) rec.perWord = {};
@@ -6640,6 +6673,27 @@ function renderWordFlashcard(){
     statusEl.textContent = '';
     statusEl.className = 'word-flashcard-status';
     statusEl.style.display = 'none';
+  }
+
+  /* 回填刚才暂存的瞬时状态（仅同一词、且确有状态时） */
+  if(_fbCard) _fbCard.setAttribute('data-widx', String(_fbIdx));
+  if(_fbKeep){
+    if(_fbKeep.enRevealed) enEl.classList.add('revealed');
+    if(_fbKeep.blankText){
+      var _rb = document.querySelector('#wordSentences .word-blank[data-main="1"]');
+      if(_rb){ _rb.textContent = _fbKeep.blankText; _rb.className = _fbKeep.blankCls; }
+    }
+    input.value = _fbKeep.value;
+    if(_fbKeep.cls) input.classList.add(_fbKeep.cls);
+    var _rh = document.getElementById('wordSpellingHint');
+    _rh.textContent = _fbKeep.hint;
+    _rh.className = _fbKeep.hintCls;
+    if(_fbKeep.focused){
+      try{
+        input.focus();
+        if(_fbKeep.caret != null) input.setSelectionRange(_fbKeep.caret, _fbKeep.caret);
+      }catch(e){}
+    }
   }
 }
 
@@ -6706,9 +6760,10 @@ function checkSpelling(){
       mainBlank.classList.add('correct','revealed');
     }
     input.classList.add('correct');
-    // 答对自动标记为"已掌握"（用户可手动覆盖）
-    setWordMarkAuto('known');
-    try{ wordGameCorrect(); }catch(e){}
+    // 答对自动标记为"已掌握"（用户可手动覆盖）；若此前是"模糊/不认识"，答对则升级为已掌握
+    setWordMarkAuto('known', true);
+    var _ak = wordGameAwardKey();
+    if(!_wordAwardedRight[_ak]){ _wordAwardedRight[_ak] = 1; try{ wordGameCorrect(); }catch(e){} }
   } else {
     hint.textContent = '✗ 拼写错误，正确答案是：' + word;
     hint.className = 'word-spelling-hint wrong';
@@ -6718,15 +6773,26 @@ function checkSpelling(){
     }
     input.classList.add('wrong');
     setWordMarkAuto('fuzzy');
+    var _ak2 = wordGameAwardKey();
+    if(!_wordAwardedWrong[_ak2]){ _wordAwardedWrong[_ak2] = 1; try{ wordGameWrong(); }catch(e){} }
   }
 }
 
-function setWordMarkAuto(mark){
+/* 同一个词重复点「验证拼写」不重复计分（否则可反复刷 XP / 连击） */
+var _wordAwardedRight = {};
+var _wordAwardedWrong = {};
+function wordGameAwardKey(){ return getWordDateStr(currentWordOffset) + '#' + currentWordIndex; }
+
+function setWordMarkAuto(mark, forceUpgrade){
   var dateStr = getWordDateStr(currentWordOffset);
   if(!DB.words.dailyRecords[dateStr]) DB.words.dailyRecords[dateStr] = {};
   if(!DB.words.dailyRecords[dateStr].perWord) DB.words.dailyRecords[dateStr].perWord = {};
   var prev = DB.words.dailyRecords[dateStr].perWord[currentWordIndex] || {};
-  if(!prev.mark){
+  var need = false;
+  if(!prev.mark) need = true;
+  /* forceUpgrade：拼写答对时把"模糊 / 不认识"升级为"已掌握"（已掌握不降级、不覆盖用户手选） */
+  else if(forceUpgrade && mark === 'known' && prev.mark !== 'known') need = true;
+  if(need){
     DB.words.dailyRecords[dateStr].perWord[currentWordIndex] = { mark: mark };
     try{ trackMasteredWord(mark); }catch(e){}
     saveDb();
@@ -7120,6 +7186,7 @@ function startWordQuest(force){
     qs.push(wqBuildQuestion(bi, wqPickType(i)));
   }
   g.quest = { dateStr:dateStr, idx:0, hearts:3, correct:0, startTs:Date.now(), qs:qs, log:[], finished:false, failed:false, answered:false, result:null };
+  _wqSpokenKey = '';
   saveDb();
   renderWordQuest();
 }
@@ -7160,9 +7227,17 @@ function renderQuestFeedback(q, cur){
   fb += '<div class="wq-actions"><button class="btn btn-primary" onclick="questNext()">' + (last ? '完成闯关 →' : '下一关 →') + '</button></div>';
   return fb;
 }
+var _wqSpokenKey = '';   // 已自动朗读过的关卡（date#idx），避免同步重渲染反复播放
 function renderWordQuest(){
   var body = document.getElementById('wordQuestBody');
   if(!body) return;
+  /* 暂存拼写题的输入内容（后台同步/重渲染会重建 DOM，否则正在拼写的答案会被清掉） */
+  var _wqKeep = null;
+  var _qi = document.getElementById('wqSpellInput');
+  if(_qi && _qi.value){
+    var _qf = document.activeElement === _qi;
+    _wqKeep = { value: _qi.value, focused: _qf, caret: _qf && _qi.selectionStart != null ? _qi.selectionStart : null };
+  }
   var g = ensureWordGame();
   var q = g.quest;
   var dateStr = getWordDateStr(currentWordOffset);
@@ -7239,10 +7314,26 @@ function renderWordQuest(){
     if(q.answered) html += renderQuestFeedback(q, cur);
   }
   body.innerHTML = html;
-  if(cur.type === 'listen' && !q.answered){ setTimeout(function(){ speakThisWord(cur.word); }, 280); }
-  if(!q.answered && cur.type === 'spell'){
+  /* 同一关内被后台同步重渲染时，保留用户已输入的拼写并恢复焦点 */
+  if(_wqKeep && _wqKeep.value){
+    var _ri = document.getElementById('wqSpellInput');
+    if(_ri){
+      _ri.value = _wqKeep.value;
+      if(_wqKeep.focused){
+        try{ _ri.focus(); if(_wqKeep.caret != null) _ri.setSelectionRange(_wqKeep.caret, _wqKeep.caret); }catch(e){}
+      }
+    }
+  } else if(!q.answered && cur.type === 'spell'){
     var inp = document.getElementById('wqSpellInput');
     if(inp) inp.focus();
+  }
+  /* 听音题只在首次进入该关时自动播放，避免每次同步重渲染都重播 */
+  if(cur.type === 'listen' && !q.answered){
+    var speakKey = q.dateStr + '#' + q.idx;
+    if(_wqSpokenKey !== speakKey){
+      _wqSpokenKey = speakKey;
+      setTimeout(function(){ speakThisWord(cur.word); }, 280);
+    }
   }
 }
 function questAnswer(isRight, optIdx){
@@ -12758,7 +12849,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'pending', date:'2026-09-02', desc:'英语模块游戏化：新增 闯关模式(5 题型/10关/3心/连击/评级)、等级XP HUD、成就徽章;修复例句挖空不兼容屈折变形(40/100 词漏答案)' };
+  window.ver = { git:'pending', date:'2026-09-11', desc:'修复「点验证拼写后输入框/提示/填空变空」:renderWordFlashcard 重渲染时保留瞬时状态(后台20s云同步、自动标记回写、切回标签页都会触发);答对可将 模糊/不认识 升级为已掌握;同一词重复验证不重复计分;闯关拼写题重渲染保留输入且听音题不重复播放' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
