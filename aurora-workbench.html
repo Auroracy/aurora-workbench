@@ -1929,29 +1929,25 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
       <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M23 6l-9.5 9.5-5-5L1 18"/><path d="M17 6h6v6"/></svg></span>
       <span class="nav-num">04</span><span class="nav-text">市场瞭望 · 投顾分析</span>
     </button>
-    <button class="nav-item" data-tab="5" onclick="switchTab(5)">
-      <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/></svg></span>
-      <span class="nav-num">05</span><span class="nav-text">代码研习室 · Python</span>
-    </button>
     <button class="nav-item" data-tab="6" onclick="switchTab(6)">
       <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z"/><line x1="6" y1="17" x2="18" y2="17"/></svg></span>
-      <span class="nav-num">06</span><span class="nav-text">食谱工坊 · 配方手记</span>
+      <span class="nav-num">05</span><span class="nav-text">食谱工坊 · 配方手记</span>
     </button>
     <button class="nav-item" data-tab="7" onclick="switchTab(7)">
       <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></span>
-      <span class="nav-num">07</span><span class="nav-text">阅思集 · 读书札记</span>
+      <span class="nav-num">06</span><span class="nav-text">阅思集 · 读书札记</span>
     </button>
     <button class="nav-item" data-tab="8" onclick="switchTab(8)">
       <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg></span>
-      <span class="nav-num">08</span><span class="nav-text">月度定投计算器</span>
+      <span class="nav-num">07</span><span class="nav-text">月度定投计算器</span>
     </button>
     <button class="nav-item" data-tab="9" onclick="switchTab(9)">
       <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M4 5h16v12H4z"/><path d="M8 21h8M12 17v4"/></svg></span>
-      <span class="nav-num">09</span><span class="nav-text">新闻联播 · 每日总结</span>
+      <span class="nav-num">08</span><span class="nav-text">新闻联播 · 每日总结</span>
     </button>
     <button class="nav-item" data-tab="10" onclick="switchTab(10)">
       <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 2l2.9 6.3 6.9.7-5.2 4.6 1.5 6.8L12 17.8 5.9 20.4l1.5-6.8L2.2 9l6.9-.7z"/></svg></span>
-      <span class="nav-num">10</span><span class="nav-text">梦想金库 · 财富启蒙</span>
+      <span class="nav-num">09</span><span class="nav-text">梦想金库 · 财富启蒙</span>
     </button>
   </nav>
   <div class="sidebar-footer" id="footerDate">
@@ -2832,111 +2828,6 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
 
 <!-- 同步转换子页面 -->
 <div class="fd-sub-page" id="fdspSwap"></div>
-
-<!-- ========== Tab 5: Python ========== -->
-<section id="tab5" class="tab-section">
-  <div class="section-header">
-    <div class="section-title">代码研习室 · Python 自学笔记</div>
-    <div class="section-desc">零基础循序渐进 · 学练记一体化</div>
-  </div>
-
-  <!-- Progress -->
-  <div class="card">
-    <div class="card-title">学习进度规划</div>
-    <div class="stepper" id="stepper"></div>
-    <div class="form-group">
-      <label class="form-label">阶段学习目标</label>
-      <textarea id="pyGoal" rows="2" placeholder="设定阶段性目标..." oninput="savePyGoal()"></textarea>
-    </div>
-  </div>
-
-  <!-- Daily Learning -->
-  <div class="card">
-    <div class="card-title">每日学习</div>
-    <div class="form-row">
-      <div class="form-group auto">
-        <label class="form-label">日期</label>
-        <input type="date" id="pyDate" onchange="loadPyDaily()">
-      </div>
-      <div class="form-group">
-        <label class="form-label">当日知识点</label>
-        <input type="text" id="pyPoints" placeholder="如：列表推导式、字典操作">
-      </div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">知识点笔记</label>
-      <textarea id="pyNotes" rows="3" placeholder="记录语法、函数、概念理解..."></textarea>
-    </div>
-    <div class="form-group">
-      <label class="form-label">代码练习</label>
-      <textarea class="code-editor" id="pyCode" spellcheck="false" placeholder="# 在此编写 Python 代码&#10;print('Hello, Aurora!')"></textarea>
-    </div>
-    <div style="display:flex;gap:8px;align-items:center;">
-      <button class="btn btn-primary btn-sm" onclick="runPython()">运行代码</button>
-      <span class="text-sm text-muted" id="pyRunHint"></span>
-    </div>
-    <div class="code-output" id="pyOutput">点击「运行代码」查看输出结果</div>
-    <div style="margin-top:12px;">
-      <label class="form-label">学习打卡</label>
-      <div class="radio-group" id="pyStatusGroup">
-        <span class="radio-item" data-val="done" onclick="setPyStatus(this)">学习完成</span>
-        <span class="radio-item" data-val="review" onclick="setPyStatus(this)">待巩固</span>
-        <span class="radio-item" data-val="help" onclick="setPyStatus(this)">需要答疑</span>
-      </div>
-    </div>
-    <button class="btn btn-primary btn-sm" style="margin-top:12px;" onclick="savePyDaily()">保存今日学习</button>
-  </div>
-
-  <!-- Error Archive -->
-  <div class="card">
-    <div class="card-title">错题 & 踩坑归档</div>
-    <div class="form-row">
-      <div class="form-group auto">
-        <label class="form-label">日期</label>
-        <input type="date" id="errDate">
-      </div>
-      <div class="form-group">
-        <label class="form-label">报错信息</label>
-        <input type="text" id="errMsg" placeholder="如：NameError: name 'x' is not defined">
-      </div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">出错原因</label>
-      <input type="text" id="errCause" placeholder="变量未定义就使用">
-    </div>
-    <div class="form-group">
-      <label class="form-label">解决方案</label>
-      <input type="text" id="errSolution" placeholder="先赋值再使用">
-    </div>
-    <button class="btn btn-primary btn-sm" onclick="addError()">归档</button>
-    <div id="errList" style="margin-top:14px;"></div>
-  </div>
-
-  <!-- Projects -->
-  <div class="card">
-    <div class="card-title">实战项目清单</div>
-    <div class="form-row">
-      <div class="form-group">
-        <label class="form-label">项目名称</label>
-        <input type="text" id="projName" placeholder="如：命令行计算器">
-      </div>
-      <div class="form-group auto">
-        <label class="form-label">进度</label>
-        <select id="projProgress">
-          <option value="planning">构思中</option>
-          <option value="ongoing">进行中</option>
-          <option value="done">已完成</option>
-        </select>
-      </div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">实现思路</label>
-      <textarea id="projApproach" rows="2" placeholder="技术方案、模块拆分..."></textarea>
-    </div>
-    <button class="btn btn-primary btn-sm" onclick="addProject()">添加项目</button>
-    <div id="projList" style="margin-top:14px;"></div>
-  </div>
-</section>
 
 <!-- ========== Tab 6: Recipes ========== -->
 <section id="tab6" class="tab-section">
@@ -3838,7 +3729,6 @@ function switchTab(n){
   if(n === 2) renderFitness();
   if(n === 3) renderWords();
   if(n === 4) renderMarket();
-  if(n === 5) renderPython();
   if(n === 6){ renderRecipeHero(); renderRecipes(); }
   if(n === 7) renderBooks();
   if(n === 8) initDca();
@@ -5291,7 +5181,6 @@ function trackXwlb7d(){
       else if(n === 2) renderFitness();
       else if(n === 3) renderWords();
       else if(n === 4) fetchNews(true);
-      else if(n === 5) renderPython();
       else if(n === 6){ renderRecipeHero(); renderRecipes(); }
       else if(n === 7) renderBooks();
     } catch(err){ console.error('Refresh error:', err); }
@@ -12329,7 +12218,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'pending', date:'2026-09-09', desc:'加/减仓建议改用今日实时估值gszzl评分(此前误用昨日确认涨跌幅);autoFetchFundNavIfNeeded回调补齐navChgRt/pdate透传;点刷新数据即按最新估值重算建议' };
+  window.ver = { git:'pending', date:'2026-09-11', desc:'移除 05 代码研习室·Python 标签页(导航项+内容面板+tab切换调度),其余标签序号顺延为01-09;加/减仓建议改用今日实时估值评分' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
