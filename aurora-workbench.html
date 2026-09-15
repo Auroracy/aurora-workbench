@@ -1487,6 +1487,21 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 .ing-group-head .form-label{margin-bottom:0;}
 .ing-row{display:flex;gap:0.5em;margin-bottom:0.4em;align-items:center;}
 .ing-row input{flex:1;}
+/* 食材分组：组名可直接改（就是个输入框），右侧可加行 / 删整组 */
+.ing-group-head{gap:8px;flex-wrap:wrap;}
+.ing-group-tools{display:flex;align-items:center;gap:4px;flex:0 0 auto;}
+.recipe-modal-body input.ing-group-name{
+  flex:1 1 120px;min-width:0;margin-bottom:0;
+  padding:2px 6px 1px;border:1px solid transparent;border-bottom:1px dashed var(--line);
+  border-radius:6px 6px 0 0;
+  background:transparent;backdrop-filter:none;-webkit-backdrop-filter:none;
+  font-size:13px;font-weight:700;color:var(--text);
+}
+.recipe-modal-body input.ing-group-name:hover{border-color:var(--line);border-bottom-color:var(--accent);}
+.recipe-modal-body input.ing-group-name:focus{
+  border-color:var(--accent);background:rgba(255,255,255,0.85);
+  box-shadow:0 0 0 3px var(--accent-bg);
+}
 .step-row{display:flex;gap:0.5em;margin-bottom:0.4em;align-items:flex-start;}
 .step-row .step-idx{
   flex-shrink:0;
@@ -3011,21 +3026,9 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
         </div>
       </div>
 
-      <div class="ing-group">
-        <div class="ing-group-head">
-          <label class="form-label">面团原料</label>
-          <button class="btn btn-ghost btn-sm" onclick="addIngRow('doughIngList')">+ 添加</button>
-        </div>
-        <div id="doughIngList"></div>
-      </div>
-
-      <div class="ing-group">
-        <div class="ing-group-head">
-          <label class="form-label">馅料</label>
-          <button class="btn btn-ghost btn-sm" onclick="addIngRow('fillingIngList')">+ 添加</button>
-        </div>
-        <div id="fillingIngList"></div>
-      </div>
+      <!-- 食材分组：组名可自定义，可自由新增 / 删除（如 面团原料、馅料、装饰…） -->
+      <div id="ingGroupList"></div>
+      <button class="btn btn-ghost btn-sm" type="button" onclick="addIngGroup()" style="margin:2px 0 12px;">＋ 新增食材分组</button>
 
       <label class="form-label">制作步骤</label>
       <div id="stepList"></div>
@@ -12108,8 +12111,60 @@ function renderPython(){
 var CATEGORY_LABEL = { bread: '面包烘焙', dish: '家常菜', dessert: '甜品' };
 var DIFFICULTY_LABEL = { easy: '简单', medium: '中等', hard: '复杂' };
 
+/* 旧数据兼容：doughIng / fillingIng / ingredients → 统一的「食材分组」结构
+   r.ingGroups = [{ name:'面团原料', items:[{name,amount}] }, ...] */
+function getRecipeIngGroups(r){
+  if(!r) return [];
+  if(r.ingGroups && r.ingGroups.length){
+    return r.ingGroups.map(function(g){
+      return {
+        name: (g && g.name) || '食材',
+        items: (((g && g.items) || [])).filter(function(it){ return it && it.name; })
+      };
+    });
+  }
+  var out = [];
+  var dough = (r.doughIng && r.doughIng.length) ? r.doughIng : (r.ingredients || []);
+  if(dough && dough.length) out.push({ name: '面团原料', items: dough });
+  if(r.fillingIng && r.fillingIng.length) out.push({ name: '馅料', items: r.fillingIng });
+  return out;
+}
+var _ingGroupSeq = 0;
+/* 追加一个分组块；组名是可编辑输入框，返回该组食材列表容器的 id */
+function addIngGroup(name, items){
+  var box = document.getElementById('ingGroupList');
+  if(!box) return '';
+  var gid = 'ingList_' + (++_ingGroupSeq);
+  var wrap = document.createElement('div');
+  wrap.className = 'ing-group';
+  wrap.innerHTML =
+    '<div class="ing-group-head">' +
+      '<input type="text" class="ing-group-name" maxlength="20" placeholder="分组名称（如：面团原料）" value="' + escapeHtml(name || '') + '">' +
+      '<div class="ing-group-tools">' +
+        '<button class="btn btn-ghost btn-sm" type="button" onclick="addIngRow(\'' + gid + '\')">+ 添加</button>' +
+        '<button class="btn-icon" type="button" onclick="removeIngGroup(this)" title="删除该分组">&#10005;</button>' +
+      '</div>' +
+    '</div>' +
+    '<div class="ing-list" id="' + gid + '"></div>';
+  box.appendChild(wrap);
+  var list = (items && items.length) ? items : [null];
+  list.forEach(function(it){ addIngRow(gid, it ? it.name : '', it ? it.amount : ''); });
+  return gid;
+}
+function removeIngGroup(btn){
+  var g = (btn && btn.closest) ? btn.closest('.ing-group') : null;
+  if(!g) return;
+  var hasVal = false;
+  Array.prototype.forEach.call(g.querySelectorAll('.ing-input-name,.ing-input-amount'), function(i){
+    if(i.value && i.value.trim()) hasVal = true;
+  });
+  if(hasVal && !confirm('该分组下已有食材，确定删除整个分组？')) return;
+  g.parentNode.removeChild(g);
+}
 function addIngRow(listId, name, amount){
-  var box = document.getElementById(listId || 'doughIngList');
+  var box = listId ? document.getElementById(listId) : null;
+  if(!box) box = document.querySelector('#ingGroupList .ing-list');
+  if(!box) return;
   var row = document.createElement('div');
   row.className = 'ing-row';
   row.innerHTML = '<input type="text" placeholder="食材名称" class="ing-input-name" value="' + (name ? escapeHtml(name) : '') + '">' +
@@ -12144,8 +12199,8 @@ function openRecipeModal(idx){
   document.getElementById('rPhoto').value = '';
   document.getElementById('rCategory').value = 'bread';
   document.getElementById('rDifficulty').value = 'easy';
-  document.getElementById('doughIngList').innerHTML = '';
-  document.getElementById('fillingIngList').innerHTML = '';
+  document.getElementById('ingGroupList').innerHTML = '';
+  _ingGroupSeq = 0;
   document.getElementById('stepList').innerHTML = '';
   if(editingRecipeIdx >= 0){
     var r = DB.recipes.items[editingRecipeIdx];
@@ -12155,20 +12210,15 @@ function openRecipeModal(idx){
     document.getElementById('rDifficulty').value = r.difficulty || 'easy';
     document.getElementById('rDuration').value = r.duration || '';
     document.getElementById('rNotes').value = r.notes || '';
-    var dough = r.doughIng && r.doughIng.length ? r.doughIng : (r.ingredients && r.ingredients.length ? r.ingredients : [null]);
-    var filling = r.fillingIng && r.fillingIng.length ? r.fillingIng : [null];
-    dough.forEach(function(ing){
-      addIngRow('doughIngList', ing ? ing.name : '', ing ? ing.amount : '');
-    });
-    filling.forEach(function(ing){
-      addIngRow('fillingIngList', ing ? ing.name : '', ing ? ing.amount : '');
-    });
+    var groups = getRecipeIngGroups(r);
+    if(!groups.length) groups = [{ name: '面团原料', items: [] }];
+    groups.forEach(function(g){ addIngGroup(g.name, g.items); });
     (r.steps && r.steps.length ? r.steps : [null]).forEach(function(s){
       addStepRow(s || '');
     });
   } else {
     title.textContent = '新增配方';
-    addIngRow('doughIngList');
+    addIngGroup('面团原料');
     addStepRow();
   }
   document.getElementById('recipeOverlay').classList.add('show');
@@ -12184,16 +12234,18 @@ function saveRecipe(){
   var difficulty = document.getElementById('rDifficulty').value;
   var duration = document.getElementById('rDuration').value.trim();
   var notes = document.getElementById('rNotes').value.trim();
-  var doughIng = [], fillingIng = [];
-  document.querySelectorAll('#doughIngList .ing-row').forEach(function(r){
-    var n = r.querySelector('.ing-input-name').value.trim();
-    var a = r.querySelector('.ing-input-amount').value.trim();
-    if(n) doughIng.push({ name: n, amount: a });
-  });
-  document.querySelectorAll('#fillingIngList .ing-row').forEach(function(r){
-    var n = r.querySelector('.ing-input-name').value.trim();
-    var a = r.querySelector('.ing-input-amount').value.trim();
-    if(n) fillingIng.push({ name: n, amount: a });
+  // 食材分组：组名自定义，空组（没名字也没食材）直接丢弃
+  var ingGroups = [];
+  document.querySelectorAll('#ingGroupList .ing-group').forEach(function(g){
+    var nameEl = g.querySelector('.ing-group-name');
+    var gname = nameEl ? (nameEl.value || '').trim() : '';
+    var items = [];
+    g.querySelectorAll('.ing-row').forEach(function(row){
+      var n = row.querySelector('.ing-input-name').value.trim();
+      var a = row.querySelector('.ing-input-amount').value.trim();
+      if(n) items.push({ name: n, amount: a });
+    });
+    if(gname || items.length) ingGroups.push({ name: gname || '食材', items: items });
   });
   var steps = [];
   document.querySelectorAll('#stepList .step-row textarea').forEach(function(t){
@@ -12205,12 +12257,14 @@ function saveRecipe(){
     if(editingRecipeIdx >= 0){
       var item = DB.recipes.items[editingRecipeIdx];
       item.name = name; item.category = category; item.difficulty = difficulty;
-      item.duration = duration; item.notes = notes; item.doughIng = doughIng; item.fillingIng = fillingIng; item.steps = steps;
+      item.duration = duration; item.notes = notes; item.steps = steps;
+      item.ingGroups = ingGroups;
+      delete item.doughIng; delete item.fillingIng; delete item.ingredients;
       if(photoData !== null) item.photo = photoData;
       saveDb();
       toast('配方已更新');
     } else {
-      DB.recipes.items.unshift({ name: name, category: category, difficulty: difficulty, duration: duration, photo: photoData || '', doughIng: doughIng, fillingIng: fillingIng, steps: steps, notes: notes, fav: false, date: today() });
+      DB.recipes.items.unshift({ name: name, category: category, difficulty: difficulty, duration: duration, photo: photoData || '', ingGroups: ingGroups, steps: steps, notes: notes, fav: false, date: today() });
       saveDb();
       toast('配方已保存');
     }
@@ -12284,11 +12338,11 @@ function renderRecipes(){
     html += '<button class="btn-icon" onclick="event.stopPropagation();deleteRecipe(' + idx + ')" title="删除">&#10005;</button>';
     html += '</div></div>';
     if(r.photo) html += '<img class="recipe-item-photo" src="' + r.photo + '">';
-    var dough = r.doughIng && r.doughIng.length ? r.doughIng : (r.ingredients || []);
-    if(dough.length > 0){
-      html += '<div style="margin-top:10px;font-size:12px;color:var(--text-2);">面团原料：</div>';
-      html += '<div style="font-size:13px;margin-top:2px;">' + dough.map(function(ing){ return escapeHtml(ing.name) + (ing.amount ? ' <span class="text-muted">' + escapeHtml(ing.amount) + '</span>' : ''); }).join('、') + '</div>';
-    }
+    getRecipeIngGroups(r).forEach(function(g){
+      if(!g.items.length) return;
+      html += '<div style="margin-top:10px;font-size:12px;color:var(--text-2);">' + sanitizeText(escapeHtml(g.name)) + '：</div>';
+      html += '<div style="font-size:13px;margin-top:2px;">' + g.items.map(function(ing){ return escapeHtml(ing.name) + (ing.amount ? ' <span class="text-muted">' + escapeHtml(ing.amount) + '</span>' : ''); }).join('、') + '</div>';
+    });
     html += '<div class="item-open-hint">查看完整配方 ›</div>';
     html += '</div>';
     return html;
@@ -12308,14 +12362,10 @@ function openRecipeDetail(idx){
   html += '<span class="chip chip-blue">' + DIFFICULTY_LABEL[r.difficulty] + '</span>';
   if(r.duration) html += '<span>' + escapeHtml(r.duration) + '</span>';
   html += '</div>';
-  var dough = r.doughIng && r.doughIng.length ? r.doughIng : (r.ingredients || []);
-  var filling = r.fillingIng || [];
-  if(dough.length){
-    html += '<div class="detail-ing-title">面团原料</div><div class="detail-ing-list">' + dough.map(function(ing){ return sanitizeText(escapeHtml(ing.name)) + (ing.amount ? ' <span class="text-muted">' + sanitizeText(escapeHtml(ing.amount)) + '</span>' : ''); }).join('、') + '</div>';
-  }
-  if(filling.length){
-    html += '<div class="detail-ing-title">馅料</div><div class="detail-ing-list">' + filling.map(function(ing){ return sanitizeText(escapeHtml(ing.name)) + (ing.amount ? ' <span class="text-muted">' + sanitizeText(escapeHtml(ing.amount)) + '</span>' : ''); }).join('、') + '</div>';
-  }
+  getRecipeIngGroups(r).forEach(function(g){
+    if(!g.items.length) return;
+    html += '<div class="detail-ing-title">' + sanitizeText(escapeHtml(g.name)) + '</div><div class="detail-ing-list">' + g.items.map(function(ing){ return sanitizeText(escapeHtml(ing.name)) + (ing.amount ? ' <span class="text-muted">' + sanitizeText(escapeHtml(ing.amount)) + '</span>' : ''); }).join('、') + '</div>';
+  });
   if(r.steps && r.steps.length){
     html += '<div class="detail-ing-title">制作步骤</div><ol class="detail-steps">' + r.steps.map(function(s){ return '<li>' + sanitizeText(escapeHtml(s)) + '</li>'; }).join('') + '</ol>';
   }
@@ -13193,7 +13243,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'pending', date:'2026-09-15c', desc:'修复「常用搭配/释义直接写出答案」:常用搭配与义项里出现的原词改为挖空(100/100 词都命中),点「显示答案」或拼写答对后才补上;已显示答案的状态在 20s 云同步重渲染后不再被重置' };
+  window.ver = { git:'pending', date:'2026-09-16', desc:'配方食材分组改为可自定义:组名可直接编辑、可任意新增/删除分组(旧的 面团原料/馅料 自动迁移为 ingGroups,老配方照常显示);卡片与详情页按分组名渲染' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
