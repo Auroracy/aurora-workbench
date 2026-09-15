@@ -6840,19 +6840,120 @@ function setWordMark(btn){
   renderWordFlashcard();
 }
 
-function speakWord(){
-  var idx = getCurrentWordBankIdx();
-  var word = WORD_BANK[idx][0];
-  if(!('speechSynthesis' in window)){ toast('当前浏览器不支持朗读'); return; }
+/* ============================================================
+   英语发音引擎（统一入口）
+   ------------------------------------------------------------
+   根因修复：旧代码只设 u.lang='en-US' 且从不指定 u.voice。
+   Chrome 在 macOS 上首次 getVoices() 返回空数组，此时 speak()
+   会退回「系统默认语音」（本机恰好是中文音色 婷婷/zh-CN），
+   于是用中文腔念英文单词 → 用户反馈的「口音不对/机器音」。
+   现改为：页面加载即预热语音表 + 显式挑选标准美音发音人。
+   ============================================================ */
+var _enVoice = null;
+var _voicesReady = false;
+
+/* 发音人白名单（按优先级）：自然度高的美音优先，其次英音 */
+var _VOICE_PREFER = ['Samantha','Ava','Allison','Susan','Nicky','Joelle','Tom','Evan','Alex',
+                     'Google US English','Google UK English Female','Google UK English Male',
+                     'Karen','Serena','Daniel','Moira','Tessa','Rishi'];
+/* 系统自带的搞怪/特效音色，绝不能用于单词朗读 */
+var _VOICE_BLOCK = ['Bad News','Good News','Bahh','Bells','Boing','Bubbles','Cellos','Jester','Organ',
+                    'Superstar','Trinoids','Whisper','Wobble','Zarvox','Albert','Fred','Junior','Kathy',
+                    'Ralph','Deranged','Hysterical','Pipe Organ','Hoho','Princess','Grandma','Grandpa',
+                    'Rocko','Sandy','Shelley','Flo','Eddy','Reed'];
+
+function pickEnVoice(){
   try{
-    window.speechSynthesis.cancel();
-    var u = new SpeechSynthesisUtterance(word);
-    u.lang = 'en-US';
-    u.rate = 0.85;
-    window.speechSynthesis.speak(u);
+    if(!('speechSynthesis' in window)) return null;
+    var vs = window.speechSynthesis.getVoices() || [];
+    if(!vs.length) return null;
+    /* 前缀比对：系统音色名会带语言后缀，如 "Eddy (英语（美国）)" */
+    var isBlocked = function(v){
+      var n = v.name || '';
+      for(var b = 0; b < _VOICE_BLOCK.length; b++){
+        if(n === _VOICE_BLOCK[b] || n.indexOf(_VOICE_BLOCK[b] + ' ') === 0) return true;
+      }
+      return false;
+    };
+    var en = vs.filter(function(v){ return /^en([-_]|$)/i.test(v.lang || ''); });
+    if(!en.length) en = vs.filter(function(v){ return !isBlocked(v); });
+    if(!en.length) en = vs;
+    /* 1) 白名单精确匹配（Google 音色名可能带后缀，用前缀比对） */
+    for(var i = 0; i < _VOICE_PREFER.length; i++){
+      var want = _VOICE_PREFER[i];
+      for(var j = 0; j < en.length; j++){
+        if(en[j].name === want && !isBlocked(en[j])) return en[j];
+        if(en[j].name.indexOf(want) === 0 && !isBlocked(en[j])) return en[j];
+      }
+    }
+    /* 2) 任意美音 */
+    for(var k = 0; k < en.length; k++){
+      if(/^en[-_]US/i.test(en[k].lang || '') && !isBlocked(en[k])) return en[k];
+    }
+    /* 3) 任意英文音（排除搞怪音） */
+    for(var m = 0; m < en.length; m++){
+      if(!isBlocked(en[m])) return en[m];
+    }
+    return en[0];
+  }catch(e){ return null; }
+}
+
+/* 预热：把语音表提前拉起来，避免首次点击时列表还是空的 */
+function warmUpVoices(){
+  try{
+    if(!('speechSynthesis' in window)) return;
+    window.speechSynthesis.getVoices();
+    _enVoice = pickEnVoice();
+    if(window.speechSynthesis.addEventListener){
+      window.speechSynthesis.addEventListener('voiceschanged', function(){
+        _voicesReady = true;
+        _enVoice = pickEnVoice();
+      });
+    } else if('onvoiceschanged' in window.speechSynthesis){
+      window.speechSynthesis.onvoiceschanged = function(){
+        _voicesReady = true;
+        _enVoice = pickEnVoice();
+      };
+    }
+  }catch(e){}
+}
+
+/* 统一朗读：始终锁定同一个英文发音人 */
+function speakEn(text, rate){
+  if(!text) return;
+  if(!('speechSynthesis' in window)){ toast('当前浏览器不支持朗读'); return; }
+  var synth = window.speechSynthesis;
+  var fire = function(){
+    try{
+      var u = new SpeechSynthesisUtterance(String(text));
+      var v = _enVoice || pickEnVoice();
+      if(v){ u.voice = v; _enVoice = v; }
+      /* 只认发音人自带的语言标签，避免 voice 与 lang 打架 */
+      u.lang = (v && v.lang) ? v.lang : 'en-US';
+      u.rate = rate || 0.9;
+      u.pitch = 1;
+      u.volume = 1;
+      synth.speak(u);
+    }catch(e){}
+  };
+  try{
+    if(synth.speaking || synth.pending){
+      /* 打断正在播放的：cancel() 后立刻 speak() 在 Chrome 上会丢音，
+         需隔一帧；此时必已脱离「首次手势」阶段，移动端也不受限 */
+      synth.cancel();
+      setTimeout(fire, 90);
+    } else {
+      fire();   /* 未在播放时同步朗读，保住 iOS 的用户手势上下文 */
+    }
   }catch(e){
     toast('朗读失败：' + e.message);
   }
+}
+
+function speakWord(){
+  var idx = getCurrentWordBankIdx();
+  var word = WORD_BANK[idx][0];
+  speakEn(word, 0.85);
 }
 
 function toggleWordHistory(){
@@ -7022,13 +7123,7 @@ function wordConfetti(){
 }
 function speakThisWord(w){
   if(!w) return;
-  if(!('speechSynthesis' in window)){ toast('当前浏览器不支持朗读'); return; }
-  try{
-    window.speechSynthesis.cancel();
-    var u = new SpeechSynthesisUtterance(w);
-    u.lang = 'en-US'; u.rate = 0.85;
-    window.speechSynthesis.speak(u);
-  }catch(e){}
+  speakEn(w, 0.85);
 }
 /* 记录"已掌握"词表（用于徽章统计，跨天去重） */
 function trackMasteredWord(mark){
@@ -12849,12 +12944,14 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'pending', date:'2026-09-11', desc:'修复「点验证拼写后输入框/提示/填空变空」:renderWordFlashcard 重渲染时保留瞬时状态(后台20s云同步、自动标记回写、切回标签页都会触发);答对可将 模糊/不认识 升级为已掌握;同一词重复验证不重复计分;闯关拼写题重渲染保留输入且听音题不重复播放' };
+  window.ver = { git:'pending', date:'2026-09-15', desc:'修复英语朗读「口音不对/机器音」:统一发音引擎 speakEn(),页面加载预热语音表并显式锁定标准美音发音人(旧代码只设 lang 不设 voice,Chrome 退回系统默认中文音色 婷婷);排除系统搞怪音色;修正 cancel 后立刻 speak 导致的丢音' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
   if(vb){ vb.textContent = 'v' + window.ver.git.slice(0,6); vb.style.display = 'inline-block'; vb.title = window.ver.date + ' ' + window.ver.desc; }
   loadDb();
+  /* 预热英文语音表：Chrome 首次 getVoices() 是空的，不预热首次朗读会用错音色 */
+  warmUpVoices();
   /* 启动服务器定期同步（如果配置了服务器地址） */
   startAutoPull();
   // Set default dates
