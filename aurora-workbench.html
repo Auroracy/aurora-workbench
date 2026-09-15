@@ -941,6 +941,33 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
   font-size:12px;color:var(--text-3);font-style:italic;
   margin-bottom:-6px;margin-left:2px;
 }
+/* 完整释义：主释义下方列出其余义项与常用搭配 */
+.word-sense-list{margin-top:12px;display:none;}
+.word-sense-list.on{display:block;}
+.word-sense-row{
+  display:flex;align-items:baseline;gap:8px;
+  font-size:13.5px;color:var(--text-2);line-height:1.7;
+  margin-bottom:5px;
+}
+.word-sense-pos{
+  flex:0 0 auto;font-size:11px;font-style:italic;font-weight:700;
+  color:var(--accent);background:var(--accent-bg);
+  padding:1px 7px;border-radius:6px;letter-spacing:0.02em;
+}
+.word-sense-cn{flex:1 1 auto;text-align:left;}
+.word-usage{
+  margin-top:9px;padding:8px 11px;border-radius:var(--radius-sm);
+  background:var(--input-bg);border-left:3px solid var(--accent);
+  font-size:12.5px;color:var(--text-2);line-height:1.75;text-align:left;
+}
+.word-usage-tag{
+  display:inline-block;margin-right:6px;font-size:10.5px;font-weight:700;
+  color:var(--accent);letter-spacing:0.06em;
+}
+.word-sentence-cn{
+  font-size:12.5px;color:var(--text-3);line-height:1.7;
+  margin-top:1px;margin-left:2px;
+}
 .word-blank{
   display:inline-block;
   min-width:80px;
@@ -2339,6 +2366,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     </div>
 
     <div class="word-flashcard-cn" id="wordFlashCn"></div>
+    <div class="word-sense-list" id="wordSenseList"></div>
     <div class="word-flashcard-en" id="wordFlashEn"></div>
 
     <div class="word-sentences-head">
@@ -6526,6 +6554,110 @@ var WORD_BANK = [
   ["extend","v. 延伸","They extended the deadline by one week."],
   ["facilitate","v. 促进","Technology facilitates communication globally."]
 ];
+/* 每个词的完整释义：多义项(s)、该词自己的更多例句(x: 英/中)、常用搭配(u) */
+var WORD_EXTRA = {
+"abandon":{"s":[["vt.","放弃；抛弃；遗弃"],["n.","放纵；无拘无束"]],"x":[["They had to abandon the plan because of the storm.","由于暴风雨，他们不得不放弃这个计划。"],["He abandoned himself to despair.","他陷入了绝望之中。"]],"u":"abandon oneself to 沉溺于；abandon a plan 放弃计划"},
+"absolute":{"s":[["adj.","绝对的；完全的；确实的"],["n.","绝对真理"]],"x":[["There is no absolute standard for beauty.","美没有绝对的标准。"],["You must have absolute trust in her.","你必须完全信任她。"]],"u":"absolute majority 绝对多数；absolute truth 绝对真理"},
+"accommodate":{"s":[["vt.","容纳；为…提供住宿"],["vt.","适应；迁就；满足"]],"x":[["This room can accommodate twenty people.","这个房间能容纳二十人。"],["We try to accommodate the needs of every guest.","我们尽量满足每位客人的需求。"]],"u":"accommodate sb with sth 向某人提供某物；accommodate to 适应"},
+"accurate":{"s":[["adj.","准确的，精确的"],["adj.","（描述）如实的，恰当的"]],"x":[["His description of the accident was accurate.","他对事故的描述很准确。"],["The weather forecast is not always accurate.","天气预报并不总是准确。"]],"u":"be accurate in 在…方面准确；an accurate figure 准确的数字"},
+"achieve":{"s":[["vt.","实现，达到（目标）"],["vt.","取得（成绩、成功）"]],"x":[["We finally achieved our sales target.","我们最终达成了销售目标。"],["Nothing great is achieved without effort.","不付出努力就成不了大事。"]],"u":"achieve one's goal 实现目标；achieve success 取得成功"},
+"adapt":{"s":[["v.","适应（新环境）"],["vt.","改编；改造"]],"x":[["Children adapt quickly to new surroundings.","孩子们能很快适应新环境。"],["The novel was adapted for the screen.","这部小说被改编成了电影。"]],"u":"adapt to 适应；adapt sth for/into 把…改编为"},
+"adequate":{"s":[["adj.","足够的，充足的"],["adj.","尚可的，勉强够格的"]],"x":[["His salary is adequate for a small family.","他的薪水足够养活一个小家庭。"],["The room was small but adequate.","房间不大，但够用了。"]],"u":"be adequate for 足够…；adequate to do sth 足以做某事"},
+"adjust":{"s":[["vt.","调整，调节"],["vi.","适应（新情况）"]],"x":[["You can adjust the seat to a comfortable position.","你可以把座椅调到舒服的位置。"],["It took him a while to adjust to the new job.","他花了一段时间才适应新工作。"]],"u":"adjust to 适应；adjust oneself to 使自己适应"},
+"admire":{"s":[["vt.","钦佩，赞赏（人）"],["vt.","欣赏，观赏"]],"x":[["I admire her for her honesty.","我钦佩她的诚实。"],["We stopped to admire the view.","我们停下来欣赏风景。"]],"u":"admire sb for sth 因某事钦佩某人"},
+"admit":{"s":[["v.","承认，供认"],["vt.","准许进入；接纳；收治"]],"x":[["She admitted that she had made a mistake.","她承认自己犯了错。"],["Children under 12 are not admitted.","十二岁以下儿童不得入内。"]],"u":"admit doing sth 承认做过某事；be admitted to 被…录取"},
+"adopt":{"s":[["vt.","采用，采取；正式通过"],["vt.","收养；领养"]],"x":[["They adopted a child from the orphanage.","他们从孤儿院收养了一个孩子。"],["The committee adopted the new rules.","委员会通过了新规定。"]],"u":"adopt a policy 采取政策；adopt an approach 采用某种方法"},
+"advance":{"s":[["v.","前进；推进；进步"],["vt.","提前；预支"],["n.","进步；预付款"]],"x":[["The army advanced towards the city.","军队向城里推进。"],["Could you advance me two weeks' salary?","你能预支我两周的薪水吗？"]],"u":"in advance 提前；advance on/upon 向…推进"},
+"advantage":{"s":[["n.","优势，有利条件"],["n.","好处，益处"]],"x":[["Speaking English gives you a real advantage.","会说英语让你有很大优势。"],["We should take full advantage of this chance.","我们应该充分利用这个机会。"]],"u":"take advantage of 利用；have an advantage over 优于…"},
+"affect":{"s":[["vt.","影响，对…产生作用"],["vt.","感动，打动"],["vt.","（疾病）侵袭"]],"x":[["The new policy will affect thousands of farmers.","新政策将影响数千名农民。"],["She was deeply affected by the news.","这消息让她深受触动。"]],"u":"be affected by 受…影响；affect 是动词，effect 多作名词"},
+"afford":{"s":[["vt.","买得起，负担得起"],["vt.","承受得起（后果、时间）"]],"x":[["We can't afford to waste any more time.","我们再也浪费不起时间了。"],["He couldn't afford the trip abroad.","他负担不起出国的费用。"]],"u":"can't afford to do sth 承担不起做某事；afford sth 买得起"},
+"aggressive":{"s":[["adj.","好斗的，有攻击性的"],["adj.","有闯劲的，积极进取的"]],"x":[["He has an aggressive sales style.","他的销售风格很有闯劲。"],["The dog became aggressive when it was scared.","狗受惊时会变得凶猛。"]],"u":"an aggressive strategy 激进策略；aggressive marketing 强势营销"},
+"allocate":{"s":[["vt.","分配，分派"],["vt.","拨给（资金、资源）"]],"x":[["The government allocated more money to education.","政府给教育拨了更多款项。"],["We allocated each person a specific task.","我们给每人分配了具体任务。"]],"u":"allocate sth to sb 把…分配给；allocate resources 分配资源"},
+"alternative":{"s":[["n.","替代方案；选择余地"],["adj.","供替代的；另类的"]],"x":[["We had no alternative but to wait.","我们别无选择，只能等待。"],["Is there an alternative route to the airport?","去机场有别的路线吗？"]],"u":"have no alternative but to do 别无选择只能…；an alternative to …的替代品"},
+"analyze":{"s":[["vt.","分析，解析"],["vt.","化验，检验"]],"x":[["Scientists analyzed the samples in the lab.","科学家在实验室分析了样本。"],["We need to analyze why sales dropped.","我们需要分析销量下降的原因。"]],"u":"analyze data 分析数据（英式拼写为 analyse）"},
+"anticipate":{"s":[["vt.","预期，预料"],["vt.","先于…行动；预先处理"]],"x":[["We anticipate that prices will rise.","我们预计价格会上涨。"],["She anticipated his question and prepared an answer.","她预料到他的问题并准备好了答案。"]],"u":"anticipate doing sth 预计做某事；anticipate demand 预见需求"},
+"apparent":{"s":[["adj.","明显的，显而易见的"],["adj.","表面上的，貌似的"]],"x":[["It soon became apparent that we were lost.","很快就明显看出我们迷路了。"],["His apparent calm hid a lot of worry.","他表面上的镇定掩盖了许多忧虑。"]],"u":"it is apparent that …是显而易见的；for no apparent reason 没有明显原因"},
+"appeal":{"s":[["vi.","有吸引力，引起兴趣"],["v.","呼吁，恳求"],["v.","上诉 / n. 吸引力；呼吁"]],"x":[["The charity appealed to the public for donations.","慈善机构呼吁公众捐款。"],["The film appeals to young audiences.","这部电影对年轻观众很有吸引力。"]],"u":"appeal to 吸引/呼吁；appeal for 呼吁…"},
+"apply":{"s":[["vi.","申请"],["vt.","应用，运用；适用"],["vt.","涂抹，敷"]],"x":[["This rule applies to everyone.","这条规则适用于所有人。"],["Apply the cream twice a day.","这种药膏每天涂两次。"]],"u":"apply for 申请；apply to 适用于；apply oneself to 致力于"},
+"approach":{"s":[["n.","方法，途径"],["v.","接近，靠近"],["vt.","着手处理"]],"x":[["As winter approaches, the days get shorter.","冬天临近，白天变短了。"],["We need to approach the problem differently.","我们需要用不同的方式处理这个问题。"]],"u":"an approach to …的方法；approach the problem 着手处理问题"},
+"appropriate":{"s":[["adj.","适当的，恰当的"],["vt.","挪用，占用（不礼貌地）"]],"x":[["Jeans are not appropriate for a formal dinner.","牛仔裤不适合正式晚宴。"],["He appropriated the funds for his own use.","他把这笔钱挪作己用。"]],"u":"be appropriate for/to 适合于；appropriate measures 适当措施"},
+"approve":{"s":[["vt.","批准，通过"],["vi.","赞成，同意"]],"x":[["The board approved the budget.","董事会批准了预算。"],["My parents don't approve of my plan.","我父母不赞成我的计划。"]],"u":"approve of 赞成；approve a plan 批准计划"},
+"aspect":{"s":[["n.","方面，层面"],["n.","外观，样子；（建筑）朝向"]],"x":[["The job has many attractive aspects.","这份工作有很多吸引人的方面。"],["We must consider the legal aspect of the case.","我们必须考虑此案的法律层面。"]],"u":"in all aspects 在各方面；every aspect of 每一方面"},
+"assess":{"s":[["vt.","评估，评定"],["vt.","估价，核定（金额）"]],"x":[["Teachers assess students' progress every term.","老师每学期评估学生的进步。"],["The damage was assessed at 5,000 dollars.","损失估计为五千美元。"]],"u":"assess the impact 评估影响；assess sb's ability 评定某人的能力"},
+"assign":{"s":[["vt.","分配，分派（任务）"],["vt.","指定，确定（时间、地点）"]],"x":[["The teacher assigned each group a topic.","老师给每组分配了一个题目。"],["He was assigned to the night shift.","他被分派上夜班。"]],"u":"assign sth to sb 把…分派给；assign a task 布置任务"},
+"assist":{"s":[["v.","帮助，协助（较正式）"],["v.","（在比赛中）助攻"]],"x":[["Two nurses assisted the surgeon.","两名护士协助外科医生。"],["The app assists users in learning words.","这款应用帮助用户学单词。"]],"u":"assist sb with/in sth 协助某人做某事；assist in doing 帮助做"},
+"assume":{"s":[["vt.","假设，认为（未证实）"],["vt.","承担（责任、职务）"],["vt.","呈现，具有（外观）"]],"x":[["Let's assume the report is correct.","我们先假设这份报告是对的。"],["She assumed responsibility for the project.","她承担起了这个项目的责任。"]],"u":"assume that 假定；assume responsibility 承担责任"},
+"assure":{"s":[["vt.","向…保证，使确信"],["vt.","确保，保障"]],"x":[["He assured me that the goods would arrive on time.","他向我保证货物会准时到达。"],["Rest assured, everything is under control.","请放心，一切都在掌控之中。"]],"u":"assure sb of sth 向某人保证；rest assured 尽管放心"},
+"attach":{"s":[["vt.","附上，贴上；连接"],["vt.","（attach importance to）重视"]],"x":[["I attached the file to my email.","我把文件附在邮件里了。"],["She attaches great importance to honesty.","她非常重视诚信。"]],"u":"attach importance to 重视；be attached to 依恋/附属于"},
+"attain":{"s":[["vt.","达到，获得（经努力）"],["vt.","到达（某年龄、水平）"]],"x":[["He attained a high level of skill.","他达到了很高的技术水平。"],["She attained her goal after years of effort.","经过多年努力，她实现了目标。"]],"u":"attain a goal 达成目标；attain success 获得成功"},
+"attribute":{"s":[["vt.","把…归因于"],["n.","属性，特质"]],"x":[["He attributes his success to luck.","他把成功归因于运气。"],["Patience is an important attribute of a teacher.","耐心是教师的重要特质。"]],"u":"attribute A to B 把 A 归因于 B；a key attribute 关键特质"},
+"authentic":{"s":[["adj.","真正的，真品的"],["adj.","可信的，真实的"]],"x":[["This is an authentic Roman coin.","这是一枚真正的罗马硬币。"],["Her story sounds authentic.","她的讲述听起来可信。"]],"u":"authentic material 真实语料；an authentic signature 亲笔签名"},
+"available":{"s":[["adj.","可用的，可获得的"],["adj.","（人）有空的"]],"x":[["The doctor is available this afternoon.","医生今天下午有空。"],["More information is available on our website.","更多信息可在我们网站上获取。"]],"u":"be available to sb 对某人可用；make sth available 提供某物"},
+"aware":{"s":[["adj.","知道的，意识到的"],["adj.","（对环境）留意的，警觉的"]],"x":[["She was aware of the risks from the start.","她从一开始就意识到了风险。"],["We should be more aware of our own habits.","我们应该更留意自己的习惯。"]],"u":"be aware of 意识到；be aware that 意识到…"},
+"balance":{"s":[["n.","平衡；均衡"],["n.","余额；结余"],["v.","使平衡；权衡"]],"x":[["You can check your balance in the app.","你可以在应用里查余额。"],["She balanced the tray on one hand.","她用一只手端稳了托盘。"]],"u":"keep/lose one's balance 保持/失去平衡；on balance 总的来说"},
+"benefit":{"s":[["n.","好处，益处"],["n.","（工作的）福利，补助"],["v.","使受益；得益于"]],"x":[["The new road will benefit the whole village.","这条新路会让全村受益。"],["She is on sick leave with full benefits.","她带薪休病假。"]],"u":"benefit from 从…中受益；for the benefit of 为了…的利益"},
+"capable":{"s":[["adj.","有能力的，能胜任的"],["adj.","（capable of）有…可能的"]],"x":[["He is capable of handling the situation.","他有能力应对这个局面。"],["This machine is capable of printing 60 pages a minute.","这台机器每分钟能印六十页。"]],"u":"be capable of doing 有能力做；a capable manager 能干的经理"},
+"capacity":{"s":[["n.","容量，容积；容纳能力"],["n.","能力，才能"],["n.","职位，身份"]],"x":[["He has a great capacity for hard work.","他有很强的吃苦能力。"],["The hall was filled to capacity.","大厅座无虚席。"]],"u":"at full capacity 满负荷；the capacity to do sth 做某事的能力"},
+"category":{"s":[["n.","类别，种类"],["n.","（统计）范畴，分类"]],"x":[["This film doesn't fit into any category.","这部电影不属于任何类别。"],["The prizes fall into three categories.","奖项分为三类。"]],"u":"fall into a category 属于某类；a broad category 大类"},
+"challenge":{"s":[["n.","挑战，艰巨任务"],["n.","质疑，异议"],["vt.","向…挑战；质疑"]],"x":[["She challenged his opinion politely.","她礼貌地提出了质疑。"],["The team faces a tough challenge ahead.","球队面临严峻的挑战。"]],"u":"face a challenge 面对挑战；challenge sb to do 挑战某人做"},
+"circumstance":{"s":[["n.","情况，情形"],["n.","（复数）境况，经济状况"]],"x":[["Under the circumstances, we'd better postpone it.","在这种情况下，我们最好推迟。"],["He lives in poor circumstances.","他生活拮据。"]],"u":"under no circumstances 绝不（后接倒装）；in/under the circumstances 在这种情况下"},
+"collaborate":{"s":[["vi.","合作，协作"],["vi.","（与敌人）勾结"]],"x":[["The two universities collaborate on research.","这两所大学在研究上合作。"],["She collaborated with a famous artist on the project.","她与一位著名艺术家合作了这个项目。"]],"u":"collaborate with sb 与某人合作；collaborate on sth 在…上合作"},
+"commit":{"s":[["vt.","承诺；投入（时间、精力）"],["vt.","犯（罪、错误）"]],"x":[["He committed a serious error in the report.","他在报告中犯了一个严重错误。"],["The company is committed to quality.","公司致力于追求品质。"]],"u":"be committed to 致力于；commit a crime 犯罪"},
+"compatible":{"s":[["adj.","（设备）兼容的"],["adj.","（人）能共处的，合得来的"]],"x":[["This printer is compatible with most computers.","这台打印机与大多数电脑兼容。"],["They are not compatible as roommates.","他们做室友合不来。"]],"u":"be compatible with 与…兼容"},
+"compensate":{"s":[["v.","补偿，赔偿"],["v.","弥补（不足）"]],"x":[["Nothing can compensate for the loss of time.","什么也无法弥补时间的损失。"],["The airline compensated passengers for the delay.","航空公司就延误向乘客作了赔偿。"]],"u":"compensate for 弥补；compensate sb for sth 就某事赔偿某人"},
+"competent":{"s":[["adj.","有能力的，胜任的"],["adj.","合格的，达到标准的"]],"x":[["She is competent at her job.","她胜任自己的工作。"],["We need a competent translator.","我们需要一位合格的翻译。"]],"u":"be competent in/at 擅长…；a competent performance 合格的表演"},
+"compete":{"s":[["vi.","竞争，角逐"],["vi.","参加比赛"]],"x":[["Ten singers competed for the prize.","十位歌手角逐该奖项。"],["Small shops find it hard to compete with chains.","小店很难与连锁店竞争。"]],"u":"compete with/against 与…竞争；compete for 争夺"},
+"complex":{"s":[["adj.","复杂的，难懂的"],["n.","综合建筑群，综合体"],["n.","（心理）情结"]],"x":[["The human brain is extremely complex.","人脑极为复杂。"],["They built a new sports complex.","他们建了一座新的综合体育场。"]],"u":"a complex problem 复杂问题；an inferiority complex 自卑情结"},
+"component":{"s":[["n.","组成部分，成分"],["n.","（机器）零部件"],["adj.","组成的"]],"x":[["The factory makes electronic components.","这家工厂生产电子元件。"],["Each component is tested separately.","每个部件都单独测试。"]],"u":"a key component of …的关键部分；component parts 组成部分"},
+"concept":{"s":[["n.","概念，观念"],["n.","（产品的）理念，构想"]],"x":[["The concept of time varies across cultures.","时间观念因文化而异。"],["He introduced a new concept to the team.","他向团队引入了一个新概念。"]],"u":"the concept of …的概念；a basic concept 基本概念"},
+"conclude":{"s":[["v.","得出结论，推断出"],["v.","结束，终止"],["v.","缔结，达成（协议）"]],"x":[["The report concludes that the plan is feasible.","报告得出结论：该计划可行。"],["She concluded her speech with a joke.","她以一个笑话结束了演讲。"]],"u":"conclude that 得出结论；to conclude 最后（作结语）"},
+"confidence":{"s":[["n.","信心，自信"],["n.","信任，信赖"],["n.","（私下说的）秘密"]],"x":[["Practice builds confidence.","练习能建立自信。"],["She told me in confidence.","她私下告诉了我。"]],"u":"have confidence in 对…有信心；in confidence 私下地"},
+"confirm":{"s":[["vt.","确认，核实"],["vt.","证实，证明"]],"x":[["The results confirmed our theory.","结果证实了我们的理论。"],["Please confirm you received the parcel.","请确认你收到了包裹。"]],"u":"confirm that 证实；confirm a booking 确认预订"},
+"consequence":{"s":[["n.","结果，后果（多指不好的）"],["n.","重要性，重大"]],"x":[["He was late, and as a consequence missed the train.","他迟到了，结果错过了火车。"],["It's of little consequence to me.","这对我无关紧要。"]],"u":"as a consequence 因此；of little consequence 无关紧要"},
+"consider":{"s":[["vt.","考虑，细想"],["vt.","认为，把…视为"],["vt.","顾及，体谅"]],"x":[["We are considering moving abroad.","我们正在考虑移居国外。"],["She is considered a great writer.","她被认为是一位伟大的作家。"]],"u":"consider doing 考虑做；be considered as 被视为"},
+"consistent":{"s":[["adj.","（言行）一贯的，始终如一的"],["adj.","（与…）一致的，相符的"]],"x":[["His story is consistent with the facts.","他的说法与事实一致。"],["She trains every day and is very consistent.","她每天训练，状态非常稳定。"]],"u":"be consistent with 与…一致；a consistent style 一贯的风格"},
+"constraint":{"s":[["n.","限制，约束"],["n.","拘束，不自然"]],"x":[["We finished the work despite tight constraints.","尽管限制重重，我们还是完成了工作。"],["Budget constraints forced them to cut costs.","预算限制迫使他们削减开支。"]],"u":"budget/time constraints 预算/时间限制；under constraint 受约束"},
+"construct":{"s":[["vt.","建造，构筑"],["vt.","构建（论点、体系）"],["n.","构想，概念"]],"x":[["They constructed a model of the bridge.","他们搭了一个桥梁模型。"],["He constructed a convincing argument.","他构建了一个有说服力的论证。"]],"u":"construct a building 建造建筑；construct an argument 构建论证"},
+"consume":{"s":[["vt.","消耗，耗费（能源、时间）"],["vt.","吃，喝（正式）"]],"x":[["This air conditioner consumes less power.","这台空调耗电更少。"],["She consumes three cups of coffee a day.","她一天喝三杯咖啡。"]],"u":"consume energy 消耗能源；time-consuming 耗时的"},
+"contribute":{"s":[["v.","贡献，捐助"],["vi.","促成，助长（contribute to）"],["v.","投稿"]],"x":[["She contributes articles to the magazine.","她给这家杂志投稿。"],["Smoking contributes to many diseases.","吸烟会导致多种疾病。"]],"u":"contribute to 有助于/导致；contribute sth to 把…捐给"},
+"convince":{"s":[["vt.","使确信，使信服"],["vt.","说服，劝服"]],"x":[["I convinced her that it was the right thing to do.","我说服了她，让她相信这样做是对的。"],["The evidence convinced the jury.","证据让陪审团信服。"]],"u":"convince sb of sth 使某人相信某事；be convinced that 确信"},
+"coordinate":{"s":[["vt.","协调，统筹"],["n.","坐标"],["adj.","同等的，并列的"]],"x":[["We need someone to coordinate the effort.","我们需要有人来统筹这项工作。"],["Mark the exact coordinates on the map.","在地图上标出准确坐标。"]],"u":"coordinate with sb 与某人协调；coordinate efforts 协调各方努力"},
+"correspond":{"s":[["vi.","相符，对应"],["vi.","通信"]],"x":[["His account corresponds with hers.","他的说法与她的相符。"],["We corresponded for years before meeting.","见面之前我们通信了好几年。"]],"u":"correspond to/with 与…相符；correspond with sb 与某人通信"},
+"create":{"s":[["vt.","创造，创建"],["vt.","引起，造成"]],"x":[["The policy created a lot of new jobs.","这项政策创造了许多新的就业机会。"],["His remarks created confusion.","他的话引起了混乱。"]],"u":"create jobs 创造就业；create an account 创建账户"},
+"criteria":{"s":[["n.","标准，准则（criterion 的复数）"],["n.","（评选）条件"]],"x":[["Price is not the only criterion.","价格不是唯一的标准。"],["The criteria for the award are very strict.","该奖项的评选标准非常严格。"]],"u":"meet the criteria 符合标准；selection criteria 评选标准"},
+"crucial":{"s":[["adj.","至关重要的，决定性的"],["adj.","关键的（时刻）"]],"x":[["The next few weeks are crucial for us.","接下来几周对我们至关重要。"],["Timing is crucial in this experiment.","这个实验的时机把握很关键。"]],"u":"be crucial to/for 对…至关重要；a crucial role 关键作用"},
+"dedicate":{"s":[["vt.","把…奉献给，致力于"],["vt.","（在作品上）题献"]],"x":[["She dedicated the book to her parents.","她把这本书献给了父母。"],["He is dedicated to his work.","他全身心投入自己的工作。"]],"u":"dedicate oneself to 致力于；be dedicated to 专注于"},
+"define":{"s":[["vt.","给…下定义"],["vt.","界定，明确，阐明"]],"x":[["The contract clearly defines each party's duties.","合同明确界定了各方的义务。"],["It's hard to define happiness.","幸福很难定义。"]],"u":"define sth as 把…定义为；clearly defined 明确界定的"},
+"deliberate":{"s":[["adj.","故意的，蓄意的"],["adj.","从容不迫的，不慌不忙的"],["v.","仔细考虑，商议"]],"x":[["The damage was deliberate, not accidental.","这种损坏是故意的，不是意外。"],["The jury deliberated for three hours.","陪审团商议了三个小时。"]],"u":"a deliberate attempt 蓄意的尝试；deliberate on sth 审议某事"},
+"demonstrate":{"s":[["vt.","证明，表明"],["vt.","演示，展示"],["vi.","示威游行"]],"x":[["The study demonstrates a clear link.","该研究证明了两者之间有明显关联。"],["He demonstrated how the device works.","他演示了这台设备如何运作。"]],"u":"demonstrate that 证明…；demonstrate against 示威反对"},
+"derive":{"s":[["v.","源自，起源于（derive from）"],["vt.","获得，取得（乐趣、利益）"],["vt.","推导出"]],"x":[["Many English words derive from Latin.","许多英语单词源自拉丁语。"],["She derives great pleasure from music.","她从音乐中获得极大乐趣。"]],"u":"derive from 源自；derive pleasure from 从…获得乐趣"},
+"design":{"s":[["n.","设计；图案；意图"],["vt.","设计；策划"]],"x":[["The building was designed by a famous architect.","这栋楼由一位著名建筑师设计。"],["The test is designed to measure reading speed.","这个测试旨在测量阅读速度。"]],"u":"be designed to do 旨在做；by design 故意地"},
+"detect":{"s":[["vt.","察觉，发现（不易察觉之物）"],["vt.","探测，检测"]],"x":[["The alarm can detect smoke within seconds.","报警器几秒钟内就能探测到烟雾。"],["I detected a note of anger in her voice.","我察觉到她语气中的一丝愤怒。"]],"u":"detect a change 察觉变化；detect errors 发现错误"},
+"determine":{"s":[["vt.","决定，影响"],["vt.","查明，确定"],["v.","下决心（determine to do）"]],"x":[["Scientists are trying to determine the cause.","科学家正试图查明原因。"],["She determined to finish the race.","她下定决心要跑完全程。"]],"u":"determine to do 决心做；be determined to 决心要"},
+"develop":{"s":[["v.","发展，成长"],["vt.","开发，研制"],["vt.","培养，养成"],["v.","患（病）"]],"x":[["The app was developed in three months.","这款应用开发了三个月。"],["He developed a strong interest in music.","他对音乐产生了浓厚兴趣。"]],"u":"develop a habit 养成习惯；develop from/into 由…发展而来"},
+"devote":{"s":[["vt.","把…奉献给，专心于"],["vt.","（devote sth to）把…用于"]],"x":[["He devoted his whole life to medicine.","他把毕生精力献给了医学。"],["She devotes two hours a day to English.","她每天花两个小时学英语。"]],"u":"devote oneself to 致力于；devote time to doing 把时间用于做"},
+"distinguish":{"s":[["v.","区分，辨别"],["vt.","使杰出，使显出特色"]],"x":[["Can you distinguish between the two kinds?","你能分辨这两种吗？"],["She distinguished herself in the debate.","她在辩论中表现出众。"]],"u":"distinguish A from B 区分 A 和 B；distinguish between 区分"},
+"distribute":{"s":[["vt.","分配，分发"],["vt.","使分布，散布"]],"x":[["Volunteers distributed food to the villagers.","志愿者向村民分发食物。"],["The species is widely distributed in Asia.","该物种在亚洲分布广泛。"]],"u":"distribute sth to/among 分发；be distributed over 分布于"},
+"dominant":{"s":[["adj.","占主导地位的，支配的"],["adj.","（最）显著的，突出的"],["adj.","（生物）显性的"]],"x":[["She played a dominant role in the talks.","她在会谈中起了主导作用。"],["Blue is the dominant color in the painting.","蓝色是这幅画的主色调。"]],"u":"play a dominant role in 在…中起主导作用；dominant position 主导地位"},
+"emphasize":{"s":[["vt.","强调，着重指出"],["vt.","使突出，加强（语气）"]],"x":[["He emphasized the need for teamwork.","他强调了团队合作的必要性。"],["I must emphasize that this is only a guess.","我必须强调，这只是一个猜测。"]],"u":"emphasize that 强调…；emphasize the importance of 强调…的重要性"},
+"encourage":{"s":[["vt.","鼓励，激励"],["vt.","助长，促进"]],"x":[["The teacher encouraged us to ask questions.","老师鼓励我们提问。"],["Warm weather encourages the growth of weeds.","温暖的天气会助长杂草生长。"]],"u":"encourage sb to do 鼓励某人做；encourage growth 促进增长"},
+"enhance":{"s":[["vt.","提高，增强（品质、价值、能力）"],["vt.","（图像）增强，美化"]],"x":[["Music can enhance your mood.","音乐能改善你的心情。"],["The photos were enhanced with software.","这些照片用软件做了增强处理。"]],"u":"enhance quality 提升品质；enhance one's reputation 提升声誉"},
+"ensure":{"s":[["vt.","确保，保证"],["vt.","保护，使安全"]],"x":[["Please ensure that all windows are closed.","请确保所有窗户都关好。"],["Good planning ensures success.","良好的规划能确保成功。"]],"u":"ensure that 确保…；ensure safety 确保安全（注意与 insure 区别）"},
+"essential":{"s":[["adj.","必不可少的，极其重要的"],["adj.","本质的，根本的"],["n.","要素；必需品"]],"x":[["Practice is essential to learning a language.","练习对学语言必不可少。"],["We only have the bare essentials.","我们只有最基本的生活必需品。"]],"u":"be essential to/for 对…必不可少；the essentials 基本要素"},
+"establish":{"s":[["vt.","建立，创办"],["vt.","确立，树立"],["vt.","证实，查明"]],"x":[["The school was established in 1920.","这所学校创办于 1920 年。"],["We need to establish the facts first.","我们需要先弄清事实。"]],"u":"establish a company 创办公司；establish relations 建立关系"},
+"evaluate":{"s":[["vt.","评价，评估"],["vt.","（数学）求…的值"]],"x":[["We evaluate each proposal on its merits.","我们按优劣评估每份提案。"],["The program will be evaluated next year.","该项目明年将接受评估。"]],"u":"evaluate the effect 评估效果；evaluate sb's work 评价某人的工作"},
+"evident":{"s":[["adj.","明显的，显然的"],["adj.","有证据的"]],"x":[["Her disappointment was evident to everyone.","她的失望人人都看得出来。"],["It is evident from the data that sales fell.","数据明显显示销量下滑。"]],"u":"it is evident that 显然…；evident from sth 从…可看出"},
+"evolve":{"s":[["vi.","进化，演化"],["vi.","逐步发展，演变"]],"x":[["Birds evolved from dinosaurs.","鸟类由恐龙进化而来。"],["The idea evolved into a real product.","这个想法逐步发展成了真正的产品。"]],"u":"evolve from 由…进化而来；evolve into 演变成"},
+"exceed":{"s":[["vt.","超过，超出（数量、限度）"],["vt.","超越，胜过"]],"x":[["The cost exceeded our budget.","费用超出了我们的预算。"],["Never exceed the speed limit.","切勿超速。"]],"u":"exceed expectations 超出预期；exceed the limit 超过限额"},
+"exchange":{"s":[["v.","交换，调换"],["n.","交换，交流"],["n.","交易所；兑换"]],"x":[["Can I exchange this shirt for a larger size?","我能把这件衬衫换成大一号的吗？"],["We had a lively exchange of views.","我们交换了热烈的意见。"]],"u":"exchange A for B 用 A 换 B；in exchange for 作为…的交换"},
+"exhibit":{"s":[["v.","展出，陈列"],["vt.","表现出，显示出"],["n.","展品；展览"]],"x":[["The gallery exhibits works by local artists.","画廊展出当地艺术家的作品。"],["He exhibited no emotion at all.","他丝毫未流露出情绪。"]],"u":"exhibit signs of 表现出…的迹象；on exhibit 在展出"},
+"expand":{"s":[["v.","扩大，扩展（业务、范围）"],["v.","膨胀，扩张"]],"x":[["The company plans to expand into Asia.","公司计划拓展到亚洲。"],["Metal expands when it is heated.","金属受热会膨胀。"]],"u":"expand into 扩展到；expand one's business 扩大业务"},
+"experience":{"s":[["n.","经验，阅历"],["n.","经历，体验"],["vt.","经历，体验"]],"x":[["It was the most frightening experience of my life.","那是我一生中最可怕的经历。"],["The country experienced rapid growth.","这个国家经历了快速增长。"]],"u":"experience in/of 在…方面的经验；work experience 工作经验"},
+"explore":{"s":[["v.","探索，勘探"],["vt.","探讨，研究"],["v.","游览，勘察"]],"x":[["We explored the old town on foot.","我们步行游览了老城。"],["The book explores the causes of war.","这本书探讨了战争的起因。"]],"u":"explore the possibility 探讨可能性；explore for oil 勘探石油"},
+"extend":{"s":[["vt.","延长，延期"],["vt.","扩展，扩大"],["vt.","伸出；给予（邀请、帮助）"]],"x":[["The library extends its opening hours in June.","图书馆在六月延长开放时间。"],["She extended her hand in greeting.","她伸出手来打招呼。"]],"u":"extend to 延伸到；extend an invitation 发出邀请"},
+"facilitate":{"s":[["vt.","促进，推动"],["vt.","使便利，使容易"]],"x":[["The new system facilitates data sharing.","新系统便于数据共享。"],["Good roads facilitate trade.","良好的道路促进贸易。"]],"u":"facilitate communication 促进沟通；facilitate the process 简化流程"}
+};
+
 
 function getWordDate(){
   var d = new Date();
@@ -6565,14 +6697,25 @@ function parsePosCn(posCn){
 function getCurrentExamples(){
   var idx = getCurrentWordBankIdx();
   var w = WORD_BANK[idx];
-  var main = w[2];
-  var list = [{ text: main, isMain: true }];
-  for(var off = 1; off <= 2; off++){
-    var otherIdx = (idx + off * 11) % WORD_BANK.length;
-    if(otherIdx === idx) otherIdx = (idx + 1) % WORD_BANK.length;
-    list.push({ text: WORD_BANK[otherIdx][2], isMain: false });
+  var list = [{ text: w[2], isMain: true }];
+  /* ★ 修正：旧版这里取的是「别的单词」的例句（idx + off*11），
+     导致 dominant 卡片下面出现 exchange / achieve 的句子，纯属误导。
+     现改为取该词自己的更多例句（含中文翻译）。 */
+  var ex = WORD_EXTRA[w[0]];
+  if(ex && ex.x && ex.x.length){
+    for(var i = 0; i < ex.x.length; i++){
+      list.push({ text: ex.x[i][0], cn: ex.x[i][1], isMain: false });
+    }
   }
   return list;
+}
+
+/* 取某个单词的完整义项列表：[[词性, 中文], ...] */
+function getWordSenses(word, fallbackPosCn){
+  var ex = WORD_EXTRA[word];
+  if(ex && ex.s && ex.s.length) return ex.s;
+  var pc = parsePosCn(fallbackPosCn);
+  return pc.cn ? [[pc.pos || '', pc.cn]] : [];
 }
 
 function renderWordFlashcard(){
@@ -6590,6 +6733,7 @@ function renderWordFlashcard(){
     var _ki = document.getElementById('wordSpellingInput');
     var _kh = document.getElementById('wordSpellingHint');
     var _kb = document.querySelector('#wordSentences .word-blank[data-main="1"]');
+    var _kbs = document.querySelectorAll('#wordSentences .word-blank[data-extra="1"]');
     var _ke = document.getElementById('wordFlashEn');
     var _hasState = (_ki && (_ki.value || _ki.classList.contains('correct') || _ki.classList.contains('wrong')))
                  || (_kh && _kh.textContent);
@@ -6602,6 +6746,7 @@ function renderWordFlashcard(){
         hintCls: _kh ? _kh.className : 'word-spelling-hint',
         blankText: _kb ? _kb.textContent : '',
         blankCls: _kb ? _kb.className : '',
+        extras: Array.prototype.map.call(_kbs || [], function(b){ return { text: b.textContent, cls: b.className }; }),
         enRevealed: _ke ? _ke.classList.contains('revealed') : false,
         focused: !!_focused,
         caret: _focused && _ki.selectionStart != null ? _ki.selectionStart : null
@@ -6620,34 +6765,56 @@ function renderWordFlashcard(){
   // 头部序号
   document.getElementById('wordFlashNo').textContent = (currentWordIndex + 1) + ' / 10';
 
-  // 词性
-  var posEl = document.getElementById('wordFlashPos');
-  posEl.textContent = pc.pos || 'word';
-  posEl.style.display = pc.pos ? 'inline-block' : 'none';
+  // 完整义项（多词性/多含义），无扩展数据时退回词库里的单条释义
+  var senses = getWordSenses(word, w[1]);
+  var wExtra = WORD_EXTRA[word] || null;
 
-  // 释义（中文大字）
-  document.getElementById('wordFlashCn').textContent = pc.cn || '';
+  // 词性：取第一个义项的词性
+  var posEl = document.getElementById('wordFlashPos');
+  var firstPos = (senses.length && senses[0][0]) ? senses[0][0] : pc.pos;
+  posEl.textContent = firstPos || 'word';
+  posEl.style.display = firstPos ? 'inline-block' : 'none';
+
+  // 释义（中文大字 = 第一个义项）
+  document.getElementById('wordFlashCn').textContent = ((senses.length ? senses[0][1] : pc.cn) || '');
+
+  // 其余义项 + 常用搭配（让释义更全）
+  var senseBox = document.getElementById('wordSenseList');
+  if(senseBox){
+    var sh = '';
+    for(var si = 1; si < senses.length; si++){
+      sh += '<div class="word-sense-row">' +
+              '<span class="word-sense-pos">' + escapeHtml(senses[si][0] || '') + '</span>' +
+              '<span class="word-sense-cn">' + escapeHtml(senses[si][1] || '') + '</span>' +
+            '</div>';
+    }
+    if(wExtra && wExtra.u){
+      sh += '<div class="word-usage"><span class="word-usage-tag">常用搭配</span>' + escapeHtml(wExtra.u) + '</div>';
+    }
+    senseBox.innerHTML = sh;
+    senseBox.className = 'word-sense-list' + (sh ? ' on' : '');
+  }
 
   // 英文（默认隐藏，revealAnswer 时显示）
   var enEl = document.getElementById('wordFlashEn');
   enEl.textContent = word;
   enEl.classList.remove('revealed');
 
-  // 例句：主例句挖空，其他例句只读
+  // 例句：主例句挖空；其余例句是「这个词自己」的更多用法，同样挖空（不能直接露答案）+ 中文翻译
   var examples = getCurrentExamples();
   var sentBox = document.getElementById('wordSentences');
   sentBox.innerHTML = examples.map(function(ex, i){
     var html = '';
-    if(!ex.isMain){
-      html += '<div class="word-sentence-other">其他用法参考</div>';
+    if(!ex.isMain && i === 1){
+      html += '<div class="word-sentence-other">更多用法 · 其他例句</div>';
     }
     var safeText = escapeHtml(ex.text);
-    if(ex.isMain){
-      // 挖空本词（兼容屈折变形：abandoned / applied / committed 等）
-      var blanked = wqBlankTo(safeText, word, '<span class="word-blank" data-main="1"></span>');
-      html += '<div class="word-sentence">' + blanked + '</div>';
-    } else {
-      html += '<div class="word-sentence" style="color:var(--text-2);">' + safeText + '</div>';
+    // 挖空本词（兼容屈折变形：abandoned / applied / committed 等）
+    var blanked = wqBlankTo(safeText, word,
+      '<span class="word-blank" data-' + (ex.isMain ? 'main="1"' : 'extra="1"') + '></span>');
+    html += '<div class="word-sentence"' + (ex.isMain ? '' : ' style="color:var(--text-2);"') + '>' + blanked + '</div>';
+    if(!ex.isMain && ex.cn){
+      html += '<div class="word-sentence-cn">' + escapeHtml(ex.cn) + '</div>';
     }
     return html;
   }).join('');
@@ -6682,6 +6849,13 @@ function renderWordFlashcard(){
     if(_fbKeep.blankText){
       var _rb = document.querySelector('#wordSentences .word-blank[data-main="1"]');
       if(_rb){ _rb.textContent = _fbKeep.blankText; _rb.className = _fbKeep.blankCls; }
+    }
+    if(_fbKeep.extras && _fbKeep.extras.length){
+      var _rbs = document.querySelectorAll('#wordSentences .word-blank[data-extra="1"]');
+      for(var _ri = 0; _ri < _rbs.length && _ri < _fbKeep.extras.length; _ri++){
+        _rbs[_ri].textContent = _fbKeep.extras[_ri].text;
+        _rbs[_ri].className = _fbKeep.extras[_ri].cls;
+      }
     }
     input.value = _fbKeep.value;
     if(_fbKeep.cls) input.classList.add(_fbKeep.cls);
@@ -6759,6 +6933,9 @@ function checkSpelling(){
       mainBlank.textContent = word;
       mainBlank.classList.add('correct','revealed');
     }
+    document.querySelectorAll('#wordSentences .word-blank[data-extra="1"]').forEach(function(b){
+      b.textContent = word; b.classList.add('correct','revealed');
+    });
     input.classList.add('correct');
     // 答对自动标记为"已掌握"（用户可手动覆盖）；若此前是"模糊/不认识"，答对则升级为已掌握
     setWordMarkAuto('known', true);
@@ -6812,6 +6989,10 @@ function revealAnswer(){
     mainBlank.textContent = word;
     mainBlank.classList.add('revealed');
   }
+  /* 「更多用法」里的空也一并补上，方便对照真实用法 */
+  document.querySelectorAll('#wordSentences .word-blank[data-extra="1"]').forEach(function(b){
+    if(!b.classList.contains('revealed')){ b.textContent = word; b.classList.add('revealed'); }
+  });
   var input = document.getElementById('wordSpellingInput');
   if(!input.value){
     input.value = word;
@@ -7246,23 +7427,46 @@ function wqBlankTo(sent, word, replacement){
   return text;
 }
 function wqBlank(sent, word){ return wqBlankTo(sent, word, '________'); }
+/* 取某词的主释义（优先用 WORD_EXTRA 里更完整的第一义项） */
+function wordBriefCn(idx){
+  var w = WORD_BANK[idx];
+  var s = getWordSenses(w[0], w[1]);
+  return (s.length ? s[0][1] : parsePosCn(w[1]).cn) || '';
+}
+
+/* 取某词可用于挖空的全部例句（主例句 + 自己的更多用法），闯关出题时随机选一条 */
+function wordSentencePool(idx){
+  var w = WORD_BANK[idx];
+  var pool = [w[2]];
+  var ex = WORD_EXTRA[w[0]];
+  if(ex && ex.x){
+    for(var i = 0; i < ex.x.length; i++) pool.push(ex.x[i][0]);
+  }
+  return pool;
+}
+
 function wqBuildQuestion(idx, type){
   var w = WORD_BANK[idx];
   var pc = parsePosCn(w[1]);
-  var q = { type:type, idx:idx, word:w[0], cn:pc.cn, pos:pc.pos, sent:w[2] };
+  var brief = wordBriefCn(idx);
+  var q = { type:type, idx:idx, word:w[0], cn:brief, pos:pc.pos, sent:w[2] };
   var opts;
   if(type === 'cn2en' || type === 'listen' || type === 'cloze'){
     opts = wqShuffle([{ label:w[0], ok:true }].concat(wqDistractors(idx, 3).map(function(i){ return { label:WORD_BANK[i][0], ok:false }; })));
     q.options = opts;
   } else if(type === 'en2cn'){
-    opts = wqShuffle([{ label:pc.cn, ok:true }].concat(wqDistractors(idx, 3).map(function(i){ return { label:parsePosCn(WORD_BANK[i][1]).cn, ok:false }; })));
+    opts = wqShuffle([{ label:brief, ok:true }].concat(wqDistractors(idx, 3).map(function(i){ return { label:wordBriefCn(i), ok:false }; })));
     q.options = opts;
   }
-  if(type === 'spell'){ q.prompt = pc.cn; q.sub = wqBlank(w[2], w[0]); }
-  else if(type === 'cn2en'){ q.title = '选出对应的英文单词'; q.prompt = pc.cn + (pc.pos ? '（' + pc.pos + '）' : ''); }
+  /* 例句类题型随机取该词的一条例句，避免每天同一句 */
+  var pool = wordSentencePool(idx);
+  var pick = pool[Math.floor(Math.random() * pool.length)] || w[2];
+
+  if(type === 'spell'){ q.prompt = brief; q.sub = wqBlank(w[2], w[0]); }
+  else if(type === 'cn2en'){ q.title = '选出对应的英文单词'; q.prompt = brief + (pc.pos ? '（' + pc.pos + '）' : ''); }
   else if(type === 'en2cn'){ q.title = '选出正确的中文释义'; q.prompt = w[0]; }
   else if(type === 'listen'){ q.title = '听发音，选出正确的单词'; q.prompt = ''; }
-  else { q.title = '例句填空：选出合适的单词'; q.prompt = wqBlank(w[2], w[0]); }
+  else { q.title = '例句填空：选出合适的单词'; q.prompt = wqBlank(pick, w[0]); }
   return q;
 }
 function startWordQuest(force){
@@ -12944,7 +13148,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'pending', date:'2026-09-15', desc:'修复英语朗读「口音不对/机器音」:统一发音引擎 speakEn(),页面加载预热语音表并显式锁定标准美音发音人(旧代码只设 lang 不设 voice,Chrome 退回系统默认中文音色 婷婷);排除系统搞怪音色;修正 cancel 后立刻 speak 导致的丢音' };
+  window.ver = { git:'pending', date:'2026-09-15b', desc:'英语单词释义补全:新增 WORD_EXTRA 词表(100 词全量)提供多义项+常用搭配+该词自己的 2 条例句(带中文翻译);修复「其他用法参考」实为别的单词例句的错位问题;释义区新增其余义项与搭配展示;闯关例句/释义同步改用更全数据' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
