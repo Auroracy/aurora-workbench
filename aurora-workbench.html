@@ -964,6 +964,11 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
   display:inline-block;margin-right:6px;font-size:10.5px;font-weight:700;
   color:var(--accent);letter-spacing:0.06em;
 }
+/* 释义 / 常用搭配里的挖空：字号比例句小，空位也收窄，避免撑开一行 */
+.word-usage .word-blank,
+.word-sense-cn .word-blank{min-width:50px;margin:0 2px;padding:0 4px;}
+.word-usage .word-blank::after,
+.word-sense-cn .word-blank::after{font-size:11px;}
 .word-sentence-cn{
   font-size:12.5px;color:var(--text-3);line-height:1.7;
   margin-top:1px;margin-left:2px;
@@ -6735,8 +6740,10 @@ function renderWordFlashcard(){
     var _kb = document.querySelector('#wordSentences .word-blank[data-main="1"]');
     var _kbs = document.querySelectorAll('#wordSentences .word-blank[data-extra="1"]');
     var _ke = document.getElementById('wordFlashEn');
+    var _ks = document.querySelectorAll('#wordFlashcard .word-blank[data-sense="1"]');
     var _hasState = (_ki && (_ki.value || _ki.classList.contains('correct') || _ki.classList.contains('wrong')))
-                 || (_kh && _kh.textContent);
+                 || (_kh && _kh.textContent)
+                 || (_ke && _ke.classList.contains('revealed'));
     if(_hasState){
       var _focused = _ki && document.activeElement === _ki;
       _fbKeep = {
@@ -6747,6 +6754,7 @@ function renderWordFlashcard(){
         blankText: _kb ? _kb.textContent : '',
         blankCls: _kb ? _kb.className : '',
         extras: Array.prototype.map.call(_kbs || [], function(b){ return { text: b.textContent, cls: b.className }; }),
+        senses: Array.prototype.map.call(_ks || [], function(b){ return { text: b.textContent, cls: b.className }; }),
         enRevealed: _ke ? _ke.classList.contains('revealed') : false,
         focused: !!_focused,
         caret: _focused && _ki.selectionStart != null ? _ki.selectionStart : null
@@ -6775,8 +6783,9 @@ function renderWordFlashcard(){
   posEl.textContent = firstPos || 'word';
   posEl.style.display = firstPos ? 'inline-block' : 'none';
 
-  // 释义（中文大字 = 第一个义项）
-  document.getElementById('wordFlashCn').textContent = ((senses.length ? senses[0][1] : pc.cn) || '');
+  // 释义（中文大字 = 第一个义项）；释义里若夹带原词（如 derive 的「（derive from）」）也要藏
+  document.getElementById('wordFlashCn').innerHTML =
+    wqMaskWord(escapeHtml(((senses.length ? senses[0][1] : pc.cn) || '')), word);
 
   // 其余义项 + 常用搭配（让释义更全）
   var senseBox = document.getElementById('wordSenseList');
@@ -6785,11 +6794,13 @@ function renderWordFlashcard(){
     for(var si = 1; si < senses.length; si++){
       sh += '<div class="word-sense-row">' +
               '<span class="word-sense-pos">' + escapeHtml(senses[si][0] || '') + '</span>' +
-              '<span class="word-sense-cn">' + escapeHtml(senses[si][1] || '') + '</span>' +
+              '<span class="word-sense-cn">' + wqMaskWord(escapeHtml(senses[si][1] || ''), word) + '</span>' +
             '</div>';
     }
     if(wExtra && wExtra.u){
-      sh += '<div class="word-usage"><span class="word-usage-tag">常用搭配</span>' + escapeHtml(wExtra.u) + '</div>';
+      // 常用搭配里必然含原词（99/100 词都有），直接显示等于把填空答案写在旁边 → 挖空
+      sh += '<div class="word-usage"><span class="word-usage-tag">常用搭配</span>' +
+            wqMaskWord(escapeHtml(wExtra.u), word) + '</div>';
     }
     senseBox.innerHTML = sh;
     senseBox.className = 'word-sense-list' + (sh ? ' on' : '');
@@ -6855,6 +6866,13 @@ function renderWordFlashcard(){
       for(var _ri = 0; _ri < _rbs.length && _ri < _fbKeep.extras.length; _ri++){
         _rbs[_ri].textContent = _fbKeep.extras[_ri].text;
         _rbs[_ri].className = _fbKeep.extras[_ri].cls;
+      }
+    }
+    if(_fbKeep.senses && _fbKeep.senses.length){
+      var _rss = document.querySelectorAll('#wordFlashcard .word-blank[data-sense="1"]');
+      for(var _rsj = 0; _rsj < _rss.length && _rsj < _fbKeep.senses.length; _rsj++){
+        _rss[_rsj].textContent = _fbKeep.senses[_rsj].text;
+        _rss[_rsj].className = _fbKeep.senses[_rsj].cls;
       }
     }
     input.value = _fbKeep.value;
@@ -6936,6 +6954,10 @@ function checkSpelling(){
     document.querySelectorAll('#wordSentences .word-blank[data-extra="1"]').forEach(function(b){
       b.textContent = word; b.classList.add('correct','revealed');
     });
+    /* 拼对之后，释义 / 常用搭配里藏起来的原词也一起露出来 */
+    document.querySelectorAll('#wordFlashcard .word-blank[data-sense="1"]').forEach(function(b){
+      b.textContent = word; b.classList.add('correct','revealed');
+    });
     input.classList.add('correct');
     // 答对自动标记为"已掌握"（用户可手动覆盖）；若此前是"模糊/不认识"，答对则升级为已掌握
     setWordMarkAuto('known', true);
@@ -6948,6 +6970,10 @@ function checkSpelling(){
       mainBlank.textContent = typed + ' ✗';
       mainBlank.classList.add('wrong');
     }
+    /* 答错时下方提示本来就会写出正确拼写，释义/搭配再藏着就不一致了 → 一并揭示（中性样式，不标红绿）*/
+    document.querySelectorAll('#wordFlashcard .word-blank[data-sense="1"]').forEach(function(b){
+      b.textContent = word; b.classList.add('revealed');
+    });
     input.classList.add('wrong');
     setWordMarkAuto('fuzzy');
     var _ak2 = wordGameAwardKey();
@@ -6991,6 +7017,10 @@ function revealAnswer(){
   }
   /* 「更多用法」里的空也一并补上，方便对照真实用法 */
   document.querySelectorAll('#wordSentences .word-blank[data-extra="1"]').forEach(function(b){
+    if(!b.classList.contains('revealed')){ b.textContent = word; b.classList.add('revealed'); }
+  });
+  /* 释义 / 常用搭配里被藏起来的原词同样放出来 */
+  document.querySelectorAll('#wordFlashcard .word-blank[data-sense="1"]').forEach(function(b){
     if(!b.classList.contains('revealed')){ b.textContent = word; b.classList.add('revealed'); }
   });
   var input = document.getElementById('wordSpellingInput');
@@ -7427,6 +7457,21 @@ function wqBlankTo(sent, word, replacement){
   return text;
 }
 function wqBlank(sent, word){ return wqBlankTo(sent, word, '________'); }
+/* 把所有出现（含屈折变形）一次全挖掉。
+   注意：只认精确词形，不用 wqBlankTo 的"词根前缀"兜底——
+   否则 criterion 会被当成 criteria 的变形误伤。
+   也不逐形态串行 replace，避免新插入的 HTML 被后续正则二次命中。*/
+function wqBlankAllTo(sent, word, replacement){
+  var text = sent || '';
+  var forms = wqWordForms(word);
+  if(!forms.length) return text;
+  var alt = forms.map(function(f){ return f.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }).join('|');
+  return text.replace(new RegExp('\\b(?:' + alt + ')\\b', 'gi'), replacement);
+}
+/* 释义 / 常用搭配里的原词同样要藏起来——它就贴在填空旁边，等于直接给答案 */
+function wqMaskWord(text, word){
+  return wqBlankAllTo(text, word, '<span class="word-blank" data-sense="1"></span>');
+}
 /* 取某词的主释义（优先用 WORD_EXTRA 里更完整的第一义项） */
 function wordBriefCn(idx){
   var w = WORD_BANK[idx];
@@ -13148,7 +13193,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'pending', date:'2026-09-15b', desc:'英语单词释义补全:新增 WORD_EXTRA 词表(100 词全量)提供多义项+常用搭配+该词自己的 2 条例句(带中文翻译);修复「其他用法参考」实为别的单词例句的错位问题;释义区新增其余义项与搭配展示;闯关例句/释义同步改用更全数据' };
+  window.ver = { git:'pending', date:'2026-09-15c', desc:'修复「常用搭配/释义直接写出答案」:常用搭配与义项里出现的原词改为挖空(100/100 词都命中),点「显示答案」或拼写答对后才补上;已显示答案的状态在 20s 云同步重渲染后不再被重置' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
