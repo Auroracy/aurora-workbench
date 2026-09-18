@@ -407,6 +407,23 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
   .fit-hero-date input[type="date"]{width:100%;}
 }
 
+/* ====== Weight Card（置顶体重打卡） ====== */
+.weight-card .card-title-row{margin-bottom:14px;}
+.weight-stats{display:flex;align-items:center;gap:clamp(10px,1.4vw,18px);flex-wrap:wrap;justify-content:flex-end;}
+.ws-item{display:inline-flex;align-items:baseline;gap:4px;}
+.ws-item i{font-style:normal;font-size:11.5px;color:var(--text-2);}
+.ws-item b{font-size:clamp(15px,1.7vw,19px);font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums;letter-spacing:-0.3px;}
+.ws-item b.up{color:#DB6B6B;}
+.ws-item b.down{color:#2DAB66;}
+.ws-item em{font-style:normal;font-size:11px;color:var(--text-2);}
+.ws-item + .ws-item{padding-left:clamp(10px,1.4vw,18px);border-left:1px solid var(--line);}
+.weight-card #weightChart{margin-top:clamp(6px,0.8vw,12px);}
+/* 运动记录移到底部窄列后，「运动类型」下拉不能再被压缩（否则标签会竖排） */
+.ex-type-group{flex:1 1 150px;min-width:150px;}
+@media(max-width:760px){
+  .weight-stats{justify-content:flex-start;}
+}
+
 /* ====== Early Ed: hero + progress + timeline ====== */
 .ee-hero{
   display:grid;grid-template-columns:repeat(4,1fr);gap:clamp(10px,1vw,14px);
@@ -2187,6 +2204,26 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     <div class="section-desc">16+8 间歇断食 · 饮食记录 · 体重趋势 · 运动管理</div>
   </div>
 
+  <!-- 体重打卡（置顶） -->
+  <div class="card weight-card">
+    <div class="card-title-row">
+      <div class="card-title" style="margin-bottom:0;">体重打卡</div>
+      <div class="weight-stats" id="weightStats"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group auto">
+        <label class="form-label">日期</label>
+        <input type="date" id="weightDate">
+      </div>
+      <div class="form-group auto">
+        <label class="form-label">晨起体重 (kg)</label>
+        <input type="number" id="weightVal" step="0.1" placeholder="如：58.5">
+      </div>
+      <div class="auto" style="align-self:flex-end;"><button class="btn btn-primary btn-sm" onclick="addWeight()">记录</button></div>
+    </div>
+    <div id="weightChart"></div>
+  </div>
+
   <!-- Daily Summary Hero -->
   <div class="fit-hero">
     <div class="fit-hero-date">
@@ -2206,16 +2243,6 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
         <div class="fh-val" id="sumNet">0</div>
         <div class="fh-label">热量差额</div>
       </div>
-    </div>
-  </div>
-
-  <!-- Recipe Recommendation -->
-  <div class="card">
-    <div class="card-title">今日健康食谱推荐 <span class="sub" id="recipeIdx"></span></div>
-    <div id="recipeBox"></div>
-    <div style="margin-top:12px;">
-      <button class="btn btn-ghost btn-sm" onclick="prevRecipe()">上一道</button>
-      <button class="btn btn-ghost btn-sm" style="margin-left:8px;" onclick="nextRecipe()">换一道推荐</button>
     </div>
   </div>
 
@@ -2280,29 +2307,13 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     <div id="mealList" style="margin-top:14px;"></div>
   </div>
 
+  <!-- 底部两列：运动记录 / 今日食谱推荐 -->
   <div class="grid-2">
-    <!-- Weight -->
-    <div class="card">
-      <div class="card-title">体重打卡</div>
-      <div class="form-row">
-        <div class="form-group auto">
-          <label class="form-label">日期</label>
-          <input type="date" id="weightDate">
-        </div>
-        <div class="form-group">
-          <label class="form-label">晨起体重 (kg)</label>
-          <input type="number" id="weightVal" step="0.1" placeholder="如：58.5">
-        </div>
-        <div class="auto" style="align-self:flex-end;"><button class="btn btn-primary btn-sm" onclick="addWeight()">记录</button></div>
-      </div>
-      <div id="weightChart"></div>
-    </div>
-
     <!-- Exercise -->
     <div class="card">
       <div class="card-title">运动记录</div>
       <div class="form-row">
-        <div class="form-group">
+        <div class="form-group ex-type-group">
           <label class="form-label">运动类型</label>
           <select id="exType">
             <option value="">选择类型</option>
@@ -2322,6 +2333,16 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
         <div class="auto" style="align-self:flex-end;"><button class="btn btn-primary btn-sm" onclick="addExercise()">添加</button></div>
       </div>
       <div id="exList"></div>
+    </div>
+
+    <!-- Recipe Recommendation -->
+    <div class="card">
+      <div class="card-title">今日健康食谱推荐 <span class="sub" id="recipeIdx"></span></div>
+      <div id="recipeBox"></div>
+      <div style="margin-top:12px;">
+        <button class="btn btn-ghost btn-sm" onclick="prevRecipe()">上一道</button>
+        <button class="btn btn-ghost btn-sm" style="margin-left:8px;" onclick="nextRecipe()">换一道推荐</button>
+      </div>
     </div>
   </div>
 </section>
@@ -6362,6 +6383,23 @@ function addWeight(){
 function renderWeightChart(){
   var ws = DB.fitness.weights;
   var box = document.getElementById('weightChart');
+  var statsEl = document.getElementById('weightStats');
+  var latest = ws.length ? ws[ws.length - 1] : null;
+  var first = ws.length ? ws[0] : null;
+  var diff = ws.length ? (latest.weight - first.weight).toFixed(1) : '0.0';
+  var diffStr = parseFloat(diff) > 0 ? '+' + diff : diff;
+  var diffCls = parseFloat(diff) > 0 ? 'up' : (parseFloat(diff) < 0 ? 'down' : '');
+  if(statsEl){
+    if(ws.length){
+      statsEl.innerHTML =
+        '<span class="ws-item"><i>最新' + (latest.date ? ' ' + latest.date.slice(5) : '') + '</i><b>' + latest.weight + '</b><em>kg</em></span>' +
+        (ws.length > 1
+          ? '<span class="ws-item"><i>较首次</i><b class="' + diffCls + '">' + diffStr + '</b><em>kg</em></span>'
+          : '<span class="ws-item"><i>再记一次看趋势</i></span>');
+    } else {
+      statsEl.innerHTML = '';
+    }
+  }
   if(ws.length < 2){
     box.innerHTML = '<div class="empty-hint">至少记录2次体重后显示趋势图（当前' + ws.length + '条）</div>';
     return;
@@ -6369,32 +6407,45 @@ function renderWeightChart(){
   var minW = Math.min.apply(null, ws.map(function(w){ return w.weight; }));
   var maxW = Math.max.apply(null, ws.map(function(w){ return w.weight; }));
   var range = (maxW - minW) || 1;
-  var W = 540, H = 160, pad = 32;
-  var stepX = (W - pad*2) / (ws.length - 1);
+  /* 按容器实际宽度绘制，避免 SVG 拉伸导致文字被缩放 */
+  var W = Math.round(box.clientWidth || (box.parentElement ? box.parentElement.clientWidth : 0) || 540);
+  W = Math.max(300, Math.min(920, W));
+  var H = 176, padX = 46, padTop = 30, padBottom = 34;
+  var stepX = (W - padX*2) / (ws.length - 1);
   var pts = ws.map(function(w, i){
-    var x = pad + i * stepX;
-    var y = H - pad - ((w.weight - minW) / range) * (H - pad*2);
+    var x = padX + i * stepX;
+    var y = H - padBottom - ((w.weight - minW) / range) * (H - padTop - padBottom);
     return { x: x, y: y, w: w };
   });
   var pathD = pts.map(function(p, i){ return (i===0?'M':'L') + p.x.toFixed(1) + ',' + p.y.toFixed(1); }).join(' ');
-  var dots = pts.map(function(p){ return '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="3" fill="#15A49B"/>'; }).join('');
-  var labels = pts.map(function(p){ return '<text x="' + p.x.toFixed(1) + '" y="' + (p.y - 8).toFixed(1) + '" text-anchor="middle" font-size="10" fill="#5C7484">' + p.w.weight + '</text>'; }).join('');
-  var dates = pts.map(function(p, i){
-    if(ws.length > 8 && i % 2 !== 0) return '';
-    return '<text x="' + p.x.toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="9" fill="#9CB2C0">' + p.w.date.slice(5) + '</text>';
+  var dots = pts.map(function(p){ return '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="3.5" fill="#15A49B"/>'; }).join('');
+  /* 点太多时只标首尾数值，避免文字叠在一起 */
+  var showVal = ws.length <= 12;
+  var labels = pts.map(function(p, i){
+    if(!showVal && i !== 0 && i !== pts.length - 1) return '';
+    return '<text x="' + p.x.toFixed(1) + '" y="' + (p.y - 10).toFixed(1) + '" text-anchor="middle" font-size="11" fill="#5C7484">' + p.w.weight + '</text>';
   }).join('');
-  var latest = ws[ws.length - 1];
-  var first = ws[0];
-  var diff = (latest.weight - first.weight).toFixed(1);
-  var diffStr = diff > 0 ? '+' + diff : diff;
-  var diffColor = diff > 0 ? '#DB6B6B' : '#2DAB66';
+  var lblStep = Math.ceil(ws.length / 7);
+  var dates = pts.map(function(p, i){
+    if(i % lblStep !== 0 && i !== pts.length - 1) return '';
+    return '<text x="' + p.x.toFixed(1) + '" y="' + (H - 10) + '" text-anchor="middle" font-size="10" fill="#9CB2C0">' + p.w.date.slice(5) + '</text>';
+  }).join('');
   box.innerHTML =
-    '<div style="text-align:right;font-size:12px;margin-bottom:8px;">变化趋势：<span style="color:' + diffColor + ';font-weight:600;">' + diffStr + ' kg</span></div>' +
-    '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;max-width:540px;">' +
+    '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;max-width:' + W + 'px;display:block;">' +
       '<path d="' + pathD + '" fill="none" stroke="#15A49B" stroke-width="2"/>' +
       dots + labels + dates +
     '</svg>';
 }
+
+/* 宽度变化时按新宽度重绘体重趋势图，保证文字不被缩放 */
+var _weightResizeTimer = null;
+window.addEventListener('resize', function(){
+  if(currentTabNum !== 2) return;
+  clearTimeout(_weightResizeTimer);
+  _weightResizeTimer = setTimeout(function(){
+    if(document.getElementById('weightChart')) renderWeightChart();
+  }, 180);
+});
 
 function addExercise(){
   var date = document.getElementById('fitDate').value || today();
@@ -13243,7 +13294,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'pending', date:'2026-09-16', desc:'配方食材分组改为可自定义:组名可直接编辑、可任意新增/删除分组(旧的 面团原料/馅料 自动迁移为 ingGroups,老配方照常显示);卡片与详情页按分组名渲染' };
+  window.ver = { git:'pending', date:'2026-09-18', desc:'轻氧塑身日记 重新排版: 体重打卡移到最前面并改为整宽(标题行显示 最新体重/较首次变化,趋势图按容器宽度自适应绘制不再被缩放); 食谱推荐与运动记录并排到底部' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
