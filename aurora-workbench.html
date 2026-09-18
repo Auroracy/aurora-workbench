@@ -1059,6 +1059,31 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 .word-mark-fuzzy.active{background:var(--amber);}
 .word-mark-unknown.active{background:var(--red);}
 
+/* ====== 强化复习：模糊 / 不认识 词按程度重复出现，直到掌握 ====== */
+.word-review{margin-bottom:14px;}
+.wr-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.wr-title{font-size:14.5px;font-weight:700;color:var(--text);}
+.wr-count{font-size:12px;font-weight:700;color:var(--amber);background:var(--amber-bg);padding:2px 10px;border-radius:11px;font-variant-numeric:tabular-nums;}
+.wr-count.zero{color:var(--text-3);background:var(--input-bg);}
+.wr-sub{font-size:12px;color:var(--text-3);margin-top:5px;line-height:1.75;}
+.wr-sub b{color:var(--text-2);}
+.wr-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
+.wr-chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:4px 10px;border-radius:12px;border:1px solid var(--line);background:var(--input-bg);color:var(--text-2);}
+.wr-chip b{font-weight:700;color:var(--text);letter-spacing:0.02em;}
+.wr-chip .wr-prog{font-size:11px;color:var(--text-3);font-variant-numeric:tabular-nums;}
+.wr-chip.fuzzy{border-color:#EBD6B4;}
+.wr-chip.unknown{border-color:#F0CFCF;}
+.wr-cfg{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:11px;padding-top:11px;border-top:1px solid var(--line-soft);font-size:12px;color:var(--text-2);}
+.wr-cfg select{width:auto;min-width:5.6em;font-family:inherit;font-size:12px;padding:3px 22px 3px 8px;border-radius:7px;border:1px solid var(--line);background:var(--card);color:var(--text);}
+.wr-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
+.wr-actions .btn{flex:1;min-width:150px;}
+.wr-live{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;}
+.wr-live-bar{flex:1;min-width:110px;height:7px;border-radius:4px;background:var(--input-bg);overflow:hidden;}
+.wr-live-fill{height:100%;width:0;border-radius:4px;background:var(--accent-grad);transition:width 0.3s;}
+.wr-live-txt{font-size:12px;color:var(--text-2);font-variant-numeric:tabular-nums;}
+.word-review-banner{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px;padding:8px 12px;border-radius:var(--radius-sm);background:var(--accent-bg);border-left:3px solid var(--accent);font-size:12.5px;color:var(--accent-d);font-weight:600;line-height:1.6;}
+.word-review-banner .wr-flag{font-size:11px;font-weight:700;color:#fff;background:var(--accent);padding:1px 8px;border-radius:8px;letter-spacing:0.04em;}
+
 .word-flashcard-nav{
   display:flex;justify-content:space-between;gap:8px;
   margin-top:16px;
@@ -1122,6 +1147,9 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 .wq-step.done{background:var(--green);border-color:var(--green);color:#fff;}
 .wq-step.wrong{background:var(--red-bg);border-color:var(--red);color:var(--red);}
 .wq-step.current{border-color:var(--accent);color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg);transform:scale(1.08);}
+.wq-step.skipped{background:var(--green-bg);border-color:var(--green);color:var(--green);}
+.wq-step.rev{border-style:dashed;border-color:var(--amber);}
+.wq-step.rev.done{background:var(--green);border-color:var(--green);border-style:solid;color:#fff;}
 .wq-qtype{display:inline-block;font-size:11px;font-weight:600;padding:2px 9px;border-radius:10px;background:var(--blue-bg);color:var(--blue);margin-bottom:10px;}
 .wq-prompt{font-size:clamp(16px,1.7vw,21px);font-weight:700;color:var(--text);line-height:1.6;margin-bottom:6px;word-break:break-word;}
 .wq-sub{font-size:13px;color:var(--text-2);line-height:1.75;margin-bottom:12px;}
@@ -2398,6 +2426,15 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     </div>
   </div>
 
+  <!-- 强化复习：模糊 / 不认识词按程度重复出现，直到标记已掌握 -->
+  <div class="card word-review" id="wordReviewCard">
+    <div class="wr-head">
+      <span class="wr-title">🔁 强化复习</span>
+      <span class="wr-count zero" id="wrCount">0 词待强化</span>
+    </div>
+    <div id="wrBody"></div>
+  </div>
+
   <!-- 单词练习大卡片（逐词呈现） -->
   <div class="card word-flashcard" id="wordFlashcard">
     <div class="word-flashcard-head">
@@ -2405,6 +2442,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
       <span class="word-flashcard-pos" id="wordFlashPos"></span>
       <span class="word-flashcard-status" id="wordFlashStatus"></span>
     </div>
+    <div id="wordReviewBanner"></div>
 
     <div class="word-flashcard-cn" id="wordFlashCn"></div>
     <div class="word-sense-list" id="wordSenseList"></div>
@@ -2431,15 +2469,15 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     </div>
 
     <div class="word-flashcard-nav">
-      <button class="btn btn-ghost" onclick="prevWord()">← 上一词</button>
-      <button class="btn btn-primary" onclick="nextWord()">下一词 →</button>
+      <button class="btn btn-ghost" id="wordNavPrev" onclick="prevWord()">← 上一词</button>
+      <button class="btn btn-primary" id="wordNavNext" onclick="nextWord()">下一词 →</button>
     </div>
   </div>
 
   <!-- 闯关模式面板 -->
   <div class="card word-quest" id="wordQuestPanel" style="display:none;">
     <div class="wq-head">
-      <div class="wq-title">🎮 今日闯关 · 10 关</div>
+      <div class="wq-title" id="wqTitle">🎮 今日闯关 · 10 关</div>
       <div class="wq-hearts" id="wqHearts">❤️❤️❤️</div>
     </div>
     <div class="wq-steps" id="wqSteps"></div>
@@ -3325,6 +3363,9 @@ var pyodide = null;
 var pyLoading = false;
 var currentWordOffset = 0;
 var currentWordIndex = 0;
+/* 强化复习：reviewWordIdx >= 0 时，精练卡片渲染的是这个 WORD_BANK 下标（跨天可用） */
+var reviewWordIdx = -1;
+var reviewSession = null;   // { queue:[bankIdx], i, start, right, wrong, mastered, focus, answeredAt }
 var selectedRating = 0;
 
 function today(){
@@ -3545,7 +3586,7 @@ var defaultDb = {
     meals: [], weights: [], exercises: [],
     recipeIdx: 0
   },
-  words: { dailyRecords: {}, game: { xp:0, level:1, combo:0, bestCombo:0, streak:0, lastDay:'', clears:0, totalCorrect:0, totalWrong:0, badges:[], masteredWords:[], questBest:{}, quest:null, mode:'study' } },
+  words: { dailyRecords: {}, game: { xp:0, level:1, combo:0, bestCombo:0, streak:0, lastDay:'', clears:0, totalCorrect:0, totalWrong:0, badges:[], masteredWords:[], questBest:{}, quest:null, mode:'study', reviewQ:{}, reviewCfg:{ fuzzy:2, unknown:3 } } },
   market: { news: [], tracking: [], sentiment: {}, notes: [], favNewsIds: [], newsLastUpdate: '', gold: null, funds: [], techWatch: [], earnings: [], techManual: [], fundOverlap: null },
   python: {
     progress: { basics: false, functions: false, files: false, data: false, projects: false },
@@ -6740,6 +6781,8 @@ function getWordDateStr(offset){
 
 // 取当前词在 WORD_BANK 中的真实下标（用于多例句补充）
 function getCurrentWordBankIdx(){
+  /* 强化复习模式：直接指向复习队列里的词（可能是别的日期的词） */
+  if(reviewWordIdx >= 0 && WORD_BANK[reviewWordIdx]) return reviewWordIdx;
   var base = getWordDate() + currentWordOffset;
   var startIdx = ((base * 10) % WORD_BANK.length + WORD_BANK.length) % WORD_BANK.length;
   return (startIdx + currentWordIndex) % WORD_BANK.length;
@@ -6824,8 +6867,26 @@ function renderWordFlashcard(){
   var word = w[0];
   var pc = parsePosCn(w[1]);
 
-  // 头部序号
-  document.getElementById('wordFlashNo').textContent = (currentWordIndex + 1) + ' / 10';
+  // 头部序号：复习模式下显示本轮进度
+  var noEl = document.getElementById('wordFlashNo');
+  if(reviewWordIdx >= 0 && reviewSession){
+    noEl.textContent = '强化 ' + Math.min(reviewSession.i + 1, reviewSession.queue.length) + ' / ' + reviewSession.queue.length;
+  } else {
+    noEl.textContent = (currentWordIndex + 1) + ' / 10';
+  }
+
+  /* 复习模式横幅：显示本次还需答对几次才标记已掌握 */
+  var _rbBanner = document.getElementById('wordReviewBanner');
+  if(_rbBanner){
+    if(reviewWordIdx >= 0 && reviewSession){
+      var _rqEntry = ensureReviewQ().reviewQ[word] || {};
+      var _rNeed = _rqEntry.need || 1, _rDone = Math.min(_rqEntry.done || 0, _rNeed);
+      _rbBanner.innerHTML = '<div class="word-review-banner"><span class="wr-flag">强化复习</span>' +
+        '还需答对 ' + Math.max(0, _rNeed - _rDone) + ' 次即标记「已掌握」（进度 ' + _rDone + ' / ' + _rNeed + '）</div>';
+    } else {
+      _rbBanner.innerHTML = '';
+    }
+  }
 
   // 完整义项（多词性/多含义），无扩展数据时退回词库里的单条释义
   var senses = getWordSenses(word, w[1]);
@@ -6891,8 +6952,8 @@ function renderWordFlashcard(){
   document.getElementById('wordSpellingHint').textContent = '';
   document.getElementById('wordSpellingHint').className = 'word-spelling-hint';
 
-  // 状态标记
-  var mark = rec.perWord[currentWordIndex] || {};
+  // 状态标记（复习模式取队列里的最新标记，避免错位显示）
+  var mark = currentMarkObj();
   document.querySelectorAll('.word-mark').forEach(function(b){
     b.classList.toggle('active', b.dataset.val === mark.mark);
   });
@@ -6941,6 +7002,23 @@ function renderWordFlashcard(){
       }catch(e){}
     }
   }
+
+  /* 底部导航：复习模式下改为「退出复习 / 下一个」，并直接接管 onclick */
+  var _navPrev = document.getElementById('wordNavPrev');
+  var _navNext = document.getElementById('wordNavNext');
+  if(_navPrev && _navNext){
+    if(reviewWordIdx >= 0 && reviewSession){
+      _navPrev.textContent = '退出复习';
+      _navPrev.onclick = function(){ exitWordReview(); };
+      _navNext.textContent = '下一个 →';
+      _navNext.onclick = function(){ reviewNextWord(); };
+    } else {
+      _navPrev.textContent = '← 上一词';
+      _navPrev.onclick = function(){ prevWord(); };
+      _navNext.textContent = '下一词 →';
+      _navNext.onclick = function(){ nextWord(); };
+    }
+  }
 }
 
 function renderWordHero(){
@@ -6966,7 +7044,10 @@ function renderWords(){
   document.getElementById('wordDateLabel') && (document.getElementById('wordDateLabel').textContent = dateStr);
   if(currentWordIndex < 0) currentWordIndex = 0;
   if(currentWordIndex > 9) currentWordIndex = 9;
+  /* 复习指向的词必须在当前日期窗口仍有效（切日期时可能已失效） */
+  if(reviewWordIdx >= 0 && !WORD_BANK[reviewWordIdx]) { reviewSession = null; reviewWordIdx = -1; }
   renderWordHero();
+  try{ renderWordReview(); }catch(e){}
   renderWordFlashcard();
   // 顶部"今日单词"标签已并入 hero；同步便签与打卡状态
   var rec = DB.words.dailyRecords[dateStr];
@@ -6983,7 +7064,11 @@ function prevWord(){
 }
 function nextWord(){
   if(currentWordIndex < 9){ currentWordIndex++; renderWordFlashcard(); renderWordHero(); }
-  else toast('已经是最后一个单词');
+  else {
+    var st = reviewStats();
+    if(st.total) toast('还有 ' + st.total + ' 个词待强化（还需答对 ' + st.remain + ' 次）· 点上方「🔁 开始强化复习」继续练');
+    else toast('已经是最后一个单词');
+  }
 }
 
 function checkSpelling(){
@@ -6998,8 +7083,14 @@ function checkSpelling(){
     input.focus();
     return;
   }
+  /* 强化复习：同一次出现只判定一次，防止反复点「验证拼写」刷进度 */
+  var inReview = (reviewWordIdx >= 0 && !!reviewSession);
+  if(inReview && reviewSession.answeredAt === reviewSession.i){
+    hint.textContent = '这次已经判定过了，点「下一个 →」继续';
+    hint.className = 'word-spelling-hint';
+    return;
+  }
   if(typed.toLowerCase() === word.toLowerCase()){
-    hint.textContent = '✓ 拼写正确！' + word;
     hint.className = 'word-spelling-hint correct';
     if(mainBlank){
       mainBlank.textContent = word;
@@ -7013,13 +7104,32 @@ function checkSpelling(){
       b.textContent = word; b.classList.add('correct','revealed');
     });
     input.classList.add('correct');
+    if(inReview){
+      /* 强化复习：答对只推进度，进度满才标记「已掌握」（不再一答对就跳出队列） */
+      var _rr = reviewHit(word);
+      reviewSession.answeredAt = reviewSession.i;
+      reviewSession.right++;
+      if(_rr && _rr.mastered){
+        reviewSession.mastered++;
+        hint.textContent = '✓ 正确！「' + word + '」强化到位 → 已标记「已掌握」🎉';
+        toast('🎉 「' + word + '」已掌握，移出强化队列');
+        try{ wordConfetti(); }catch(e){}
+      } else {
+        var _rLeft = Math.max(0, (_rr.need || 1) - (_rr.done || 0));
+        hint.textContent = '✓ 正确！进度 ' + (_rr.done || 0) + ' / ' + (_rr.need || 1) + '，再答对 ' + _rLeft + ' 次即标记「已掌握」';
+      }
+      var _akR = 'rev#' + word + '#' + reviewSession.i;
+      if(!_wordAwardedRight[_akR]){ _wordAwardedRight[_akR] = 1; try{ wordGameCorrect(); }catch(e){} }
+      try{ renderWordHero(); renderWordReview(); renderWordFlashcard(); }catch(e){}
+      return;
+    }
+    hint.textContent = '✓ 拼写正确！' + word;
+    hint.className = 'word-spelling-hint correct';
     // 答对自动标记为"已掌握"（用户可手动覆盖）；若此前是"模糊/不认识"，答对则升级为已掌握
     setWordMarkAuto('known', true);
     var _ak = wordGameAwardKey();
     if(!_wordAwardedRight[_ak]){ _wordAwardedRight[_ak] = 1; try{ wordGameCorrect(); }catch(e){} }
   } else {
-    hint.textContent = '✗ 拼写错误，正确答案是：' + word;
-    hint.className = 'word-spelling-hint wrong';
     if(mainBlank){
       mainBlank.textContent = typed + ' ✗';
       mainBlank.classList.add('wrong');
@@ -7029,6 +7139,20 @@ function checkSpelling(){
       b.textContent = word; b.classList.add('revealed');
     });
     input.classList.add('wrong');
+    if(inReview){
+      /* 强化复习：答错进度回退，并把本词排到队尾 —— 所以它还会反复出现，直到掌握 */
+      reviewMiss(word);
+      reviewSession.answeredAt = reviewSession.i;
+      reviewSession.wrong++;
+      hint.textContent = '✗ 拼写错误，正确答案是：' + word + '（进度回退，稍后还会再出现）';
+      hint.className = 'word-spelling-hint wrong';
+      var _akW = 'rev#' + word + '#' + reviewSession.i;
+      if(!_wordAwardedWrong[_akW]){ _wordAwardedWrong[_akW] = 1; try{ wordGameWrong(); }catch(e){} }
+      try{ renderWordHero(); renderWordReview(); }catch(e){}
+      return;
+    }
+    hint.textContent = '✗ 拼写错误，正确答案是：' + word;
+    hint.className = 'word-spelling-hint wrong';
     setWordMarkAuto('fuzzy');
     var _ak2 = wordGameAwardKey();
     if(!_wordAwardedWrong[_ak2]){ _wordAwardedWrong[_ak2] = 1; try{ wordGameWrong(); }catch(e){} }
@@ -7044,13 +7168,19 @@ function setWordMarkAuto(mark, forceUpgrade){
   var dateStr = getWordDateStr(currentWordOffset);
   if(!DB.words.dailyRecords[dateStr]) DB.words.dailyRecords[dateStr] = {};
   if(!DB.words.dailyRecords[dateStr].perWord) DB.words.dailyRecords[dateStr].perWord = {};
-  var prev = DB.words.dailyRecords[dateStr].perWord[currentWordIndex] || {};
+  var pos = currentTargetPos();
+  if(pos < 0) return;   /* 复习队列里的"往日词"不写今日记录 */
+  var word = currentTargetWord();
+  var prev = DB.words.dailyRecords[dateStr].perWord[pos] || {};
   var need = false;
   if(!prev.mark) need = true;
   /* forceUpgrade：拼写答对时把"模糊 / 不认识"升级为"已掌握"（已掌握不降级、不覆盖用户手选） */
   else if(forceUpgrade && mark === 'known' && prev.mark !== 'known') need = true;
   if(need){
-    DB.words.dailyRecords[dateStr].perWord[currentWordIndex] = { mark: mark };
+    DB.words.dailyRecords[dateStr].perWord[pos] = { mark: mark };
+    /* 答错自动标「模糊」→ 立刻进强化队列；答对升级「已掌握」→ 出队 */
+    if(mark === 'known') reviewDequeue(word);
+    else if(mark === 'fuzzy' || mark === 'unknown') reviewEnqueue(word, mark);
     try{ trackMasteredWord(mark); }catch(e){}
     saveDb();
     renderWordHero();
@@ -7091,18 +7221,25 @@ function setWordMark(btn){
   var dateStr = getWordDateStr(currentWordOffset);
   if(!DB.words.dailyRecords[dateStr]) DB.words.dailyRecords[dateStr] = {};
   if(!DB.words.dailyRecords[dateStr].perWord) DB.words.dailyRecords[dateStr].perWord = {};
+  var word = currentTargetWord();
+  var pos = currentTargetPos();
   var wasActive = btn.classList.contains('active');
   var val = wasActive ? '' : btn.dataset.val;
   if(val){
-    DB.words.dailyRecords[dateStr].perWord[currentWordIndex] = { mark: val };
+    if(pos >= 0) DB.words.dailyRecords[dateStr].perWord[pos] = { mark: val };
+    /* 模糊 / 不认识 → 进强化队列，按程度反复出现直到掌握；已掌握 / 取消标记 → 出队 */
+    if(val === 'known') reviewDequeue(word);
+    else reviewEnqueue(word, val);
     try{ trackMasteredWord(val); }catch(e){}
   } else {
-    delete DB.words.dailyRecords[dateStr].perWord[currentWordIndex];
+    if(pos >= 0) delete DB.words.dailyRecords[dateStr].perWord[pos];
+    reviewDequeue(word);
     try{ trackMasteredWord(''); }catch(e){}
   }
   saveDb();
   renderWordHero();
   renderWordFlashcard();
+  try{ renderWordReview(); }catch(e){}
 }
 
 /* ============================================================
@@ -7228,9 +7365,9 @@ function toggleWordHistory(){
   if(open) body.classList.add('open');
   else body.classList.remove('open');
 }
-function prevDayWords(){ currentWordOffset--; currentWordIndex = 0; renderWords(); }
-function nextDayWords(){ currentWordOffset++; currentWordIndex = 0; renderWords(); }
-function goTodayWords(){ currentWordOffset = 0; currentWordIndex = 0; renderWords(); }
+function prevDayWords(){ reviewSession = null; reviewWordIdx = -1; currentWordOffset--; currentWordIndex = 0; renderWords(); }
+function nextDayWords(){ reviewSession = null; reviewWordIdx = -1; currentWordOffset++; currentWordIndex = 0; renderWords(); }
+function goTodayWords(){ reviewSession = null; reviewWordIdx = -1; currentWordOffset = 0; currentWordIndex = 0; renderWords(); }
 
 function saveWordNotes(){
   var dateStr = getWordDateStr(currentWordOffset);
@@ -7304,7 +7441,8 @@ var WORD_BADGES = [
   { id:'streak3',     icon:'📅', name:'三日不辍', desc:'连续学习 3 天' },
   { id:'streak7',     icon:'🗓️', name:'七日成习', desc:'连续学习 7 天' },
   { id:'lv5',         icon:'⭐', name:'五级学者', desc:'等级达到 Lv.5' },
-  { id:'master50',    icon:'📚', name:'词汇五十', desc:'累计掌握 50 词' }
+  { id:'master50',    icon:'📚', name:'词汇五十', desc:'累计掌握 50 词' },
+  { id:'revive10',    icon:'🔁', name:'强化达人', desc:'强化复习掌握 10 词' }
 ];
 var WORD_RANKS = [[1,'见习学徒'],[3,'词汇新秀'],[5,'单词猎人'],[7,'词林高手'],[10,'词汇大师'],[15,'词海行者']];
 
@@ -7314,11 +7452,14 @@ function ensureWordGame(){
   var g = DB.words.game;
   if(!g || typeof g !== 'object') g = {};
   var d = { xp:0, level:1, combo:0, bestCombo:0, streak:0, lastDay:'', clears:0,
-            totalCorrect:0, totalWrong:0, badges:[], masteredWords:[], questBest:{}, quest:null, mode:'study' };
+            totalCorrect:0, totalWrong:0, badges:[], masteredWords:[], questBest:{}, quest:null, mode:'study',
+            reviewQ:{}, reviewCfg:{ fuzzy:2, unknown:3 }, reviewMastered:0 };
   for(var k in d){ if(g[k] === undefined) g[k] = d[k]; }
   if(!Array.isArray(g.badges)) g.badges = [];
   if(!Array.isArray(g.masteredWords)) g.masteredWords = [];
   if(!g.questBest || typeof g.questBest !== 'object') g.questBest = {};
+  if(!g.reviewQ || typeof g.reviewQ !== 'object') g.reviewQ = {};
+  if(!g.reviewCfg || typeof g.reviewCfg !== 'object') g.reviewCfg = { fuzzy:2, unknown:3 };
   DB.words.game = g;
   return g;
 }
@@ -7364,6 +7505,7 @@ function checkWordBadges(){
   if((g.streak || 0) >= 7) add('streak7');
   if(g.level >= 5) add('lv5');
   if((g.masteredWords || []).length >= 50) add('master50');
+  if((g.reviewMastered || 0) >= 10) add('revive10');
 }
 function wordFloatXp(txt){
   var d = document.createElement('div');
@@ -7397,6 +7539,293 @@ function trackMasteredWord(mark){
   var pos = g.masteredWords.indexOf(w);
   if(mark === 'known'){ if(pos < 0) g.masteredWords.push(w); }
   else if(pos >= 0){ g.masteredWords.splice(pos, 1); }
+}
+
+/* ============================================================
+   强化复习（SRS-lite）：模糊 / 不认识词按程度重复出现，直到掌握
+   ------------------------------------------------------------
+   规则：
+     · 标记「模糊」   → 需再答对 N 次（默认 2，可在卡片上改 1~6）
+     · 标记「不认识」 → 需再答对 M 次（默认 3，可在卡片上改 1~6）
+     · 复习里拼写正确 → 进度 +1；进度满 → 自动标记「已掌握」并移出队列
+     · 拼写错误       → 进度 -1，且本词排到队尾再出现一次（所以会反复出现）
+     · 手动点「已掌握」/ 取消标记 → 立即移出队列
+   队列按单词名（而非"日期#位置"）存储，因此可以跨天延续到掌握为止。
+   ============================================================ */
+var REVIEW_CFG_MIN = 1, REVIEW_CFG_MAX = 6;
+var REVIEW_MARK_META = {
+  fuzzy:   { label:'模糊',   cls:'fuzzy' },
+  unknown: { label:'不认识', cls:'unknown' }
+};
+
+function ensureReviewQ(){
+  var g = ensureWordGame();
+  if(!g.reviewQ || typeof g.reviewQ !== 'object') g.reviewQ = {};
+  if(!g.reviewCfg || typeof g.reviewCfg !== 'object') g.reviewCfg = { fuzzy:2, unknown:3 };
+  var f = parseInt(g.reviewCfg.fuzzy, 10), u = parseInt(g.reviewCfg.unknown, 10);
+  g.reviewCfg.fuzzy = (f >= REVIEW_CFG_MIN && f <= REVIEW_CFG_MAX) ? f : 2;
+  g.reviewCfg.unknown = (u >= REVIEW_CFG_MIN && u <= REVIEW_CFG_MAX) ? u : 3;
+  return g;
+}
+function reviewNeed(mark){
+  var g = ensureReviewQ();
+  return mark === 'unknown' ? g.reviewCfg.unknown : g.reviewCfg.fuzzy;
+}
+function findWordBankIdx(word){
+  if(!word) return -1;
+  for(var i = 0; i < WORD_BANK.length; i++){ if(WORD_BANK[i][0] === word) return i; }
+  return -1;
+}
+/* 该词在"今日 10 词"里的位置（复习往日词时返回 -1） */
+function findTodayWordPos(word){
+  var words = getWordsForOffset(currentWordOffset);
+  for(var i = 0; i < words.length; i++){ if(words[i][0] === word) return i; }
+  return -1;
+}
+/* 当前正在操作的词在今日 10 词里的下标；复习模式取复习词 */
+function currentTargetPos(){
+  if(reviewWordIdx >= 0) return findTodayWordPos(currentTargetWord());
+  return currentWordIndex;
+}
+function currentTargetWord(){
+  var idx = getCurrentWordBankIdx();
+  return (WORD_BANK[idx] && WORD_BANK[idx][0]) || '';
+}
+/* 当前词的标记：复习模式优先读队列里的最新标记；不在今日 10 词内则读"已掌握"词表 */
+function currentMarkObj(){
+  var word = currentTargetWord();
+  var g = ensureReviewQ();
+  if(reviewWordIdx >= 0){
+    if(g.reviewQ[word]) return { mark: g.reviewQ[word].mark };
+    if(g.masteredWords.indexOf(word) >= 0) return { mark: 'known' };
+    return {};
+  }
+  var dateStr = getWordDateStr(currentWordOffset);
+  var rec = DB.words.dailyRecords[dateStr] || {};
+  return (rec.perWord && rec.perWord[currentWordIndex]) || {};
+}
+/* 入队：标记模糊 / 不认识（已在队列则只更新程度，保留已有进度） */
+function reviewEnqueue(word, mark){
+  if(!word || (mark !== 'fuzzy' && mark !== 'unknown')) return;
+  var g = ensureReviewQ();
+  var need = reviewNeed(mark);
+  var cur = g.reviewQ[word];
+  if(cur){
+    cur.mark = mark;
+    cur.need = need;
+    if((cur.done || 0) > need) cur.done = need;
+  } else {
+    g.reviewQ[word] = { mark:mark, need:need, done:0, ts:Date.now() };
+  }
+  saveDb();
+  try{ renderWordReview(); }catch(e){}
+}
+/* 出队：标记已掌握 / 取消标记 */
+function reviewDequeue(word){
+  var g = ensureReviewQ();
+  if(g.reviewQ[word]){ delete g.reviewQ[word]; saveDb(); }
+}
+function reviewQueueList(){
+  var g = ensureReviewQ();
+  var out = [];
+  for(var w in g.reviewQ){
+    var e = g.reviewQ[w];
+    var bi = findWordBankIdx(w);
+    if(!e || bi < 0) continue;
+    out.push({ word:w, idx:bi, mark:e.mark, need:e.need || reviewNeed(e.mark), done:e.done || 0, ts:e.ts || 0 });
+  }
+  out.sort(function(a, b){ return (b.ts || 0) - (a.ts || 0); });
+  return out;
+}
+function reviewStats(){
+  var list = reviewQueueList();
+  var fuzzy = 0, unknown = 0, remain = 0;
+  for(var i = 0; i < list.length; i++){
+    if(list[i].mark === 'unknown') unknown++; else fuzzy++;
+    remain += Math.max(0, list[i].need - list[i].done);
+  }
+  return { list:list, total:list.length, fuzzy:fuzzy, unknown:unknown, remain:remain };
+}
+/* 复习答对一次：进度 +1；达标 → 标记「已掌握」并出队 */
+function reviewHit(word){
+  var g = ensureReviewQ();
+  var e = g.reviewQ[word];
+  if(!e) return { ok:false, done:0, need:1 };
+  e.need = e.need || reviewNeed(e.mark);
+  e.done = (e.done || 0) + 1;
+  if(e.done >= e.need){
+    delete g.reviewQ[word];
+    /* 今日 10 词里若有这个词，同步把标记改成「已掌握」 */
+    var pos = findTodayWordPos(word);
+    if(pos >= 0){
+      var dateStr = getWordDateStr(currentWordOffset);
+      if(!DB.words.dailyRecords[dateStr]) DB.words.dailyRecords[dateStr] = {};
+      if(!DB.words.dailyRecords[dateStr].perWord) DB.words.dailyRecords[dateStr].perWord = {};
+      DB.words.dailyRecords[dateStr].perWord[pos] = { mark:'known' };
+    }
+    if(g.masteredWords.indexOf(word) < 0) g.masteredWords.push(word);
+    g.reviewMastered = (g.reviewMastered || 0) + 1;
+    saveDb();
+    try{ checkWordBadges(); renderWordHud(); }catch(e){}
+    return { ok:true, mastered:true, done:e.need, need:e.need };
+  }
+  saveDb();
+  return { ok:true, mastered:false, done:e.done, need:e.need };
+}
+/* 复习答错一次：进度 -1，并把该词排到队尾 → 它还会再出现 */
+function reviewMiss(word){
+  var g = ensureReviewQ();
+  var e = g.reviewQ[word];
+  if(!e) return;
+  e.done = Math.max(0, (e.done || 0) - 1);
+  e.ts = Date.now();
+  saveDb();
+  if(reviewSession){
+    var bi = findWordBankIdx(word);
+    if(bi >= 0) reviewSession.queue.push(bi);
+  }
+}
+/* 开始一轮强化复习：按"每词还差几次"铺成序列并打散 */
+function startWordReview(focusWord){
+  var st = reviewStats();
+  if(!st.total){ toast('暂无待强化单词：先精练并标记「模糊 / 不认识」'); return; }
+  var queue = [];
+  for(var i = 0; i < st.list.length; i++){
+    var it = st.list[i];
+    if(focusWord && it.word !== focusWord) continue;
+    var times = Math.max(1, it.need - it.done);
+    for(var t = 0; t < times; t++) queue.push(it.idx);
+  }
+  if(!queue.length){ toast('这个词已经强化到位了'); return; }
+  queue = wqShuffle(queue);
+  reviewSession = { queue:queue, i:0, start:queue.length, right:0, wrong:0, mastered:0, focus:focusWord || '', answeredAt:-1 };
+  reviewWordIdx = queue[0];
+  wordMode = 'study';
+  var g = ensureWordGame(); g.mode = 'study'; saveDb();
+  document.querySelectorAll('.word-mode-btn').forEach(function(b){ b.classList.toggle('active', b.dataset.mode === 'study'); });
+  applyWordMode();
+  renderWords();
+  toast('🔁 强化复习开始 · 本轮 ' + queue.length + ' 次');
+}
+function reviewNextWord(){
+  if(!reviewSession) return;
+  reviewSession.i++;
+  if(reviewSession.i >= reviewSession.queue.length){ finishWordReview(); return; }
+  reviewWordIdx = reviewSession.queue[reviewSession.i];
+  renderWordFlashcard();
+  renderWordReview();
+}
+function finishWordReview(){
+  var s = reviewSession || {};
+  reviewSession = null;
+  reviewWordIdx = -1;
+  var st = reviewStats();
+  saveDb();
+  renderWords();
+  if(s.mastered > 0){ try{ wordConfetti(); }catch(e){} }
+  var msg = '🎉 本轮强化完成 · 答对 ' + (s.right || 0) + ' 次 · 新掌握 ' + (s.mastered || 0) + ' 词';
+  if(st.total) msg += '（还有 ' + st.total + ' 词未达标，可再来一轮）';
+  toast(msg);
+}
+function exitWordReview(){
+  if(reviewWordIdx < 0 && !reviewSession) return;
+  reviewSession = null;
+  reviewWordIdx = -1;
+  renderWords();
+  toast('已退出强化复习');
+}
+function setReviewCfg(mark, v){
+  var g = ensureReviewQ();
+  var n = parseInt(v, 10);
+  if(!(n >= REVIEW_CFG_MIN && n <= REVIEW_CFG_MAX)) return;
+  g.reviewCfg[mark] = n;
+  /* 已入队的同程度词同步更新目标次数 */
+  for(var w in g.reviewQ){
+    if(g.reviewQ[w] && g.reviewQ[w].mark === mark){
+      g.reviewQ[w].need = n;
+      if((g.reviewQ[w].done || 0) > n) g.reviewQ[w].done = n;
+    }
+  }
+  saveDb();
+  renderWordReview();
+  toast('「' + (REVIEW_MARK_META[mark] ? REVIEW_MARK_META[mark].label : mark) + '」词需答对 ' + n + ' 次才算掌握');
+}
+function clearWordReview(){
+  var g = ensureReviewQ();
+  var n = Object.keys(g.reviewQ).length;
+  if(!n) return;
+  if(!confirm('清空强化队列？这 ' + n + ' 个词将不再自动重复出现。')) return;
+  g.reviewQ = {};
+  saveDb();
+  exitWordReview();
+}
+/* 复习面板渲染 */
+function wrCfgHtml(){
+  var g = ensureReviewQ();
+  var opts = function(cur){
+    var h = '';
+    for(var v = REVIEW_CFG_MIN; v <= REVIEW_CFG_MAX; v++){
+      h += '<option value="' + v + '"' + (v === cur ? ' selected' : '') + '>' + v + ' 次</option>';
+    }
+    return h;
+  };
+  return '<div class="wr-cfg">' +
+      '<span>答对次数 · 模糊</span><select onchange="setReviewCfg(\'fuzzy\',this.value)">' + opts(g.reviewCfg.fuzzy) + '</select>' +
+      '<span>不认识</span><select onchange="setReviewCfg(\'unknown\',this.value)">' + opts(g.reviewCfg.unknown) + '</select>' +
+      '<span style="color:var(--text-3);">（答对这一次数后才标记「已掌握」）</span>' +
+    '</div>';
+}
+function renderWordReview(){
+  var box = document.getElementById('wrBody');
+  var cnt = document.getElementById('wrCount');
+  if(!box) return;
+  var st = reviewStats();
+  if(cnt){
+    if(reviewSession){
+      cnt.textContent = '复习中 ' + Math.min(reviewSession.i + 1, reviewSession.queue.length) + ' / ' + reviewSession.queue.length;
+      cnt.className = 'wr-count';
+    } else if(st.total){
+      cnt.textContent = st.total + ' 词待强化 · 还需答对 ' + st.remain + ' 次';
+      cnt.className = 'wr-count';
+    } else {
+      cnt.textContent = '0 词待强化';
+      cnt.className = 'wr-count zero';
+    }
+  }
+  if(reviewSession){
+    var cur = Math.min(reviewSession.i + 1, reviewSession.queue.length);
+    var pct = reviewSession.queue.length ? Math.round(reviewSession.i / reviewSession.queue.length * 100) : 0;
+    box.innerHTML =
+      '<div class="wr-sub">正在强化 ' + (reviewSession.focus ? '「' + escapeHtml(reviewSession.focus) + '」' : (st.total + ' 个词')) +
+        ' · 本轮答对 <b>' + reviewSession.right + '</b> · 新掌握 <b>' + reviewSession.mastered + '</b></div>' +
+      '<div class="wr-live">' +
+        '<div class="wr-live-bar"><div class="wr-live-fill" style="width:' + pct + '%"></div></div>' +
+        '<span class="wr-live-txt">' + cur + ' / ' + reviewSession.queue.length + '</span>' +
+      '</div>' +
+      '<div class="wr-actions">' +
+        '<button class="btn btn-ghost" onclick="exitWordReview()">退出复习</button>' +
+        '<button class="btn btn-primary" onclick="reviewNextWord()">下一个 →</button>' +
+      '</div>';
+    return;
+  }
+  if(!st.total){
+    box.innerHTML = '<div class="wr-sub">标记为「模糊」或「不认识」的单词会自动进入强化队列，按程度反复出现（答错还会再排一次），<b>直到答对足够次数自动标记「已掌握」为止</b>。<br>当前没有待强化单词 👍</div>' + wrCfgHtml();
+    return;
+  }
+  var chips = st.list.map(function(it){
+    var meta = REVIEW_MARK_META[it.mark] || REVIEW_MARK_META.fuzzy;
+    return '<span class="wr-chip ' + meta.cls + '">' +
+        '<b>' + escapeHtml(it.word) + '</b>' +
+        '<span class="wr-prog">' + meta.label + ' ' + Math.min(it.done, it.need) + '/' + it.need + '</span>' +
+      '</span>';
+  }).join('');
+  box.innerHTML =
+    '<div class="wr-sub">这些词会按标记程度反复出现：拼写正确进度 +1，答错进度 -1 并<b>排回队尾再来一次</b>；进度满即自动标记「已掌握」。</div>' +
+    '<div class="wr-chips">' + chips + '</div>' + wrCfgHtml() +
+    '<div class="wr-actions">' +
+      '<button class="btn btn-primary" onclick="startWordReview()">🔁 开始强化复习（' + st.remain + ' 次）</button>' +
+      '<button class="btn btn-ghost" onclick="clearWordReview()">清空队列</button>' +
+    '</div>';
 }
 function wordGameCorrect(){
   var g = ensureWordGame();
@@ -7435,6 +7864,8 @@ function setWordMode(m){
   wordMode = m;
   var g = ensureWordGame();
   g.mode = m;
+  /* 切到闯关模式时退出强化复习会话（复习只在精练卡片里进行） */
+  if(m === 'quest' && reviewSession){ reviewSession = null; reviewWordIdx = -1; }
   saveDb();
   document.querySelectorAll('.word-mode-btn').forEach(function(b){
     b.classList.toggle('active', b.dataset.mode === m);
@@ -7583,7 +8014,35 @@ function startWordQuest(force){
     if(bi < 0) bi = 0;
     qs.push(wqBuildQuestion(bi, wqPickType(i)));
   }
-  g.quest = { dateStr:dateStr, idx:0, hearts:3, correct:0, startTs:Date.now(), qs:qs, log:[], finished:false, failed:false, answered:false, result:null };
+  /* 追加强化关：模糊 / 不认识词按"还差几次"出题。
+     贪心排布：每次优先出"还差次数最多"的词，且不与上一关同词 —— 避免同一个词的
+     两次重复挤在一起。答对累计进度，进度满即标记已掌握，剩余重复题在 questNext 里跳过。 */
+  var rpool = wqShuffle(reviewQueueList());
+  for(var rp = 0; rp < rpool.length; rp++) rpool[rp].times = Math.max(1, rpool[rp].need - rpool[rp].done);
+  var _lastRevWord = '', _revGuard = 0;
+  while(_revGuard++ < 400){
+    var _left = 0;
+    for(var rp2 = 0; rp2 < rpool.length; rp2++) _left += rpool[rp2].times;
+    if(_left <= 0) break;
+    var _pick = -1, _pickTimes = -1;
+    for(var rp3 = 0; rp3 < rpool.length; rp3++){
+      if(rpool[rp3].times <= 0) continue;
+      if(rpool.length > 1 && rpool[rp3].word === _lastRevWord) continue;
+      if(rpool[rp3].times > _pickTimes){ _pick = rp3; _pickTimes = rpool[rp3].times; }
+    }
+    if(_pick < 0){
+      for(var rp4 = 0; rp4 < rpool.length; rp4++){ if(rpool[rp4].times > 0){ _pick = rp4; break; } }
+    }
+    var _it = rpool[_pick];
+    _it.times--;
+    _lastRevWord = _it.word;
+    var rq = wqBuildQuestion(_it.idx, wqPickType(qs.length));
+    rq.isReview = true;
+    rq.rword = _it.word;
+    qs.push(rq);
+  }
+  g.quest = { dateStr:dateStr, idx:0, hearts:3, correct:0, startTs:Date.now(), qs:qs, log:[], skipped:{},
+              finished:false, failed:false, answered:false, result:null, baseLen:words.length, masteredCount:0 };
   _wqSpokenKey = '';
   saveDb();
   renderWordQuest();
@@ -7597,9 +8056,12 @@ function renderQuestMeta(q){
   for(var i = 0; i < q.qs.length; i++){
     var attempted = (i < q.idx) || (q.log && q.log[i] != null);
     var cls = 'wq-step';
-    if(attempted) cls += (q.log && q.log[i] === false) ? ' wrong' : ' done';
+    var _isRev = q.qs[i] && q.qs[i].isReview;
+    if(_isRev) cls += ' rev';
+    if(q.skipped && q.skipped[i]) cls += ' skipped';
+    else if(attempted) cls += (q.log && q.log[i] === false) ? ' wrong' : ' done';
     else if(i === q.idx && !q.finished) cls += ' current';
-    html += '<div class="' + cls + '">' + (i + 1) + '</div>';
+    html += '<div class="' + cls + '"' + (_isRev ? ' title="强化关"' : '') + '>' + (i + 1) + '</div>';
   }
   steps.innerHTML = html;
   if(hearts){
@@ -7641,16 +8103,28 @@ function renderWordQuest(){
   var dateStr = getWordDateStr(currentWordOffset);
   if(!q || !q.qs || q.dateStr !== dateStr){
     renderQuestMeta(null);
+    var _wqt0 = document.getElementById('wqTitle');
+    if(_wqt0) _wqt0.textContent = '🎮 今日闯关 · 10 关';
+    var _rvHint = reviewStats();
     body.innerHTML =
       '<div class="wq-intro">' +
         '<div class="wq-emoji">🎯</div>' +
         '<h4>今日闯关 · 10 关</h4>' +
         '<p>5 种题型随机出现：拼写 / 中译英 / 英译中 / 听音选词 / 例句填空<br>' +
         '答对累计连击加成（最高 +50%），答错扣 1 颗心，共 3 颗心<br>' +
-        '通关按正确率与用时评级 S / A / B / C / D，额外奖励 XP</p>' +
+        '通关按正确率与用时评级 S / A / B / C / D，额外奖励 XP' +
+        (_rvHint.total ? '<br><b style="color:var(--amber);">另有 ' + _rvHint.total + ' 个「模糊 / 不认识」词会追加强化关，答对到次数即标记「已掌握」</b>' : '') +
+        '</p>' +
         '<button class="btn btn-primary" onclick="startWordQuest(true)">开始闯关</button>' +
       '</div>';
     return;
+  }
+  /* 标题随总关数（含强化关）动态变化 */
+  var _wqt = document.getElementById('wqTitle');
+  if(_wqt){
+    var _revN = 0;
+    for(var _qi2 = 0; _qi2 < q.qs.length; _qi2++){ if(q.qs[_qi2] && q.qs[_qi2].isReview) _revN++; }
+    _wqt.textContent = '🎮 今日闯关 · ' + q.qs.length + ' 关' + (_revN ? '（含强化 ' + _revN + ' 关）' : '');
   }
   renderQuestMeta(q);
   if(q.finished){
@@ -7666,16 +8140,21 @@ function renderWordQuest(){
       return;
     }
     var r = q.result || {};
+    var _stillRev = reviewStats();
     body.innerHTML = '<div class="wq-result">' +
       '<div style="font-size:44px;">' + (r.rank === 'S' ? '🏆' : r.rank === 'A' ? '🎉' : '👏') + '</div>' +
       '<div style="font-size:13px;color:var(--text-2);">闯关完成 · ' + q.dateStr + '</div>' +
       '<div class="wq-rank">' + r.rank + '</div>' +
       '<div class="wq-result-grid">' +
-        '<div><b>' + r.correct + ' / 10</b><i>答对</i></div>' +
+        '<div><b>' + r.correct + ' / ' + (r.total || 10) + '</b><i>答对</i></div>' +
         '<div><b>' + fmtQuestTime(r.time || 0) + '</b><i>用时</i></div>' +
         '<div><b>+' + r.bonus + '</b><i>奖励 XP</i></div>' +
         '<div><b>' + (g.bestCombo || 0) + '</b><i>最高连击</i></div>' +
       '</div>' +
+      ((r.mastered || _stillRev.total) ? '<div style="font-size:12.5px;color:var(--text-2);line-height:1.8;margin:-6px 0 12px;">' +
+          (r.mastered ? '🎉 本次新掌握 <b style="color:var(--green);">' + r.mastered + '</b> 个强化词<br>' : '') +
+          (_stillRev.total ? '仍有 ' + _stillRev.total + ' 词未达标（还需答对 ' + _stillRev.remain + ' 次），可在精练模式的「强化复习」里继续练' : '') +
+        '</div>' : '') +
       '<div class="wq-actions">' +
         '<button class="btn btn-primary" onclick="startWordQuest(true)">再玩一次</button>' +
         '<button class="btn btn-ghost" onclick="setWordMode(\'study\')">回精练模式</button>' +
@@ -7683,7 +8162,8 @@ function renderWordQuest(){
     return;
   }
   var cur = q.qs[q.idx];
-  var html = '<div class="wq-qtype">第 ' + (q.idx + 1) + ' 关 · ' + (WQ_TYPE_LABEL[cur.type] || '题目') + '</div>';
+  var html = '<div class="wq-qtype">第 ' + (q.idx + 1) + ' 关 · ' + (WQ_TYPE_LABEL[cur.type] || '题目') +
+    (cur.isReview ? ' · 🔁 强化' : '') + '</div>';
   if(cur.type === 'spell'){
     html += '<div class="wq-prompt">' + escapeHtml(cur.cn) +
       (cur.pos ? ' <span style="font-size:12px;color:var(--text-3);font-weight:500;">' + escapeHtml(cur.pos) + '</span>' : '') + '</div>';
@@ -7746,11 +8226,30 @@ function questAnswer(isRight, optIdx){
   if(isRight){
     q.correct++;
     wordGameCorrect();
+    /* 强化关答对：累计进度；进度满 → 标记已掌握并移出队列 */
+    if(cur.isReview && cur.rword){
+      var _rr = reviewHit(cur.rword);
+      if(_rr && _rr.mastered){
+        q.masteredCount = (q.masteredCount || 0) + 1;
+        toast('🎉 「' + cur.rword + '」已掌握，移出强化队列');
+      }
+    }
   } else {
     q.hearts--;
     wordGameWrong();
     var b = document.getElementById('wordQuestBody');
     if(b){ b.classList.add('wq-shake'); setTimeout(function(){ b.classList.remove('wq-shake'); }, 320); }
+    /* 强化关答错：进度回退，并把该词再排一道题到队尾 → 继续出现直到掌握 */
+    if(cur.isReview && cur.rword){
+      reviewMiss(cur.rword);
+      var _rbi = findWordBankIdx(cur.rword);
+      if(_rbi >= 0){
+        var _nq = wqBuildQuestion(_rbi, wqPickType(q.qs.length));
+        _nq.isReview = true;
+        _nq.rword = cur.rword;
+        q.qs.push(_nq);
+      }
+    }
   }
   saveDb();
   renderWordQuest();
@@ -7774,6 +8273,18 @@ function questNext(){
   }
   q.idx++;
   q.answered = false;
+  /* 强化关里已经掌握的词，后面重复出来的同类题直接跳过（记为已消化） */
+  if(!q.skipped) q.skipped = {};
+  var guard = 0;
+  while(q.idx < q.qs.length && guard++ < 300){
+    var _c = q.qs[q.idx];
+    if(_c && _c.isReview && _c.rword && !ensureReviewQ().reviewQ[_c.rword]){
+      q.skipped[q.idx] = 1;
+      q.idx++;
+      continue;
+    }
+    break;
+  }
   if(q.idx >= q.qs.length){ finishWordQuest(); return; }
   saveDb();
   renderWordQuest();
@@ -7783,19 +8294,23 @@ function finishWordQuest(){
   var q = g.quest;
   var cost = Math.round((Date.now() - (q.startTs || Date.now())) / 1000);
   var c = q.correct;
-  var rank = c >= 10 ? 'S' : c >= 8 ? 'A' : c >= 6 ? 'B' : c >= 4 ? 'C' : 'D';
-  var bonus = 30 + c * 5 + (c === 10 ? 30 : 0);
+  var total = (q.qs && q.qs.length) || 10;
+  var ratio = total ? c / total : 0;
+  /* 比例评级：10 题时与原阈值完全一致（1/0.8/0.6/0.4）；含追加强化关时按比例折算 */
+  var rank = ratio >= 1 ? 'S' : ratio >= 0.8 ? 'A' : ratio >= 0.6 ? 'B' : ratio >= 0.4 ? 'C' : 'D';
+  var bonus = 30 + c * 5 + (ratio >= 1 ? 30 : 0);
   addWordXp(bonus);
   g.clears = (g.clears || 0) + 1;
-  if(c === 10) g.perfect = true;
+  if(ratio >= 1 && total >= 10) g.perfect = true;
   if(cost <= 180) g.speedrun = true;
   q.finished = true; q.failed = false;
-  q.result = { correct:c, rank:rank, time:cost, bonus:bonus };
+  q.result = { correct:c, rank:rank, time:cost, bonus:bonus, total:total, mastered:q.masteredCount || 0 };
   var best = g.questBest[q.dateStr];
   if(!best || c > best.correct) g.questBest[q.dateStr] = { correct:c, rank:rank, time:cost };
   checkWordBadges();
   saveDb();
   renderWordHud();
+  try{ renderWordReview(); }catch(e){}
   if(rank === 'S' || rank === 'A') wordConfetti();
   renderWordQuest();
 }
@@ -13294,7 +13809,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'pending', date:'2026-09-18', desc:'轻氧塑身日记 重新排版: 体重打卡移到最前面并改为整宽(标题行显示 最新体重/较首次变化,趋势图按容器宽度自适应绘制不再被缩放); 食谱推荐与运动记录并排到底部' };
+  window.ver = { git:'pending', date:'2026-09-19', desc:'英语模块新增「强化复习」：标记模糊/不认识的词自动进入强化队列，按程度（模糊/不认识可分别设 1~6 次）反复出现，拼写答对进度 +1、答错 -1 并排回队尾，直到答对足够次数自动标记已掌握；闯关模式追加同规则的强化关' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
