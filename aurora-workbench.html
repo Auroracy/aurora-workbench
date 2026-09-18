@@ -4,6 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Aurora 的工作台</title>
+<!-- ===== PWA：可安装 / 添加到主屏幕（manifest + 图标 + 独立窗口） ===== -->
+<meta name="theme-color" content="#15A49B">
+<meta name="description" content="基金 · 早教 · 塑身 · 英语 · 日记 · 新闻联播 — Aurora 的一体化个人工作台">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="64x64" href="favicon-64.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="工作台">
 <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
 <style>
 /* ====== Reset & Base ====== */
@@ -13809,7 +13820,7 @@ function importBackup(){
    ============================================================ */
 function init(){
   /* ★ 版本标识：控制台输入 ver 即可查看当前运行的代码版本 ★ */
-  window.ver = { git:'pending', date:'2026-09-19', desc:'英语模块新增「强化复习」：标记模糊/不认识的词自动进入强化队列，按程度（模糊/不认识可分别设 1~6 次）反复出现，拼写答对进度 +1、答错 -1 并排回队尾，直到答对足够次数自动标记已掌握；闯关模式追加同规则的强化关' };
+  window.ver = { git:'pending', date:'2026-09-19', desc:'接入 PWA：新增 manifest/图标/Service Worker，手机可「添加到主屏幕」当 App 用；扫码入口二维码见 qr-workbench-card.png' };
   console.log('%c✅ aurora-workbench %c' + window.ver.git + ' %c(' + window.ver.date + ') ' + window.ver.desc, 'color:#15A49B;font-weight:bold;font-size:12px;', 'color:#2E86C1;font-weight:bold;', 'color:#888;');
   /* 页面内版本标签（方便确认服务器是否已更新） */
   var vb = document.getElementById('fundVerBadge');
@@ -14075,5 +14086,96 @@ window.addEventListener('DOMContentLoaded', init);
     <div class="book-modal-body" id="dcaDetailBody"></div>
   </div>
 </div>
+
+<!-- ===== PWA：添加到主屏幕引导条 ===== -->
+<style>
+#pwaHint{position:fixed;left:50%;bottom:18px;transform:translateX(-50%) translateY(12px);z-index:9999;
+  width:min(92vw,420px);background:rgba(255,255,255,.96);border:1px solid var(--line);border-radius:14px;
+  box-shadow:0 10px 34px rgba(21,164,155,.18),0 2px 8px rgba(27,42,53,.08);padding:13px 14px;
+  display:none;opacity:0;transition:opacity .25s ease,transform .25s ease;font-size:12.5px;color:var(--text);
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);}
+#pwaHint.show{display:block;opacity:1;transform:translateX(-50%) translateY(0);}
+#pwaHint .ph-row{display:flex;gap:10px;align-items:flex-start;}
+#pwaHint .ph-ico{width:34px;height:34px;border-radius:9px;flex:0 0 34px;background:var(--accent-grad);
+  color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;}
+#pwaHint .ph-t{font-weight:700;font-size:13.5px;margin-bottom:3px;}
+#pwaHint .ph-d{color:var(--text-2);line-height:1.6;}
+#pwaHint .ph-x{position:absolute;top:8px;right:10px;border:0;background:transparent;color:var(--text-3);
+  font-size:18px;line-height:1;cursor:pointer;padding:2px 4px;}
+#pwaHint .ph-btn{margin-top:9px;border:0;border-radius:9px;background:var(--accent);color:#fff;
+  font-family:inherit;font-size:12.5px;font-weight:700;padding:7px 14px;cursor:pointer;}
+@media(min-width:761px){#pwaHint{display:none!important;}}
+</style>
+<div id="pwaHint" role="dialog" aria-label="添加到主屏幕">
+  <button class="ph-x" onclick="closePwaHint()" aria-label="关闭">&times;</button>
+  <div class="ph-row">
+    <div class="ph-ico">A</div>
+    <div>
+      <div class="ph-t">添加到主屏幕，用起来像 App</div>
+      <div class="ph-d"></div>
+      <button class="ph-btn" style="display:none" onclick="doPwaInstall()">立即安装</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===== PWA 引导：Service Worker 注册 + 添加到主屏幕提示 ===== */
+(function(){
+  /* 1. Service Worker —— 只在安全上下文注册。
+        http://106.14.223.116:9000 属于非安全上下文，浏览器本就不允许注册，这里直接跳过（不影响页面任何功能）。
+        将来换成 https 域名后，同一份代码会自动启用离线缓存与安装能力。 */
+  try{
+    if('serviceWorker' in navigator){
+      var _secure = window.isSecureContext || location.protocol === 'https:' ||
+                    location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+      if(_secure){
+        window.addEventListener('load', function(){
+          navigator.serviceWorker.register('sw.js', { scope:'./' }).catch(function(){});
+        });
+      }
+    }
+  }catch(e){}
+
+  /* 2. 「添加到主屏幕」引导：仅移动端、非独立窗口、只提示一次 */
+  var KEY = 'aurora_pwa_hint_closed';
+  var _installEvt = null;
+  window.addEventListener('beforeinstallprompt', function(e){ e.preventDefault(); _installEvt = e; });
+  window.addEventListener('appinstalled', function(){ try{ localStorage.setItem(KEY,'1'); }catch(e){} hidePwaHint(); });
+
+  function hidePwaHint(){
+    var h = document.getElementById('pwaHint');
+    if(h){ h.classList.remove('show'); setTimeout(function(){ h.style.display = 'none'; }, 260); }
+  }
+  window.closePwaHint = function(){ try{ localStorage.setItem(KEY,'1'); }catch(e){} hidePwaHint(); };
+  window.doPwaInstall = function(){
+    if(_installEvt){ try{ _installEvt.prompt(); }catch(e){} _installEvt = null; window.closePwaHint(); }
+    else window.closePwaHint();
+  };
+
+  function initPwaHint(){
+    try{
+      if(localStorage.getItem(KEY)) return;
+      var ua = navigator.userAgent || '';
+      if(!/Android|iPhone|iPad|iPod|Mobile/i.test(ua)) return;           /* 只对手机提示 */
+      var standalone = (window.navigator.standalone === true) ||
+                       (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+      if(standalone) return;                                            /* 已经是独立窗口 */
+      var isIOS = /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && 'ontouchend' in document);
+      var canInstall = !!_installEvt;                                   /* 安卓 Chrome 仅在 https 下给此事件 */
+      if(!isIOS && !canInstall) return;                                 /* http 下装了也不是独立窗口 → 不打扰 */
+      var h = document.getElementById('pwaHint');
+      if(!h) return;
+      h.querySelector('.ph-d').innerHTML = isIOS
+        ? '点 Safari 底部的「分享」→「添加到主屏幕」，之后从桌面图标打开就是全屏、没有地址栏。'
+        : '点下面按钮把工作台装到桌面，之后一点就开，不用再找网址。';
+      if(!isIOS) h.querySelector('.ph-btn').style.display = 'inline-block';
+      h.classList.add('show');
+    }catch(e){}
+  }
+  function schedule(){ setTimeout(initPwaHint, 2600); }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', schedule);
+  else schedule();
+})();
+</script>
 </body>
 </html>

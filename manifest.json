@@ -1,0 +1,25 @@
+{
+  "name": "Aurora 的工作台",
+  "short_name": "工作台",
+  "description": "基金 · 早教 · 塑身 · 英语 · 日记 · 新闻联播，个人一体化工作台",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#EEF3F6",
+  "theme_color": "#15A49B",
+  "lang": "zh-CN",
+  "dir": "ltr",
+  "categories": ["productivity", "finance", "lifestyle"],
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "基金持仓", "url": "./#fund" },
+    { "name": "每日英语", "url": "./#word" },
+    { "name": "轻氧塑身", "url": "./#fit" }
+  ]
+}
