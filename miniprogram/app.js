@@ -7,7 +7,7 @@ const store = require('./utils/store.js');
  * 获取方式：开发者工具顶部「云开发」→ 开通 → 创建环境 →
  *          环境设置里复制「环境 ID」（形如 aurora-1g8xxxxx），粘贴到下面。
  */
-const CLOUD_ENV = '';
+const CLOUD_ENV = 'cloud1-d0ga4s8mm02f4c83a';
 
 App({
   globalData: {
