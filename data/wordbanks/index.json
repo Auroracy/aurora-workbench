@@ -1,0 +1,123 @@
+{
+ "updatedAt": "2026-09-21 00:11:11",
+ "source": "https://github.com/RealKai42/qwerty-learner (开源词库, jsdelivr CDN)",
+ "banks": [
+  {
+   "id": "cet4",
+   "name": "四级词汇",
+   "desc": "大学英语四级核心词",
+   "icon": "🎯",
+   "category": "国内考试",
+   "count": 2607,
+   "size": 179289
+  },
+  {
+   "id": "cet6",
+   "name": "六级词汇",
+   "desc": "大学英语六级核心词",
+   "icon": "🎓",
+   "category": "国内考试",
+   "count": 2345,
+   "size": 191913
+  },
+  {
+   "id": "kaoyan",
+   "name": "考研词汇",
+   "desc": "考研英语大纲核心词",
+   "icon": "📕",
+   "category": "国内考试",
+   "count": 3727,
+   "size": 238906
+  },
+  {
+   "id": "tem4",
+   "name": "英语专四",
+   "desc": "英语专业四级词汇",
+   "icon": "📗",
+   "category": "国内考试",
+   "count": 4025,
+   "size": 319322
+  },
+  {
+   "id": "ielts",
+   "name": "雅思 IELTS",
+   "desc": "雅思核心词汇",
+   "icon": "🌏",
+   "category": "出国考试",
+   "count": 3575,
+   "size": 238092
+  },
+  {
+   "id": "toefl",
+   "name": "托福 TOEFL",
+   "desc": "托福核心词汇",
+   "icon": "✈️",
+   "category": "出国考试",
+   "count": 4264,
+   "size": 289965
+  },
+  {
+   "id": "gre",
+   "name": "GRE",
+   "desc": "GRE 核心词汇",
+   "icon": "🧠",
+   "category": "出国考试",
+   "count": 6514,
+   "size": 363558
+  },
+  {
+   "id": "gmat",
+   "name": "GMAT",
+   "desc": "GMAT 核心词汇",
+   "icon": "📊",
+   "category": "出国考试",
+   "count": 3047,
+   "size": 166964
+  },
+  {
+   "id": "sat",
+   "name": "SAT",
+   "desc": "SAT 核心词汇",
+   "icon": "📝",
+   "category": "出国考试",
+   "count": 4463,
+   "size": 256626
+  },
+  {
+   "id": "bec",
+   "name": "商务英语 BEC",
+   "desc": "剑桥商务英语词汇",
+   "icon": "💼",
+   "category": "职场英语",
+   "count": 2825,
+   "size": 227758
+  },
+  {
+   "id": "nce",
+   "name": "新概念英语",
+   "desc": "新概念英语 1-4 册词汇",
+   "icon": "📘",
+   "category": "经典教材",
+   "count": 3323,
+   "size": 141575
+  },
+  {
+   "id": "oxford",
+   "name": "牛津核心 3000",
+   "desc": "牛津 3000 核心高频词",
+   "icon": "📖",
+   "category": "高频核心",
+   "count": 1339,
+   "size": 100765
+  },
+  {
+   "id": "longman",
+   "name": "朗文高频 3000",
+   "desc": "朗文交际 3000 高频词",
+   "icon": "🔤",
+   "category": "高频核心",
+   "count": 3158,
+   "size": 220210
+  }
+ ]
+}

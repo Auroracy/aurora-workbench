@@ -2,4 +2,11 @@
 chenqingning-workbench.html
 *.tmp
 .DS_Store
-data/
+# data/ 下只跟踪“需要随仓库分发”的静态数据：
+#   data/wordbanks/  英语词库（服务端 /api/wordbank 下发，部署时随 git pull 一起更新）
+#   data/xwlb/       新闻联播每日归档（GitHub Action 写入）
+# 其余（db.json 运行时数据、词库源文件缓存、词典缓存）保持忽略
+data/*
+!data/wordbanks/
+!data/xwlb/
+data/wordbanks/.source-cache/
