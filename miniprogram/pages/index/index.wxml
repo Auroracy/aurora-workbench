@@ -38,6 +38,28 @@
     </view>
   </view>
 
+  <!-- ====== 联网自检 ====== -->
+  <view class="sec-title">联网自检</view>
+  <view class="card">
+    <view class="row">
+      <view class="net-head">
+        <view class="dot {{netState}}"></view>
+        <text class="small">{{netTitle}}</text>
+      </view>
+      <text class="btn btn-sm {{netBusy ? 'btn-ghost' : 'btn-primary'}}" catchtap="checkCloud">
+        {{netBusy ? '请求中…' : '测一下'}}
+      </text>
+    </view>
+    <view wx:if="{{netMsg}}" class="net-msg {{netState}}">{{netMsg}}</view>
+    <view wx:if="{{netRaw}}" class="net-raw">{{netRaw}}</view>
+    <view class="divider"></view>
+    <view class="imp-tip small muted">
+      走云函数 <text class="code">auroraProxy</text> 中转，个人主体也能联网。
+      若失败：先在开发者工具里右键 <text class="code">cloudfunctions/auroraProxy</text>
+      →「上传并部署（云端安装依赖）」，并确认 <text class="code">app.js</text> 已填环境 ID。
+    </view>
+  </view>
+
   <!-- ====== 数据迁移 ====== -->
   <view class="sec-title">数据迁移 · 备份</view>
   <view class="card">

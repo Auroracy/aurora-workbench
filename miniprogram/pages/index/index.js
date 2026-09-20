@@ -1,5 +1,6 @@
 const store = require('../../utils/store.js');
 const W = require('../../utils/word.js');
+const cloudApi = require('../../utils/cloudApi.js');
 
 Page({
   data: {
@@ -9,6 +10,7 @@ Page({
     level: 1, rankName: '', streak: 0,
     importText: '', importMode: 'merge',
     dbBytes: 0,
+    netState: '', netBusy: false, netTitle: '未测试 · 点右侧「测一下」', netMsg: '', netRaw: '',
     coming: [
       { ico: '👶', name: '宝宝早教 · 课时记录', desc: '课时打卡 / 自定义课程' },
       { ico: '🏃', name: '轻氧塑身日记', desc: '体重趋势 / 运动 / 16:8 断食（图表需改 canvas）' },
@@ -55,6 +57,63 @@ Page({
 
   goEnglish() {
     wx.switchTab({ url: '/pages/english/english' });
+  },
+
+  /* ===== 联网自检 =====
+   * 走云函数 auroraProxy 转发新浪行情（GBK 编码），
+   * 用来验证「云开发已开通 + 云函数已部署 + 白名单放行」整条链路。 */
+  checkCloud() {
+    if (this.data.netBusy) return;
+    const self = this;
+
+    if (!cloudApi.ready()) {
+      this.setData({
+        netState: 'err',
+        netTitle: '云开发未启用',
+        netMsg: 'app.js 的 CLOUD_ENV 为空，或当前环境不支持 wx.cloud。本地模块（单词/复习）不受影响，可正常使用。',
+        netRaw: ''
+      });
+      return;
+    }
+
+    this.setData({
+      netBusy: true, netState: 'run',
+      netTitle: '正在请求新浪行情…', netMsg: '', netRaw: ''
+    });
+    const t0 = Date.now();
+
+    cloudApi
+      .text('https://hq.sinajs.cn/list=sh000001', 'gbk', { Referer: 'https://finance.sina.com.cn' })
+      .then(function (body) {
+        const ms = Date.now() - t0;
+        self.setData({
+          netBusy: false, netState: 'ok',
+          netTitle: '联网成功 · ' + ms + 'ms',
+          netMsg: self.parseSina(body),
+          netRaw: String(body || '').slice(0, 160)
+        });
+      })
+      .catch(function (e) {
+        self.setData({
+          netBusy: false, netState: 'err',
+          netTitle: '联网失败',
+          netMsg: String((e && e.message) || e),
+          netRaw: ''
+        });
+      });
+  },
+
+  /* 新浪指数格式：名称,当前点数,涨跌额,涨跌率,成交量,成交额 */
+  parseSina(body) {
+    const m = String(body || '').match(/"([^"]*)"/);
+    if (!m || !m[1]) return '接口通了，但内容为空（可能非交易时段，或需重试一次）。';
+    const a = m[1].split(',');
+    const cur = parseFloat(a[1]);
+    if (a.length < 4 || isNaN(cur)) return '返回内容：' + m[1];
+    const chg = parseFloat(a[2]);
+    const pct = parseFloat(a[3]);
+    const sign = function (n) { return (n >= 0 ? '+' : '') + n.toFixed(2); };
+    return a[0] + '　' + cur.toFixed(2) + '　' + sign(chg) + '　' + sign(pct) + '%';
   },
 
   /* ===== 数据迁移 ===== */
