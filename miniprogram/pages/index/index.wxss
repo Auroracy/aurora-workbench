@@ -1,0 +1,53 @@
+.hero {
+  background: linear-gradient(135deg, #15A49B 0%, #2E86C1 100%);
+  color: #fff;
+  padding: 40rpx 32rpx 32rpx;
+}
+.hero-date { font-size: 24rpx; opacity: .85; }
+.hero-title { font-size: 44rpx; font-weight: 700; margin: 8rpx 0 6rpx; letter-spacing: 2rpx; }
+.hero-sub { opacity: .9; }
+.hero-date, .hero-sub, .hero-tip { color: rgba(255, 255, 255, .92); }
+.hero-bar {
+  height: 10rpx; border-radius: 999rpx; margin: 26rpx 0 14rpx;
+  background: rgba(255, 255, 255, .28); overflow: hidden;
+}
+.hero-bar .bar-fill { background: #fff; }
+.hero-tip { font-size: 22rpx; }
+
+.entry { padding: 0; }
+.entry-row { display: flex; align-items: center; padding: 26rpx 28rpx; gap: 20rpx; }
+.entry-row + .entry-row { border-top: 1rpx solid var(--line-soft); }
+.e-ico {
+  width: 76rpx; height: 76rpx; border-radius: 20rpx; flex: 0 0 76rpx;
+  background: var(--accent-bg); display: flex; align-items: center; justify-content: center; font-size: 36rpx;
+}
+.e-ico.gray { background: var(--input-bg); filter: grayscale(1); opacity: .6; }
+.e-main { flex: 1; min-width: 0; }
+.e-name { font-size: 29rpx; font-weight: 600; }
+.e-name.gray { color: var(--text-3); }
+.e-desc { font-size: 22rpx; margin-top: 4rpx; }
+.e-badge {
+  margin-left: 10rpx; color: var(--amber); background: var(--amber-bg);
+  padding: 2rpx 12rpx; border-radius: 999rpx; font-size: 20rpx;
+}
+.e-arrow { color: var(--text-3); font-size: 40rpx; line-height: 1; }
+.e-tag {
+  font-size: 20rpx; color: var(--text-3); background: var(--input-bg);
+  padding: 6rpx 16rpx; border-radius: 999rpx;
+}
+
+.imp-tip { line-height: 1.8; margin-bottom: 16rpx; }
+.code {
+  font-family: "SF Mono", Menlo, monospace; font-size: 21rpx;
+  background: var(--input-bg); padding: 2rpx 10rpx; border-radius: 8rpx; color: var(--accent-d);
+}
+.imp-input {
+  width: 100%; box-sizing: border-box; height: 200rpx;
+  background: var(--input-bg); border: 1rpx solid var(--line);
+  border-radius: 18rpx; padding: 20rpx; font-size: 24rpx;
+  font-family: "SF Mono", Menlo, monospace;
+}
+.imp-row { display: flex; align-items: center; gap: 12rpx; margin-top: 18rpx; flex-wrap: wrap; }
+.mode-switch { display: flex; background: var(--input-bg); border-radius: 14rpx; overflow: hidden; }
+.mode-item { font-size: 22rpx; padding: 10rpx 20rpx; color: var(--text-2); }
+.mode-item.on { background: var(--accent); color: #fff; font-weight: 600; }

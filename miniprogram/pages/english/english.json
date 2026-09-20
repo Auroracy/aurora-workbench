@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "每日英语单词",
+  "enablePullDownRefresh": true,
+  "backgroundTextStyle": "dark",
+  "usingComponents": {}
+}

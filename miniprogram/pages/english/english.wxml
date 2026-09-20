@@ -1,0 +1,159 @@
+<!-- 片段渲染模板：把 "句子片段" 数组渲染成 文字 + 挖空 -->
+<template name="tplParts">
+  <block wx:for="{{parts}}" wx:for-item="p">
+    <text wx:if="{{p.blank}}" class="blk {{show ? (errFlag ? 'err' : 'ok') : ''}}">{{show ? (errFlag ? errText : p.t) : '________'}}</text>
+    <text wx:else>{{p.t}}</text>
+  </block>
+</template>
+
+<view class="page">
+
+  <!-- ====== HUD：等级 / 连击 / 连续天数 ====== -->
+  <view class="card hud">
+    <view class="hud-top">
+      <view>
+        <view class="hud-rank">Lv.{{level}} · {{rankName}}</view>
+        <view class="hud-date" bindtap="goToday">
+          {{dateStr}}<text class="chip gray off">{{offsetTip}}</text>
+        </view>
+      </view>
+      <view class="hud-chips">
+        <text class="chip" wx:if="{{combo}}">🔥 {{combo}}</text>
+        <text class="chip gray">📅 {{streak}} 天</text>
+      </view>
+    </view>
+    <view class="bar"><view class="bar-fill" style="width:{{xpPct}}%"></view></view>
+    <view class="hud-xp small muted">XP {{xp}} / {{xpNeed}}</view>
+  </view>
+
+  <!-- ====== 今日进度 ====== -->
+  <view class="card">
+    <view class="stat-row">
+      <view class="stat-item">
+        <view class="stat-num">{{prog.marked}}<text class="slash">/10</text></view>
+        <view class="stat-label">已标记</view>
+      </view>
+      <view class="stat-item green">
+        <view class="stat-num">{{prog.known}}</view>
+        <view class="stat-label">已掌握</view>
+      </view>
+      <view class="stat-item amber">
+        <view class="stat-num">{{prog.fuzzy}}</view>
+        <view class="stat-label">模糊</view>
+      </view>
+      <view class="stat-item red">
+        <view class="stat-num">{{prog.unknown}}</view>
+        <view class="stat-label">不认识</view>
+      </view>
+    </view>
+    <view class="day-nav">
+      <view class="btn btn-sm btn-ghost" bindtap="prevDay">← 前一天</view>
+      <view class="day-mid small muted">{{wordsPreview}}</view>
+      <view class="btn btn-sm btn-ghost" bindtap="nextDay">后一天 →</view>
+    </view>
+  </view>
+
+  <!-- ====== 强化复习 ====== -->
+  <view class="card review-card">
+    <view class="row">
+      <view class="rc-title">🔁 强化复习</view>
+      <view class="small muted" wx:if="{{stats.total}}">
+        待强化 {{stats.total}} 词 · 还需答对 {{stats.remain}} 次
+      </view>
+    </view>
+    <view class="rc-tip small muted">标记「模糊 / 不认识」的词会反复出现，答对足够次数才自动标记已掌握。</view>
+    <view class="cfg-row">
+      <text class="small muted">模糊需答对</text>
+      <picker mode="selector" range="{{cfgRange}}" value="{{cfgFuzzy-1}}" data-mark="fuzzy" bindchange="onCfg">
+        <view class="cfg-val">{{cfgFuzzy}} 次</view>
+      </picker>
+      <text class="small muted">不认识需答对</text>
+      <picker mode="selector" range="{{cfgRange}}" value="{{cfgUnknown-1}}" data-mark="unknown" bindchange="onCfg">
+        <view class="cfg-val">{{cfgUnknown}} 次</view>
+      </picker>
+    </view>
+    <view class="btn btn-primary rc-start" bindtap="startReview">开始强化复习</view>
+
+    <block wx:if="{{queueList.length}}">
+      <view class="queue-toggle small" bindtap="toggleQueue">
+        {{queueOpen ? '收起队列 ▲' : '查看队列（' + queueList.length + '）▼'}}
+      </view>
+      <view class="queue-list" wx:if="{{queueOpen}}">
+        <view class="queue-item" wx:for="{{queueList}}" wx:key="word" data-word="{{item.word}}" bindtap="startReviewOne">
+          <view class="q-left-box">
+            <text class="q-en">{{item.word}}</text>
+            <text class="q-cn small muted">{{item.cn}}</text>
+          </view>
+          <text class="chip {{item.markCls}}">{{item.markName}}</text>
+          <text class="q-left small muted">{{item.done}}/{{item.need}}</text>
+        </view>
+      </view>
+    </block>
+  </view>
+
+  <!-- ====== 精练卡片 ====== -->
+  <view class="card word-card">
+    <view class="wc-head">
+      <text class="wc-no">{{noText}}</text>
+      <text class="wc-pos">{{pos}}</text>
+      <text class="wc-status {{statusCls}}" wx:if="{{status}}">{{status}}</text>
+    </view>
+
+    <view class="wc-banner" wx:if="{{reviewBanner}}">
+      <text class="wr-flag">强化复习</text>{{reviewBanner}}
+    </view>
+
+    <!-- 释义 -->
+    <view class="wc-cn"><template is="tplParts" data="{{parts: mainParts, show: revealedAll}}"/></view>
+    <view class="wc-sense" wx:for="{{moreSenses}}" wx:key="index">
+      <text class="s-pos">{{item.pos}}</text><template is="tplParts" data="{{parts: item.parts, show: revealedAll}}"/>
+    </view>
+    <view class="wc-usage" wx:if="{{usageParts.length}}">
+      <text class="u-tag">常用搭配</text><template is="tplParts" data="{{parts: usageParts, show: revealedAll}}"/>
+    </view>
+
+    <!-- 英文（默认隐藏） -->
+    <view class="wc-en-row">
+      <text class="wc-en {{revealedEn ? 'on' : ''}}" bindtap="revealAnswer">{{revealedEn ? en : '点击显示英文'}}</text>
+      <text class="wc-speak" catchtap="speak">🔊</text>
+    </view>
+
+    <!-- 例句 -->
+    <view class="wc-ex">
+      <view class="ex-line">
+        <template is="tplParts" data="{{parts: examples[0].parts, show: blankState !== 'hidden' || revealedAll, errFlag: blankState === 'err', errText: spell + ' ✗'}}"/>
+      </view>
+      <block wx:if="{{hasMore}}">
+        <view class="ex-more-tag">更多用法 · 其他例句</view>
+        <block wx:for="{{examples}}" wx:key="index">
+          <block wx:if="{{!item.main}}">
+            <view class="ex-line ex-sub"><template is="tplParts" data="{{parts: item.parts, show: revealedAll}}"/></view>
+            <view class="ex-cn" wx:if="{{item.cn}}">{{item.cn}}</view>
+          </block>
+        </block>
+      </block>
+    </view>
+
+    <!-- 拼写 -->
+    <input class="spell-input {{inputCls}}" value="{{spell}}" placeholder="输入单词拼写"
+           bindinput="onSpellInput" confirm-type="done" bindconfirm="checkSpell"/>
+    <view class="hint {{hintType}}" wx:if="{{hint}}">{{hint}}</view>
+    <view class="wc-actions">
+      <view class="btn btn-line" bindtap="revealAnswer">显示答案</view>
+      <view class="btn btn-primary" bindtap="checkSpell">验证拼写</view>
+    </view>
+
+    <!-- 标记 -->
+    <view class="mark-row">
+      <view class="mark-btn known {{mark === 'known' ? 'on' : ''}}" data-val="known" bindtap="tapMark">😀 已掌握</view>
+      <view class="mark-btn fuzzy {{mark === 'fuzzy' ? 'on' : ''}}" data-val="fuzzy" bindtap="tapMark">🤔 模糊</view>
+      <view class="mark-btn unknown {{mark === 'unknown' ? 'on' : ''}}" data-val="unknown" bindtap="tapMark">😵 不认识</view>
+    </view>
+  </view>
+
+  <!-- ====== 底部导航 ====== -->
+  <view class="nav-row">
+    <view class="btn btn-ghost" bindtap="prevWord">{{inReview ? '退出复习' : '← 上一词'}}</view>
+    <view class="btn btn-primary" bindtap="nextWord">{{inReview ? '下一个 →' : '下一词 →'}}</view>
+  </view>
+</view>

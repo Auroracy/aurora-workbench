@@ -1,0 +1,40 @@
+{
+  "description": "Aurora 工作台 · 微信小程序版",
+  "appid": "touristappid",
+  "projectname": "aurora-workbench-mini",
+  "miniprogramRoot": "./",
+  "compileType": "miniprogram",
+  "libVersion": "3.5.5",
+  "packOptions": {
+    "ignore": [],
+    "include": []
+  },
+  "setting": {
+    "urlCheck": false,
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": true,
+    "coverView": true,
+    "lazyloadPlaceholderEnable": false,
+    "preloadBackgroundData": false,
+    "autoAudits": false,
+    "uglifyFileName": false,
+    "uploadWithSourceMap": true,
+    "compileHotReLoad": false,
+    "useMultiFrameRuntime": true,
+    "useApiHook": true,
+    "useApiHostProcess": true,
+    "showShadowRootInWxmlPanel": true,
+    "packNpmManually": false,
+    "packNpmRelationList": [],
+    "minifyWXSS": true,
+    "useCompilerPlugins": false,
+    "ignoreUploadUnusedFiles": true
+  },
+  "condition": {},
+  "editorSetting": {
+    "tabIndent": "insertSpaces",
+    "tabSize": 2
+  }
+}

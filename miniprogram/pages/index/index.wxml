@@ -1,0 +1,65 @@
+<view class="page">
+
+  <!-- ====== 今日概览 ====== -->
+  <view class="card hero">
+    <view class="hero-date">{{today}}</view>
+    <view class="hero-title">Aurora 工作台</view>
+    <view class="hero-sub small muted">微信小程序版 · Lv.{{level}} {{rankName}} · 连续 {{streak}} 天</view>
+    <view class="hero-bar"><view class="bar-fill" style="width:{{wordPct}}%"></view></view>
+    <view class="hero-tip small muted">今日单词 {{wordDone}}/10 已标记（掌握 {{wordKnown}} 个）</view>
+  </view>
+
+  <!-- ====== 已迁移模块 ====== -->
+  <view class="sec-title">可用模块</view>
+  <view class="card entry" bindtap="goEnglish">
+    <view class="entry-row">
+      <view class="e-ico">📖</view>
+      <view class="e-main">
+        <view class="e-name">每日英语单词</view>
+        <view class="e-desc small muted">
+          精练卡片 · 拼写验证 · 强化复习
+          <text wx:if="{{reviewTotal}}" class="e-badge">待强化 {{reviewTotal}} 词</text>
+        </view>
+      </view>
+      <view class="e-arrow">›</view>
+    </view>
+  </view>
+
+  <!-- ====== 待迁移 ====== -->
+  <view class="sec-title">后续迁移</view>
+  <view class="card coming">
+    <view class="entry-row" wx:for="{{coming}}" wx:key="name">
+      <view class="e-ico gray">{{item.ico}}</view>
+      <view class="e-main">
+        <view class="e-name gray">{{item.name}}</view>
+        <view class="e-desc small muted">{{item.desc}}</view>
+      </view>
+      <view class="e-tag small">待迁移</view>
+    </view>
+  </view>
+
+  <!-- ====== 数据迁移 ====== -->
+  <view class="sec-title">数据迁移 · 备份</view>
+  <view class="card">
+    <view class="row">
+      <text class="small muted">本地数据 {{dbBytes}} KB</text>
+      <text class="btn btn-sm btn-ghost" catchtap="exportData">导出（复制）</text>
+    </view>
+    <view class="divider"></view>
+    <view class="imp-tip small muted">
+      从网页版搬数据：在网页控制台执行 <text class="code">copy(JSON.stringify(localStorage))</text>
+      或在页面上点导出，然后把 JSON 粘贴到下面。
+    </view>
+    <textarea class="imp-input" placeholder="在此粘贴 JSON 数据" value="{{importText}}"
+              bindinput="onImportInput" maxlength="-1" auto-height="{{false}}"></textarea>
+    <view class="imp-row">
+      <view class="mode-switch">
+        <text class="mode-item {{importMode === 'merge' ? 'on' : ''}}" data-mode="merge" catchtap="switchMode">合并</text>
+        <text class="mode-item {{importMode === 'replace' ? 'on' : ''}}" data-mode="replace" catchtap="switchMode">整体替换</text>
+      </view>
+      <text class="btn btn-sm btn-primary" catchtap="doImport">导入</text>
+      <text class="btn btn-sm btn-ghost" catchtap="pasteFromClipboard">粘贴</text>
+      <text class="btn btn-sm btn-ghost" catchtap="resetData">清空</text>
+    </view>
+  </view>
+</view>

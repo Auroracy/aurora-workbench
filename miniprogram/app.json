@@ -1,0 +1,34 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/english/english"
+  ],
+  "window": {
+    "backgroundTextStyle": "dark",
+    "navigationBarBackgroundColor": "#15A49B",
+    "navigationBarTitleText": "Aurora 工作台",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#EEF3F6",
+    "backgroundColorTop": "#EEF3F6",
+    "backgroundColorBottom": "#EEF3F6"
+  },
+  "tabBar": {
+    "color": "#9CB2C0",
+    "selectedColor": "#15A49B",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "今日"
+      },
+      {
+        "pagePath": "pages/english/english",
+        "text": "英语"
+      }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+}

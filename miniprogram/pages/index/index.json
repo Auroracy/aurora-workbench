@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "Aurora 工作台",
+  "enablePullDownRefresh": true,
+  "backgroundTextStyle": "dark",
+  "usingComponents": {}
+}
