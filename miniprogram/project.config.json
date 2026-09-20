@@ -2,9 +2,10 @@
   "description": "Aurora 工作台 · 微信小程序版",
   "appid": "wxa1aa132d3b3090f3",
   "projectname": "aurora-workbench-mini",
-  "miniprogramRoot": "./",
+  "miniprogramRoot": "",
+  "cloudfunctionRoot": "cloudfunctions/",
   "compileType": "miniprogram",
-  "libVersion": "3.5.5",
+  "libVersion": "3.17.3",
   "packOptions": {
     "ignore": [],
     "include": []
@@ -30,7 +31,12 @@
     "packNpmRelationList": [],
     "minifyWXSS": true,
     "useCompilerPlugins": false,
-    "ignoreUploadUnusedFiles": true
+    "ignoreUploadUnusedFiles": true,
+    "babelSetting": {
+      "ignore": [],
+      "disablePlugins": [],
+      "outputPath": ""
+    }
   },
   "condition": {},
   "editorSetting": {

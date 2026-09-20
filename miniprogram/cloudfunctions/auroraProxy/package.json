@@ -1,0 +1,9 @@
+{
+  "name": "auroraProxy",
+  "version": "1.0.0",
+  "description": "Aurora 工作台联网代理（白名单转发，供小程序端 callFunction 调用）",
+  "main": "index.js",
+  "dependencies": {
+    "iconv-lite": "^0.6.3"
+  }
+}
