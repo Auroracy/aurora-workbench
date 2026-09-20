@@ -800,6 +800,175 @@ function serveStatic(res, pathname) {
   });
 }
 
+/* ============================================================
+   英语词库接口（背单词模块「词库切换」用）
+   - 词库数据文件放在 data/wordbanks/<id>.json（由 scripts/build_wordbanks.py 生成）
+   - index.json 为词库清单；前端据此渲染词库列表
+   - 词库文件较大但内容不变，按 gzip + 长缓存下发，手机端加载一次即长期可用
+   ============================================================ */
+const WORDBANK_DIR = path.join(ROOT, 'data', 'wordbanks');
+const _wbIndexCache = { mtime: 0, data: null };
+
+function readWordbankIndex() {
+  const idxPath = path.join(WORDBANK_DIR, 'index.json');
+  try {
+    const st = fs.statSync(idxPath);
+    if (_wbIndexCache.data && _wbIndexCache.mtime === st.mtimeMs) return _wbIndexCache.data;
+    const doc = JSON.parse(fs.readFileSync(idxPath, 'utf8'));
+    _wbIndexCache.data = doc;
+    _wbIndexCache.mtime = st.mtimeMs;
+    return doc;
+  } catch (e) {
+    return { banks: [], error: String(e && e.message || e) };
+  }
+}
+
+function handleWordbankList(res) {
+  const doc = readWordbankIndex();
+  const banks = (doc.banks || []).map(function (b) {
+    return { id: b.id, name: b.name, desc: b.desc, icon: b.icon, category: b.category, count: b.count, size: b.size };
+  });
+  sendJSON(res, 200, { updatedAt: doc.updatedAt || null, source: doc.source || '', banks: banks },
+    { 'Cache-Control': 'no-cache' });
+}
+
+function handleWordbankFile(res, id, req) {
+  if (!/^[a-z0-9_\-]{1,32}$/.test(id || '')) return sendJSON(res, 400, { error: 'invalid bank id' });
+  const fp = path.join(WORDBANK_DIR, id + '.json');
+  if (!fp.startsWith(WORDBANK_DIR) || !fs.existsSync(fp)) {
+    return sendJSON(res, 404, { error: 'wordbank not found: ' + id });
+  }
+  fs.readFile(fp, function (err, buf) {
+    if (err) return sendJSON(res, 500, { error: String(err.message) });
+    const accept = (req.headers['accept-encoding'] || '');
+    const headers = Object.assign({}, CORS, {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'public, max-age=86400',
+    });
+    if (/\bgzip\b/.test(accept)) {
+      zlib.gzip(buf, function (_e, gz) {
+        headers['Content-Encoding'] = 'gzip';
+        headers['Vary'] = 'Accept-Encoding';
+        res.writeHead(200, headers);
+        res.end(gz || buf);
+      });
+    } else {
+      res.writeHead(200, headers);
+      res.end(buf);
+    }
+  });
+}
+
+/* 单词详解（音标 / 多义项 / 双语例句）：按需抓取有道词典并缓存
+   仅对用户实际练到的词调用，避免批量抓取；缓存落盘 data/worddef-cache.json */
+const WORDBANK_CACHE_FILE = path.join(ROOT, 'data', 'worddef-cache.json');
+const _wordDefMem = {};
+let _wordDefLoaded = false;
+let _wordDefDirty = false;
+let _wordDefTimer = null;
+
+function loadWordDefCache() {
+  if (_wordDefLoaded) return;
+  _wordDefLoaded = true;
+  try {
+    const raw = fs.readFileSync(WORDBANK_CACHE_FILE, 'utf8');
+    const obj = JSON.parse(raw);
+    for (const k in obj) _wordDefMem[k] = obj[k];
+    console.log('[worddef] 载入缓存', Object.keys(_wordDefMem).length, '词');
+  } catch (e) { /* 首次无缓存 */ }
+}
+function flushWordDefCache() {
+  if (!_wordDefDirty) return;
+  _wordDefDirty = false;
+  try {
+    fs.writeFileSync(WORDBANK_CACHE_FILE, JSON.stringify(_wordDefMem), 'utf8');
+  } catch (e) { console.error('[worddef] 缓存写入失败：', e.message); }
+}
+function scheduleWordDefFlush() {
+  _wordDefDirty = true;
+  if (_wordDefTimer) return;
+  _wordDefTimer = setTimeout(function () { _wordDefTimer = null; flushWordDefCache(); }, 5000);
+}
+
+/* 例句安全过滤：有道例句来自网络语料，可能夹带政治敏感 / 不雅内容，
+   且不适合放在给家人日常使用的学习卡片里 → 命中直接丢弃，不返回也不缓存。
+   原则：宁可少一句例句（前端会优雅降级为「按释义拼写」），也不放问题内容。 */
+const SENT_BLOCK = /(?:习[近进]平|\bXi\s*Jinping\b|\bXi\b|毛泽东|毛[泽]东|共产党|共匪|中共|\bCCP\b|communist\s+party|politburo|政治局|天安门|六四|Tiananmen|台独|Taiwan\s+independence|港独|法轮|达赖|Dalai|藏独|疆独|反华|辱华|harem|adultery|fornicat|prostitut|porn|pornograph|naked|nude|rape|rapist|orgasm|mistress|whore|slut|sexual|condom|masturbat|murder|suicide|terrorist|清真|jihad)/i;
+
+function sentIsSafe(en, cn) {
+  const s = String(en || '') + ' ' + String(cn || '');
+  if (SENT_BLOCK.test(s)) return false;
+  if (String(en || '').length > 130) return false;   // 太长不适合挖空卡片
+  return true;
+}
+
+// 有道 jsonapi → 精简结构 { word, phone, senses, examples, trans }
+function parseYoudao(word, json) {
+  const out = { word: word, phone: '', senses: [], examples: [], trans: '' };
+  const ec = json && json.ec && json.ec.word && json.ec.word[0];
+  if (ec) {
+    out.phone = ec.usphone || ec.ukphone || '';
+    (ec.trs || []).forEach(function (t) {
+      const line = t && t.tr && t.tr[0] && t.tr[0].l && t.tr[0].l.i && t.tr[0].l.i[0];
+      if (!line) return;
+      const m = String(line).match(/^([a-z]+\.)\s*(.*)$/i);
+      out.senses.push(m ? [m[1], m[2]] : ['', String(line)]);
+    });
+  }
+  const push = function (en, cn) {
+    if (!en || out.examples.length >= 3) return;
+    const e = String(en).replace(/<[^>]+>/g, '').trim();
+    const c = String(cn || '').replace(/<[^>]+>/g, '').trim();
+    if (!sentIsSafe(e, c)) return;
+    out.examples.push([e, c]);
+  };
+  /* 权威例句（词典书证）优先，语料更规范 */
+  const auth = (json && json.auth_sents_part && json.auth_sents_part.sentences) || [];
+  auth.forEach(function (s) {
+    if (s && s.sentence) push(s.sentence, s['sentence-translation'] || '');
+  });
+  const pair = (json && json.blng_sents_part && json.blng_sents_part['sentence-pair']) || [];
+  pair.forEach(function (s) {
+    if (s && s['sentence']) push(s['sentence'], s['sentence-translation'] || '');
+  });
+  if (!out.examples.length) {
+    const mp = (json && json.media_sents_part && json.media_sents_part['sentences']) || [];
+    mp.forEach(function (s) { if (s && s.sentence) push(s.sentence, s.sentence_trans || ''); });
+  }
+  const web = (json && json.web_trans && json.web_trans['web-translation']) || [];
+  if (web[0] && web[0].trans && web[0].trans[0] && web[0].trans[0].value) out.trans = web[0].trans[0].value;
+  return out;
+}
+
+function fetchWordDef(word, cb) {
+  const target = 'https://dict.youdao.com/jsonapi?q=' + encodeURIComponent(word);
+  upstreamGet(target, { 'Referer': 'https://dict.youdao.com/' }, function (err, status, buf) {
+    if (err) return cb(err);
+    if (status >= 400) return cb(new Error('upstream HTTP ' + status));
+    let json;
+    try { json = JSON.parse(buf.toString('utf8')); } catch (e) { return cb(e); }
+    cb(null, parseYoudao(word, json));
+  });
+}
+
+function handleWordDef(res, word) {
+  loadWordDefCache();
+  const key = String(word || '').trim().toLowerCase();
+  if (!/^[a-z][a-z'\- ]{0,48}$/.test(key)) return sendJSON(res, 400, { error: 'invalid word' });
+  if (_wordDefMem[key]) {
+    return sendJSON(res, 200, Object.assign({ cached: true }, _wordDefMem[key]), { 'Cache-Control': 'public, max-age=604800' });
+  }
+  fetchWordDef(key, function (err, def) {
+    if (err) return sendJSON(res, 502, { error: '词典抓取失败：' + String(err.message || err) });
+    // 只缓存拿到实际内容的词，避免把失败结果永久钉住
+    if (def && (def.senses.length || def.examples.length)) {
+      _wordDefMem[key] = def;
+      scheduleWordDefFlush();
+    }
+    sendJSON(res, 200, def, { 'Cache-Control': 'public, max-age=604800' });
+  });
+}
+
 const server = http.createServer(function (req, res) {
   const qi = req.url.indexOf('?');
   const pathname = qi >= 0 ? req.url.slice(0, qi) : req.url;
@@ -861,6 +1030,15 @@ const server = http.createServer(function (req, res) {
     }
     if (pathname === '/api/cctv/xwlb') return handleCctvXwlb(res, qs);
     if (pathname === '/api/cctv/xwlb-parse') return handleCctvXwlbParse(res, qs);
+    if (pathname === '/api/wordbanks') return handleWordbankList(res);
+    if (pathname === '/api/wordbank') {
+      const m = qs.match(/(?:^|&)id=([^&]+)/);
+      return handleWordbankFile(res, m ? decodeURIComponent(m[1]) : '', req);
+    }
+    if (pathname === '/api/worddef') {
+      const m = qs.match(/(?:^|&)word=([^&]+)/);
+      return handleWordDef(res, m ? decodeURIComponent(m[1]) : '');
+    }
     return sendJSON(res, 404, { error: 'unknown api route' });
   }
 

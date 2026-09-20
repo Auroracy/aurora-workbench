@@ -1129,6 +1129,41 @@ select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%
 .word-history-chip.mark-unknown{background:var(--red-bg);color:var(--red);}
 .word-history-chip.none{opacity:0.6;}
 
+/* ====== Tab3: 词库切换 ====== */
+.wb-bar{margin-bottom:14px;}
+.wb-current{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:11px 16px;cursor:pointer;transition:all 0.2s;}
+.wb-current:hover{border-color:var(--accent);box-shadow:0 3px 14px rgba(21,164,155,0.14);}
+.wb-ico{width:36px;height:36px;flex:0 0 36px;border-radius:10px;background:var(--accent-bg);display:flex;align-items:center;justify-content:center;font-size:18px;}
+.wb-info{flex:1;min-width:0;}
+.wb-name-row{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
+.wb-name-row b{font-size:14.5px;color:var(--text);}
+.wb-count{font-size:11px;color:var(--accent);background:var(--accent-bg);border-radius:9px;padding:1px 8px;font-variant-numeric:tabular-nums;}
+.wb-sub{font-size:11.5px;color:var(--text-3);margin-top:2px;}
+.wb-switch{font-size:12px;font-weight:600;color:var(--accent);white-space:nowrap;}
+.wb-panel{margin-top:10px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;}
+.wb-panel-head{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px;gap:8px;flex-wrap:wrap;}
+.wb-panel-sub{font-size:11.5px;font-weight:400;color:var(--text-3);}
+.wb-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
+.wb-tab{font-size:12px;padding:4px 12px;border-radius:999px;border:1px solid var(--line);background:var(--card-2);color:var(--text-2);cursor:pointer;transition:all 0.18s;font-family:inherit;}
+.wb-tab:hover{border-color:var(--accent);color:var(--accent);}
+.wb-tab.active{background:var(--accent-grad);border-color:transparent;color:#fff;font-weight:600;}
+.wb-list{display:flex;flex-direction:column;gap:8px;max-height:330px;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.wb-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--card-2);cursor:pointer;transition:all 0.18s;}
+.wb-item:hover{border-color:var(--accent);background:var(--accent-bg);}
+.wb-item.active{border-color:var(--accent);background:var(--accent-bg);box-shadow:inset 0 0 0 1px var(--accent);}
+.wb-item.loading{opacity:0.6;pointer-events:none;}
+.wb-item-ico{width:32px;height:32px;flex:0 0 32px;border-radius:8px;background:var(--card);display:flex;align-items:center;justify-content:center;font-size:16px;border:1px solid var(--line);}
+.wb-item-main{flex:1;min-width:0;}
+.wb-item-name{font-size:13.5px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.wb-item-desc{font-size:11px;color:var(--text-3);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.wb-item-prog{font-size:11px;color:var(--text-2);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;line-height:1.5;}
+.wb-item-prog b{color:var(--accent);}
+.wb-item-check{color:var(--accent);font-weight:700;font-size:14px;flex:0 0 auto;}
+.wb-tip{font-size:11.5px;color:var(--text-3);margin-top:10px;line-height:1.6;}
+.wb-phon{font-size:12.5px;color:var(--text-3);font-family:var(--mono);letter-spacing:0.2px;}
+.wb-sent-hint{font-size:12px;color:var(--text-3);padding:8px 0;line-height:1.6;}
+@media(max-width:680px){.wb-item-prog{display:none;}.wb-list{max-height:260px;}}
+
 /* ====== Tab3: 单词闯关（游戏化） ====== */
 .word-mode-switch{display:flex;gap:4px;margin-bottom:12px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:4px;width:fit-content;max-width:100%;}
 .word-mode-btn{border:none;background:transparent;color:var(--text-2);font-size:13px;font-weight:600;padding:7px 18px;border-radius:999px;cursor:pointer;transition:all 0.2s;white-space:nowrap;font-family:inherit;}
@@ -2393,6 +2428,30 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     <div class="section-desc">逐词精练 · 填空巩固 · 持续积累</div>
   </div>
 
+  <!-- 词库切换（当前词库 + 词库面板） -->
+  <div class="wb-bar">
+    <div class="wb-current" onclick="toggleWordbankPanel()">
+      <span class="wb-ico" id="wbCurIcon">🌱</span>
+      <div class="wb-info">
+        <div class="wb-name-row">
+          <b id="wbCurName">入门精练</b>
+          <span class="wb-count" id="wbCurCount">100 词</span>
+        </div>
+        <div class="wb-sub" id="wbCurSub">每日 10 词 · 按日期轮换</div>
+      </div>
+      <span class="wb-switch" id="wbCurSwitch">切换词库 ▾</span>
+    </div>
+    <div class="wb-panel" id="wbPanel" style="display:none;">
+      <div class="wb-panel-head">
+        <span>📚 选择词库</span>
+        <span class="wb-panel-sub" id="wbPanelSub">加载中…</span>
+      </div>
+      <div class="wb-tabs" id="wbTabs"></div>
+      <div class="wb-list" id="wbList"></div>
+      <div class="wb-tip" id="wbTip"></div>
+    </div>
+  </div>
+
   <!-- 顶部日期+进度 hero -->
   <div class="word-hero">
     <div class="word-hero-date">
@@ -3597,7 +3656,7 @@ var defaultDb = {
     meals: [], weights: [], exercises: [],
     recipeIdx: 0
   },
-  words: { dailyRecords: {}, game: { xp:0, level:1, combo:0, bestCombo:0, streak:0, lastDay:'', clears:0, totalCorrect:0, totalWrong:0, badges:[], masteredWords:[], questBest:{}, quest:null, mode:'study', reviewQ:{}, reviewCfg:{ fuzzy:2, unknown:3 } } },
+  words: { dailyRecords: {}, bankId: 'core', game: { xp:0, level:1, combo:0, bestCombo:0, streak:0, lastDay:'', clears:0, totalCorrect:0, totalWrong:0, badges:[], masteredWords:[], questBest:{}, quest:null, mode:'study', reviewQ:{}, reviewCfg:{ fuzzy:2, unknown:3 } } },
   market: { news: [], tracking: [], sentiment: {}, notes: [], favNewsIds: [], newsLastUpdate: '', gold: null, funds: [], techWatch: [], earnings: [], techManual: [], fundOverlap: null },
   python: {
     progress: { basics: false, functions: false, files: false, data: false, projects: false },
@@ -6563,7 +6622,8 @@ function renderFitness(){
 /* ============================================================
    Tab 3: English Words
    ============================================================ */
-var WORD_BANK = [
+/* 内置“入门精练”词库（core）：单词 + 释义 + 例句，另配 WORD_EXTRA_CORE 完整义项/例句/搭配 */
+var WORD_BANK_CORE = [
   ["abandon","vt. 放弃；抛弃","He abandoned his old car and bought a new one."],
   ["absolute","adj. 绝对的；完全的","I have absolute confidence in her ability."],
   ["accommodate","v. 容纳；适应","The hotel can accommodate up to 500 guests."],
@@ -6666,7 +6726,7 @@ var WORD_BANK = [
   ["facilitate","v. 促进","Technology facilitates communication globally."]
 ];
 /* 每个词的完整释义：多义项(s)、该词自己的更多例句(x: 英/中)、常用搭配(u) */
-var WORD_EXTRA = {
+var WORD_EXTRA_CORE = {
 "abandon":{"s":[["vt.","放弃；抛弃；遗弃"],["n.","放纵；无拘无束"]],"x":[["They had to abandon the plan because of the storm.","由于暴风雨，他们不得不放弃这个计划。"],["He abandoned himself to despair.","他陷入了绝望之中。"]],"u":"abandon oneself to 沉溺于；abandon a plan 放弃计划"},
 "absolute":{"s":[["adj.","绝对的；完全的；确实的"],["n.","绝对真理"]],"x":[["There is no absolute standard for beauty.","美没有绝对的标准。"],["You must have absolute trust in her.","你必须完全信任她。"]],"u":"absolute majority 绝对多数；absolute truth 绝对真理"},
 "accommodate":{"s":[["vt.","容纳；为…提供住宿"],["vt.","适应；迁就；满足"]],"x":[["This room can accommodate twenty people.","这个房间能容纳二十人。"],["We try to accommodate the needs of every guest.","我们尽量满足每位客人的需求。"]],"u":"accommodate sb with sth 向某人提供某物；accommodate to 适应"},
@@ -6769,6 +6829,366 @@ var WORD_EXTRA = {
 "facilitate":{"s":[["vt.","促进，推动"],["vt.","使便利，使容易"]],"x":[["The new system facilitates data sharing.","新系统便于数据共享。"],["Good roads facilitate trade.","良好的道路促进贸易。"]],"u":"facilitate communication 促进沟通；facilitate the process 简化流程"}
 };
 
+/* 当前生效的词库（可切换）：WORD_BANK 为词表，WORD_EXTRA 为该词库的义项/例句扩展数据。
+   切换词库由 switchWordbank() 重新赋值这两个变量，其余逻辑无需改动。 */
+var WORD_BANK = WORD_BANK_CORE;
+var WORD_EXTRA = WORD_EXTRA_CORE;
+
+
+/* ============================================================
+   词库系统：内置精练库 + 服务端多词库（可切换，进度按词库隔离）
+   ------------------------------------------------------------
+   · core       内置 100 词（带例句与常用搭配），离线可用
+   · 其他词库   data/wordbanks/<id>.json（四级/六级/考研/雅思/托福/GRE…）
+                由 server.js /api/wordbank 下发，按需加载 + 本地缓存
+   · 例句释义   练到某个词时按需取 /api/worddef（服务端有道词典缓存），
+                补齐后写回本地缓存，下次直接可用
+   · 学习记录   DB.words.dailyRecords 中，非 core 词库的日期键加 '@<bankId>' 后缀，互不干扰
+   ============================================================ */
+var WB_CORE = { id:'core', name:'入门精练', desc:'内置 100 词 · 含例句与常用搭配', icon:'🌱', category:'基础', count:100 };
+var WB_BANKS = [WB_CORE];      // 词库清单（core 内置 + 服务端下发）
+var WB_LIST = { core: WB_CORE };
+var WB_ACTIVE = 'core';        // 当前词库 id
+var WB_WORDS = {};             // id -> 词表（已加载）
+var WB_SET = {};               // id -> { 小写词: true }，用于统计进度
+var WB_ENRICH = {};            // id -> { word: {s:[[词性,中文]], x:[[英,中]], u:''} }
+var WB_LOADING = {};           // id -> true 加载中
+var WB_PENDING_ENRICH = {};    // word -> true（避免重复请求词典）
+var WB_ENRICH_FAIL = {};       // word -> true（词典取不到，本次会话不再重试）
+var WB_FILTER = '全部';        // 词库面板分类筛选
+var WB_PROD_BASE = 'http://106.14.223.116:9000';   // 兜底：GitHub Pages 部署时的自建服务器
+
+function wbMeta(id){ return WB_LIST[id] || (id === 'core' ? WB_CORE : null); }
+function wbActiveBank(){ return wbMeta(WB_ACTIVE) || WB_CORE; }
+function wbLsKey(id){ return 'aurora_wb_' + id; }
+function wbEnrichLsKey(id){ return 'aurora_wbe_' + id; }
+
+/* 学习记录键：core 沿用纯日期键（兼容历史数据），其他词库加 '@bankId' 后缀隔离 */
+function wbRecKey(dateStr){
+  return WB_ACTIVE === 'core' ? dateStr : (dateStr + '@' + WB_ACTIVE);
+}
+function wbRecDate(key){ return String(key || '').split('@')[0]; }
+function wbRecBank(key){ var p = String(key || '').split('@'); return p.length > 1 ? p[1] : 'core'; }
+
+/* 服务器候选地址：同源/自定义 → 本地配置 → 生产服务器兜底（GitHub Pages 部署时用） */
+function wbServerBases(){
+  var out = [];
+  try{ var b = serverBase(); if(b) out.push(String(b).replace(/\/+$/,'')); }catch(e){}
+  try{
+    var cfg = (localStorage.getItem(DB_SERVER_KEY) || '').trim().replace(/\/+$/,'');
+    if(cfg && out.indexOf(cfg) < 0) out.push(cfg);
+  }catch(e){}
+  if(out.indexOf(WB_PROD_BASE) < 0) out.push(WB_PROD_BASE);
+  return out;
+}
+/* 依次尝试候选地址取 JSON，成功即返回（词库/词典都走这里） */
+function wbFetchJson(pathname, cb){
+  var bases = wbServerBases(), i = 0;
+  function next(){
+    if(i >= bases.length) return cb(new Error('服务器不可用'));
+    var base = bases[i++];
+    fetch(base + pathname, { signal: AbortSignal.timeout ? AbortSignal.timeout(9000) : undefined })
+      .then(function(r){ if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function(j){ cb(null, j, base); })
+      .catch(function(){ next(); });
+  }
+  next();
+}
+
+function wbSetFor(id){
+  if(WB_SET[id]) return WB_SET[id];
+  var s = {}, ws = WB_WORDS[id] || [];
+  for(var i = 0; i < ws.length; i++) s[String(ws[i][0]).toLowerCase()] = 1;
+  WB_SET[id] = s;
+  return s;
+}
+/* 某词库的学习进度：已掌握 / 已学（有标记的）/ 待强化 */
+function wbProgress(id){
+  var res = { mastered:0, marked:0, pending:0, total:(wbMeta(id) || {}).count || 0 };
+  try{
+    var g = DB.words && DB.words.game;
+    if(g && g.masteredWords && g.masteredWords.length){
+      if(id === 'core'){
+        var coreSet = {};
+        for(var ci = 0; ci < WORD_BANK_CORE.length; ci++) coreSet[WORD_BANK_CORE[ci][0]] = 1;
+        for(var mi = 0; mi < g.masteredWords.length; mi++) if(coreSet[g.masteredWords[mi]]) res.mastered++;
+      } else {
+        var set = wbSetFor(id);
+        for(var mj = 0; mj < g.masteredWords.length; mj++) if(set[String(g.masteredWords[mj]).toLowerCase()]) res.mastered++;
+      }
+    }
+    var recs = (DB.words && DB.words.dailyRecords) || {};
+    for(var k in recs){
+      if(wbRecBank(k) !== id) continue;
+      var pw = recs[k] && recs[k].perWord;
+      if(!pw) continue;
+      for(var p in pw){ if(pw[p] && pw[p].mark) res.marked++; }
+    }
+    if(g && g.reviewQ && id !== 'core'){
+      var set2 = wbSetFor(id);
+      for(var w2 in g.reviewQ){ if(set2[String(w2).toLowerCase()]) res.pending++; }
+    }
+  }catch(e){}
+  return res;
+}
+
+/* 加载某套词库的词表：内存 → 本地缓存 → 服务器 */
+function loadWordbank(id, cb){
+  if(id === 'core' || WB_WORDS[id]) return cb(null, WB_WORDS[id] || WORD_BANK_CORE);
+  if(WB_LOADING[id]){ setTimeout(function(){ loadWordbank(id, cb); }, 120); return; }
+  WB_LOADING[id] = true;
+  var fromLocal = null;
+  try{
+    var raw = localStorage.getItem(wbLsKey(id));
+    if(raw) fromLocal = JSON.parse(raw);
+  }catch(e){}
+  if(fromLocal && fromLocal.words && fromLocal.words.length){
+    wbApplyBank(id, fromLocal);
+    delete WB_LOADING[id];
+    return cb(null, WB_WORDS[id]);
+  }
+  wbFetchJson('/api/wordbank?id=' + encodeURIComponent(id), function(err, doc){
+    delete WB_LOADING[id];
+    if(err || !doc || !doc.words || !doc.words.length){
+      return cb(err || new Error('词库数据为空'));
+    }
+    wbApplyBank(id, doc);
+    try{ localStorage.setItem(wbLsKey(id), JSON.stringify(doc)); }catch(e){ /* 超出配额则只留内存 */ }
+    cb(null, WB_WORDS[id]);
+  });
+}
+function wbApplyBank(id, doc){
+  var ws = [], raw = doc.words || [];
+  for(var i = 0; i < raw.length; i++){
+    var w = raw[i];
+    if(!w || !w[0]) continue;
+    /* 统一补足 4 槽：[单词, 释义, 例句, 音标] */
+    ws.push([String(w[0]), w[1] || '', w[2] || '', w[3] || '']);
+  }
+  WB_WORDS[id] = ws;
+  WB_SET[id] = null;
+  var meta = wbMeta(id);
+  if(meta) meta.count = ws.length;
+  else WB_LIST[id] = { id:id, name:doc.name || id, desc:doc.desc || '', icon:doc.icon || '📘', category:doc.category || '其他', count:ws.length };
+  /* 该词库已缓存的例句/义项 */
+  if(!WB_ENRICH[id]){
+    var cached = {};
+    try{
+      var raw2 = localStorage.getItem(wbEnrichLsKey(id));
+      if(raw2){ cached = JSON.parse(raw2) || {}; }
+    }catch(e){}
+    /* 旧缓存里可能残留不当例句 → 读取时再过滤一遍 */
+    for(var cw in cached){
+      var ce = cached[cw];
+      if(ce && ce.x && ce.x.length){
+        var kept = [];
+        for(var ci2 = 0; ci2 < ce.x.length; ci2++){
+          var pair = ce.x[ci2] || [];
+          if(wbSentOk(pair[0], pair[1])) kept.push(pair);
+        }
+        ce.x = kept;
+      }
+    }
+    WB_ENRICH[id] = cached;
+  }
+}
+/* 取当前词库的“扩展数据”对象（renderWordFlashcard 通过全局 WORD_EXTRA 读它） */
+function wbActiveExtra(){
+  if(WB_ACTIVE === 'core') return WORD_EXTRA_CORE;
+  if(!WB_ENRICH[WB_ACTIVE]) WB_ENRICH[WB_ACTIVE] = {};
+  return WB_ENRICH[WB_ACTIVE];
+}
+function wbPersistEnrich(){
+  if(WB_ACTIVE === 'core') return;
+  try{ localStorage.setItem(wbEnrichLsKey(WB_ACTIVE), JSON.stringify(WB_ENRICH[WB_ACTIVE] || {})); }catch(e){}
+}
+/* 例句安全兜底：服务端已过滤，这里再挡一层（防止旧缓存里的问题内容被继续使用） */
+var WB_SENT_BLOCK = /(?:习[近进]平|Xi\s*Jinping|毛泽东|共产党|中共|\bCCP\b|politburo|政治局|天安门|六四|台独|港独|达赖|Dalai|藏独|疆独|反华|辱华|harem|adultery|fornicat|prostitut|porn|naked|nude|rape|orgasm|mistress|sexual|murder|suicide|terrorist|jihad)/i;
+function wbSentOk(en, cn){
+  var s = String(en || '') + ' ' + String(cn || '');
+  if(WB_SENT_BLOCK.test(s)) return false;
+  if(String(en || '').length > 130) return false;
+  return true;
+}
+/* 按需补齐某个词的义项/例句（服务端有道词典，带缓存） */
+function ensureWordEnriched(word, cb){
+  if(!word) return cb && cb();
+  if(WORD_EXTRA[word] && (WORD_EXTRA[word].x || WORD_EXTRA[word].s)) return cb && cb();
+  if(WB_PENDING_ENRICH[word]) return cb && cb();
+  WB_PENDING_ENRICH[word] = true;
+  wbFetchJson('/api/worddef?word=' + encodeURIComponent(word), function(err, def){
+    delete WB_PENDING_ENRICH[word];
+    if(err || !def) return cb && cb(err);
+    var pack = {
+      s: (def.senses || []).map(function(x){ return [x[0] || '', x[1] || '']; }),
+      x: (def.examples || []).filter(function(x){ return x && wbSentOk(x[0], x[1]); }).slice(0, 3),
+      u: ''
+    };
+    if(pack.s.length || pack.x.length){
+      WORD_EXTRA[word] = pack;
+      if(WB_ACTIVE !== 'core') wbPersistEnrich();
+    }
+    cb && cb(null, pack);
+  });
+}
+
+/* ---------- 词库面板 ---------- */
+function toggleWordbankPanel(){
+  var p = document.getElementById('wbPanel');
+  if(!p) return;
+  var show = p.style.display === 'none';
+  p.style.display = show ? 'block' : 'none';
+  var sw = document.getElementById('wbCurSwitch');
+  if(sw) sw.textContent = show ? '收起 ▴' : '切换词库 ▾';
+  if(show){
+    renderWordbankPanel();
+    if(WB_BANKS.length <= 1) loadWordbankList(function(){ renderWordbankPanel(); });
+  }
+}
+function loadWordbankList(cb){
+  wbFetchJson('/api/wordbanks', function(err, doc){
+    if(err || !doc || !doc.banks || !doc.banks.length){ cb && cb(err); return; }
+    for(var i = 0; i < doc.banks.length; i++){
+      var b = doc.banks[i];
+      if(!b || !b.id) continue;
+      if(b.id === 'core') continue;          // core 用内置定义
+      WB_LIST[b.id] = b;
+      WB_BANKS.push(b);
+    }
+    WB_BANKS.sort(function(a, b){
+      if(a.id === 'core') return -1;
+      if(b.id === 'core') return 1;
+      return (String(a.category) === String(b.category)) ? (b.count - a.count) : String(a.category).localeCompare(String(b.category), 'zh');
+    });
+    cb && cb(null, doc);
+  });
+}
+function renderWordbankPanel(){
+  var meta = wbActiveBank();
+  var ico = document.getElementById('wbCurIcon'), nm = document.getElementById('wbCurName');
+  var ct = document.getElementById('wbCurCount'), sb = document.getElementById('wbCurSub');
+  if(ico) ico.textContent = meta.icon || '📘';
+  if(nm) nm.textContent = meta.name || meta.id;
+  if(ct) ct.textContent = (meta.count || 0) + ' 词';
+  if(sb) sb.textContent = (meta.desc || '') + ' · 每日 10 词';
+
+  var panel = document.getElementById('wbPanel');
+  if(!panel || panel.style.display === 'none') return;
+  var total = 0, i;
+  for(i = 0; i < WB_BANKS.length; i++) total += WB_BANKS[i].count || 0;
+  var sub = document.getElementById('wbPanelSub');
+  if(sub) sub.textContent = '共 ' + WB_BANKS.length + ' 套 · ' + total + ' 词';
+
+  /* 分类筛选 */
+  var cats = ['全部'], seen = {};
+  for(i = 0; i < WB_BANKS.length; i++){
+    var c = WB_BANKS[i].category || '其他';
+    if(!seen[c]){ seen[c] = 1; cats.push(c); }
+  }
+  if(cats.indexOf(WB_FILTER) < 0) WB_FILTER = '全部';
+  var tabs = document.getElementById('wbTabs');
+  if(tabs){
+    tabs.innerHTML = cats.map(function(c){
+      return '<button class="wb-tab' + (c === WB_FILTER ? ' active' : '') + '" onclick="setWordbankFilter(\'' + escapeHtml(c) + '\')">' + escapeHtml(c) + '</button>';
+    }).join('');
+  }
+  var list = document.getElementById('wbList');
+  if(list){
+    var html = '';
+    for(i = 0; i < WB_BANKS.length; i++){
+      var b = WB_BANKS[i];
+      if(WB_FILTER !== '全部' && (b.category || '其他') !== WB_FILTER) continue;
+      var pr = wbProgress(b.id);
+      var active = (b.id === WB_ACTIVE);
+      html += '<div class="wb-item' + (active ? ' active' : '') + '" onclick="switchWordbank(\'' + escapeHtml(b.id) + '\')">' +
+        '<span class="wb-item-ico">' + (b.icon || '📘') + '</span>' +
+        '<div class="wb-item-main">' +
+          '<div class="wb-item-name">' + escapeHtml(b.name || b.id) +
+            '<span class="wb-count">' + (b.count || 0) + '</span>' +
+          '</div>' +
+          '<div class="wb-item-desc">' + escapeHtml(b.desc || '') + '</div>' +
+        '</div>' +
+        '<div class="wb-item-prog">已掌握 <b>' + pr.mastered + '</b><br>已学 ' + pr.marked + '</div>' +
+        (active ? '<span class="wb-item-check">✓</span>' : '') +
+      '</div>';
+    }
+    list.innerHTML = html || '<div class="wb-tip">该分类下暂无可选词库</div>';
+  }
+  var tip = document.getElementById('wbTip');
+  if(tip){
+    tip.innerHTML = '切换词库后，每日 10 词、标记与强化队列都按词库分别记录，互不影响。' +
+      (WB_ACTIVE === 'core' ? '' : '例：选「四级词汇」后，练到的词会自动补齐音标、义项与双语例句。');
+  }
+}
+function setWordbankFilter(c){ WB_FILTER = c; renderWordbankPanel(); }
+
+function switchWordbank(id){
+  if(!id || id === WB_ACTIVE) { toggleWordbankPanel(); return; }
+  var meta = wbMeta(id);
+  var list = document.getElementById('wbList');
+  if(list) list.classList.add('loading');
+  loadWordbank(id, function(err){
+    if(list) list.classList.remove('loading');
+    if(err){
+      toast('词库加载失败：' + (err.message || err) + '（请检查服务器连接）');
+      return;
+    }
+    WB_ACTIVE = id;
+    WORD_BANK = WB_WORDS[id] || WORD_BANK_CORE;
+    WORD_EXTRA = wbActiveExtra();
+    currentWordIndex = 0;
+    currentWordOffset = 0;
+    reviewWordIdx = -1;
+    reviewSession = null;
+    refreshReviewQActive();
+    if(DB.words) DB.words.bankId = id;
+    try{ localStorage.setItem('aurora_wb_active', id); }catch(e){}
+    saveDb();
+    try{ renderWords(); renderWordHero(); renderWordReview(); }catch(e){}
+    renderWordbankPanel();
+    toast('已切换到「' + ((meta && meta.name) || id) + '」· ' + (WORD_BANK.length) + ' 词');
+  });
+}
+/* loadDb 首次拉坡后按词库重算“待强化”计数（队列里可能有别的词库的词） */
+function refreshReviewQActive(){
+  try{ ensureReviewQ(); }catch(e){}
+}
+
+/* 首次进入时恢复上次选择的词库 */
+function restoreWordbank(){
+  var id = 'core';
+  try{
+    if(DB.words && DB.words.bankId) id = DB.words.bankId;
+    else {
+      var ls = localStorage.getItem('aurora_wb_active');
+      if(ls) id = ls;
+    }
+  }catch(e){}
+  /* 词库清单先预取（很小），这样打开面板立即能看到列表与各库进度 */
+  loadWordbankList(function(){ renderWordbankPanel(); });
+  if(!id || id === 'core'){
+    WB_ACTIVE = 'core';
+    WORD_BANK = WORD_BANK_CORE;
+    WORD_EXTRA = WORD_EXTRA_CORE;
+    renderWordbankPanel();
+    return;
+  }
+  loadWordbank(id, function(err){
+    if(err){
+      WB_ACTIVE = 'core';
+      WORD_BANK = WORD_BANK_CORE;
+      WORD_EXTRA = WORD_EXTRA_CORE;
+      if(DB.words) DB.words.bankId = 'core';
+      toast('词库「' + id + '」加载失败，已回到内置精练库');
+    } else {
+      WB_ACTIVE = id;
+      WORD_BANK = WB_WORDS[id];
+      WORD_EXTRA = wbActiveExtra();
+    }
+    try{ renderWords(); renderWordHero(); renderWordReview(); }catch(e){}
+    renderWordbankPanel();
+  });
+}
 
 function getWordDate(){
   var d = new Date();
@@ -6809,17 +7229,18 @@ function parsePosCn(posCn){
 // 当前单词的 3 个例句：主例句（挖空）+ 2 个其他词例句（只读对照）
 function getCurrentExamples(){
   var idx = getCurrentWordBankIdx();
-  var w = WORD_BANK[idx];
-  var list = [{ text: w[2], isMain: true }];
-  /* ★ 修正：旧版这里取的是「别的单词」的例句（idx + off*11），
-     导致 dominant 卡片下面出现 exchange / achieve 的句子，纯属误导。
-     现改为取该词自己的更多例句（含中文翻译）。 */
+  var w = WORD_BANK[idx] || ['', '', '', ''];
+  var list = [];
+  /* 内置词库的主例句在第 3 槽；多词库（四级/雅思等）词条不带例句，
+     例句来自按需补齐的 WORD_EXTRA（第一次练到该词时从服务器取，之后走缓存） */
+  if(w[2]) list.push({ text: w[2], isMain: true });
   var ex = WORD_EXTRA[w[0]];
   if(ex && ex.x && ex.x.length){
     for(var i = 0; i < ex.x.length; i++){
       list.push({ text: ex.x[i][0], cn: ex.x[i][1], isMain: false });
     }
   }
+  if(list.length && !list[0].isMain) list[0].isMain = true;   // 无内置例句时用扩展例句顶上
   return list;
 }
 
@@ -6871,7 +7292,7 @@ function renderWordFlashcard(){
   }
 
   var dateStr = getWordDateStr(currentWordOffset);
-  var rec = DB.words.dailyRecords[dateStr] || {};
+  var rec = DB.words.dailyRecords[wbRecKey(dateStr)] || {};
   if(!rec.perWord) rec.perWord = {};
   var idx = getCurrentWordBankIdx();
   var w = WORD_BANK[idx];
@@ -6932,29 +7353,52 @@ function renderWordFlashcard(){
     senseBox.className = 'word-sense-list' + (sh ? ' on' : '');
   }
 
-  // 英文（默认隐藏，revealAnswer 时显示）
+  // 英文（默认隐藏，revealAnswer 时显示）；带音标更好记
   var enEl = document.getElementById('wordFlashEn');
-  enEl.textContent = word;
+  var phon = (w[3] || '').trim();
+  enEl.textContent = phon ? (word + '   /' + phon + '/') : word;
   enEl.classList.remove('revealed');
 
   // 例句：主例句挖空；其余例句是「这个词自己」的更多用法，同样挖空（不能直接露答案）+ 中文翻译
   var examples = getCurrentExamples();
   var sentBox = document.getElementById('wordSentences');
-  sentBox.innerHTML = examples.map(function(ex, i){
-    var html = '';
-    if(!ex.isMain && i === 1){
-      html += '<div class="word-sentence-other">更多用法 · 其他例句</div>';
+  if(examples.length){
+    sentBox.innerHTML = examples.map(function(ex, i){
+      var html = '';
+      if(!ex.isMain && i === 1){
+        html += '<div class="word-sentence-other">更多用法 · 其他例句</div>';
+      }
+      var safeText = escapeHtml(ex.text);
+      // 挖空本词（兼容屈折变形：abandoned / applied / committed 等）
+      var blanked = wqBlankTo(safeText, word,
+        '<span class="word-blank" data-' + (ex.isMain ? 'main="1"' : 'extra="1"') + '></span>');
+      html += '<div class="word-sentence"' + (ex.isMain ? '' : ' style="color:var(--text-2);"') + '>' + blanked + '</div>';
+      if(!ex.isMain && ex.cn){
+        html += '<div class="word-sentence-cn">' + escapeHtml(ex.cn) + '</div>';
+      }
+      return html;
+    }).join('');
+  } else if(WB_ACTIVE === 'core'){
+    sentBox.innerHTML = '<div class="wb-sent-hint">该词暂无例句，按释义拼写即可。</div>';
+  } else {
+    /* 多词库的词条本身不带例句：首次练到时按需补齐（服务端有道词典，取过一次即缓存） */
+    sentBox.innerHTML = '<div class="wb-sent-hint">例句加载中…（多词库的词首次练到时自动补齐音标、义项与双语例句）</div>';
+    if(!WB_ENRICH_FAIL[word]){
+      ensureWordEnriched(word, function(err){
+        if(err || !WORD_EXTRA[word]){
+          WB_ENRICH_FAIL[word] = 1;
+          var b = document.getElementById('wordSentences');
+          if(b && !getCurrentExamples().length){
+            b.innerHTML = '<div class="wb-sent-hint">例句暂时取不到（服务器或词典不可用）。不影响记忆：按上面释义写出单词即可。</div>';
+          }
+          return;
+        }
+        try{ renderWordFlashcard(); }catch(e){}
+      });
+    } else {
+      sentBox.innerHTML = '<div class="wb-sent-hint">例句暂时取不到（可稍后重试）。按上面释义写出单词即可。</div>';
     }
-    var safeText = escapeHtml(ex.text);
-    // 挖空本词（兼容屈折变形：abandoned / applied / committed 等）
-    var blanked = wqBlankTo(safeText, word,
-      '<span class="word-blank" data-' + (ex.isMain ? 'main="1"' : 'extra="1"') + '></span>');
-    html += '<div class="word-sentence"' + (ex.isMain ? '' : ' style="color:var(--text-2);"') + '>' + blanked + '</div>';
-    if(!ex.isMain && ex.cn){
-      html += '<div class="word-sentence-cn">' + escapeHtml(ex.cn) + '</div>';
-    }
-    return html;
-  }).join('');
+  }
 
   // 拼写输入框
   var input = document.getElementById('wordSpellingInput');
@@ -7035,7 +7479,7 @@ function renderWordFlashcard(){
 function renderWordHero(){
   var dateStr = getWordDateStr(currentWordOffset);
   document.getElementById('wordHeroDate').textContent = dateStr;
-  var rec = DB.words.dailyRecords[dateStr] || {};
+  var rec = DB.words.dailyRecords[wbRecKey(dateStr)] || {};
   var perWord = rec.perWord || {};
   var known = 0, fuzzy = 0, unknown = 0;
   for(var i = 0; i < 10; i++){
@@ -7061,7 +7505,7 @@ function renderWords(){
   try{ renderWordReview(); }catch(e){}
   renderWordFlashcard();
   // 顶部"今日单词"标签已并入 hero；同步便签与打卡状态
-  var rec = DB.words.dailyRecords[dateStr];
+  var rec = DB.words.dailyRecords[wbRecKey(dateStr)];
   document.getElementById('wordNotes').value = (rec && rec.notes) || '';
   document.querySelectorAll('#wordStatusGroup .radio-item').forEach(function(r){
     r.classList.toggle('checked', rec && rec.status === r.dataset.val);
@@ -7177,18 +7621,18 @@ function wordGameAwardKey(){ return getWordDateStr(currentWordOffset) + '#' + cu
 
 function setWordMarkAuto(mark, forceUpgrade){
   var dateStr = getWordDateStr(currentWordOffset);
-  if(!DB.words.dailyRecords[dateStr]) DB.words.dailyRecords[dateStr] = {};
-  if(!DB.words.dailyRecords[dateStr].perWord) DB.words.dailyRecords[dateStr].perWord = {};
+  if(!DB.words.dailyRecords[wbRecKey(dateStr)]) DB.words.dailyRecords[wbRecKey(dateStr)] = {};
+  if(!DB.words.dailyRecords[wbRecKey(dateStr)].perWord) DB.words.dailyRecords[wbRecKey(dateStr)].perWord = {};
   var pos = currentTargetPos();
   if(pos < 0) return;   /* 复习队列里的"往日词"不写今日记录 */
   var word = currentTargetWord();
-  var prev = DB.words.dailyRecords[dateStr].perWord[pos] || {};
+  var prev = DB.words.dailyRecords[wbRecKey(dateStr)].perWord[pos] || {};
   var need = false;
   if(!prev.mark) need = true;
   /* forceUpgrade：拼写答对时把"模糊 / 不认识"升级为"已掌握"（已掌握不降级、不覆盖用户手选） */
   else if(forceUpgrade && mark === 'known' && prev.mark !== 'known') need = true;
   if(need){
-    DB.words.dailyRecords[dateStr].perWord[pos] = { mark: mark };
+    DB.words.dailyRecords[wbRecKey(dateStr)].perWord[pos] = { mark: mark };
     /* 答错自动标「模糊」→ 立刻进强化队列；答对升级「已掌握」→ 出队 */
     if(mark === 'known') reviewDequeue(word);
     else if(mark === 'fuzzy' || mark === 'unknown') reviewEnqueue(word, mark);
@@ -7230,20 +7674,20 @@ function revealAnswer(){
 
 function setWordMark(btn){
   var dateStr = getWordDateStr(currentWordOffset);
-  if(!DB.words.dailyRecords[dateStr]) DB.words.dailyRecords[dateStr] = {};
-  if(!DB.words.dailyRecords[dateStr].perWord) DB.words.dailyRecords[dateStr].perWord = {};
+  if(!DB.words.dailyRecords[wbRecKey(dateStr)]) DB.words.dailyRecords[wbRecKey(dateStr)] = {};
+  if(!DB.words.dailyRecords[wbRecKey(dateStr)].perWord) DB.words.dailyRecords[wbRecKey(dateStr)].perWord = {};
   var word = currentTargetWord();
   var pos = currentTargetPos();
   var wasActive = btn.classList.contains('active');
   var val = wasActive ? '' : btn.dataset.val;
   if(val){
-    if(pos >= 0) DB.words.dailyRecords[dateStr].perWord[pos] = { mark: val };
+    if(pos >= 0) DB.words.dailyRecords[wbRecKey(dateStr)].perWord[pos] = { mark: val };
     /* 模糊 / 不认识 → 进强化队列，按程度反复出现直到掌握；已掌握 / 取消标记 → 出队 */
     if(val === 'known') reviewDequeue(word);
     else reviewEnqueue(word, val);
     try{ trackMasteredWord(val); }catch(e){}
   } else {
-    if(pos >= 0) delete DB.words.dailyRecords[dateStr].perWord[pos];
+    if(pos >= 0) delete DB.words.dailyRecords[wbRecKey(dateStr)].perWord[pos];
     reviewDequeue(word);
     try{ trackMasteredWord(''); }catch(e){}
   }
@@ -7382,16 +7826,16 @@ function goTodayWords(){ reviewSession = null; reviewWordIdx = -1; currentWordOf
 
 function saveWordNotes(){
   var dateStr = getWordDateStr(currentWordOffset);
-  if(!DB.words.dailyRecords[dateStr]) DB.words.dailyRecords[dateStr] = {};
-  DB.words.dailyRecords[dateStr].notes = document.getElementById('wordNotes').value;
+  if(!DB.words.dailyRecords[wbRecKey(dateStr)]) DB.words.dailyRecords[wbRecKey(dateStr)] = {};
+  DB.words.dailyRecords[wbRecKey(dateStr)].notes = document.getElementById('wordNotes').value;
   saveDb();
 }
 function setWordStatus(el){
   document.querySelectorAll('#wordStatusGroup .radio-item').forEach(function(r){ r.classList.remove('checked'); });
   el.classList.add('checked');
   var dateStr = getWordDateStr(currentWordOffset);
-  if(!DB.words.dailyRecords[dateStr]) DB.words.dailyRecords[dateStr] = {};
-  DB.words.dailyRecords[dateStr].status = el.dataset.val;
+  if(!DB.words.dailyRecords[wbRecKey(dateStr)]) DB.words.dailyRecords[wbRecKey(dateStr)] = {};
+  DB.words.dailyRecords[wbRecKey(dateStr)].status = el.dataset.val;
   saveDb();
   toast('打卡完成');
 }
@@ -7404,9 +7848,11 @@ function renderWordHistory(){
   if(keys.length === 0){ box.innerHTML = '<div class="empty-hint">暂无历史记录</div>'; return; }
   box.innerHTML = keys.slice(0, 30).map(function(k){
     var rec = DB.words.dailyRecords[k];
+    var bankId = wbRecBank(k), bankInfo = wbMeta(bankId) || WB_CORE, dayStr = wbRecDate(k);
     var perWord = rec.perWord || {};
     var statusChip = rec.status === 'studied' ? '<span class="chip chip-green">已完成</span>' :
                      rec.status === 'review' ? '<span class="chip chip-amber">待复习</span>' : '';
+    var bankChip = bankId === 'core' ? '' : '<span class="word-history-chip" style="background:var(--accent-bg);color:var(--accent);">' + escapeHtml(bankInfo.name || bankId) + '</span>';
     var chipsHtml = '';
     for(var i = 0; i < 10; i++){
       var m = perWord[i] || {};
@@ -7420,21 +7866,33 @@ function renderWordHistory(){
     }
     return '<div class="word-history-day">' +
       '<div class="word-history-day-head">' +
-        '<span>' + k + ' ' + statusChip + '</span>' +
+        '<span>' + dayStr + ' ' + bankChip + ' ' + statusChip + '</span>' +
         '<span class="record-actions">' +
-          '<button class="btn btn-ghost btn-sm" onclick="jumpToWordDate(\'' + k + '\')">查看</button>' +
+          '<button class="btn btn-ghost btn-sm" onclick="jumpToWordDate(\'' + dayStr + '\',\'' + bankId + '\')">查看</button>' +
         '</span>' +
       '</div>' +
       '<div class="word-history-chips">' + chipsHtml + '</div>' +
     '</div>';
   }).join('');
 }
-function jumpToWordDate(dateStr){
-  var target = new Date(dateStr);
-  var today = new Date();
-  currentWordOffset = Math.round((target - today) / 86400000);
-  currentWordIndex = 0;
-  renderWords();
+function jumpToWordDate(dateStr, bankId){
+  var doJump = function(){
+    var target = new Date(dateStr);
+    var today = new Date();
+    currentWordOffset = Math.round((target - today) / 86400000);
+    currentWordIndex = 0;
+    renderWords();
+  };
+  if(bankId && bankId !== WB_ACTIVE){
+    switchWordbank(bankId);
+    var tries = 0;
+    (function wait(){
+      if(WB_ACTIVE === bankId) doJump();
+      else if(tries++ < 60) setTimeout(wait, 100);
+    })();
+    return;
+  }
+  doJump();
 }
 
 /* ============================================================
@@ -7612,7 +8070,7 @@ function currentMarkObj(){
     return {};
   }
   var dateStr = getWordDateStr(currentWordOffset);
-  var rec = DB.words.dailyRecords[dateStr] || {};
+  var rec = DB.words.dailyRecords[wbRecKey(dateStr)] || {};
   return (rec.perWord && rec.perWord[currentWordIndex]) || {};
 }
 /* 入队：标记模糊 / 不认识（已在队列则只更新程度，保留已有进度） */
@@ -7670,9 +8128,9 @@ function reviewHit(word){
     var pos = findTodayWordPos(word);
     if(pos >= 0){
       var dateStr = getWordDateStr(currentWordOffset);
-      if(!DB.words.dailyRecords[dateStr]) DB.words.dailyRecords[dateStr] = {};
-      if(!DB.words.dailyRecords[dateStr].perWord) DB.words.dailyRecords[dateStr].perWord = {};
-      DB.words.dailyRecords[dateStr].perWord[pos] = { mark:'known' };
+      if(!DB.words.dailyRecords[wbRecKey(dateStr)]) DB.words.dailyRecords[wbRecKey(dateStr)] = {};
+      if(!DB.words.dailyRecords[wbRecKey(dateStr)].perWord) DB.words.dailyRecords[wbRecKey(dateStr)].perWord = {};
+      DB.words.dailyRecords[wbRecKey(dateStr)].perWord[pos] = { mark:'known' };
     }
     if(g.masteredWords.indexOf(word) < 0) g.masteredWords.push(word);
     g.reviewMastered = (g.reviewMastered || 0) + 1;
@@ -7820,7 +8278,7 @@ function renderWordReview(){
     return;
   }
   if(!st.total){
-    box.innerHTML = '<div class="wr-sub">标记为「模糊」或「不认识」的单词会自动进入强化队列，按程度反复出现（答错还会再排一次），<b>直到答对足够次数自动标记「已掌握」为止</b>。<br>当前没有待强化单词 👍</div>' + wrCfgHtml();
+    box.innerHTML = '<div class="wr-sub">标记为「模糊」或「不认识」的单词会自动进入强化队列，按程度反复出现（答错还会再排一次），<b>直到答对足够次数自动标记「已掌握」为止</b>。<br>当前词库（' + escapeHtml(wbActiveBank().name) + '）没有待强化单词 👍' + wbOtherBankReviewHint() + '</div>' + wrCfgHtml();
     return;
   }
   var chips = st.list.map(function(it){
@@ -7832,11 +8290,31 @@ function renderWordReview(){
   }).join('');
   box.innerHTML =
     '<div class="wr-sub">这些词会按标记程度反复出现：拼写正确进度 +1，答错进度 -1 并<b>排回队尾再来一次</b>；进度满即自动标记「已掌握」。</div>' +
-    '<div class="wr-chips">' + chips + '</div>' + wrCfgHtml() +
+    '<div class="wr-chips">' + chips + '</div>' + wrCfgHtml() + wbOtherBankReviewHint() +
     '<div class="wr-actions">' +
       '<button class="btn btn-primary" onclick="startWordReview()">🔁 开始强化复习（' + st.remain + ' 次）</button>' +
       '<button class="btn btn-ghost" onclick="clearWordReview()">清空队列</button>' +
     '</div>';
+}
+/* 其他词库还有待强化词时给个提示（强化队列按词库分别显示，不会混淆） */
+function wbOtherBankReviewHint(){
+  try{
+    var g = DB.words && DB.words.game;
+    if(!g || !g.reviewQ) return '';
+    var curSet = (WB_ACTIVE === 'core') ? null : wbSetFor(WB_ACTIVE);
+    var other = 0;
+    for(var w in g.reviewQ){
+      var inCur;
+      if(WB_ACTIVE === 'core'){
+        inCur = (findWordBankIdx(w) >= 0);
+      } else {
+        inCur = curSet && curSet[String(w).toLowerCase()];
+      }
+      if(!inCur) other++;
+    }
+    if(!other) return '';
+    return '<div class="wb-tip">💡 其他词库还有 ' + other + ' 个待强化词，切到对应词库即可继续。</div>';
+  }catch(e){ return ''; }
 }
 function wordGameCorrect(){
   var g = ensureWordGame();
@@ -7977,11 +8455,12 @@ function wordBriefCn(idx){
 
 /* 取某词可用于挖空的全部例句（主例句 + 自己的更多用法），闯关出题时随机选一条 */
 function wordSentencePool(idx){
-  var w = WORD_BANK[idx];
-  var pool = [w[2]];
+  var w = WORD_BANK[idx] || ['', '', '', ''];
+  var pool = [];
+  if(w[2]) pool.push(w[2]);
   var ex = WORD_EXTRA[w[0]];
   if(ex && ex.x){
-    for(var i = 0; i < ex.x.length; i++) pool.push(ex.x[i][0]);
+    for(var i = 0; i < ex.x.length; i++){ if(ex.x[i] && ex.x[i][0]) pool.push(ex.x[i][0]); }
   }
   return pool;
 }
@@ -7990,7 +8469,12 @@ function wqBuildQuestion(idx, type){
   var w = WORD_BANK[idx];
   var pc = parsePosCn(w[1]);
   var brief = wordBriefCn(idx);
-  var q = { type:type, idx:idx, word:w[0], cn:brief, pos:pc.pos, sent:w[2] };
+  /* 例句类题型随机取该词的一条例句，避免每天同一句 */
+  var pool = wordSentencePool(idx);
+  var pick = pool[Math.floor(Math.random() * pool.length)] || w[2] || '';
+  /* 没有例句的词（非内置词库首次练到、词典还没补齐时）自动改用不依赖例句的题型 */
+  if((type === 'spell' || type === 'cloze') && !pick) type = 'cn2en';
+  var q = { type:type, idx:idx, word:w[0], cn:brief, pos:pc.pos, sent:pick };
   var opts;
   if(type === 'cn2en' || type === 'listen' || type === 'cloze'){
     opts = wqShuffle([{ label:w[0], ok:true }].concat(wqDistractors(idx, 3).map(function(i){ return { label:WORD_BANK[i][0], ok:false }; })));
@@ -7999,11 +8483,8 @@ function wqBuildQuestion(idx, type){
     opts = wqShuffle([{ label:brief, ok:true }].concat(wqDistractors(idx, 3).map(function(i){ return { label:wordBriefCn(i), ok:false }; })));
     q.options = opts;
   }
-  /* 例句类题型随机取该词的一条例句，避免每天同一句 */
-  var pool = wordSentencePool(idx);
-  var pick = pool[Math.floor(Math.random() * pool.length)] || w[2];
 
-  if(type === 'spell'){ q.prompt = brief; q.sub = wqBlank(w[2], w[0]); }
+  if(type === 'spell'){ q.prompt = brief; q.sub = wqBlank(pick, w[0]); }
   else if(type === 'cn2en'){ q.title = '选出对应的英文单词'; q.prompt = brief + (pc.pos ? '（' + pc.pos + '）' : ''); }
   else if(type === 'en2cn'){ q.title = '选出正确的中文释义'; q.prompt = w[0]; }
   else if(type === 'listen'){ q.title = '听发音，选出正确的单词'; q.prompt = ''; }
@@ -13772,6 +14253,22 @@ function renderAllOnSync(){
   } catch(e){}
   /* 加载完成后检测历史乱码数据（UTF-8 截断导致的 ◆ 等） */
   if(typeof checkGarbledData === 'function') checkGarbledData();
+  /* 词库：云端记录了别的词库选择时（换设备/多端同步）自动跟随 */
+  try{ wbSyncFromDb(); }catch(e){}
+}
+/* 云端 bankId 与本机不同 → 跟随云端（跨设备同步词库选择） */
+function wbSyncFromDb(){
+  var id = (DB.words && DB.words.bankId) || 'core';
+  if(!id || id === WB_ACTIVE) return;
+  if(id !== 'core' && !WB_LIST[id]) return;      // 清单还没拉到，等下一轮
+  loadWordbank(id, function(err){
+    if(err) return;
+    WB_ACTIVE = id;
+    WORD_BANK = WB_WORDS[id] || WORD_BANK_CORE;
+    WORD_EXTRA = wbActiveExtra();
+    currentWordIndex = 0; currentWordOffset = 0; reviewWordIdx = -1; reviewSession = null;
+    try{ renderWords(); renderWordHero(); renderWordReview(); renderWordbankPanel(); }catch(e){}
+  });
 }
 function exportBackup(){
   var data = JSON.stringify(DB, null, 2);
@@ -13826,6 +14323,8 @@ function init(){
   var vb = document.getElementById('fundVerBadge');
   if(vb){ vb.textContent = 'v' + window.ver.git.slice(0,6); vb.style.display = 'inline-block'; vb.title = window.ver.date + ' ' + window.ver.desc; }
   loadDb();
+  /* 词库：恢复上次选择的词库 + 拉取词库清单（服务端下发，失败则只用内置精练库） */
+  try{ renderWordbankPanel(); restoreWordbank(); }catch(e){ console.warn('[wordbank] 初始化失败', e); }
   /* 预热英文语音表：Chrome 首次 getVoices() 是空的，不预热首次朗读会用错音色 */
   warmUpVoices();
   /* 启动服务器定期同步（如果配置了服务器地址） */

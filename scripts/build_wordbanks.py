@@ -64,7 +64,9 @@ def fetch(name):
 
 
 def normalize(entries):
-    """[{'name','trans','usphone'}] -> [[word, 音标, 释义], ...]（去重、保留顺序）"""
+    """[{'name','trans','usphone'}] -> [[word, 释义, 例句, 音标], ...]（去重、保留顺序）
+    槽位与工作台内置词库保持一致：[0]=单词 [1]=释义 [2]=例句（多词库暂无，留空）
+    [3]=音标（供卡片在揭示答案时显示）"""
     out, seen = [], set()
     for e in entries:
         w = (e.get('name') or '').strip()
@@ -74,7 +76,7 @@ def normalize(entries):
         phone = (e.get('usphone') or e.get('ukphone') or '').strip().strip('/')
         trans = [t.strip() for t in (e.get('trans') or []) if t and t.strip()]
         cn = '；'.join(trans)
-        out.append([w, phone, cn])
+        out.append([w, cn, '', phone])
     return out
 
 

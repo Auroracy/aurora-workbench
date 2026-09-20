@@ -157,8 +157,7 @@ Page({
       statusCls: 'mark-' + (mark || 'none'),
       mainParts: mainParts, moreSenses: moreSenses, usageParts: usageParts,
       en: word, examples: examples, hasMore: examples.length > 1,
-      mark: mark,
-      idxLabel: noText
+      mark: mark
     });
 
     /* 保存当前词，供后续判定使用 */
