@@ -10,6 +10,7 @@ function defaultDb() {
       meals: [], weights: [], exercises: [], recipeIdx: 0
     },
     words: {
+      bank: 'core',
       dailyRecords: {},
       game: {
         xp: 0, level: 1, combo: 0, bestCombo: 0, streak: 0, lastDay: '', clears: 0,
@@ -31,6 +32,7 @@ function normalize(db) {
     if (out[k] === undefined) out[k] = d[k];
   }
   if (!out.words || typeof out.words !== 'object') out.words = d.words;
+  if (out.words.bank === undefined) out.words.bank = 'core';
   if (!out.words.dailyRecords || typeof out.words.dailyRecords !== 'object') out.words.dailyRecords = {};
   if (!out.words.game || typeof out.words.game !== 'object') out.words.game = d.words.game;
   const g = out.words.game;

@@ -1,5 +1,7 @@
-/* 词库：从 aurora-workbench.html 自动迁移（100 词，含完整释义/例句/常用搭配） */
-const WORD_BANK = [
+/* 词库：从 aurora-workbench.html 自动迁移（100 词，含完整释义/例句/常用搭配）
+   这里同时承担「词库管理器」职责：WORD_BANK / WORD_EXTRA 通过 getter 实时返回
+   「当前生效词库」的数据，切换词库只需改内部变量，word.js / english.js 无需改动。 */
+const CORE = [
   ["abandon", "vt. 放弃；抛弃", "He abandoned his old car and bought a new one."],
   ["absolute", "adj. 绝对的；完全的", "I have absolute confidence in her ability."],
   ["accommodate", "v. 容纳；适应", "The hotel can accommodate up to 500 guests."],
@@ -102,7 +104,7 @@ const WORD_BANK = [
   ["facilitate", "v. 促进", "Technology facilitates communication globally."]
 ];
 
-const WORD_EXTRA = {
+const CORE_EXTRA = {
   "abandon":{"s": [["vt.", "放弃；抛弃；遗弃"], ["n.", "放纵；无拘无束"]], "x": [["They had to abandon the plan because of the storm.", "由于暴风雨，他们不得不放弃这个计划。"], ["He abandoned himself to despair.", "他陷入了绝望之中。"]], "u": "abandon oneself to 沉溺于；abandon a plan 放弃计划"},
   "absolute":{"s": [["adj.", "绝对的；完全的；确实的"], ["n.", "绝对真理"]], "x": [["There is no absolute standard for beauty.", "美没有绝对的标准。"], ["You must have absolute trust in her.", "你必须完全信任她。"]], "u": "absolute majority 绝对多数；absolute truth 绝对真理"},
   "accommodate":{"s": [["vt.", "容纳；为…提供住宿"], ["vt.", "适应；迁就；满足"]], "x": [["This room can accommodate twenty people.", "这个房间能容纳二十人。"], ["We try to accommodate the needs of every guest.", "我们尽量满足每位客人的需求。"]], "u": "accommodate sb with sth 向某人提供某物；accommodate to 适应"},
@@ -205,4 +207,174 @@ const WORD_EXTRA = {
   "facilitate":{"s": [["vt.", "促进，推动"], ["vt.", "使便利，使容易"]], "x": [["The new system facilitates data sharing.", "新系统便于数据共享。"], ["Good roads facilitate trade.", "良好的道路促进贸易。"]], "u": "facilitate communication 促进沟通；facilitate the process 简化流程"}
 };
 
-module.exports = { WORD_BANK, WORD_EXTRA };
+/* ============================================================
+   词库系统：内置精练库（core）+ 服务端多词库（可切换，进度按词库隔离）
+   ------------------------------------------------------------
+   · core   内置 100 词（带例句与常用搭配），离线可用
+   · 其它词库  data/wordbanks/<id>.json（四级/六级/考研/雅思/托福/GRE…）
+             由家庭服务器 /api/wordbank 下发，经 auroraProxy 云函数代理加载，本地缓存
+   · 学习记录  db.words.dailyRecords 中，非 core 词库的日期键加 '@<bankId>' 后缀，互不干扰
+   ============================================================ */
+const SERVER_BASE = 'http://106.14.223.116:9000';   // 家庭服务器（与网页版 WB_PROD_BASE 一致）
+
+const WB_CORE = { id: 'core', name: '入门精练', desc: '内置 100 词 · 含例句与常用搭配', icon: '🌱', category: '基础', count: 100 };
+let WB_BANKS = [WB_CORE];          // 词库清单（core 内置 + 云端下发）
+const WB_LIST = { core: WB_CORE }; // id -> meta
+const WB_WORDS = {};               // id -> 词表（已加载内存）
+const WB_ENRICH = {};              // id -> { word: { s, x, u } }
+const WB_SET = {};                 // id -> { 小写词: true }，用于按词库统计进度
+const WB_LOADING = {};             // id -> true 加载中
+let WB_ACTIVE = 'core';            // 当前词库 id
+
+/* 当前生效的词库数据（可被 setActiveBank 重新赋值，word.js / english.js 通过 getter 读取） */
+let WORD_BANK = CORE;
+let WORD_EXTRA = CORE_EXTRA;
+
+function wbMeta(id) { return WB_LIST[id] || (id === 'core' ? WB_CORE : null); }
+function wbActiveBank() { return wbMeta(WB_ACTIVE) || WB_CORE; }
+/* 学习记录键：core 沿用纯日期键（兼容历史数据），其它词库加 '@bankId' 后缀隔离 */
+function wbRecKey(dateStr) { return WB_ACTIVE === 'core' ? dateStr : (dateStr + '@' + WB_ACTIVE); }
+function wbRecBank(key) { const p = String(key || '').split('@'); return p.length > 1 ? p[1] : 'core'; }
+function wbRecDate(key) { return String(key || '').split('@')[0]; }
+
+function wbSetFor(id) {
+  if (WB_SET[id]) return WB_SET[id];
+  const s = {}, ws = WB_WORDS[id] || [];
+  for (let i = 0; i < ws.length; i++) s[String(ws[i][0]).toLowerCase()] = 1;
+  WB_SET[id] = s;
+  return s;
+}
+
+/* 切换当前生效词库（仅改内部状态；词表若已加载则立即生效，否则保持原状直到 loadWordbank 完成） */
+function setActiveBank(id) {
+  const m = wbMeta(id);
+  if (!m) return false;
+  WB_ACTIVE = id;
+  WORD_BANK = (id === 'core') ? CORE : (WB_WORDS[id] || WORD_BANK);
+  WORD_EXTRA = (id === 'core') ? CORE_EXTRA : (WB_ENRICH[id] || {});
+  return true;
+}
+
+/* 某词库的学习进度：已掌握 / 已标记 / 待强化 */
+function wbProgress(db, id) {
+  const res = { mastered: 0, marked: 0, pending: 0, total: (wbMeta(id) || {}).count || 0 };
+  const g = db && db.words && db.words.game;
+  if (g && g.masteredWords && g.masteredWords.length) {
+    let set;
+    if (id === 'core') { set = {}; for (let i = 0; i < CORE.length; i++) set[CORE[i][0].toLowerCase()] = 1; }
+    else set = wbSetFor(id);
+    for (let i = 0; i < g.masteredWords.length; i++) if (set[String(g.masteredWords[i]).toLowerCase()]) res.mastered++;
+  }
+  const recs = (db && db.words && db.words.dailyRecords) || {};
+  for (const k in recs) {
+    if (wbRecBank(k) !== id) continue;
+    const pw = recs[k] && recs[k].perWord;
+    if (!pw) continue;
+    for (const p in pw) if (pw[p] && pw[p].mark) res.marked++;
+  }
+  if (g && g.reviewQ && id !== 'core') {
+    const set = wbSetFor(id);
+    for (const w in g.reviewQ) if (set[String(w).toLowerCase()]) res.pending++;
+  }
+  return res;
+}
+
+function wbBankList() { return WB_BANKS.slice(); }
+/* 由云端清单注入（不含 core）：meta 用服务端下发的，已存在则合并 */
+function wbSetList(list) {
+  for (let i = 0; i < (list || []).length; i++) {
+    const b = list[i];
+    if (!b || !b.id || b.id === 'core') continue;
+    if (!WB_LIST[b.id]) { WB_LIST[b.id] = b; WB_BANKS.push(b); }
+    else Object.assign(WB_LIST[b.id], b);
+  }
+  WB_BANKS.sort(function (a, b) {
+    if (a.id === 'core') return -1;
+    if (b.id === 'core') return 1;
+    if (String(a.category) === String(b.category)) return (b.count || 0) - (a.count || 0);
+    return String(a.category).localeCompare(String(b.category), 'zh');
+  });
+  return WB_BANKS.slice();
+}
+
+function wbLsKey(id) { return 'aurora_wb_' + id; }
+
+/* 把服务端词表（{words:[[en,posCn,sent,phonetic]]}）规整为内部格式并落内存 */
+function applyBank(id, doc) {
+  const ws = [], raw = doc.words || [];
+  for (let i = 0; i < raw.length; i++) {
+    const w = raw[i];
+    if (!w || !w[0]) continue;
+    ws.push([String(w[0]), w[1] || '', w[2] || '', w[3] || '']);
+  }
+  WB_WORDS[id] = ws;
+  WB_SET[id] = null;
+  const m = wbMeta(id);
+  if (m) m.count = ws.length;
+  else WB_LIST[id] = { id: id, name: doc.name || id, desc: doc.desc || '', icon: doc.icon || '📘', category: doc.category || '其他', count: ws.length };
+  if (id === WB_ACTIVE) { WORD_BANK = ws; WORD_EXTRA = WB_ENRICH[id] || {}; }
+}
+
+/* 加载某套词库：内存 → 本地缓存 → 云端（经 auroraProxy 云函数），结果回调 (err, bankArray) */
+function loadWordbank(id, cb) {
+  cb = cb || function () {};
+  const meta = wbMeta(id);
+  if (!meta) return cb(new Error('未知词库：' + id));
+  if (id === 'core' || WB_WORDS[id]) { if (id === WB_ACTIVE) applyBank(id, { words: WB_WORDS[id] }); return cb(null, WORD_BANK); }
+  if (WB_LOADING[id]) { setTimeout(function () { loadWordbank(id, cb); }, 150); return; }
+  WB_LOADING[id] = true;
+  /* 1) 本地缓存 */
+  let fromLocal = null;
+  try { const raw = wx.getStorageSync(wbLsKey(id)); if (raw && raw.words && raw.words.length) fromLocal = raw; } catch (e) {}
+  if (fromLocal) { applyBank(id, fromLocal); delete WB_LOADING[id]; return cb(null, WORD_BANK); }
+  /* 2) 云端（经 auroraProxy 云函数，规避小程序域名白名单） */
+  if (typeof wx === 'undefined' || !wx.cloud || !wx.cloud.callFunction) {
+    delete WB_LOADING[id];
+    return cb(new Error('当前环境不支持联网加载词库'));
+  }
+  wx.cloud.callFunction({
+    name: 'auroraProxy',
+    data: { url: SERVER_BASE + '/api/wordbank?id=' + encodeURIComponent(id) }
+  }).then(function (r) {
+    delete WB_LOADING[id];
+    const res = (r && r.result) || {};
+    if (!res.ok) return cb(new Error(res.error || '词库加载失败'));
+    let doc = null;
+    try { doc = JSON.parse(res.body); } catch (e) { return cb(new Error('词库数据解析失败')); }
+    if (!doc || !doc.words || !doc.words.length) return cb(new Error('词库数据为空'));
+    applyBank(id, doc);
+    try { wx.setStorageSync(wbLsKey(id), doc); } catch (e) {}
+    cb(null, WORD_BANK);
+  }).catch(function (e) {
+    delete WB_LOADING[id];
+    cb(new Error(String((e && e.message) || e) || '词库加载失败'));
+  });
+}
+
+/* 拉取云端词库清单（/api/wordbanks），注入后可切换 */
+function loadBanksFromCloud(cb) {
+  cb = cb || function () {};
+  if (typeof wx === 'undefined' || !wx.cloud || !wx.cloud.callFunction) return cb(new Error('当前环境不支持联网'));
+  wx.cloud.callFunction({
+    name: 'auroraProxy',
+    data: { url: SERVER_BASE + '/api/wordbanks' }
+  }).then(function (r) {
+    const res = (r && r.result) || {};
+    if (!res.ok) return cb(new Error(res.error || '列表加载失败'));
+    let doc = null;
+    try { doc = JSON.parse(res.body); } catch (e) { return cb(new Error('列表解析失败')); }
+    if (!doc || !doc.banks || !doc.banks.length) return cb(new Error('列表为空'));
+    wbSetList(doc.banks);
+    cb(null, WB_BANKS.slice());
+  }).catch(function (e) {
+    cb(new Error(String((e && e.message) || e) || '列表加载失败'));
+  });
+}
+
+module.exports = {
+  get WORD_BANK() { return WORD_BANK; },
+  get WORD_EXTRA() { return WORD_EXTRA; },
+  CORE, CORE_EXTRA, SERVER_BASE, WB_CORE,
+  wbMeta, wbActiveBank, wbRecKey, wbRecBank, wbRecDate, wbSetFor,
+  setActiveBank, wbProgress, wbBankList, wbSetList, loadWordbank, loadBanksFromCloud, applyBank
+};

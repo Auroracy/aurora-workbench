@@ -26,6 +26,38 @@
     <view class="hud-xp small muted">XP {{xp}} / {{xpNeed}}</view>
   </view>
 
+  <!-- ====== 词库切换 ====== -->
+  <view class="card bank-card">
+    <view class="bank-head" bindtap="toggleBankPanel">
+      <view class="bank-cur">
+        <text class="bank-icon">{{curBank.icon}}</text>
+        <view class="bank-meta">
+          <view class="bank-name">{{curBank.name}}</view>
+          <view class="bank-sub small muted">{{curBank.count}} 词 · {{curBank.desc}}</view>
+        </view>
+      </view>
+      <text class="bank-switch">{{bankOpen ? '收起 ▴' : '切换词库 ▾'}}</text>
+    </view>
+
+    <view class="bank-panel" wx:if="{{bankOpen}}">
+      <view class="bank-tip small muted">学习记录按词库隔离，切换后互不影响。考试词库首次使用需联网经云函数加载（个人主体无需备案域名）。</view>
+      <view class="bank-grid">
+        <view class="bank-item {{item.active ? 'active' : ''}}" wx:for="{{bankList}}" wx:key="id" data-id="{{item.id}}" bindtap="switchBank">
+          <view class="bi-top">
+            <text class="bi-icon">{{item.icon}}</text>
+            <view class="bi-name">{{item.name}}</view>
+          </view>
+          <view class="bi-sub small muted">{{item.count}} 词</view>
+          <view class="bi-prog small muted" wx:if="{{item.mastered || item.marked || item.pending}}">
+            掌握 {{item.mastered}} · 标记 {{item.marked}} · 待强化 {{item.pending}}
+          </view>
+          <view class="bi-prog small muted" wx:else>暂无记录</view>
+          <view class="bi-tag" wx:if="{{item.active}}">使用中</view>
+        </view>
+      </view>
+    </view>
+  </view>
+
   <!-- ====== 今日进度 ====== -->
   <view class="card">
     <view class="stat-row">
@@ -120,7 +152,7 @@
 
     <!-- 例句 -->
     <view class="wc-ex">
-      <view class="ex-line">
+      <view class="ex-line" wx:if="{{examples[0].parts[0].t}}">
         <template is="tplParts" data="{{parts: examples[0].parts, show: blankState !== 'hidden' || revealedAll, errFlag: blankState === 'err', errText: spell + ' ✗'}}"/>
       </view>
       <block wx:if="{{hasMore}}">

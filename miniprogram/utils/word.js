@@ -2,7 +2,7 @@
    从 aurora-workbench.html 迁移，替掉所有 DOM 操作，改为纯数据函数，
    页面层只负责 setData 渲染。 */
 const store = require('./store.js');
-const { WORD_BANK, WORD_EXTRA } = require('./words.js');
+const WORDS = require('./words.js');
 
 const WORD_RANKS = [
   [1, '见习学徒'], [3, '词汇新秀'], [5, '单词猎人'],
@@ -33,15 +33,15 @@ function dateStr(offset) {
 }
 function startIdx(offset) {
   const base = dayOfYear() + (offset || 0);
-  const n = WORD_BANK.length;
+  const n = WORDS.WORD_BANK.length;
   return ((base * 10) % n + n) % n;
 }
-/* 某天对应的 10 个词 */
+/* 某天对应的 10 个词（取当前生效词库的切片） */
 function wordsForOffset(offset) {
   const s = startIdx(offset);
   const out = [];
   for (let i = 0; i < 10; i++) {
-    const w = WORD_BANK[(s + i) % WORD_BANK.length];
+    const w = WORDS.WORD_BANK[(s + i) % WORDS.WORD_BANK.length];
     out.push({ en: w[0], posCn: w[1], sent: w[2] });
   }
   return out;
@@ -111,7 +111,7 @@ function parsePosCn(posCn) {
   return { pos: '', cn: posCn || '' };
 }
 function senses(word, fallbackPosCn) {
-  const ex = WORD_EXTRA[word];
+  const ex = WORDS.WORD_EXTRA[word];
   if (ex && ex.s && ex.s.length) return ex.s;
   const pc = parsePosCn(fallbackPosCn);
   return pc.cn ? [[pc.pos || '', pc.cn]] : [];
@@ -121,13 +121,13 @@ function briefCn(word, fallbackPosCn) {
   return (s.length ? s[0][1] : parsePosCn(fallbackPosCn).cn) || '';
 }
 function usage(word) {
-  const ex = WORD_EXTRA[word];
+  const ex = WORDS.WORD_EXTRA[word];
   return (ex && ex.u) || '';
 }
 /* 例句：主例句 + 该词自己的更多用法（带中文翻译） */
 function examplesOf(word, fallbackSent) {
   const list = [{ text: fallbackSent || '', cn: '', main: true }];
-  const ex = WORD_EXTRA[word];
+  const ex = WORDS.WORD_EXTRA[word];
   if (ex && ex.x && ex.x.length) {
     for (let i = 0; i < ex.x.length; i++) {
       list.push({ text: ex.x[i][0], cn: ex.x[i][1], main: false });
@@ -137,8 +137,9 @@ function examplesOf(word, fallbackSent) {
 }
 function findBankIdx(word) {
   if (!word) return -1;
-  for (let i = 0; i < WORD_BANK.length; i++) {
-    if (WORD_BANK[i][0] === word) return i;
+  const wb = WORDS.WORD_BANK;
+  for (let i = 0; i < wb.length; i++) {
+    if (wb[i][0] === word) return i;
   }
   return -1;
 }
@@ -242,13 +243,14 @@ function hitWrong(db) {
 /* ---------- 每日记录 ---------- */
 function getDaily(db, ds) {
   ensure(db);
+  ds = WORDS.wbRecKey(ds);
   if (!db.words.dailyRecords[ds]) db.words.dailyRecords[ds] = {};
   const rec = db.words.dailyRecords[ds];
   if (!rec.perWord) rec.perWord = {};
   return rec;
 }
 function dayProgress(db, ds) {
-  const rec = db.words && db.words.dailyRecords ? (db.words.dailyRecords[ds] || {}) : {};
+  const rec = db.words && db.words.dailyRecords ? (db.words.dailyRecords[WORDS.wbRecKey(ds)] || {}) : {};
   const perWord = rec.perWord || {};
   let known = 0, fuzzy = 0, unknown = 0;
   for (let i = 0; i < 10; i++) {
@@ -259,7 +261,7 @@ function dayProgress(db, ds) {
   }
   return { known, fuzzy, unknown, marked: known + fuzzy + unknown };
 }
-/* 标记某天某个位置的词 */
+/* 标记某天某个位置的词（ds 为纯日期，按当前词库隔离由 getDaily 完成） */
 function setMark(db, ds, pos, word, val) {
   ensure(db);
   const rec = getDaily(db, ds);
@@ -340,7 +342,7 @@ function reviewQueue(db) {
       word: w, idx: bi, mark: e.mark,
       need: e.need || reviewNeed(db, e.mark),
       done: e.done || 0, ts: e.ts || 0,
-      posCn: WORD_BANK[bi][1]
+      posCn: WORDS.WORD_BANK[bi][1]
     });
   }
   out.sort((a, b) => (b.ts || 0) - (a.ts || 0));

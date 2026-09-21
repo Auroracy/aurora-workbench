@@ -32,6 +32,8 @@ const ALLOW = [
   'www.sge.com.cn',
   /* 其它 */
   'cn.govopendata.com', 'mrxwlb.com',
+  /* 自家工作台服务器（词库 / 词库清单 / 单词详解 经云函数代理下发） */
+  '106.14.223.116',
   /* 词典（英语模块查词用） */
   'dict.youdao.com'
 ];

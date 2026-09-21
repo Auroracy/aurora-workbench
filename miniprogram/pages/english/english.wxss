@@ -123,3 +123,38 @@
 /* 底部导航 */
 .nav-row { display: flex; gap: 16rpx; margin-top: 4rpx; }
 .nav-row .btn { flex: 1; }
+
+/* ===== 词库切换 ===== */
+.bank-card { padding: 22rpx 24rpx; }
+.bank-head { display: flex; align-items: center; justify-content: space-between; }
+.bank-cur { display: flex; align-items: center; gap: 18rpx; min-width: 0; }
+.bank-icon { font-size: 44rpx; line-height: 1; }
+.bank-meta { min-width: 0; }
+.bank-name { font-size: 30rpx; font-weight: 700; color: var(--text); }
+.bank-sub { font-size: 21rpx; margin-top: 4rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 420rpx; }
+.bank-switch {
+  font-size: 24rpx; color: var(--accent-d); background: var(--accent-bg);
+  padding: 10rpx 22rpx; border-radius: 14rpx; flex-shrink: 0;
+}
+.bank-panel { margin-top: 20rpx; border-top: 1rpx solid var(--line-soft); padding-top: 18rpx; }
+.bank-tip { font-size: 21rpx; line-height: 1.7; margin-bottom: 16rpx; }
+.bank-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 16rpx;
+}
+.bank-item {
+  position: relative;
+  background: var(--input-bg); border: 1rpx solid var(--line);
+  border-radius: var(--radius-sm); padding: 18rpx 16rpx;
+  overflow: hidden;
+}
+.bank-item.active { border-color: var(--accent); background: var(--accent-bg); }
+.bi-top { display: flex; align-items: center; gap: 10rpx; }
+.bi-icon { font-size: 34rpx; line-height: 1; }
+.bi-name { font-size: 25rpx; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bi-sub { font-size: 20rpx; margin-top: 8rpx; }
+.bi-prog { font-size: 19rpx; margin-top: 6rpx; line-height: 1.5; }
+.bi-tag {
+  position: absolute; top: 0; right: 0;
+  font-size: 18rpx; color: #fff; background: var(--accent);
+  padding: 4rpx 12rpx; border-bottom-left-radius: 12rpx;
+}

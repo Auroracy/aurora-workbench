@@ -1,6 +1,6 @@
 const store = require('../../utils/store.js');
 const W = require('../../utils/word.js');
-const { WORD_BANK } = require('../../utils/words.js');
+const WORDS = require('../../utils/words.js');
 
 Page({
   data: {
@@ -37,7 +37,12 @@ Page({
     inReview: false, reviewBanner: '',
 
     /* 列表展开 */
-    queueOpen: false
+    queueOpen: false,
+
+    /* 词库切换 */
+    curBank: { id: 'core', name: '入门精练', icon: '🌱', count: 100, desc: '内置 100 词 · 含例句与常用搭配' },
+    bankList: [],
+    bankOpen: false
   },
 
   /* 会话级状态（不进 setData） */
@@ -50,12 +55,18 @@ Page({
   onLoad() {
     this.db = store.loadDb();
     W.touchStreak(this.db);
+    WORDS.setActiveBank(this.db.words.bank || 'core');
     store.saveDb(this.db);
+    this.refreshBankList();
     this.render();
+    /* 拉取云端词库清单（四级/六级/考研/雅思/托福/GRE…），失败不影响 core 使用 */
+    WORDS.loadBanksFromCloud(() => { this.refreshBankList(); });
   },
   onShow() {
     if (this.db) {
       this.db = store.loadDb();
+      WORDS.setActiveBank(this.db.words.bank || 'core');
+      this.refreshBankList();
       this.render();
     }
   },
@@ -77,7 +88,7 @@ Page({
     if (inReview) {
       const i = Math.min(this.review.i, this.review.queue.length - 1);
       const bi = this.review.queue[i];
-      const wb = WORD_BANK[bi];
+      const wb = WORDS.WORD_BANK[bi];
       word = wb[0]; posCn = wb[1]; sent = wb[2];
       noText = '强化 ' + (i + 1) + ' / ' + this.review.queue.length;
       const e = g.reviewQ[word];
@@ -103,7 +114,7 @@ Page({
       const e = g.reviewQ[word];
       mark = e ? e.mark : (g.masteredWords.indexOf(word) >= 0 ? 'known' : '');
     } else {
-      const rec = db.words.dailyRecords[W.dateStr(this.offset)] || {};
+      const rec = db.words.dailyRecords[WORDS.wbRecKey(W.dateStr(this.offset))] || {};
       mark = ((rec.perWord || {})[this.idx] || {}).mark || '';
     }
 
@@ -252,7 +263,7 @@ Page({
         return;
       }
       const pos = W.findTodayPos(w, this.offset);
-      const prev = ((this.db.words.dailyRecords[W.dateStr(this.offset)] || {}).perWord || {})[pos] || {};
+      const prev = ((this.db.words.dailyRecords[WORDS.wbRecKey(W.dateStr(this.offset))] || {}).perWord || {})[pos] || {};
       W.setMark(this.db, W.dateStr(this.offset), pos, w, prev.mark === 'known' ? 'known' : 'fuzzy');
       W.hitWrong(this.db);
       store.saveDb(this.db);
@@ -307,6 +318,56 @@ Page({
   prevDay() { this.offset--; this.idx = 0; this.exitReview(true); this.resetAnswer(); this.render(); },
   nextDay() { this.offset++; this.idx = 0; this.exitReview(true); this.resetAnswer(); this.render(); },
   goToday() { this.offset = 0; this.idx = 0; this.exitReview(true); this.resetAnswer(); this.render(); },
+
+  /* ============ 词库切换 ============ */
+  refreshBankList() {
+    const db = this.db;
+    const list = WORDS.wbBankList().map(b => {
+      const p = WORDS.wbProgress(db, b.id);
+      return {
+        id: b.id, name: b.name, icon: b.icon, desc: b.desc,
+        count: b.count, category: b.category,
+        active: b.id === WORDS.wbActiveBank().id,
+        mastered: p.mastered, marked: p.marked, pending: p.pending
+      };
+    });
+    this.setData({ bankList: list, curBank: WORDS.wbActiveBank() });
+  },
+  toggleBankPanel() {
+    const open = !this.data.bankOpen;
+    this.setData({ bankOpen: open });
+    if (open) {
+      this.refreshBankList();
+      /* 只有 core 时，尝试从云端拉取更多词库清单 */
+      if (WORDS.wbBankList().length <= 1) {
+        WORDS.loadBanksFromCloud(() => { this.refreshBankList(); });
+      }
+    }
+  },
+  switchBank(e) {
+    const id = e.currentTarget.dataset.id;
+    if (!id) return;
+    const prev = WORDS.wbActiveBank().id;
+    if (id === prev) { this.setData({ bankOpen: false }); return; }
+    wx.showLoading({ title: '加载词库…' });
+    WORDS.setActiveBank(id);                       // 若已加载立即生效；否则先占位，加载完再渲染
+    WORDS.loadWordbank(id, (err) => {
+      wx.hideLoading();
+      if (err) {
+        WORDS.setActiveBank(prev);                // 失败回退到原词库
+        wx.showToast({ title: String(err.message || err), icon: 'none' });
+        this.refreshBankList();
+        return;
+      }
+      this.db.words.bank = id;
+      WORDS.setActiveBank(id);
+      store.saveDb(this.db);
+      this.offset = 0; this.idx = 0;
+      this.exitReview(true); this.resetAnswer();
+      this.refreshBankList(); this.render();
+      wx.showToast({ title: '已切换：' + WORDS.wbActiveBank().name, icon: 'none' });
+    });
+  },
 
   /* ============ 强化复习 ============ */
   toggleQueue() { this.setData({ queueOpen: !this.data.queueOpen }); },
