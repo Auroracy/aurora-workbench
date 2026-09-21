@@ -11,8 +11,8 @@
 
   <!-- ====== 已迁移模块 ====== -->
   <view class="sec-title">可用模块</view>
-  <view class="card entry" bindtap="goEnglish">
-    <view class="entry-row">
+  <view class="card entry">
+    <view class="entry-row" bindtap="goEnglish">
       <view class="e-ico">📖</view>
       <view class="e-main">
         <view class="e-name">每日英语单词</view>
@@ -20,6 +20,14 @@
           精练卡片 · 拼写验证 · 强化复习
           <text wx:if="{{reviewTotal}}" class="e-badge">待强化 {{reviewTotal}} 词</text>
         </view>
+      </view>
+      <view class="e-arrow">›</view>
+    </view>
+    <view class="entry-row" bindtap="goEarlyEd">
+      <view class="e-ico">👶</view>
+      <view class="e-main">
+        <view class="e-name">宝宝早教 · 课时记录</view>
+        <view class="e-desc small muted">课时打卡 · 自定义课程 · 剩余统计</view>
       </view>
       <view class="e-arrow">›</view>
     </view>

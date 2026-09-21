@@ -1,0 +1,136 @@
+<view class="page">
+
+  <!-- ===== Hero 概览 ===== -->
+  <view class="card hero">
+    <view class="hero-title">宝宝早教 · 课时记录</view>
+    <view class="hero-sub small muted">记录每一次课堂互动与成长瞬间</view>
+    <view class="hero-grid">
+      <view class="hg-item">
+        <view class="hg-val">{{detailCount}}</view>
+        <view class="hg-label">累计课次</view>
+      </view>
+      <view class="hg-item">
+        <view class="hg-val blue">{{consumed}}</view>
+        <view class="hg-label">已消耗课时</view>
+      </view>
+      <view class="hg-item">
+        <view class="hg-val {{remainingClass}}">{{remaining}}</view>
+        <view class="hg-label">剩余课时</view>
+      </view>
+      <view class="hg-item">
+        <view class="hg-val {{remainingClass}}">{{pct}}%</view>
+        <view class="hg-label">剩余占比</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- ===== 课时概览 ===== -->
+  <view class="card">
+    <view class="card-title">
+      <view class="t">课时概览</view>
+      <text class="btn btn-sm btn-primary" bindtap="openModal">＋ 新增课时</text>
+    </view>
+    <view class="bar"><view class="bar-fill" style="width:{{progressPct}}%"></view></view>
+    <view class="prog-text small muted">已消耗 {{consumed}} / {{totalHours}} 课时</view>
+    <view class="stats">
+      <view class="stat-item" bindtap="editTotal">
+        <view class="stat-num">{{totalHours}}</view>
+        <view class="stat-label">总购买课时</view>
+        <view class="stat-edit small">点击修改</view>
+      </view>
+      <view class="stat-item">
+        <view class="stat-num">{{consumed}}</view>
+        <view class="stat-label">累计已消耗</view>
+      </view>
+      <view class="stat-item {{remainingClass}}">
+        <view class="stat-num">{{remaining}}</view>
+        <view class="stat-label">剩余课时</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- ===== 课时记录 ===== -->
+  <view class="card">
+    <view class="card-title">
+      <view class="t">课时记录 <text class="sub">共 {{detailCount}} 次课</text></view>
+    </view>
+
+    <view wx:if="{{detailList.length === 0}}" class="empty">还没有课时记录，点上方「＋ 新增课时」开始记录吧</view>
+
+    <block wx:else>
+      <view class="ee-row" wx:for="{{detailList}}" wx:key="idx">
+        <view class="ee-main">
+          <view class="ee-top">
+            <text class="ee-date">{{item.date}}</text>
+            <text class="chip chip-gray">{{item.hours}} 课时</text>
+            <text wx:if="{{item.course}}" class="chip chip-amber">{{item.course}}</text>
+          </view>
+          <view wx:if="{{item.notes}}" class="ee-text">{{item.notes}}</view>
+        </view>
+        <view class="ee-actions">
+          <text class="btn-icon" data-idx="{{item.idx}}" bindtap="openModal">✎</text>
+          <text class="btn-icon danger" data-idx="{{item.idx}}" bindtap="deleteRecord">✕</text>
+        </view>
+      </view>
+
+      <view wx:if="{{totalPages > 1}}" class="pager">
+        <text class="btn btn-sm btn-ghost" disabled="{{page <= 1}}" bindtap="prevPage">‹ 上一页</text>
+        <text class="pager-info small">第 {{page}} / {{totalPages}} 页</text>
+        <text class="btn btn-sm btn-ghost" disabled="{{page >= totalPages}}" bindtap="nextPage">下一页 ›</text>
+      </view>
+    </block>
+  </view>
+
+  <!-- ===== 弹窗 ===== -->
+  <view wx:if="{{showModal}}" class="overlay" bindtap="closeModal">
+    <view class="modal" catchtap="noop">
+      <view class="modal-head">
+        <view class="modal-title">{{modalTitle}}</view>
+        <text class="modal-close" bindtap="closeModal">×</text>
+      </view>
+      <view class="modal-body">
+        <view class="form-row">
+          <view class="form-group">
+            <view class="form-label">日期</view>
+            <picker mode="date" value="{{selDate}}" bindchange="onDateChange">
+              <view class="picker">{{selDate}}</view>
+            </picker>
+          </view>
+          <view class="form-group">
+            <view class="form-label">本次课时</view>
+            <view class="hours-group">
+              <text wx:for="{{hoursOptions}}" wx:key="*this"
+                    class="hours-item {{selHours === item ? 'on' : ''}}"
+                    data-val="{{item}}" bindtap="selHours">{{item}} 课时</text>
+            </view>
+          </view>
+        </view>
+
+        <view class="form-row">
+          <view class="form-group flex1">
+            <view class="form-label">课程 <text class="hint">— 可自定义添加</text></view>
+            <picker range="{{courseOptions}}" value="{{courseIndex}}" bindchange="onCourseChange">
+              <view class="picker">{{courseValue || '— 请选择课程 —'}}</view>
+            </picker>
+          </view>
+          <view class="form-group auto">
+            <view class="form-label">&nbsp;</view>
+            <text class="btn btn-sm btn-ghost" bindtap="addCustomCourse">+ 自定义</text>
+          </view>
+        </view>
+
+        <view class="form-group">
+          <view class="form-label">课堂情况记录</view>
+          <textarea class="ta" placeholder="记录课堂互动、宝宝情绪、表现亮点..."
+                    value="{{notes}}" bindinput="onNotesInput" maxlength="-1"></textarea>
+        </view>
+
+        <view class="modal-actions">
+          <text class="btn btn-ghost" bindtap="closeModal">取消</text>
+          <text class="btn btn-primary" bindtap="saveRecord">保存记录</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+</view>

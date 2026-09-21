@@ -1,7 +1,8 @@
 {
   "pages": [
     "pages/index/index",
-    "pages/english/english"
+    "pages/english/english",
+    "pages/earlyed/earlyed"
   ],
   "window": {
     "backgroundTextStyle": "dark",

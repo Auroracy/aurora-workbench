@@ -12,7 +12,6 @@ Page({
     dbBytes: 0,
     netState: '', netBusy: false, netTitle: '未测试 · 点右侧「测一下」', netMsg: '', netRaw: '',
     coming: [
-      { ico: '👶', name: '宝宝早教 · 课时记录', desc: '课时打卡 / 自定义课程' },
       { ico: '🏃', name: '轻氧塑身日记', desc: '体重趋势 / 运动 / 16:8 断食（图表需改 canvas）' },
       { ico: '🍳', name: '食谱工坊 · 配方手记', desc: '配方与自定义食材分组' },
       { ico: '📚', name: '阅思集 · 读书札记', desc: '读书笔记与进度' },
@@ -57,6 +56,9 @@ Page({
 
   goEnglish() {
     wx.switchTab({ url: '/pages/english/english' });
+  },
+  goEarlyEd() {
+    wx.navigateTo({ url: '/pages/earlyed/earlyed' });
   },
 
   /* ===== 联网自检 =====
