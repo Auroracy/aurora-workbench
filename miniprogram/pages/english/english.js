@@ -59,8 +59,7 @@ Page({
     store.saveDb(this.db);
     this.refreshBankList();
     this.render();
-    /* 拉取云端词库清单（四级/六级/考研/雅思/托福/GRE…），失败不影响 core 使用 */
-    WORDS.loadBanksFromCloud(() => { this.refreshBankList(); });
+    /* 词库清单改为「展开面板时」按需拉取（与网页版一致），避免进页面就发云函数请求 */
   },
   onShow() {
     if (this.db) {
@@ -336,12 +335,14 @@ Page({
   toggleBankPanel() {
     const open = !this.data.bankOpen;
     this.setData({ bankOpen: open });
-    if (open) {
-      this.refreshBankList();
-      /* 只有 core 时，尝试从云端拉取更多词库清单 */
-      if (WORDS.wbBankList().length <= 1) {
-        WORDS.loadBanksFromCloud(() => { this.refreshBankList(); });
-      }
+    if (!open) return;
+    this.refreshBankList();
+    /* 只有 core 时，展开面板再按需从云端拉取更多词库清单（与网页版一致，避免进页面就发请求） */
+    if (WORDS.wbBankList().length <= 1) {
+      WORDS.loadBanksFromCloud((err) => {
+        this.refreshBankList();
+        if (err) wx.showToast({ title: '词库列表加载失败：' + String(err.message || err), icon: 'none' });
+      });
     }
   },
   switchBank(e) {

@@ -215,6 +215,7 @@ const CORE_EXTRA = {
              由家庭服务器 /api/wordbank 下发，经 auroraProxy 云函数代理加载，本地缓存
    · 学习记录  db.words.dailyRecords 中，非 core 词库的日期键加 '@<bankId>' 后缀，互不干扰
    ============================================================ */
+const cloudApi = require('./cloudApi.js');           // 统一走 auroraProxy 云函数（含 ready 守卫/错误包装）
 const SERVER_BASE = 'http://106.14.223.116:9000';   // 家庭服务器（与网页版 WB_PROD_BASE 一致）
 
 const WB_CORE = { id: 'core', name: '入门精练', desc: '内置 100 词 · 含例句与常用搭配', icon: '🌱', category: '基础', count: 100 };
@@ -328,19 +329,14 @@ function loadWordbank(id, cb) {
   try { const raw = wx.getStorageSync(wbLsKey(id)); if (raw && raw.words && raw.words.length) fromLocal = raw; } catch (e) {}
   if (fromLocal) { applyBank(id, fromLocal); delete WB_LOADING[id]; return cb(null, WORD_BANK); }
   /* 2) 云端（经 auroraProxy 云函数，规避小程序域名白名单） */
-  if (typeof wx === 'undefined' || !wx.cloud || !wx.cloud.callFunction) {
+  if (!cloudApi.ready()) {
     delete WB_LOADING[id];
-    return cb(new Error('当前环境不支持联网加载词库'));
+    return cb(new Error('云开发未启用：请先在开发者工具开通云开发并把环境 ID 填进 app.js'));
   }
-  wx.cloud.callFunction({
-    name: 'auroraProxy',
-    data: { url: SERVER_BASE + '/api/wordbank?id=' + encodeURIComponent(id) }
-  }).then(function (r) {
+  cloudApi.call(SERVER_BASE + '/api/wordbank?id=' + encodeURIComponent(id)).then(function (body) {
     delete WB_LOADING[id];
-    const res = (r && r.result) || {};
-    if (!res.ok) return cb(new Error(res.error || '词库加载失败'));
     let doc = null;
-    try { doc = JSON.parse(res.body); } catch (e) { return cb(new Error('词库数据解析失败')); }
+    try { doc = JSON.parse(body); } catch (e) { return cb(new Error('词库数据解析失败')); }
     if (!doc || !doc.words || !doc.words.length) return cb(new Error('词库数据为空'));
     applyBank(id, doc);
     try { wx.setStorageSync(wbLsKey(id), doc); } catch (e) {}
@@ -354,15 +350,10 @@ function loadWordbank(id, cb) {
 /* 拉取云端词库清单（/api/wordbanks），注入后可切换 */
 function loadBanksFromCloud(cb) {
   cb = cb || function () {};
-  if (typeof wx === 'undefined' || !wx.cloud || !wx.cloud.callFunction) return cb(new Error('当前环境不支持联网'));
-  wx.cloud.callFunction({
-    name: 'auroraProxy',
-    data: { url: SERVER_BASE + '/api/wordbanks' }
-  }).then(function (r) {
-    const res = (r && r.result) || {};
-    if (!res.ok) return cb(new Error(res.error || '列表加载失败'));
+  if (!cloudApi.ready()) return cb(new Error('云开发未启用'));
+  cloudApi.call(SERVER_BASE + '/api/wordbanks').then(function (body) {
     let doc = null;
-    try { doc = JSON.parse(res.body); } catch (e) { return cb(new Error('列表解析失败')); }
+    try { doc = JSON.parse(body); } catch (e) { return cb(new Error('列表解析失败')); }
     if (!doc || !doc.banks || !doc.banks.length) return cb(new Error('列表为空'));
     wbSetList(doc.banks);
     cb(null, WB_BANKS.slice());
