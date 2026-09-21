@@ -66,6 +66,7 @@ page {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  box-sizing: border-box;   /* 关键：否则 width:100% 的整行按钮会 +padding+border 溢出卡片 */
   border-radius: var(--radius-sm);
   font-size: 26rpx;
   padding: 16rpx 28rpx;
