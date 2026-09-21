@@ -1,0 +1,175 @@
+<view class="page">
+
+  <!-- ===== 每日汇总 ===== -->
+  <view class="card fit-hero">
+    <view class="fh-head">
+      <view class="fh-label">记录日期</view>
+      <picker mode="date" value="{{fitDate}}" bindchange="onFitDate">
+        <view class="picker picker-inline">{{fitDate}}</view>
+      </picker>
+    </view>
+    <view class="fh-stats">
+      <view class="fh-item">
+        <view class="fh-val amber">{{sumIntake}}</view>
+        <view class="fh-sub">摄入 kcal</view>
+      </view>
+      <view class="fh-item">
+        <view class="fh-val green">{{sumBurn}}</view>
+        <view class="fh-sub">消耗 kcal</view>
+      </view>
+      <view class="fh-item">
+        <view class="fh-val {{sumNetClass}}">{{sumNetText}}</view>
+        <view class="fh-sub">热量差额</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- ===== 体重打卡 ===== -->
+  <view class="card">
+    <view class="card-title">
+      <view class="t">体重打卡</view>
+      <view class="ws-row">
+        <block wx:if="{{weightStats}}">
+          <view class="ws-item">最新 <text class="ws-strong">{{weightStats.latest}}</text> kg</view>
+          <view wx:if="{{weightStats.hasDiff}}" class="ws-item ws-{{weightStats.diffCls}}">较首次 {{weightStats.diffStr}} kg</view>
+        </block>
+      </view>
+    </view>
+
+    <view class="form-row">
+      <view class="form-group">
+        <view class="form-label">日期</view>
+        <picker mode="date" value="{{weightDate}}" bindchange="onWeightDate">
+          <view class="picker">{{weightDate}}</view>
+        </picker>
+      </view>
+      <view class="form-group">
+        <view class="form-label">晨起体重 (kg)</view>
+        <input class="inp" type="digit" placeholder="如 58.5" value="{{weightVal}}" bindinput="onWeightVal" />
+      </view>
+      <view class="form-group auto">
+        <view class="form-label">&nbsp;</view>
+        <text class="btn btn-sm btn-primary" bindtap="addWeight">记录</text>
+      </view>
+    </view>
+
+    <view wx:if="{{weightCount < 2}}" class="empty">至少记录 2 次体重后显示趋势图（当前 {{weightCount}} 条）</view>
+    <canvas wx:else type="2d" id="weightChart" class="weight-chart"></canvas>
+  </view>
+
+  <!-- ===== 16+8 断食 ===== -->
+  <view class="card">
+    <view class="card-title"><view class="t">16+8 间歇断食</view></view>
+    <view class="form-row">
+      <view class="form-group">
+        <view class="form-label">进食开始</view>
+        <picker mode="time" value="{{fastStart}}" bindchange="onFastStart">
+          <view class="picker">{{fastStart}}</view>
+        </picker>
+      </view>
+      <view class="form-group">
+        <view class="form-label">进食结束</view>
+        <picker mode="time" value="{{fastEnd}}" bindchange="onFastEnd">
+          <view class="picker">{{fastEnd}}</view>
+        </picker>
+      </view>
+    </view>
+
+    <view class="fast-status">
+      <text class="fs-label {{fastIsEating ? 'eat' : 'fast'}}">{{fastStatusLabel}}</text>
+      <text class="fs-text">· {{fastStatusText}}</text>
+    </view>
+
+    <view class="fast-bar">
+      <view class="fast-eat" style="left:{{fastEatLeft}}%;width:{{fastEatWidth}}%">
+        <text class="fast-eat-label">进食窗口</text>
+      </view>
+      <view class="fast-now" style="left:{{fastNowLeft}}%"></view>
+    </view>
+    <view class="fast-axis">
+      <text>00:00</text><text>06:00</text><text>12:00</text><text>18:00</text><text>24:00</text>
+    </view>
+  </view>
+
+  <!-- ===== 餐食记录 ===== -->
+  <view class="card">
+    <view class="card-title">
+      <view class="t">餐食记录</view>
+      <text class="sub">AI 识图待接入</text>
+    </view>
+    <view class="form-row">
+      <view class="form-group">
+        <view class="form-label">食物描述</view>
+        <input class="inp" placeholder="如：燕麦粥+鸡蛋" value="{{mealFood}}" bindinput="onMealFood" />
+      </view>
+      <view class="form-group auto">
+        <view class="form-label">卡路里 (kcal)</view>
+        <input class="inp inp-num" type="number" placeholder="350" value="{{mealCal}}" bindinput="onMealCal" />
+      </view>
+    </view>
+    <text class="btn btn-sm btn-primary" bindtap="addMeal">添加餐食</text>
+
+    <view class="rec-list">
+      <view wx:if="{{mealList.length === 0}}" class="empty">当日暂无餐食记录</view>
+      <view wx:else class="rec-row" wx:for="{{mealList}}" wx:key="idx">
+        <view class="rec-main">
+          <view class="rec-text">{{item.food}}</view>
+          <view class="rec-sub">{{item.cal}} kcal</view>
+        </view>
+        <text class="btn-icon danger" data-idx="{{item.idx}}" bindtap="deleteMeal">✕</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- ===== 运动记录 ===== -->
+  <view class="card">
+    <view class="card-title"><view class="t">运动记录</view></view>
+    <view class="form-row">
+      <view class="form-group">
+        <view class="form-label">运动类型</view>
+        <picker range="{{exTypes}}" value="{{exTypeIndex}}" bindchange="onExType">
+          <view class="picker">{{exTypeValue || '选择类型'}}</view>
+        </picker>
+      </view>
+      <view class="form-group auto">
+        <view class="form-label">时长(分)</view>
+        <input class="inp inp-num" type="number" placeholder="30" value="{{exDur}}" bindinput="onExDur" />
+      </view>
+      <view class="form-group auto">
+        <view class="form-label">消耗(kcal)</view>
+        <input class="inp inp-num" type="number" placeholder="200" value="{{exCal}}" bindinput="onExCal" />
+      </view>
+    </view>
+    <text class="btn btn-sm btn-primary" bindtap="addExercise">添加运动</text>
+
+    <view class="rec-list">
+      <view wx:if="{{exList.length === 0}}" class="empty">当日暂无运动记录</view>
+      <view wx:else class="rec-row" wx:for="{{exList}}" wx:key="idx">
+        <view class="rec-main">
+          <view class="rec-text">{{item.type}} · {{item.dur}} 分钟</view>
+          <view class="rec-sub">消耗 {{item.cal}} kcal</view>
+        </view>
+        <text class="btn-icon danger" data-idx="{{item.idx}}" bindtap="deleteExercise">✕</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- ===== 食谱推荐 ===== -->
+  <view class="card">
+    <view class="card-title">
+      <view class="t">今日健康食谱推荐</view>
+      <text class="sub">{{recipeLabel}}</text>
+    </view>
+    <view wx:if="{{recipe}}" class="recipe-card">
+      <view class="r-name">{{recipe.name}}</view>
+      <view class="r-cal">{{recipe.cal}} kcal</view>
+      <view class="r-ing">{{recipe.ing}}</view>
+      <view class="r-desc">{{recipe.desc}}</view>
+    </view>
+    <view class="recipe-nav">
+      <text class="btn btn-sm btn-ghost" bindtap="prevRecipe">上一道</text>
+      <text class="btn btn-sm btn-ghost" bindtap="nextRecipe">换一道推荐</text>
+    </view>
+  </view>
+
+</view>

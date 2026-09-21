@@ -2,7 +2,8 @@
   "pages": [
     "pages/index/index",
     "pages/english/english",
-    "pages/earlyed/earlyed"
+    "pages/earlyed/earlyed",
+    "pages/fitness/fitness"
   ],
   "window": {
     "backgroundTextStyle": "dark",

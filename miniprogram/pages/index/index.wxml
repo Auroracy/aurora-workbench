@@ -31,6 +31,14 @@
       </view>
       <view class="e-arrow">›</view>
     </view>
+    <view class="entry-row" bindtap="goFitness">
+      <view class="e-ico">🏃</view>
+      <view class="e-main">
+        <view class="e-name">轻氧塑身日记</view>
+        <view class="e-desc small muted">体重趋势 · 16:8 断食 · 餐食与运动</view>
+      </view>
+      <view class="e-arrow">›</view>
+    </view>
   </view>
 
   <!-- ====== 待迁移 ====== -->

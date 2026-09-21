@@ -1,0 +1,96 @@
+/* ===== 每日汇总 Hero ===== */
+.fit-hero { }
+.fh-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20rpx; }
+.fh-label { font-size: 26rpx; font-weight: 700; color: var(--text-2); }
+.picker-inline { padding: 10rpx 22rpx; height: auto; line-height: 1.5; }
+
+.fh-stats { display: flex; }
+.fh-item { flex: 1; text-align: center; }
+.fh-val {
+  font-size: 44rpx; font-weight: 700; line-height: 1.2;
+  color: var(--text); font-variant-numeric: tabular-nums;
+}
+.fh-val.amber { color: var(--amber); }
+.fh-val.green { color: var(--green); }
+.fh-val.red { color: var(--red); }
+.fh-sub { font-size: 22rpx; color: var(--text-3); margin-top: 6rpx; }
+
+/* ===== 体重 ===== */
+.ws-row { display: flex; align-items: center; gap: 18rpx; flex-wrap: wrap; }
+.ws-item { font-size: 22rpx; color: var(--text-2); }
+.ws-strong { font-size: 28rpx; font-weight: 700; color: var(--text); }
+.ws-up { color: var(--amber); }
+.ws-down { color: var(--green); }
+.weight-chart { width: 100%; height: 176px; margin-top: 8rpx; }
+
+/* ===== 16+8 断食 ===== */
+.fast-status { font-size: 26rpx; font-weight: 500; margin: 6rpx 0 16rpx; }
+.fs-label.eat { color: var(--green); }
+.fs-label.fast { color: var(--accent); }
+.fs-text { color: var(--text-2); }
+
+.fast-bar {
+  position: relative; height: 46rpx; border-radius: 999rpx;
+  background: var(--line-soft); overflow: hidden;
+}
+.fast-eat {
+  position: absolute; top: 0; bottom: 0;
+  background: linear-gradient(90deg, #15A49B, #2E86C1);
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 999rpx;
+}
+.fast-eat-label { font-size: 20rpx; color: #fff; white-space: nowrap; }
+.fast-now {
+  position: absolute; top: -4rpx; bottom: -4rpx; width: 4rpx;
+  background: var(--red); border-radius: 2rpx;
+}
+.fast-axis {
+  display: flex; justify-content: space-between;
+  font-size: 20rpx; color: var(--text-3); margin-top: 10rpx;
+}
+
+/* ===== 表单 ===== */
+.form-row { display: flex; gap: 18rpx; margin-bottom: 20rpx; flex-wrap: wrap; }
+.form-group { flex: 1; min-width: 0; }
+.form-group.auto { flex: 0 0 auto; }
+.form-label { font-size: 24rpx; color: var(--text-2); margin-bottom: 12rpx; }
+.picker {
+  height: 72rpx; line-height: 72rpx; box-sizing: border-box;
+  background: var(--input-bg); border: 1rpx solid var(--line);
+  border-radius: 16rpx; padding: 0 22rpx; font-size: 26rpx;
+}
+.inp {
+  height: 72rpx; box-sizing: border-box;
+  background: var(--input-bg); border: 1rpx solid var(--line);
+  border-radius: 16rpx; padding: 0 22rpx; font-size: 26rpx;
+}
+.inp-num { width: 180rpx; }
+
+/* ===== 记录列表 ===== */
+.rec-list { margin-top: 18rpx; }
+.rec-row {
+  display: flex; align-items: center; gap: 16rpx;
+  padding: 20rpx 0; border-bottom: 1rpx solid var(--line-soft);
+}
+.rec-row:last-child { border-bottom: none; }
+.rec-main { flex: 1; min-width: 0; }
+.rec-text { font-size: 27rpx; }
+.rec-sub { font-size: 22rpx; color: var(--text-3); margin-top: 4rpx; }
+.btn-icon {
+  width: 56rpx; height: 56rpx; border-radius: 14rpx; flex: 0 0 auto;
+  background: var(--input-bg); color: var(--text-2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 30rpx; border: 1rpx solid var(--line);
+}
+.btn-icon.danger { color: var(--red); }
+
+/* ===== 食谱 ===== */
+.recipe-card {
+  background: var(--input-bg); border-radius: var(--radius-sm);
+  padding: 24rpx;
+}
+.r-name { font-size: 30rpx; font-weight: 700; }
+.r-cal { font-size: 26rpx; color: var(--accent); font-weight: 600; margin-top: 6rpx; }
+.r-ing { font-size: 24rpx; color: var(--text-2); margin-top: 12rpx; line-height: 1.7; }
+.r-desc { font-size: 22rpx; color: var(--text-3); margin-top: 10rpx; }
+.recipe-nav { display: flex; gap: 16rpx; margin-top: 18rpx; }

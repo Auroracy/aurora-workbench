@@ -12,7 +12,6 @@ Page({
     dbBytes: 0,
     netState: '', netBusy: false, netTitle: '未测试 · 点右侧「测一下」', netMsg: '', netRaw: '',
     coming: [
-      { ico: '🏃', name: '轻氧塑身日记', desc: '体重趋势 / 运动 / 16:8 断食（图表需改 canvas）' },
       { ico: '🍳', name: '食谱工坊 · 配方手记', desc: '配方与自定义食材分组' },
       { ico: '📚', name: '阅思集 · 读书札记', desc: '读书笔记与进度' },
       { ico: '📈', name: '市场瞭望 / 定投 / 新闻联播', desc: '依赖自建 API，需 https 域名后才能接入' }
@@ -59,6 +58,9 @@ Page({
   },
   goEarlyEd() {
     wx.navigateTo({ url: '/pages/earlyed/earlyed' });
+  },
+  goFitness() {
+    wx.navigateTo({ url: '/pages/fitness/fitness' });
   },
 
   /* ===== 联网自检 =====
