@@ -1,0 +1,4 @@
+# 云函数依赖不入库：部署时用「上传并部署：云端安装依赖」自动装。
+# 若本地已 npm install（node_modules 存在），也可选「上传并部署：所有文件」，更快。
+# package-lock.json 保留入库，锁定 iconv-lite 版本。
+node_modules/

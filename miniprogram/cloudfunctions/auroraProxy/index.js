@@ -31,12 +31,36 @@ const ALLOW = [
   /* 上海黄金交易所 */
   'www.sge.com.cn',
   /* 其它 */
-  'cn.govopendata.com', 'mrxwlb.com'
+  'cn.govopendata.com', 'mrxwlb.com',
+  /* 词典（英语模块查词用） */
+  'dict.youdao.com'
+];
+
+/* Referer 配方：这些接口会校验 Referer，用请求域名自身会被 403 / 404。
+ * 下面的值都是从网页版 server.js 里已跑通、验证过的写法搬过来的。 */
+const REFERER = [
+  ['sinajs.cn', 'https://finance.sina.com.cn/'],
+  ['sina.com.cn', 'https://finance.sina.com.cn/'],
+  ['1234567.com.cn', 'https://fund.eastmoney.com/'],
+  ['gtimg.cn', 'https://gu.qq.com/'],
+  ['qq.com', 'https://gu.qq.com/'],
+  ['cctv.com', 'https://tv.cctv.com/'],
+  ['youdao.com', 'https://dict.youdao.com/']
 ];
 
 function allowed(host) {
   const h = (host || '').toLowerCase();
   return ALLOW.some(function (d) { return h === d || h.endsWith('.' + d); });
+}
+
+/* 默认同源 Referer（东方财富的通用代理就是这么用的），特例查表覆盖 */
+function refererFor(u) {
+  const h = u.hostname.toLowerCase();
+  for (let i = 0; i < REFERER.length; i++) {
+    const d = REFERER[i][0];
+    if (h === d || h.endsWith('.' + d)) return REFERER[i][1];
+  }
+  return u.origin + '/';
 }
 
 function fetchUrl(rawUrl, headers, encoding) {
@@ -53,7 +77,7 @@ function fetchUrl(rawUrl, headers, encoding) {
       method: 'GET',
       headers: Object.assign({
         'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148',
-        'Referer': u.origin + '/',
+        'Referer': refererFor(u),
         'Accept': '*/*'
       }, headers || {}),
       timeout: 12000

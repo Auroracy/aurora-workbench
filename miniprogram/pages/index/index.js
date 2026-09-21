@@ -103,17 +103,23 @@ Page({
       });
   },
 
-  /* 新浪指数格式：名称,当前点数,涨跌额,涨跌率,成交量,成交额 */
+  /* 新浪行情字段布局（指数与个股同一套，实测 sh000001 共 34 段）：
+     0 名称 | 1 今开 | 2 昨收 | 3 当前 | 4 最高 | 5 最低 | 8 成交量 | 9 成交额 | 30 日期 | 31 时间
+     ※ 涨跌额/涨跌幅没有现成字段，用「当前 - 昨收」自己算，避免字段错位 */
   parseSina(body) {
     const m = String(body || '').match(/"([^"]*)"/);
     if (!m || !m[1]) return '接口通了，但内容为空（可能非交易时段，或需重试一次）。';
     const a = m[1].split(',');
-    const cur = parseFloat(a[1]);
-    if (a.length < 4 || isNaN(cur)) return '返回内容：' + m[1];
-    const chg = parseFloat(a[2]);
-    const pct = parseFloat(a[3]);
+    const pre = parseFloat(a[2]);
+    const cur = parseFloat(a[3]);
+    if (a.length < 6 || isNaN(cur) || isNaN(pre) || !pre) {
+      return '返回内容：' + m[1].slice(0, 80);
+    }
+    const chg = cur - pre;
+    const pct = chg / pre * 100;
     const sign = function (n) { return (n >= 0 ? '+' : '') + n.toFixed(2); };
-    return a[0] + '　' + cur.toFixed(2) + '　' + sign(chg) + '　' + sign(pct) + '%';
+    const when = a[30] ? '　' + a[30] + ' ' + a[31] : '';
+    return a[0] + '　' + cur.toFixed(2) + '　' + sign(chg) + '　' + sign(pct) + '%' + when;
   },
 
   /* ===== 数据迁移 ===== */
