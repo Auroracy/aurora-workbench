@@ -111,13 +111,15 @@
 
     <view class="rec-list">
       <view wx:if="{{mealList.length === 0}}" class="empty">当日暂无餐食记录</view>
-      <view wx:else class="rec-row" wx:for="{{mealList}}" wx:key="idx">
-        <view class="rec-main">
-          <view class="rec-text">{{item.food}}</view>
-          <view class="rec-sub">{{item.cal}} kcal</view>
+      <block wx:else>
+        <view class="rec-row" wx:for="{{mealList}}" wx:key="idx">
+          <view class="rec-main">
+            <view class="rec-text">{{item.food}}</view>
+            <view class="rec-sub">{{item.cal}} kcal</view>
+          </view>
+          <text class="btn-icon danger" data-idx="{{item.idx}}" bindtap="deleteMeal">✕</text>
         </view>
-        <text class="btn-icon danger" data-idx="{{item.idx}}" bindtap="deleteMeal">✕</text>
-      </view>
+      </block>
     </view>
   </view>
 
@@ -144,13 +146,15 @@
 
     <view class="rec-list">
       <view wx:if="{{exList.length === 0}}" class="empty">当日暂无运动记录</view>
-      <view wx:else class="rec-row" wx:for="{{exList}}" wx:key="idx">
-        <view class="rec-main">
-          <view class="rec-text">{{item.type}} · {{item.dur}} 分钟</view>
-          <view class="rec-sub">消耗 {{item.cal}} kcal</view>
+      <block wx:else>
+        <view class="rec-row" wx:for="{{exList}}" wx:key="idx">
+          <view class="rec-main">
+            <view class="rec-text">{{item.type}} · {{item.dur}} 分钟</view>
+            <view class="rec-sub">消耗 {{item.cal}} kcal</view>
+          </view>
+          <text class="btn-icon danger" data-idx="{{item.idx}}" bindtap="deleteExercise">✕</text>
         </view>
-        <text class="btn-icon danger" data-idx="{{item.idx}}" bindtap="deleteExercise">✕</text>
-      </view>
+      </block>
     </view>
   </view>
 
