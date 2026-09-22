@@ -10,3 +10,5 @@ data/*
 !data/wordbanks/
 !data/xwlb/
 data/wordbanks/.source-cache/
+# Cloudflare Worker 本地构建缓存（勿入库）
+cloudflare-worker/.wrangler/

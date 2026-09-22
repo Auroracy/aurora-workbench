@@ -977,7 +977,7 @@ const server = http.createServer(function (req, res) {
   if (req.method === 'OPTIONS') { res.writeHead(204, CORS); return res.end(); }
 
   if (pathname === '/health') {
-    return sendJSON(res, 200, { ok: true, ts: Date.now(), routes: ['/api/sge', '/api/sina', '/api/eastmoney/ann', '/api/eastmoney/proxy', '/api/fundgz', '/api/fundgz-batch', '/api/fund-gsz', '/api/fund-history', '/api/ifzq', '/api/qt', '/api/cctv/xwlb', '/api/cctv/xwlb-parse', '/api/db'], store: redisMode ? 'redis' : 'json-file' });
+    return sendJSON(res, 200, { ok: true, ts: Date.now(), routes: ['/api/sge', '/api/sina', '/api/eastmoney/ann', '/api/eastmoney/proxy', '/api/fundgz', '/api/fundgz-batch', '/api/fund-gsz', '/api/fund-history', '/api/ifzq', '/api/qt', '/api/cctv/xwlb', '/api/cctv/xwlb-parse', '/api/db', '/api/wordbanks', '/api/wordbank', '/api/worddef'], store: redisMode ? 'redis' : 'json-file' });
   }
 
   // 全量数据读写（Redis 优先 / JSON 文件兜底，无需 token）
