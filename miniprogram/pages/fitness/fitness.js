@@ -71,6 +71,7 @@ Page({
     fastStatusText: '',
 
     /* 餐食 */
+    mealType: '',
     mealFood: '',
     mealCal: '',
     mealCarb: '',
@@ -234,7 +235,53 @@ Page({
       weightCount: ws.length, weightStats: stats
     });
     const self = this;
-    wx.nextTick(function () { self.drawWeightChart(); });
+    wx.nextTick(function () { self.drawGoalGauge(); self.drawWeightChart(); });
+  },
+  /* 半圆环仪表盘：已减 / 目标差（对标网页版 .bh-gauge） */
+  drawGoalGauge() {
+    const ws = this.db.fitness.weights;
+    const goal = typeof this.db.fitness.goalWeight === 'number' ? this.db.fitness.goalWeight : 50;
+    let p = 0;
+    if (ws.length) {
+      const first = ws[0].weight;
+      const latest = ws[ws.length - 1].weight;
+      const lost = Math.max(0, first - latest);
+      const need = first - goal;
+      p = need > 0 ? Math.min(1, lost / need) : (lost > 0 ? 1 : 0);
+    }
+    wx.createSelectorQuery()
+      .select('#goalGauge')
+      .fields({ node: true, size: true })
+      .exec(function (res) {
+        if (!res || !res[0] || !res[0].node) return;
+        const canvas = res[0].node;
+        const ctx = canvas.getContext('2d');
+        let dpr = 2;
+        try { dpr = wx.getSystemInfoSync().pixelRatio || 2; } catch (e) { }
+        const W = Math.max(80, res[0].width);
+        const H = Math.max(50, res[0].height);
+        canvas.width = Math.round(W * dpr);
+        canvas.height = Math.round(H * dpr);
+        ctx.scale(dpr, dpr);
+        ctx.clearRect(0, 0, W, H);
+        const cx = W / 2;
+        const cy = H - 6;
+        const r = Math.min(W / 2 - 7, cy - 5);
+        ctx.lineWidth = 5;
+        ctx.lineCap = 'round';
+        /* 底轨 */
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, Math.PI, 2 * Math.PI);
+        ctx.strokeStyle = '#F2F7FA';
+        ctx.stroke();
+        /* 进度弧 */
+        if (p > 0) {
+          ctx.beginPath();
+          ctx.arc(cx, cy, r, Math.PI, Math.PI + Math.PI * p);
+          ctx.strokeStyle = '#15A49B';
+          ctx.stroke();
+        }
+      });
   },
   setGoalWeight() {
     const self = this;
@@ -341,6 +388,20 @@ Page({
       });
   },
 
+  /* ===== 快速记录（对标网页版 bh-quick-row） ===== */
+  quickRecord(e) {
+    const type = e.currentTarget.dataset.type;
+    if (type === '运动') {
+      wx.pageScrollTo({ selector: '#exCard', duration: 300 });
+      return;
+    }
+    this.setData({ mealType: type });
+    wx.pageScrollTo({ selector: '#mealCard', duration: 300 });
+  },
+  photoTodo() {
+    wx.showToast({ title: 'AI 识图待接入（需先接云函数）', icon: 'none' });
+  },
+
   /* ===== 16+8 断食 ===== */
   onFastStart(e) { this.setData({ fastStart: e.detail.value }); this.saveFasting(); },
   onFastEnd(e) { this.setData({ fastEnd: e.detail.value }); this.saveFasting(); },
@@ -397,7 +458,7 @@ Page({
     const carb = parseFloat(this.data.mealCarb) || 0;
     const protein = parseFloat(this.data.mealProtein) || 0;
     const fat = parseFloat(this.data.mealFat) || 0;
-    db.fitness.meals.push({ date: date, food: food, cal: cal, carb: carb, protein: protein, fat: fat, photo: '' });
+    db.fitness.meals.push({ date: date, food: food, cal: cal, carb: carb, protein: protein, fat: fat, type: this.data.mealType || '', photo: '' });
     store.saveDb(db);
     this.setData({ mealFood: '', mealCal: '', mealCarb: '', mealProtein: '', mealFat: '' });
     this.renderMeals();
@@ -424,7 +485,7 @@ Page({
     const all = this.db.fitness.meals;
     const items = [];
     all.forEach(function (m, i) {
-      if (m.date === date) items.push({ idx: i, food: m.food, cal: m.cal || 0 });
+      if (m.date === date) items.push({ idx: i, food: m.food, cal: m.cal || 0, type: m.type || '' });
     });
     this.setData({ mealList: items });
   },

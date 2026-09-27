@@ -1,72 +1,27 @@
 <view class="page">
 
-  <!-- ===== 今日热量 ===== -->
-  <view class="card bh-card">
-    <view class="card-title-row">
-      <view class="fh-head">
-        <view class="fh-label">记录日期</view>
-        <picker mode="date" value="{{fitDate}}" bindchange="onFitDate">
-          <view class="picker picker-inline">{{fitDate}}</view>
-        </picker>
-      </view>
-      <text class="btn btn-ghost btn-xs" bindtap="setCalorieBudget">⚙ 预算 {{calorieBudget}}</text>
-    </view>
-
-    <view class="bh-cal-row">
-      <view class="bh-tile">
-        <view class="bh-num">{{sumIntake}}</view>
-        <view class="bh-cap">🍽 饮食</view>
-      </view>
-      <view class="bh-ring" style="background: conic-gradient(var(--accent) {{ringPct}}%, var(--line-soft) 0);">
-        <view class="bh-ring-inner">
-          <view class="bh-remain {{remainCls}}">{{remainCal}}</view>
-          <view class="bh-remain-cap">还可吃 (千卡)</view>
-        </view>
-      </view>
-      <view class="bh-tile amber">
-        <view class="bh-num">{{burn09}}</view>
-        <view class="bh-cap">运动*0.9</view>
-      </view>
-    </view>
-
-    <view class="bh-macros">
-      <view class="bh-macro" wx:for="{{macros}}" wx:key="label">
-        <view class="bh-macro-head"><text>{{item.label}}</text><text>{{item.val}}/{{item.goal}}g</text></view>
-        <view class="bh-macro-track"><view class="bh-macro-fill" style="width:{{item.pct}}%;background:{{item.color}}"></view></view>
-      </view>
-    </view>
-  </view>
-
-  <!-- ===== 体重管理方案 + 体重打卡 ===== -->
+  <!-- ===== 体重管理方案（初始 / 半圆环·已减 / 目标） ===== -->
   <view class="card">
     <view class="card-title-row">
       <view class="t">⚖️ 体重管理方案</view>
       <text class="btn btn-ghost btn-xs" bindtap="setGoalWeight">🎯 目标 {{goalWeight}}kg</text>
     </view>
 
-    <view class="ws-goal-row">
-      <view class="ws-g">
-        <view class="ws-g-val">{{startWeight}}</view>
-        <view class="ws-g-cap">初始 (kg)</view>
+    <view class="bh-weight-row">
+      <view class="bh-w-item">
+        <view class="bh-w-val">{{startWeight}}</view>
+        <view class="bh-w-cap">初始 (kg)</view>
       </view>
-      <view class="ws-g">
-        <view class="ws-g-val {{lostCls}}">{{lostWeight}}</view>
-        <view class="ws-g-cap">已减 (kg)</view>
+      <view class="bh-gauge">
+        <canvas type="2d" id="goalGauge" class="gauge-canvas"></canvas>
+        <view class="bh-gauge-center">
+          <view class="gauge-num">{{lostWeight}}</view>
+          <view class="gauge-cap">已减 (kg)</view>
+        </view>
       </view>
-      <view class="ws-g">
-        <view class="ws-g-val">{{goalWeight}}</view>
-        <view class="ws-g-cap">目标 (kg)</view>
-      </view>
-    </view>
-    <view class="bar"><view class="bar-fill" style="width:{{goalPct}}%"></view></view>
-
-    <view class="card-title" style="margin-top:24rpx;">
-      <view class="t">体重打卡</view>
-      <view class="ws-row">
-        <block wx:if="{{weightStats}}">
-          <view class="ws-item">最新 <text class="ws-strong">{{weightStats.latest}}</text> kg</view>
-          <view wx:if="{{weightStats.hasDiff}}" class="ws-item ws-{{weightStats.diffCls}}">较首次 {{weightStats.diffStr}} kg</view>
-        </block>
+      <view class="bh-w-item">
+        <view class="bh-w-val">{{goalWeight}}</view>
+        <view class="bh-w-cap">目标 (kg)</view>
       </view>
     </view>
 
@@ -82,7 +37,7 @@
         <input class="inp" type="digit" placeholder="如 58.5" value="{{weightVal}}" bindinput="onWeightVal" />
       </view>
       <view class="form-group auto">
-        <view class="form-label">&nbsp;</view>
+        <view class="form-label">　</view>
         <text class="btn btn-sm btn-primary" bindtap="addWeight">记录</text>
       </view>
     </view>
@@ -91,7 +46,7 @@
     <canvas wx:else type="2d" id="weightChart" class="weight-chart"></canvas>
   </view>
 
-  <!-- ===== 16+8 断食 ===== -->
+  <!-- ===== 16+8 间歇断食 ===== -->
   <view class="card">
     <view class="card-title"><view class="t">16+8 间歇断食</view></view>
     <view class="form-row">
@@ -125,11 +80,60 @@
     </view>
   </view>
 
-  <!-- ===== 餐食记录 ===== -->
+  <!-- ===== 今日热量（大圆环 + 摄入/消耗 + 三大宏量营养） ===== -->
   <view class="card">
+    <view class="card-title-row">
+      <view class="t">🔥 今日热量 <text class="ai-badge">16:8 饮食</text></view>
+      <text class="btn btn-ghost btn-xs" bindtap="setCalorieBudget">⚙ 预算 {{calorieBudget}}</text>
+    </view>
+
+    <view class="fh-head">
+      <view class="fh-label">记录日期</view>
+      <picker mode="date" value="{{fitDate}}" bindchange="onFitDate">
+        <view class="picker picker-inline">{{fitDate}}</view>
+      </picker>
+    </view>
+
+    <view class="bh-cal-row">
+      <view class="bh-tile">
+        <view class="bh-tile-num">{{sumIntake}}</view>
+        <view class="bh-tile-cap">📋 饮食</view>
+      </view>
+      <view class="bh-ring" style="background: conic-gradient(var(--accent) {{ringPct}}%, var(--input-bg) 0);">
+        <view class="bh-ring-inner">
+          <view class="bh-remain {{remainCls}}">{{remainCal}}</view>
+          <view class="bh-remain-cap">还可以吃 (千卡)</view>
+        </view>
+      </view>
+      <view class="bh-tile amber">
+        <view class="bh-tile-num">{{burn09}}</view>
+        <view class="bh-tile-cap">运动*0.9</view>
+      </view>
+    </view>
+
+    <view class="bh-macros">
+      <view class="bh-macro" wx:for="{{macros}}" wx:key="label">
+        <view class="bh-macro-head"><text>{{item.label}}</text><text>{{item.val}}/{{item.goal}}克</text></view>
+        <view class="bh-macro-track"><view class="bh-macro-fill" style="width:{{item.pct}}%;background:{{item.color}}"></view></view>
+      </view>
+    </view>
+
+    <view class="bh-quick-row">
+      <view class="bh-quick" bindtap="quickRecord" data-type="早餐"><view class="bh-quick-ico">🍳</view><view class="bh-quick-txt">早餐</view></view>
+      <view class="bh-quick" bindtap="quickRecord" data-type="午餐"><view class="bh-quick-ico">🍔</view><view class="bh-quick-txt">午餐</view></view>
+      <view class="bh-quick" bindtap="quickRecord" data-type="晚餐"><view class="bh-quick-ico">🍲</view><view class="bh-quick-txt">晚餐</view></view>
+      <view class="bh-quick" bindtap="quickRecord" data-type="加餐"><view class="bh-quick-ico">🍎</view><view class="bh-quick-txt">加餐</view></view>
+      <view class="bh-quick" bindtap="quickRecord" data-type="运动"><view class="bh-quick-ico">👟</view><view class="bh-quick-txt">运动</view></view>
+    </view>
+
+    <view class="bh-photo-btn" bindtap="photoTodo">📷 拍照识别</view>
+  </view>
+
+  <!-- ===== 餐食记录 ===== -->
+  <view class="card" id="mealCard">
     <view class="card-title">
       <view class="t">餐食记录</view>
-      <text class="sub">AI 识图待接入</text>
+      <text class="sub">餐次：{{mealType || '未指定'}}</text>
     </view>
     <view class="form-row">
       <view class="form-group">
@@ -162,7 +166,7 @@
       <block wx:else>
         <view class="rec-row" wx:for="{{mealList}}" wx:key="idx">
           <view class="rec-main">
-            <view class="rec-text">{{item.food}}</view>
+            <view class="rec-text">{{item.type ? item.type + ' · ' : ''}}{{item.food}}</view>
             <view class="rec-sub">{{item.cal}} kcal</view>
           </view>
           <text class="btn-icon danger" data-idx="{{item.idx}}" bindtap="deleteMeal">✕</text>
@@ -172,7 +176,7 @@
   </view>
 
   <!-- ===== 运动记录 ===== -->
-  <view class="card">
+  <view class="card" id="exCard">
     <view class="card-title"><view class="t">运动记录</view></view>
     <view class="form-row">
       <view class="form-group">

@@ -1,54 +1,80 @@
-/* ===== 通用：标题行 + 超小按钮 ===== */
+/* ===== 通用：标题行 / 超小按钮 / 徽章 ===== */
 .card-title-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20rpx; }
 .card-title-row .t { font-size: 30rpx; font-weight: 700; letter-spacing: 1rpx; }
 .btn-xs { padding: 8rpx 16rpx; font-size: 22rpx; border-radius: 12rpx; }
+.ai-badge {
+  display: inline-block; margin-left: 8rpx; vertical-align: middle;
+  font-size: 20rpx; font-weight: 600; color: var(--accent);
+  background: var(--accent-bg); padding: 2rpx 12rpx; border-radius: 999rpx;
+}
 
-/* ===== 今日热量 Hero ===== */
-.bh-card { }
-.fh-head { display: flex; align-items: center; gap: 14rpx; }
-.fh-label { font-size: 26rpx; font-weight: 700; color: var(--text-2); }
-.picker-inline { padding: 10rpx 22rpx; height: auto; line-height: 1.5; }
+/* ===== 体重管理方案（初始 / 半圆环 / 目标） ===== */
+.bh-weight-row {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 12rpx; margin: 8rpx 0 22rpx;
+}
+.bh-w-item { flex: 1; text-align: center; }
+.bh-w-val { font-size: 44rpx; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1.2; }
+.bh-w-cap { font-size: 22rpx; color: var(--text-3); margin-top: 2rpx; }
+.bh-gauge { position: relative; flex: 0 0 auto; width: 240rpx; height: 134rpx; }
+.gauge-canvas { width: 240rpx; height: 134rpx; }
+.bh-gauge-center { position: absolute; left: 0; right: 0; bottom: 2rpx; text-align: center; }
+.gauge-num { font-size: 40rpx; font-weight: 700; color: var(--accent); line-height: 1.1; font-variant-numeric: tabular-nums; }
+.gauge-cap { font-size: 20rpx; color: var(--text-3); }
+.weight-chart { width: 100%; height: 176px; margin-top: 8rpx; }
 
-.bh-cal-row { display: flex; align-items: center; justify-content: space-between; gap: 18rpx; }
-.bh-tile { flex: 0 0 auto; width: 150rpx; text-align: center; }
-.bh-num { font-size: 44rpx; font-weight: 700; line-height: 1.2; color: var(--text); font-variant-numeric: tabular-nums; }
-.bh-tile.amber .bh-num { color: var(--amber); }
-.bh-cap { font-size: 22rpx; color: var(--text-3); margin-top: 6rpx; }
+/* ===== 今日热量 ===== */
+.fh-head { display: flex; align-items: center; gap: 14rpx; margin-bottom: 18rpx; }
+.fh-label { font-size: 24rpx; font-weight: 700; color: var(--text-2); }
+.picker-inline { padding: 8rpx 22rpx; height: auto; line-height: 1.5; }
+
+.bh-cal-row { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; }
+.bh-tile {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4rpx; padding: 20rpx 4rpx; border-radius: 16rpx; background: var(--accent-bg);
+}
+.bh-tile-num { font-size: 44rpx; font-weight: 700; color: var(--accent); line-height: 1.2; font-variant-numeric: tabular-nums; }
+.bh-tile-cap { font-size: 22rpx; color: var(--text-2); }
+.bh-tile.amber { background: var(--amber-bg); }
+.bh-tile.amber .bh-tile-num { color: var(--amber); }
 
 .bh-ring {
-  position: relative; width: 200rpx; height: 200rpx; border-radius: 50%;
-  margin: 0 auto; transition: background .35s ease;
+  position: relative; flex: 0 0 auto; width: 198rpx; height: 198rpx;
+  border-radius: 50%; transition: background .4s ease;
 }
 .bh-ring-inner {
-  position: absolute; inset: 22rpx; border-radius: 50%; background: var(--card);
+  position: absolute; inset: 26rpx; border-radius: 50%; background: var(--card);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  box-shadow: inset 0 2rpx 10rpx rgba(27, 42, 53, 0.05);
 }
-.bh-remain { font-size: 40rpx; font-weight: 700; color: var(--accent); line-height: 1.15; font-variant-numeric: tabular-nums; }
+.bh-remain { font-size: 40rpx; font-weight: 700; color: var(--accent); line-height: 1.1; font-variant-numeric: tabular-nums; }
 .bh-remain.zero { color: var(--red); }
-.bh-remain-cap { font-size: 20rpx; color: var(--text-3); margin-top: 4rpx; }
+.bh-remain-cap { font-size: 18rpx; color: var(--text-3); margin-top: 2rpx; }
 
-.bh-macros { margin-top: 24rpx; }
-.bh-macro { margin-bottom: 16rpx; }
-.bh-macro:last-child { margin-bottom: 0; }
-.bh-macro-head { display: flex; justify-content: space-between; font-size: 22rpx; color: var(--text-2); margin-bottom: 8rpx; }
-.bh-macro-track { height: 14rpx; border-radius: 999rpx; background: var(--line-soft); overflow: hidden; }
-.bh-macro-fill { height: 100%; border-radius: 999rpx; transition: width .35s ease; }
+.bh-macros { display: flex; gap: 14rpx; margin-top: 24rpx; }
+.bh-macro { flex: 1; min-width: 0; }
+.bh-macro-head {
+  display: flex; justify-content: space-between; gap: 6rpx;
+  font-size: 19rpx; color: var(--text-2); margin-bottom: 8rpx;
+}
+.bh-macro-head text { white-space: nowrap; }
+.bh-macro-track { height: 12rpx; border-radius: 999rpx; background: var(--input-bg); overflow: hidden; }
+.bh-macro-fill { height: 100%; border-radius: 999rpx; transition: width .4s ease; }
 
-/* ===== 体重管理方案 ===== */
-.ws-goal-row { display: flex; margin-bottom: 16rpx; }
-.ws-g { flex: 1; text-align: center; }
-.ws-g-val { font-size: 38rpx; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1.2; }
-.ws-g-val.down { color: var(--green); }
-.ws-g-cap { font-size: 22rpx; color: var(--text-3); margin-top: 4rpx; }
+.bh-quick-row { display: flex; justify-content: space-between; gap: 10rpx; margin: 26rpx 0 18rpx; }
+.bh-quick {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6rpx;
+  padding: 16rpx 2rpx; background: var(--input-bg); border-radius: 16rpx;
+}
+.bh-quick:active { background: var(--accent-bg); }
+.bh-quick-ico { font-size: 34rpx; line-height: 1; }
+.bh-quick-txt { font-size: 20rpx; font-weight: 600; color: var(--text-2); }
 
-/* ===== 体重 ===== */
-.ws-row { display: flex; align-items: center; gap: 18rpx; flex-wrap: wrap; }
-.ws-item { font-size: 22rpx; color: var(--text-2); }
-.ws-strong { font-size: 28rpx; font-weight: 700; color: var(--text); }
-.ws-up { color: var(--amber); }
-.ws-down { color: var(--green); }
-.weight-chart { width: 100%; height: 176px; margin-top: 8rpx; }
+.bh-photo-btn {
+  display: flex; align-items: center; justify-content: center; gap: 8rpx;
+  padding: 20rpx; border-radius: 999rpx;
+  background: var(--accent-bg); color: var(--accent); font-weight: 600; font-size: 26rpx;
+}
+.bh-photo-btn:active { opacity: .8; }
 
 /* ===== 16+8 断食 ===== */
 .fast-status { font-size: 26rpx; font-weight: 500; margin: 6rpx 0 16rpx; }
