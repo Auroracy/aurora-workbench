@@ -7,7 +7,8 @@ function defaultDb() {
     earlyEd: { totalHours: 48, records: [], customCourses: [] },
     fitness: {
       fastStart: '08:00', fastEnd: '16:00',
-      meals: [], weights: [], exercises: [], recipeIdx: 0
+      meals: [], weights: [], exercises: [], recipeIdx: 0,
+      goalWeight: 50, calorieBudget: 1300
     },
     words: {
       bank: 'core',

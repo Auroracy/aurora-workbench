@@ -1,19 +1,46 @@
-/* ===== 每日汇总 Hero ===== */
-.fit-hero { }
-.fh-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20rpx; }
+/* ===== 通用：标题行 + 超小按钮 ===== */
+.card-title-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20rpx; }
+.card-title-row .t { font-size: 30rpx; font-weight: 700; letter-spacing: 1rpx; }
+.btn-xs { padding: 8rpx 16rpx; font-size: 22rpx; border-radius: 12rpx; }
+
+/* ===== 今日热量 Hero ===== */
+.bh-card { }
+.fh-head { display: flex; align-items: center; gap: 14rpx; }
 .fh-label { font-size: 26rpx; font-weight: 700; color: var(--text-2); }
 .picker-inline { padding: 10rpx 22rpx; height: auto; line-height: 1.5; }
 
-.fh-stats { display: flex; }
-.fh-item { flex: 1; text-align: center; }
-.fh-val {
-  font-size: 44rpx; font-weight: 700; line-height: 1.2;
-  color: var(--text); font-variant-numeric: tabular-nums;
+.bh-cal-row { display: flex; align-items: center; justify-content: space-between; gap: 18rpx; }
+.bh-tile { flex: 0 0 auto; width: 150rpx; text-align: center; }
+.bh-num { font-size: 44rpx; font-weight: 700; line-height: 1.2; color: var(--text); font-variant-numeric: tabular-nums; }
+.bh-tile.amber .bh-num { color: var(--amber); }
+.bh-cap { font-size: 22rpx; color: var(--text-3); margin-top: 6rpx; }
+
+.bh-ring {
+  position: relative; width: 200rpx; height: 200rpx; border-radius: 50%;
+  margin: 0 auto; transition: background .35s ease;
 }
-.fh-val.amber { color: var(--amber); }
-.fh-val.green { color: var(--green); }
-.fh-val.red { color: var(--red); }
-.fh-sub { font-size: 22rpx; color: var(--text-3); margin-top: 6rpx; }
+.bh-ring-inner {
+  position: absolute; inset: 22rpx; border-radius: 50%; background: var(--card);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  box-shadow: inset 0 2rpx 10rpx rgba(27, 42, 53, 0.05);
+}
+.bh-remain { font-size: 40rpx; font-weight: 700; color: var(--accent); line-height: 1.15; font-variant-numeric: tabular-nums; }
+.bh-remain.zero { color: var(--red); }
+.bh-remain-cap { font-size: 20rpx; color: var(--text-3); margin-top: 4rpx; }
+
+.bh-macros { margin-top: 24rpx; }
+.bh-macro { margin-bottom: 16rpx; }
+.bh-macro:last-child { margin-bottom: 0; }
+.bh-macro-head { display: flex; justify-content: space-between; font-size: 22rpx; color: var(--text-2); margin-bottom: 8rpx; }
+.bh-macro-track { height: 14rpx; border-radius: 999rpx; background: var(--line-soft); overflow: hidden; }
+.bh-macro-fill { height: 100%; border-radius: 999rpx; transition: width .35s ease; }
+
+/* ===== 体重管理方案 ===== */
+.ws-goal-row { display: flex; margin-bottom: 16rpx; }
+.ws-g { flex: 1; text-align: center; }
+.ws-g-val { font-size: 38rpx; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1.2; }
+.ws-g-val.down { color: var(--green); }
+.ws-g-cap { font-size: 22rpx; color: var(--text-3); margin-top: 4rpx; }
 
 /* ===== 体重 ===== */
 .ws-row { display: flex; align-items: center; gap: 18rpx; flex-wrap: wrap; }

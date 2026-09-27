@@ -27,16 +27,34 @@ function fmtRemain(nowMin, targetMin) {
   if (diff < 0) diff += 1440;
   return Math.floor(diff / 60) + '小时' + (diff % 60) + '分钟';
 }
+function macroPct(val, goal) { return goal > 0 ? Math.min(100, Math.round(val / goal * 100)) : 0; }
 
 Page({
   data: {
     today: '',
     fitDate: '',
 
-    /* 每日汇总 */
-    sumIntake: 0, sumBurn: 0, sumNet: 0, sumNetClass: '', sumNetText: '0',
+    /* 今日热量（对标网页版「今日热量」大圆环） */
+    calorieBudget: 1300,
+    sumIntake: 0,
+    burn09: 0,
+    remainCal: 0,
+    ringPct: 0,
+    remainCls: '',
+    macros: [
+      { label: '碳水化合物', val: 0, goal: 0, pct: 0, color: '#15A49B' },
+      { label: '蛋白质', val: 0, goal: 0, pct: 0, color: '#2E86C1' },
+      { label: '脂肪', val: 0, goal: 0, pct: 0, color: '#E8A23C' }
+    ],
 
-    /* 体重 */
+    /* 体重管理方案（对标网页版「体重管理方案」半圆环） */
+    goalWeight: 50,
+    startWeight: '--',
+    lostWeight: '0.0',
+    lostCls: '',
+    goalPct: 0,
+
+    /* 体重打卡 */
     weightDate: '',
     weightVal: '',
     weightCount: 0,
@@ -55,6 +73,9 @@ Page({
     /* 餐食 */
     mealFood: '',
     mealCal: '',
+    mealCarb: '',
+    mealProtein: '',
+    mealFat: '',
     mealList: [],
 
     /* 运动 */
@@ -118,6 +139,9 @@ Page({
   onWeightVal(e) { this.setData({ weightVal: e.detail.value }); },
   onMealFood(e) { this.setData({ mealFood: e.detail.value }); },
   onMealCal(e) { this.setData({ mealCal: e.detail.value }); },
+  onMealCarb(e) { this.setData({ mealCarb: e.detail.value }); },
+  onMealProtein(e) { this.setData({ mealProtein: e.detail.value }); },
+  onMealFat(e) { this.setData({ mealFat: e.detail.value }); },
   onExDur(e) { this.setData({ exDur: e.detail.value }); },
   onExCal(e) { this.setData({ exCal: e.detail.value }); },
   onExType(e) {
@@ -125,24 +149,109 @@ Page({
     this.setData({ exTypeIndex: i, exTypeValue: EX_TYPES[i] || '' });
   },
 
-  /* ===== 每日汇总 ===== */
+  /* ===== 今日热量 ===== */
   renderSummary() {
     const db = this.db;
     const date = this.data.fitDate || todayStr();
-    let intake = 0, burn = 0;
-    db.fitness.meals.forEach(function (m) { if (m.date === date) intake += (m.cal || 0); });
+    let intake = 0, burn = 0, carb = 0, protein = 0, fat = 0;
+    db.fitness.meals.forEach(function (m) {
+      if (m.date === date) {
+        intake += (m.cal || 0);
+        carb += (m.carb || 0);
+        protein += (m.protein || 0);
+        fat += (m.fat || 0);
+      }
+    });
     db.fitness.exercises.forEach(function (x) { if (x.date === date) burn += (x.cal || 0); });
-    const net = intake - burn;
-    let cls = '';
-    if (net > 500) cls = 'amber';
-    else if (net < 0) cls = 'green';
+    const budget = typeof db.fitness.calorieBudget === 'number' ? db.fitness.calorieBudget : 1300;
+    const burn09 = Math.round(burn * 0.9);                 // 运动消耗按 0.9 折算计入预算（同网页版/薄荷口径）
+    const remain = Math.max(0, budget - intake + burn09);   // 还可以吃
+    const ratio = (budget + burn09) > 0 ? Math.min(1, intake / (budget + burn09)) : 0;
+    const macros = [
+      { label: '碳水化合物', val: round2(carb), goal: Math.round(budget * 0.5 / 4), pct: macroPct(carb, budget * 0.5 / 4), color: '#15A49B' },
+      { label: '蛋白质', val: round2(protein), goal: Math.round(budget * 0.25 / 4), pct: macroPct(protein, budget * 0.25 / 4), color: '#2E86C1' },
+      { label: '脂肪', val: round2(fat), goal: Math.round(budget * 0.25 / 9), pct: macroPct(fat, budget * 0.25 / 9), color: '#E8A23C' }
+    ];
     this.setData({
-      sumIntake: intake, sumBurn: burn, sumNet: net, sumNetClass: cls,
-      sumNetText: (net >= 0 ? '+' : '') + net
+      calorieBudget: budget,
+      sumIntake: intake,
+      burn09: burn09,
+      remainCal: remain,
+      ringPct: Math.round(ratio * 100),
+      remainCls: remain <= 0 ? 'zero' : '',
+      macros: macros
+    });
+  },
+  setCalorieBudget() {
+    const self = this;
+    wx.showModal({
+      title: '每日热量预算', editable: true, placeholderText: '如 1300',
+      content: String(this.data.calorieBudget || 1300),
+      success: function (res) {
+        if (!res.confirm) return;
+        const n = parseInt(res.content, 10);
+        if (!n || n <= 0) { wx.showToast({ title: '请输入有效数值', icon: 'none' }); return; }
+        self.db.fitness.calorieBudget = n;
+        store.saveDb(self.db);
+        self.renderSummary();
+        wx.showToast({ title: '预算已更新', icon: 'success' });
+      }
     });
   },
 
-  /* ===== 体重 ===== */
+  /* ===== 体重管理方案 + 体重打卡 ===== */
+  renderWeight() {
+    const ws = this.db.fitness.weights;
+    let stats = null;
+    if (ws.length) {
+      const latest = ws[ws.length - 1];
+      const first = ws[0];
+      const diff = +(latest.weight - first.weight).toFixed(1);
+      stats = {
+        latestDate: latest.date ? String(latest.date).slice(5) : '',
+        latest: latest.weight,
+        hasDiff: ws.length > 1,
+        diffStr: (diff > 0 ? '+' : '') + diff.toFixed(1),
+        diffCls: diff > 0 ? 'up' : (diff < 0 ? 'down' : '')
+      };
+    }
+    /* 体重管理方案：初始 / 已减 / 目标 + 进度 */
+    const goal = typeof this.db.fitness.goalWeight === 'number' ? this.db.fitness.goalWeight : 50;
+    let startWeight = '--', lostWeight = '0.0', lostCls = '', goalPct = 0;
+    if (ws.length) {
+      const first = ws[0].weight;
+      const latest = ws[ws.length - 1].weight;
+      const lost = Math.max(0, first - latest);
+      startWeight = String(first);
+      lostWeight = lost.toFixed(1);
+      lostCls = lost > 0 ? 'down' : '';
+      const need = first - goal;
+      goalPct = need > 0 ? Math.min(100, Math.round(lost / need * 100)) : (lost > 0 ? 100 : 0);
+    }
+    this.setData({
+      goalWeight: goal, startWeight: startWeight, lostWeight: lostWeight,
+      lostCls: lostCls, goalPct: goalPct,
+      weightCount: ws.length, weightStats: stats
+    });
+    const self = this;
+    wx.nextTick(function () { self.drawWeightChart(); });
+  },
+  setGoalWeight() {
+    const self = this;
+    wx.showModal({
+      title: '目标体重', editable: true, placeholderText: '如 50',
+      content: String(this.data.goalWeight || 50),
+      success: function (res) {
+        if (!res.confirm) return;
+        const n = parseFloat(res.content);
+        if (!n || n <= 0) { wx.showToast({ title: '请输入有效体重', icon: 'none' }); return; }
+        self.db.fitness.goalWeight = Math.round(n * 10) / 10;
+        store.saveDb(self.db);
+        self.renderWeight();
+        wx.showToast({ title: '目标已更新', icon: 'success' });
+      }
+    });
+  },
   addWeight() {
     const db = this.db;
     const date = this.data.weightDate || todayStr();
@@ -163,30 +272,11 @@ Page({
     wx.showToast({ title: '体重已记录', icon: 'success' });
   },
 
-  renderWeight() {
-    const ws = this.db.fitness.weights;
-    let stats = null;
-    if (ws.length) {
-      const latest = ws[ws.length - 1];
-      const first = ws[0];
-      const diff = +(latest.weight - first.weight).toFixed(1);
-      stats = {
-        latestDate: latest.date ? String(latest.date).slice(5) : '',
-        latest: latest.weight,
-        hasDiff: ws.length > 1,
-        diffStr: (diff > 0 ? '+' : '') + diff.toFixed(1),
-        diffCls: diff > 0 ? 'up' : (diff < 0 ? 'down' : '')
-      };
-    }
-    this.setData({ weightCount: ws.length, weightStats: stats });
-    const self = this;
-    wx.nextTick(function () { self.drawWeightChart(); });
-  },
-
   /* canvas 2d 折线图 */
   drawWeightChart() {
     const ws = this.db.fitness.weights;
     if (ws.length < 2) return;
+    const self = this;
     wx.createSelectorQuery()
       .select('#weightChart')
       .fields({ node: true, size: true })
@@ -304,9 +394,12 @@ Page({
     const food = (this.data.mealFood || '').trim();
     const cal = parseInt(this.data.mealCal, 10) || 0;
     if (!food) { wx.showToast({ title: '请输入食物描述', icon: 'none' }); return; }
-    db.fitness.meals.push({ date: date, food: food, cal: cal, photo: '' });
+    const carb = parseFloat(this.data.mealCarb) || 0;
+    const protein = parseFloat(this.data.mealProtein) || 0;
+    const fat = parseFloat(this.data.mealFat) || 0;
+    db.fitness.meals.push({ date: date, food: food, cal: cal, carb: carb, protein: protein, fat: fat, photo: '' });
     store.saveDb(db);
-    this.setData({ mealFood: '', mealCal: '' });
+    this.setData({ mealFood: '', mealCal: '', mealCarb: '', mealProtein: '', mealFat: '' });
     this.renderMeals();
     this.renderSummary();
     wx.showToast({ title: '餐食已记录', icon: 'success' });

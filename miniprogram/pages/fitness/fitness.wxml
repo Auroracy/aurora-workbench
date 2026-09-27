@@ -1,32 +1,66 @@
 <view class="page">
 
-  <!-- ===== 每日汇总 ===== -->
-  <view class="card fit-hero">
-    <view class="fh-head">
-      <view class="fh-label">记录日期</view>
-      <picker mode="date" value="{{fitDate}}" bindchange="onFitDate">
-        <view class="picker picker-inline">{{fitDate}}</view>
-      </picker>
+  <!-- ===== 今日热量 ===== -->
+  <view class="card bh-card">
+    <view class="card-title-row">
+      <view class="fh-head">
+        <view class="fh-label">记录日期</view>
+        <picker mode="date" value="{{fitDate}}" bindchange="onFitDate">
+          <view class="picker picker-inline">{{fitDate}}</view>
+        </picker>
+      </view>
+      <text class="btn btn-ghost btn-xs" bindtap="setCalorieBudget">⚙ 预算 {{calorieBudget}}</text>
     </view>
-    <view class="fh-stats">
-      <view class="fh-item">
-        <view class="fh-val amber">{{sumIntake}}</view>
-        <view class="fh-sub">摄入 kcal</view>
+
+    <view class="bh-cal-row">
+      <view class="bh-tile">
+        <view class="bh-num">{{sumIntake}}</view>
+        <view class="bh-cap">🍽 饮食</view>
       </view>
-      <view class="fh-item">
-        <view class="fh-val green">{{sumBurn}}</view>
-        <view class="fh-sub">消耗 kcal</view>
+      <view class="bh-ring" style="background: conic-gradient(var(--accent) {{ringPct}}%, var(--line-soft) 0);">
+        <view class="bh-ring-inner">
+          <view class="bh-remain {{remainCls}}">{{remainCal}}</view>
+          <view class="bh-remain-cap">还可吃 (千卡)</view>
+        </view>
       </view>
-      <view class="fh-item">
-        <view class="fh-val {{sumNetClass}}">{{sumNetText}}</view>
-        <view class="fh-sub">热量差额</view>
+      <view class="bh-tile amber">
+        <view class="bh-num">{{burn09}}</view>
+        <view class="bh-cap">运动*0.9</view>
+      </view>
+    </view>
+
+    <view class="bh-macros">
+      <view class="bh-macro" wx:for="{{macros}}" wx:key="label">
+        <view class="bh-macro-head"><text>{{item.label}}</text><text>{{item.val}}/{{item.goal}}g</text></view>
+        <view class="bh-macro-track"><view class="bh-macro-fill" style="width:{{item.pct}}%;background:{{item.color}}"></view></view>
       </view>
     </view>
   </view>
 
-  <!-- ===== 体重打卡 ===== -->
+  <!-- ===== 体重管理方案 + 体重打卡 ===== -->
   <view class="card">
-    <view class="card-title">
+    <view class="card-title-row">
+      <view class="t">⚖️ 体重管理方案</view>
+      <text class="btn btn-ghost btn-xs" bindtap="setGoalWeight">🎯 目标 {{goalWeight}}kg</text>
+    </view>
+
+    <view class="ws-goal-row">
+      <view class="ws-g">
+        <view class="ws-g-val">{{startWeight}}</view>
+        <view class="ws-g-cap">初始 (kg)</view>
+      </view>
+      <view class="ws-g">
+        <view class="ws-g-val {{lostCls}}">{{lostWeight}}</view>
+        <view class="ws-g-cap">已减 (kg)</view>
+      </view>
+      <view class="ws-g">
+        <view class="ws-g-val">{{goalWeight}}</view>
+        <view class="ws-g-cap">目标 (kg)</view>
+      </view>
+    </view>
+    <view class="bar"><view class="bar-fill" style="width:{{goalPct}}%"></view></view>
+
+    <view class="card-title" style="margin-top:24rpx;">
       <view class="t">体重打卡</view>
       <view class="ws-row">
         <block wx:if="{{weightStats}}">
@@ -105,6 +139,20 @@
       <view class="form-group auto">
         <view class="form-label">卡路里 (kcal)</view>
         <input class="inp inp-num" type="number" placeholder="350" value="{{mealCal}}" bindinput="onMealCal" />
+      </view>
+    </view>
+    <view class="form-row macros-in">
+      <view class="form-group auto">
+        <view class="form-label">碳水 (g)</view>
+        <input class="inp inp-num" type="digit" placeholder="0" value="{{mealCarb}}" bindinput="onMealCarb" />
+      </view>
+      <view class="form-group auto">
+        <view class="form-label">蛋白 (g)</view>
+        <input class="inp inp-num" type="digit" placeholder="0" value="{{mealProtein}}" bindinput="onMealProtein" />
+      </view>
+      <view class="form-group auto">
+        <view class="form-label">脂肪 (g)</view>
+        <input class="inp inp-num" type="digit" placeholder="0" value="{{mealFat}}" bindinput="onMealFat" />
       </view>
     </view>
     <text class="btn btn-sm btn-primary" bindtap="addMeal">添加餐食</text>
