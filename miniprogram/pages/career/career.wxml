@@ -145,7 +145,7 @@
       <view wx:if="{{wrongGroups.length===0}}" class="empty">还没有错题记录。去「自测」答题，答错的题会自动记到这里。</view>
       <block wx:else>
         <view class="career-wrong-group" wx:for="{{wrongGroups}}" wx:key="date">
-          <view class="career-wrong-group-head"><text>{{item.label}}</text><text>错 {{item.count}} 题</text></view>
+          <view class="career-wrong-group-head"><text>{{item.label}}</text><text class="career-wrong-count">错 {{item.count}} 题</text></view>
           <view class="career-wrong-item" wx:for="{{item.items}}" wx:for-item="w" wx:key="id">
             <view class="career-wrong-meta">
               <text wx:if="{{w.subject}}" class="chip">{{w.subject}}</text>
