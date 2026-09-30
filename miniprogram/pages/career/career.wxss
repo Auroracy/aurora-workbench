@@ -1,0 +1,134 @@
+/* 事业编备考 · 移植网页版视觉（px→rpx，复用全局主题变量） */
+.career-page { padding-bottom: 160rpx; }
+
+.career-hint { font-size: 22rpx; color: var(--text-3); margin: -8rpx 0 4rpx; }
+
+/* 统计 */
+.career-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120rpx, 1fr)); gap: 16rpx; margin: 16rpx 0 20rpx; }
+.career-stat { background: var(--input-bg); border-radius: var(--radius-sm); padding: 18rpx 12rpx; text-align: center; }
+.career-stat .b { display: block; font-size: 40rpx; color: var(--accent); line-height: 1.1; font-weight: 700; font-variant-numeric: tabular-nums; }
+.career-stat .s { font-size: 22rpx; color: var(--text-3); }
+.career-stat-red .b { color: var(--red); }
+
+.career-actions { display: flex; gap: 12rpx; flex-wrap: wrap; }
+
+/* 下拉选择框 */
+.career-pick-box { display: flex; align-items: center; gap: 10rpx; background: var(--input-bg); border-radius: 14rpx; padding: 14rpx 20rpx; font-size: 24rpx; color: var(--text-2); }
+.career-book-filter { margin-bottom: 16rpx; }
+.career-pick-label { color: var(--text-3); flex: 0 0 auto; }
+.career-pick-val { color: var(--text); font-weight: 500; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.career-pick { color: var(--text-3); font-size: 20rpx; }
+.career-filter-row { display: flex; gap: 16rpx; flex-wrap: wrap; margin-bottom: 16rpx; }
+
+/* 知识书 */
+.career-subject { background: var(--card); border: 1rpx solid var(--line-soft); border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 16rpx; }
+.career-subject-head, .career-chapter-head { display: flex; align-items: center; gap: 12rpx; padding: 18rpx 22rpx; }
+.career-toggle { color: var(--accent); font-size: 22rpx; width: 28rpx; text-align: center; flex: 0 0 auto; }
+.career-book-head { cursor: pointer; }
+.career-book-emoji { font-size: 38rpx; flex: 0 0 auto; }
+.career-book-meta { flex: 1; min-width: 0; }
+.career-book-title { font-weight: 600; color: var(--text); font-size: 28rpx; line-height: 1.3; }
+.career-book-sub { font-size: 22rpx; color: var(--text-3); margin-top: 4rpx; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.career-count { margin-left: auto; font-size: 22rpx; color: var(--text-3); background: var(--input-bg); padding: 4rpx 16rpx; border-radius: 999rpx; flex: 0 0 auto; }
+.career-book-desc { font-size: 24rpx; color: var(--text-2); line-height: 1.6; padding: 16rpx 22rpx; background: var(--input-bg); border-radius: 12rpx; margin: 0 22rpx 16rpx; }
+.career-chapters { padding: 0 22rpx 16rpx 56rpx; }
+.career-chapter { margin: 12rpx 0; background: var(--input-bg); border-radius: var(--radius-sm); border: 1rpx solid var(--line-soft); }
+.career-ch-name { flex: 1; min-width: 0; font-size: 26rpx; color: var(--text); }
+.career-points { padding: 0 18rpx 18rpx 52rpx; display: flex; flex-direction: column; gap: 14rpx; }
+.career-point { background: var(--card); border: 1rpx solid var(--line-soft); border-radius: 12rpx; padding: 18rpx 22rpx; }
+.career-point-title { font-weight: 600; color: var(--text); margin-bottom: 8rpx; }
+.career-point-content { font-size: 24rpx; color: var(--text-2); line-height: 1.6; }
+.career-point.lv-high { background: linear-gradient(0deg, rgba(255, 235, 235, 0.5), var(--card)); border-left: 6rpx solid var(--red); }
+.career-point.lv-mid { border-left: 6rpx solid var(--amber); }
+.career-lvl { font-size: 20rpx; padding: 2rpx 12rpx; border-radius: 999rpx; vertical-align: middle; margin-left: 8rpx; }
+.career-lvl.high { background: var(--red-bg); color: var(--red); }
+.career-lvl.mid { background: var(--amber-bg); color: var(--amber); }
+.career-point-tip { margin-top: 12rpx; font-size: 24rpx; color: var(--text-2); background: var(--amber-bg); border-left: 4rpx solid var(--amber); padding: 12rpx 16rpx; border-radius: 0 12rpx 12rpx 0; line-height: 1.6; }
+.career-tip-b { color: var(--amber); font-weight: 600; margin-right: 16rpx; }
+.career-point-actions { display: flex; gap: 14rpx; margin-top: 14rpx; }
+.career-add-btn { margin: 16rpx 22rpx; }
+.career-del { color: var(--red); }
+.career-ok { color: var(--green); }
+
+/* 真题列表 */
+.career-questions { display: flex; flex-direction: column; gap: 20rpx; }
+.career-question-item { background: var(--card); border: 1rpx solid var(--line-soft); border-radius: var(--radius-sm); padding: 22rpx 26rpx; }
+.career-q-meta { display: flex; gap: 12rpx; flex-wrap: wrap; align-items: center; margin-bottom: 16rpx; font-size: 22rpx; color: var(--text-3); }
+.career-q-meta .chip { font-size: 20rpx; padding: 4rpx 14rpx; }
+.career-q-text { font-weight: 500; color: var(--text); margin-bottom: 20rpx; line-height: 1.6; font-size: 28rpx; }
+.career-q-options { display: flex; flex-direction: column; gap: 10rpx; margin: 0 0 20rpx; }
+.career-q-opt { display: flex; gap: 14rpx; align-items: flex-start; font-size: 26rpx; line-height: 1.65; color: var(--text-2); border-radius: 14rpx; padding: 12rpx 16rpx; margin: 0 -16rpx; }
+.career-q-opt-l { flex: 0 0 auto; width: 36rpx; height: 36rpx; margin-top: 2rpx; border-radius: 50%; background: var(--input-bg); color: var(--text-3); font-size: 22rpx; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.career-q-opt-t { flex: 1 1 auto; min-width: 0; word-break: break-word; }
+.career-q-opt.is-right { color: var(--green); font-weight: 600; }
+.career-q-opt.is-right .career-q-opt-l { background: var(--green); color: #fff; }
+.career-q-opt.is-picked { background: var(--input-bg); }
+.career-q-opt.is-picked-wrong { color: var(--red); font-weight: 600; }
+.career-q-opt.is-picked-wrong .career-q-opt-l { background: var(--red); color: #fff; }
+.career-q-opt.is-picked-wrong .career-q-opt-t { text-decoration: line-through; text-decoration-color: rgba(0, 0, 0, 0.25); }
+.career-q-actions { display: flex; gap: 14rpx; flex-wrap: wrap; margin-bottom: 16rpx; }
+.career-q-answer { background: var(--blue-bg); border-left: 6rpx solid var(--blue); border-radius: 10rpx; padding: 18rpx 22rpx; font-size: 24rpx; color: var(--text); line-height: 1.6; }
+.career-q-b { font-weight: 600; }
+
+/* 自测答题 */
+.career-quiz-q { font-size: 32rpx; font-weight: 600; color: var(--text); margin-bottom: 28rpx; line-height: 1.7; }
+.career-quiz-source { font-size: 24rpx; color: var(--text-3); margin: -16rpx 0 18rpx; }
+.career-quiz-options { display: flex; flex-direction: column; gap: 18rpx; }
+.career-option { justify-content: flex-start; text-align: left; padding: 20rpx 26rpx; font-size: 27rpx; }
+.career-quiz-feedback { padding: 22rpx 26rpx; border-radius: var(--radius-sm); font-weight: 600; margin-bottom: 18rpx; font-size: 26rpx; }
+.career-quiz-feedback.correct { background: var(--green-bg); color: var(--green); }
+.career-quiz-feedback.wrong { background: var(--red-bg); color: var(--red); }
+.career-quiz-explain { background: var(--input-bg); border-radius: var(--radius-sm); padding: 18rpx 22rpx; font-size: 24rpx; color: var(--text-2); line-height: 1.6; margin-bottom: 12rpx; }
+.career-mock-opts { display: flex; gap: 24rpx; flex-wrap: wrap; margin-top: 20rpx; }
+.career-desc { font-size: 23rpx; color: var(--text-3); line-height: 1.6; }
+.career-quiz-summary { font-size: 34rpx; font-weight: 600; color: var(--accent); text-align: center; padding: 36rpx 16rpx; }
+.career-sum-score { font-size: 56rpx; font-weight: 800; }
+.career-quiz-summary-sub { text-align: center; font-size: 23rpx; color: var(--text-3); margin-bottom: 24rpx; }
+.career-quiz-review { display: flex; flex-direction: column; gap: 14rpx; }
+.career-quiz-review-item { padding: 16rpx 20rpx; border-radius: 12rpx; font-size: 25rpx; line-height: 1.6; }
+.career-quiz-review-item.correct { background: var(--green-bg); color: var(--green); }
+.career-quiz-review-item.wrong { background: var(--red-bg); color: var(--red); }
+.career-quiz-empty { padding: 32rpx 28rpx; }
+.career-quiz-empty .empty { padding: 10rpx 0 20rpx; }
+
+/* 自测记录 */
+.career-quiz-history { display: flex; flex-direction: column; gap: 16rpx; }
+.career-history-item { display: grid; grid-template-columns: auto auto 1fr; align-items: center; gap: 16rpx; padding: 16rpx 18rpx; background: var(--input-bg); border-radius: 14rpx; }
+.career-history-mode { font-size: 24rpx; font-weight: 600; color: var(--text); }
+.career-history-acc { font-size: 30rpx; font-weight: 700; font-variant-numeric: tabular-nums; }
+.career-history-meta { font-size: 21rpx; color: var(--text-3); text-align: right; }
+
+/* 错题本分段 */
+.career-seg { display: flex; gap: 10rpx; flex-wrap: wrap; margin-top: 16rpx; background: var(--input-bg); border-radius: 16rpx; padding: 8rpx; }
+.career-seg-item { flex: 1 1 auto; display: inline-flex; align-items: center; justify-content: center; gap: 8rpx; padding: 16rpx 18rpx; border-radius: 12rpx; background: transparent; font-size: 25rpx; font-weight: 500; color: var(--text-2); white-space: nowrap; }
+.career-seg-item.active { background: var(--card); color: var(--accent); font-weight: 600; box-shadow: 0 2rpx 8rpx rgba(30, 50, 70, 0.08); }
+.career-seg-badge { font-size: 20rpx; font-weight: 600; color: var(--red); background: var(--red-bg); border-radius: 14rpx; padding: 2rpx 10rpx; line-height: 1.5; }
+
+.career-wrong-group { border: 1rpx solid var(--line-soft); border-radius: 16rpx; overflow: hidden; margin-bottom: 20rpx; }
+.career-wrong-group-head { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; padding: 18rpx 22rpx; background: var(--input-bg); font-size: 25rpx; font-weight: 600; color: var(--text); }
+.career-wrong-group-head text:last-child { font-size: 23rpx; font-weight: 400; color: var(--text-3); }
+.career-wrong-item { padding: 20rpx 22rpx; border-top: 1rpx solid var(--line-soft); }
+.career-wrong-item:first-child { border-top: none; }
+.career-wrong-meta { display: flex; flex-wrap: wrap; gap: 10rpx; align-items: center; margin-bottom: 12rpx; }
+.career-wrong-meta .chip { font-size: 21rpx; padding: 4rpx 14rpx; }
+.career-wrong-q { font-size: 28rpx; line-height: 1.65; color: var(--text); }
+.career-wrong-ans { margin-top: 14rpx; font-size: 25rpx; line-height: 1.7; }
+.career-wrong-ans .you { color: var(--red); font-weight: 600; }
+.career-wrong-ans .right { color: var(--green); font-weight: 600; }
+.career-wrong-note { margin-top: 14rpx; }
+
+/* 笔记 */
+.career-note-item { padding: 20rpx 22rpx; border-top: 1rpx solid var(--line-soft); }
+.career-note-q { font-size: 26rpx; line-height: 1.6; color: var(--text); margin-bottom: 10rpx; }
+.career-note-text { font-size: 25rpx; color: var(--text-2); line-height: 1.7; white-space: pre-wrap; }
+
+/* 笔记输入框（真题卡 / 错题卡共用） */
+.career-note { width: 100%; box-sizing: border-box; min-height: 110rpx; background: var(--input-bg); border-radius: 14rpx; padding: 16rpx 20rpx; font-size: 24rpx; color: var(--text); line-height: 1.6; margin-top: 16rpx; }
+
+/* 底部固定导航 */
+.career-tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; display: flex; background: var(--card); border-top: 1rpx solid var(--line); box-shadow: 0 -10rpx 40rpx rgba(30, 50, 70, 0.08); padding-bottom: env(safe-area-inset-bottom); }
+.career-tabbar-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6rpx; padding: 14rpx 4rpx 12rpx; background: transparent; color: var(--text-3); }
+.career-tabbar-item.active { color: var(--accent); }
+.career-tab-ico { font-size: 38rpx; line-height: 1; }
+.career-tab-txt { font-size: 22rpx; font-weight: 600; }
+.career-tabbar-spacer { height: 150rpx; }

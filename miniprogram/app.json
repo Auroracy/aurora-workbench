@@ -3,7 +3,8 @@
     "pages/index/index",
     "pages/english/english",
     "pages/earlyed/earlyed",
-    "pages/fitness/fitness"
+    "pages/fitness/fitness",
+    "pages/career/career"
   ],
   "window": {
     "backgroundTextStyle": "dark",

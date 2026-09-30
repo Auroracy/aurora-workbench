@@ -39,6 +39,14 @@
       </view>
       <view class="e-arrow">›</view>
     </view>
+    <view class="entry-row" bindtap="goCareer">
+      <view class="e-ico">📚</view>
+      <view class="e-main">
+        <view class="e-name">事业编备考</view>
+        <view class="e-desc small muted">知识书 · 历年真题 · 错题本 · 自测（276 题）</view>
+      </view>
+      <view class="e-arrow">›</view>
+    </view>
   </view>
 
   <!-- ====== 待迁移 ====== -->

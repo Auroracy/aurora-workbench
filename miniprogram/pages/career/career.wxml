@@ -1,0 +1,272 @@
+<view class="page career-page">
+
+  <!-- ============ 今日备考 ============ -->
+  <view wx:if="{{activeMod==='today'}}">
+    <view class="card">
+      <view class="card-title"><text class="t">📋 今日备考</text></view>
+      <view class="sub career-hint">{{todayHint}}</view>
+      <view class="career-stats">
+        <view class="career-stat"><text class="b">{{stats.books}}</text><text class="s">参考书籍</text></view>
+        <view class="career-stat"><text class="b">{{stats.chapters}}</text><text class="s">知识章节</text></view>
+        <view class="career-stat"><text class="b">{{stats.points}}</text><text class="s">知识要点</text></view>
+        <view class="career-stat"><text class="b">{{stats.total}}</text><text class="s">题库总量</text></view>
+        <view class="career-stat career-stat-red"><text class="b">{{stats.wrong}}</text><text class="s">待复习</text></view>
+      </view>
+      <view class="career-actions">
+        <button class="btn btn-primary btn-sm" bindtap="startQuiz" data-mode="random">🎲 随机抽题（10 道）</button>
+        <button class="btn btn-ghost btn-sm" bindtap="switchMod" data-mod="quiz">📝 模拟自测</button>
+        <button class="btn btn-ghost btn-sm" bindtap="startQuiz" data-mode="wrong">❌ 错题重练</button>
+        <button class="btn btn-ghost btn-sm" bindtap="switchMod" data-mod="wrong">📕 错题本</button>
+      </view>
+    </view>
+    <view class="card">
+      <view class="card-title"><text class="t">📈 自测记录</text><text class="sub">{{quizHistory.length?('共 '+quizHistory.length+' 次'):''}}</text></view>
+      <view wx:if="{{quizHistory.length===0}}" class="empty">还没有自测记录，去「自测」抽题试试</view>
+      <block wx:else>
+        <view class="career-history-item" wx:for="{{quizHistory}}" wx:key="label">
+          <text class="career-history-mode">{{item.label}}</text>
+          <text class="career-history-acc" style="color:var(--{{item.color}})">{{item.accText}}</text>
+          <text class="career-history-meta">{{item.meta}}</text>
+        </view>
+      </block>
+    </view>
+  </view>
+
+  <!-- ============ 知识书 ============ -->
+  <view wx:if="{{activeMod==='books'}}">
+    <view class="card">
+      <view class="card-title"><text class="t">📚 知识书</text><button class="btn btn-ghost btn-sm" bindtap="addBook">＋ 添加书籍</button></view>
+      <picker range="{{bookCats}}" value="{{bookCatIdx}}" bindchange="onBookCatChange">
+        <view class="career-pick-box career-book-filter"><text class="career-pick-label">分类</text><text>{{bookCats[bookCatIdx]}}</text><text class="career-pick">▾</text></view>
+      </picker>
+      <view wx:if="{{booksView.length===0}}" class="empty">暂无书籍，点击右上角添加</view>
+      <block wx:else>
+        <view class="career-subject career-book" wx:for="{{booksView}}" wx:key="id">
+          <view class="career-book-head" bindtap="toggleBook" data-bid="{{item.id}}">
+            <text class="career-toggle">{{item.expanded?'▼':'▶'}}</text>
+            <text class="career-book-emoji">{{item.emoji||'📖'}}</text>
+            <view class="career-book-meta">
+              <view class="career-book-title">{{item.title}}</view>
+              <view class="career-book-sub">{{item.author}}{{item.press?(' · '+item.press):''}}</view>
+            </view>
+            <text class="career-count">{{item.category}} · {{item.chapters.length}} 章</text>
+          </view>
+          <view wx:if="{{item.expanded}}">
+            <view wx:if="{{item.desc}}" class="career-book-desc">{{item.desc}}</view>
+            <view class="career-chapters">
+              <view class="career-chapter" wx:for="{{item.chapters}}" wx:for-item="c" wx:key="id">
+                <view class="career-chapter-head" bindtap="toggleChapter" data-bid="{{item.id}}" data-cid="{{c.id}}">
+                  <text class="career-toggle">{{c.expanded?'▼':'▶'}}</text>
+                  <text class="career-ch-name">{{c.name}}</text>
+                  <text class="career-count">{{c.points.length}} 要点</text>
+                </view>
+                <view wx:if="{{c.expanded}}">
+                  <view class="career-points">
+                    <view class="career-point {{c.level==='high'?'lv-high':(c.level==='mid'?'lv-mid':'')}}" wx:for="{{c.points}}" wx:for-item="p" wx:key="id">
+                      <view class="career-point-title">{{p.title}}<text wx:if="{{p.level==='high'}}" class="career-lvl high">重点</text><text wx:if="{{p.level==='mid'}}" class="career-lvl mid">常考</text></view>
+                      <view class="career-point-content">{{p.content}}</view>
+                      <view wx:if="{{p.tip}}" class="career-point-tip">💡 <text class="career-tip-b">背诵提示</text>{{p.tip}}</view>
+                      <view class="career-point-actions">
+                        <button class="btn btn-ghost btn-sm" bindtap="editPoint" data-bid="{{item.id}}" data-cid="{{c.id}}" data-pid="{{p.id}}">编辑</button>
+                        <button class="btn btn-ghost btn-sm career-del" bindtap="deletePoint" data-bid="{{item.id}}" data-cid="{{c.id}}" data-pid="{{p.id}}">删除</button>
+                      </view>
+                    </view>
+                    <button class="btn btn-ghost btn-sm career-add-btn" bindtap="addPoint" data-bid="{{item.id}}" data-cid="{{c.id}}">＋ 添加要点</button>
+                  </view>
+                  <button class="btn btn-ghost btn-sm career-add-btn" bindtap="addChapter" data-bid="{{item.id}}">＋ 添加章节</button>
+                </view>
+              </view>
+            </view>
+          </view>
+        </view>
+      </block>
+    </view>
+  </view>
+
+  <!-- ============ 历年真题 ============ -->
+  <view wx:if="{{activeMod==='questions'}}">
+    <view class="card">
+      <view class="card-title"><text class="t">📝 历年真题 · 自测题库</text><button class="btn btn-primary btn-sm" bindtap="addQuestion">＋ 添加题目</button></view>
+      <view class="career-filter-row">
+        <picker range="{{qSubjects}}" range-key="label" value="{{qSubjectIdx}}" bindchange="onQSubjectChange">
+          <view class="career-pick-box"><text class="career-pick-label">科目</text><text class="career-pick-val">{{qSubjects[qSubjectIdx].label}}</text><text class="career-pick">▾</text></view>
+        </picker>
+        <picker range="{{qYears}}" range-key="label" value="{{qYearIdx}}" bindchange="onQYearChange">
+          <view class="career-pick-box"><text class="career-pick-label">年份</text><text class="career-pick-val">{{qYears[qYearIdx].label}}</text><text class="career-pick">▾</text></view>
+        </picker>
+      </view>
+      <view wx:if="{{qList.length===0}}" class="empty">没有符合条件的题目</view>
+      <block wx:else>
+        <view class="career-question-item" wx:for="{{qList}}" wx:key="id">
+          <view class="career-q-meta">
+            <text class="chip">{{item.year}}</text>
+            <text class="chip">{{item.subject}}</text>
+            <text class="chip">{{item.chapter}}</text>
+            <text class="chip {{item.status==='mastered'?'green':(item.status==='wrong'?'red':'')}}">{{item.status==='mastered'?'已掌握':(item.status==='wrong'?('错 '+item.wrongCount):'待学习')}}</text>
+          </view>
+          <view class="career-q-text">{{index+1}}. {{item.question}}</view>
+          <view class="career-q-options {{item.picked?'answered':''}}">
+            <view class="career-q-opt {{item.answer===opt.L?'is-right':''}} {{item.picked===opt.L?'is-picked':''}} {{item.picked===opt.L && item.picked!==item.answer?'is-picked-wrong':''}}"
+                  wx:for="{{item.options}}" wx:for-item="opt" wx:key="L" bindtap="pickOption" data-qid="{{item.id}}" data-letter="{{opt.L}}">
+              <text class="career-q-opt-l">{{opt.L}}</text>
+              <text class="career-q-opt-t">{{opt.text}}</text>
+            </view>
+          </view>
+          <view wx:if="{{item.picked}}" class="career-quiz-feedback {{item.picked===item.answer?'correct':'wrong'}}">{{item.picked===item.answer?'✅ 回答正确':'❌ 回答错误，正确答案：'+item.answer}}</view>
+          <view class="career-q-actions">
+            <button class="btn btn-ghost btn-sm" bindtap="toggleAnswer" data-qid="{{item.id}}">{{item.showAnswer?'收起答案':'看答案'}}</button>
+          </view>
+          <view wx:if="{{item.showAnswer}}" class="career-q-answer">
+            <view><text class="career-q-b">答案：</text>{{item.answerText}}</view>
+            <view><text class="career-q-b">解析：</text>{{item.question?item.explanation:''}}</view>
+          </view>
+          <textarea class="career-note" placeholder="📝 写下这道题的笔记 / 踩坑点 / 记忆口诀…" value="{{item.note}}" data-qid="{{item.id}}" bindinput="onNoteInput"></textarea>
+        </view>
+      </block>
+    </view>
+  </view>
+
+  <!-- ============ 错题本 ============ -->
+  <view wx:if="{{activeMod==='wrong'}}">
+    <view class="card">
+      <view class="card-title"><text class="t">❌ 错题本</text><text class="sub">今日 {{wrongSummary.today}} · 待复习 {{wrongSummary.pend}} · 笔记 {{wrongSummary.notes}}</text></view>
+      <view class="career-seg">
+        <view class="career-seg-item {{wrongSeg==='log'?'active':''}}" bindtap="switchWrongSeg" data-seg="log">📕 每日错题</view>
+        <view class="career-seg-item {{wrongSeg==='review'?'active':''}}" bindtap="switchWrongSeg" data-seg="review">🔁 待复习<text wx:if="{{wrongSummary.pend}}" class="career-seg-badge">{{wrongSummary.pend}}</text></view>
+        <view class="career-seg-item {{wrongSeg==='notes'?'active':''}}" bindtap="switchWrongSeg" data-seg="notes">📝 我的笔记<text wx:if="{{wrongSummary.notes}}" class="career-seg-badge">{{wrongSummary.notes}}</text></view>
+      </view>
+    </view>
+
+    <view class="card" wx:if="{{wrongSeg==='log'}}">
+      <view class="card-title"><text class="t">📕 每日错题记录</text></view>
+      <picker wx:if="{{wrongDates.length}}" range="{{wrongDates}}" range-key="label" value="{{wrongDateIdx}}" bindchange="onWrongDateChange">
+        <view class="career-pick-box"><text class="career-pick-label">日期</text><text class="career-pick-val">{{wrongDates[wrongDateIdx].label}}</text><text class="career-pick">▾</text></view>
+      </picker>
+      <view wx:if="{{wrongGroups.length===0}}" class="empty">还没有错题记录。去「自测」答题，答错的题会自动记到这里。</view>
+      <block wx:else>
+        <view class="career-wrong-group" wx:for="{{wrongGroups}}" wx:key="date">
+          <view class="career-wrong-group-head"><text>{{item.label}}</text><text>错 {{item.count}} 题</text></view>
+          <view class="career-wrong-item" wx:for="{{item.items}}" wx:for-item="w" wx:key="id">
+            <view class="career-wrong-meta">
+              <text wx:if="{{w.subject}}" class="chip">{{w.subject}}</text>
+              <text wx:if="{{w.chapter}}" class="chip">{{w.chapter}}</text>
+              <text wx:if="{{w.year}}" class="chip">{{w.year}}</text>
+              <text wx:if="{{w.times>1}}" class="chip red">错 {{w.times}} 次</text>
+              <text wx:if="{{w.reviewed}}" class="chip green">已复习</text>
+            </view>
+            <view class="career-wrong-q">{{w.question}}</view>
+            <view class="career-wrong-ans">你选 <text class="you">{{w.choiceText}}</text>，正确答案 <text class="right">{{w.answerText}}</text></view>
+            <view class="career-wrong-note"><textarea class="career-note" placeholder="写下这道题的笔记 / 踩坑点 / 记忆口诀…" value="{{w.note}}" data-qid="{{w.qid}}" bindinput="onWrongNoteInput"></textarea></view>
+            <view class="career-point-actions">
+              <button class="btn btn-ghost btn-sm career-ok" bindtap="masterWrong" data-id="{{w.id}}">✓ 已掌握</button>
+              <button class="btn btn-ghost btn-sm career-del" bindtap="clearWrong" data-id="{{w.id}}">🗑 删除记录</button>
+            </view>
+          </view>
+        </view>
+      </block>
+    </view>
+
+    <view class="card" wx:if="{{wrongSeg==='review'}}">
+      <view class="card-title"><text class="t">🔁 待复习</text><button class="btn btn-primary btn-sm" bindtap="startQuiz" data-mode="wrong">▶ 开始复习</button></view>
+      <view class="career-desc">答对一次，该题错题计数减一；减到 0 自动标记为「已掌握」。</view>
+      <view wx:if="{{reviewList.length===0}}" class="empty">没有待复习的错题，保持住 🎉</view>
+      <block wx:else>
+        <view class="career-wrong-item" wx:for="{{reviewList}}" wx:key="id">
+          <view class="career-wrong-meta">
+            <text wx:if="{{item.subject}}" class="chip">{{item.subject}}</text>
+            <text wx:if="{{item.chapter}}" class="chip">{{item.chapter}}</text>
+            <text class="chip red">错 {{item.wrongCount}} 次</text>
+          </view>
+          <view class="career-wrong-q">{{item.question}}</view>
+          <view class="career-wrong-ans">正确答案 <text class="right">{{item.answerText}}</text></view>
+          <view wx:if="{{item.explanation}}" class="career-point-tip">💡 <text class="career-tip-b">解析</text>{{item.explanation}}</view>
+          <view class="career-point-actions">
+            <button class="btn btn-ghost btn-sm career-ok" bindtap="masterQuestion" data-qid="{{item.id}}">✓ 标记已掌握</button>
+          </view>
+        </view>
+      </block>
+    </view>
+
+    <view class="card" wx:if="{{wrongSeg==='notes'}}">
+      <view class="card-title"><text class="t">📝 我的笔记</text><text class="sub">{{notesList.length?notesList.length+' 条':''}}</text></view>
+      <view class="career-desc">笔记挂在题目上，可在「每日错题」「历年真题」里随时补充。</view>
+      <view wx:if="{{notesList.length===0}}" class="empty">还没有笔记。在「每日错题」里写下踩坑点、口诀，就会汇总到这里。</view>
+      <block wx:else>
+        <view class="career-note-item" wx:for="{{notesList}}" wx:key="qid">
+          <view class="career-wrong-meta">
+            <text wx:if="{{item.subject}}" class="chip">{{item.subject}}</text>
+            <text wx:if="{{item.chapter}}" class="chip">{{item.chapter}}</text>
+            <text wx:if="{{item.updatedAt}}" class="chip">{{item.updatedAt}}</text>
+          </view>
+          <view wx:if="{{item.question}}" class="career-note-q">{{item.question}}</view>
+          <view class="career-note-text">{{item.text}}</view>
+          <view class="career-point-actions">
+            <button class="btn btn-ghost btn-sm" bindtap="editNote" data-qid="{{item.qid}}">编辑</button>
+            <button class="btn btn-ghost btn-sm career-del" bindtap="deleteNote" data-qid="{{item.qid}}">删除</button>
+          </view>
+        </view>
+      </block>
+    </view>
+  </view>
+
+  <!-- ============ 自测 ============ -->
+  <view wx:if="{{activeMod==='quiz'}}">
+    <view wx:if="{{quizEmpty}}" class="card career-quiz-empty">
+      <view class="empty">📝 模拟自测 · 选择科目与年份，做那一年的历年真题，满分 100 分估算得分。</view>
+      <view class="career-mock-opts">
+        <picker range="{{quizSubjects}}" range-key="label" value="{{quizSubjectIdx}}" bindchange="onQuizSubjectChange">
+          <view class="career-pick-box"><text class="career-pick-label">科目</text><text class="career-pick-val">{{quizSubjects[quizSubjectIdx].label}}</text><text class="career-pick">▾</text></view>
+        </picker>
+        <picker range="{{quizYears}}" range-key="label" value="{{quizYearIdx}}" bindchange="onQuizYearChange">
+          <view class="career-pick-box"><text class="career-pick-label">年份</text><text class="career-pick-val">{{quizYears[quizYearIdx].label}}</text><text class="career-pick">▾</text></view>
+        </picker>
+      </view>
+      <view class="career-actions" style="margin-top:24rpx;">
+        <button class="btn btn-primary btn-sm" bindtap="startMock">▶ 开始该年题测</button>
+        <button class="btn btn-ghost btn-sm" bindtap="startQuiz" data-mode="wrong">❌ 错题重练</button>
+        <button class="btn btn-ghost btn-sm" bindtap="startQuiz" data-mode="random">🎲 随机抽题</button>
+      </view>
+      <view wx:if="{{quizAvail}}" class="career-desc" style="margin-top:20rpx;">{{quizAvail}}</view>
+    </view>
+
+    <view wx:if="{{quizPanel}}" class="card">
+      <view class="card-title"><text class="t">{{quizTitle}}</text><text class="sub">{{quizProgress}}</text></view>
+      <block wx:if="{{!quizResult.show}}">
+        <view class="career-quiz-q">{{quizQuestion}}</view>
+        <view wx:if="{{quizSource}}" class="career-quiz-source">{{quizSource}} · 本题 {{quizPerScore}} 分</view>
+        <view class="career-quiz-options">
+          <button class="btn btn-ghost career-option" wx:for="{{quizOptions}}" wx:key="L" bindtap="submitAnswer" data-letter="{{item.L}}">{{item.L}}. {{item.text}}</button>
+        </view>
+        <view wx:if="{{quizFeedback.show}}" class="career-quiz-feedback {{quizFeedback.correct?'correct':'wrong'}}">{{quizFeedback.text}}</view>
+        <view wx:if="{{quizFeedback.show}}" class="career-quiz-explain"><text class="career-q-b">解析：</text>{{quizFeedback.explain}}</view>
+        <view wx:if="{{quizFeedback.show && quizFeedback.scoreText}}" class="career-quiz-explain">{{quizFeedback.scoreText}}</view>
+        <view style="display:flex;gap:16rpx;margin-top:28rpx;flex-wrap:wrap;">
+          <button class="btn btn-ghost btn-sm" bindtap="closeQuiz">关闭自测</button>
+          <button wx:if="{{quizNext}}" class="btn btn-primary btn-sm" bindtap="nextQuiz">下一题</button>
+        </view>
+      </block>
+      <block wx:else>
+        <view wx:if="{{quizResult.isMock}}" class="career-quiz-summary">
+          <text class="career-sum-score" style="color:var(--{{quizResult.gcolor}})">{{quizResult.score}}</text> / 100 分（{{quizResult.grade}}）
+        </view>
+        <view wx:else class="career-quiz-summary">正确 {{quizResult.correct}} / {{quizResult.total}}（{{quizResult.accuracy}}%）</view>
+        <view class="career-quiz-summary-sub">用时 {{quizResult.timeSpent}} 秒 · 对 {{quizResult.correct}} / {{quizResult.total}}</view>
+        <view class="career-quiz-review">
+          <view class="career-quiz-review-item {{item.correct?'correct':'wrong'}}" wx:for="{{quizResult.review}}" wx:key="n">{{item.n}}. {{item.question}} — 你选 {{item.choice}}，答案 {{item.answer}}</view>
+        </view>
+        <button class="btn btn-primary btn-sm" style="margin-top:20rpx;" bindtap="closeQuiz">完成</button>
+      </block>
+    </view>
+  </view>
+
+  <!-- ============ 底部固定导航 ============ -->
+  <view class="career-tabbar">
+    <view class="career-tabbar-item {{activeMod==='today'?'active':''}}" bindtap="switchMod" data-mod="today"><text class="career-tab-ico">📋</text><text class="career-tab-txt">今日</text></view>
+    <view class="career-tabbar-item {{activeMod==='books'?'active':''}}" bindtap="switchMod" data-mod="books"><text class="career-tab-ico">📚</text><text class="career-tab-txt">知识书</text></view>
+    <view class="career-tabbar-item {{activeMod==='questions'?'active':''}}" bindtap="switchMod" data-mod="questions"><text class="career-tab-ico">📝</text><text class="career-tab-txt">真题</text></view>
+    <view class="career-tabbar-item {{activeMod==='wrong'?'active':''}}" bindtap="switchMod" data-mod="wrong"><text class="career-tab-ico">❌</text><text class="career-tab-txt">错题</text></view>
+    <view class="career-tabbar-item {{activeMod==='quiz'?'active':''}}" bindtap="switchMod" data-mod="quiz"><text class="career-tab-ico">✏️</text><text class="career-tab-txt">自测</text></view>
+  </view>
+  <view class="career-tabbar-spacer"></view>
+
+</view>

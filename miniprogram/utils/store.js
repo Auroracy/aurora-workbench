@@ -21,7 +21,12 @@ function defaultDb() {
     },
     recipes: { items: [] },
     reading: { books: [] },
-    xwlb: { cache: {} }
+    xwlb: { cache: {} },
+    career: {
+      books: [], questions: [],
+      quiz: { history: [] },
+      wrongLog: [], qNotes: {}, picks: {}
+    }
   };
 }
 

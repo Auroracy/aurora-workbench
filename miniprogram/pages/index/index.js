@@ -62,6 +62,9 @@ Page({
   goFitness() {
     wx.navigateTo({ url: '/pages/fitness/fitness' });
   },
+  goCareer() {
+    wx.navigateTo({ url: '/pages/career/career' });
+  },
 
   /* ===== 联网自检 =====
    * 走云函数 auroraProxy 转发新浪行情（GBK 编码），
