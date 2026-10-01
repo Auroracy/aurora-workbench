@@ -176,6 +176,10 @@ Page({
     }
     /* 题库扩容：按 id 把新题补进已存的旧题库（只增不改，用户自己加的题不覆盖） */
     this.mergeCareerQuestions();
+    /* 老数据补内容：默认教材新增的章节 / 要点 / 背诵提示合并进已存书（计算机专业书由 refined 接管，跳过） */
+    this.mergeCareerContent();
+    /* 公共基础·马哲重点提炼：一次性并入《公共基础知识》 */
+    this.mergeCareerMarxChapters();
     /* 考试倒计时 + 复习计划：老库补默认值（新增任务按 id 只增不改） */
     this.careerExam();
     this.mergePlanTasks();
@@ -193,6 +197,53 @@ Page({
       if (!seen[dq.id]) { db.career.questions.push(JSON.parse(JSON.stringify(dq))); added++; }
     });
     return added;
+  },
+
+  /* 网页版 mergeCareerContent：默认教材新增的章节 / 要点合并进已存数据。
+     按 id 匹配：缺章节→整章补入；缺要点→补入；已有要点只补空 tip（不覆盖用户修改）。
+     计算机专业书由 refined 整体接管，这里跳过。 */
+  mergeCareerContent() {
+    const db = this.db;
+    if (!Array.isArray(db.career.books)) return;
+    db.career.books.forEach(b => {
+      if (CD.refined && CD.refined[b.id]) return;
+      const def = CD.books.find(x => x.id === b.id);
+      if (!def) return;
+      if (!Array.isArray(b.chapters)) b.chapters = [];
+      (def.chapters || []).forEach(dc => {
+        const c = b.chapters.find(x => x.id === dc.id);
+        if (!c) { b.chapters.push(JSON.parse(JSON.stringify(dc))); return; }
+        if (!Array.isArray(c.points)) c.points = [];
+        (dc.points || []).forEach(dp => {
+          const p = c.points.find(x => x.id === dp.id);
+          if (!p) { c.points.push(JSON.parse(JSON.stringify(dp))); return; }
+          if (dp.tip && !p.tip) p.tip = dp.tip;
+        });
+      });
+    });
+  },
+
+  /* 网页版 mergeCareerMarxChapters：把马哲提炼章节并入《公共基础知识》：
+     只增不改，插在「第1章 政治常识」(bk_pub_pol) 之后，返回本次新增章节数 */
+  mergeCareerMarxChapters() {
+    const db = this.db;
+    const marx = CD.marx || [];
+    if (!marx.length) return 0;
+    let book = null;
+    (db.career.books || []).forEach(b => { if (b.id === 'bk_pub') book = b; });
+    if (!book) return 0;                        /* 用户删掉了这本书就不动 */
+    if (!Array.isArray(book.chapters)) book.chapters = [];
+    const seen = {};
+    book.chapters.forEach(c => { seen[c.id] = true; });
+    const toAdd = marx.filter(c => !seen[c.id]);
+    if (!toAdd.length) return 0;
+    let at = book.chapters.length;
+    for (let i = 0; i < book.chapters.length; i++) {
+      if (book.chapters[i].id === 'bk_pub_pol') { at = i + 1; break; }
+    }
+    const clones = JSON.parse(JSON.stringify(toAdd));
+    book.chapters.splice.apply(book.chapters, [at, 0].concat(clones));
+    return clones.length;
   },
 
   renderAll() {
