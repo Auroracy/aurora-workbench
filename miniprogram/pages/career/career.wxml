@@ -146,7 +146,7 @@
             <text class="chip {{item.status==='mastered'?'green':(item.status==='wrong'?'red':'')}}">{{item.status==='mastered'?'已掌握':(item.status==='wrong'?('错 '+item.wrongCount):'待学习')}}</text>
           </view>
           <view class="career-q-text">{{index+1}}. {{item.question}}</view>
-          <view class="career-q-options {{item.picked?'answered':''}}">
+          <view class="career-q-options {{item.picked?'answered':''}} {{item.showAnswer?'revealed':''}}">
             <view class="career-q-opt {{item.answer===opt.L?'is-right':''}} {{item.picked===opt.L?'is-picked':''}} {{item.picked===opt.L && item.picked!==item.answer?'is-picked-wrong':''}}"
                   wx:for="{{item.options}}" wx:for-item="opt" wx:key="L" bindtap="pickOption" data-qid="{{item.id}}" data-letter="{{opt.L}}">
               <text class="career-q-opt-l">{{opt.L}}</text>

@@ -87,12 +87,15 @@
 .career-q-opt { display: flex; gap: 14rpx; align-items: flex-start; font-size: 26rpx; line-height: 1.65; color: var(--text-2); border-radius: 14rpx; padding: 12rpx 16rpx; margin: 0 -16rpx; }
 .career-q-opt-l { flex: 0 0 auto; width: 36rpx; height: 36rpx; margin-top: 2rpx; border-radius: 50%; background: var(--input-bg); color: var(--text-3); font-size: 22rpx; font-weight: 700; display: flex; align-items: center; justify-content: center; }
 .career-q-opt-t { flex: 1 1 auto; min-width: 0; word-break: break-word; }
-.career-q-opt.is-right { color: var(--green); font-weight: 600; }
-.career-q-opt.is-right .career-q-opt-l { background: var(--green); color: #fff; }
 .career-q-opt.is-picked { background: var(--input-bg); }
-.career-q-opt.is-picked-wrong { color: var(--red); font-weight: 600; }
-.career-q-opt.is-picked-wrong .career-q-opt-l { background: var(--red); color: #fff; }
-.career-q-opt.is-picked-wrong .career-q-opt-t { text-decoration: line-through; text-decoration-color: rgba(0, 0, 0, 0.25); }
+/* 正确答案高亮：仅「已作答」或「点开看答案」后显示，未作答不提前透露 */
+.career-q-options.answered .career-q-opt.is-right,
+.career-q-options.revealed .career-q-opt.is-right { color: var(--green); font-weight: 600; }
+.career-q-options.answered .career-q-opt.is-right .career-q-opt-l,
+.career-q-options.revealed .career-q-opt.is-right .career-q-opt-l { background: var(--green); color: #fff; }
+.career-q-options.answered .career-q-opt.is-picked-wrong { color: var(--red); font-weight: 600; }
+.career-q-options.answered .career-q-opt.is-picked-wrong .career-q-opt-l { background: var(--red); color: #fff; }
+.career-q-options.answered .career-q-opt.is-picked-wrong .career-q-opt-t { text-decoration: line-through; text-decoration-color: rgba(0, 0, 0, 0.25); }
 .career-q-actions { display: flex; gap: 14rpx; flex-wrap: wrap; margin-bottom: 16rpx; }
 .career-q-answer { background: var(--blue-bg); border-left: 6rpx solid var(--blue); border-radius: 10rpx; padding: 18rpx 22rpx; font-size: 24rpx; color: var(--text); line-height: 1.6; }
 .career-q-b { font-weight: 600; }
