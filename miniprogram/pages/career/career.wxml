@@ -49,7 +49,7 @@
               <view class="career-book-title">{{item.title}}</view>
               <view class="career-book-sub">{{item.author}}{{item.press?(' · '+item.press):''}}</view>
             </view>
-            <text class="career-count">{{item.category}} · {{item.chapters.length}} 章</text>
+            <text class="career-count">{{item.category}} · {{item.pointsCount}} 要点</text>
           </view>
           <view wx:if="{{item.expanded}}">
             <view wx:if="{{item.desc}}" class="career-book-desc">{{item.desc}}</view>

@@ -2,7 +2,7 @@ const store = require('../../utils/store.js');
 const CD = require('../../utils/careerData.js');
 
 const CAREER_LABELS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
-const BOOK_CATS = ['公共基础', '计算机专业', '考情专项'];
+const BOOK_CATS = ['全部分类', '公共基础', '计算机专业', '考情专项'];
 const EXAM_SUBJECTS = [
   { key: '公共基础知识', aliases: ['公共基础知识', '公基'] },
   { key: '计算机专业知识', aliases: ['计算机专业知识', '计算机'] },
@@ -171,8 +171,14 @@ Page({
     const db = this.db;
     const filter = this.data.bookCats[this.data.bookCatIdx] || '';
     let list = (db.career.books || []).slice();
-    if (filter) list = list.filter(b => b.category === filter);
-    this.setData({ booksView: list });
+    if (filter && filter !== '全部分类') list = list.filter(b => b.category === filter);
+    // 与网页一致：行尾显示「分类 · N 要点」（要点总数，而非章节数）
+    const booksView = list.map(b => {
+      let pointsCount = 0;
+      (b.chapters || []).forEach(c => { pointsCount += (c.points || []).length; });
+      return Object.assign({}, b, { pointsCount });
+    });
+    this.setData({ booksView });
   },
   onBookCatChange(e) {
     this.setData({ bookCatIdx: Number(e.detail.value) }, () => this.renderBooks());
@@ -280,11 +286,13 @@ Page({
   /* ============ 历年真题 ============ */
   renderFilters() {
     const db = this.db;
-    // 与网页一致：按规范的 4 个科目（带别名合并 公基/公共基础知识 等）分组
-    const qSubjects = EXAM_SUBJECTS.map(s => ({ value: s.key, label: s.key }));
-    const years = {};
-    (db.career.questions || []).forEach(q => { years[String(q.year)] = 1; });
-    const qYears = Object.keys(years).sort().reverse().map(y => ({ value: y, label: y + ' 年' }));
+    // 与网页一致：原始 subject 值直接作为筛选项，首项为「全部科目 / 全部年份」（默认即全部）
+    const subjects = {}, years = {};
+    (db.career.questions || []).forEach(q => { subjects[q.subject] = 1; years[String(q.year)] = 1; });
+    const qSubjects = [{ value: '', label: '全部科目' }]
+      .concat(Object.keys(subjects).map(s => ({ value: s, label: s })));
+    const qYears = [{ value: '', label: '全部年份' }]
+      .concat(Object.keys(years).sort().reverse().map(y => ({ value: y, label: y + ' 年' })));
     this.setData({ qSubjects, qYears });
   },
   onQSubjectChange(e) { this.setData({ qSubjectIdx: Number(e.detail.value) }, () => this.renderQuestions()); },
@@ -295,7 +303,7 @@ Page({
     const year = this.data.qYears[this.data.qYearIdx] ? this.data.qYears[this.data.qYearIdx].value : '';
     const picks = db.career.picks || {};
     const notes = db.career.qNotes || {};
-    const list = (db.career.questions || []).filter(q => (!sub || subjectMatch(q, sub)) && (!year || String(q.year) === year));
+    const list = (db.career.questions || []).filter(q => (!sub || q.subject === sub) && (!year || String(q.year) === year));
     const qList = list.map((q, idx) => ({
       id: q.id, year: q.year, subject: q.subject, chapter: q.chapter,
       question: q.question, answer: q.answer,
