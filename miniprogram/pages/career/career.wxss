@@ -3,6 +3,33 @@
 
 .career-hint { font-size: 22rpx; color: var(--text-3); margin: -8rpx 0 4rpx; }
 
+/* 考试倒计时（顶部高亮） */
+.career-countdown { border-radius: var(--radius); padding: 26rpx 28rpx; margin-bottom: 24rpx; background: linear-gradient(135deg, #15A49B, #2E86C1); color: #fff; box-shadow: 0 8rpx 28rpx rgba(21, 164, 155, 0.24); }
+.career-countdown.cd-past { background: linear-gradient(135deg, #93A8B6, #6E8798); box-shadow: 0 8rpx 28rpx rgba(110, 135, 152, 0.2); }
+.career-countdown.cd-none { background: linear-gradient(135deg, #BACBD6, #9CB2C0); box-shadow: 0 6rpx 20rpx rgba(156, 178, 192, 0.22); }
+.cd-top { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; }
+.cd-name { font-size: 26rpx; font-weight: 600; }
+.cd-date { font-size: 24rpx; opacity: .88; flex: 0 0 auto; }
+.cd-body { display: flex; align-items: baseline; gap: 12rpx; margin: 6rpx 0 2rpx; }
+.cd-num { font-size: 88rpx; font-weight: 800; line-height: 1.05; letter-spacing: -2rpx; font-variant-numeric: tabular-nums; }
+.cd-num-sm { font-size: 48rpx; letter-spacing: 0; }
+.cd-unit { font-size: 26rpx; opacity: .92; }
+.cd-foot { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; margin-top: 10rpx; }
+.cd-note { flex: 1 1 auto; min-width: 0; font-size: 22rpx; opacity: .85; }
+.cd-action { flex: 0 0 auto; font-size: 21rpx; font-weight: 600; background: rgba(255, 255, 255, 0.22); border-radius: 999rpx; padding: 4rpx 16rpx; }
+
+/* 复习计划 · 打卡 */
+.plan-item { display: flex; align-items: center; gap: 16rpx; padding: 18rpx 20rpx; background: var(--input-bg); border-radius: 14rpx; margin-bottom: 12rpx; }
+.plan-box { flex: 0 0 auto; width: 40rpx; height: 40rpx; border-radius: 12rpx; border: 3rpx solid var(--line); background: var(--card); display: flex; align-items: center; justify-content: center; }
+.plan-tick { font-size: 24rpx; font-weight: 700; color: #fff; line-height: 1; }
+.plan-text { flex: 1 1 auto; min-width: 0; font-size: 27rpx; color: var(--text); line-height: 1.5; }
+.plan-del { flex: 0 0 auto; font-size: 24rpx; color: var(--text-3); padding: 0 8rpx; }
+.plan-item.done { background: var(--accent-bg); }
+.plan-item.done .plan-box { background: var(--accent); border-color: var(--accent); }
+.plan-item.done .plan-text { color: var(--text-3); text-decoration: line-through; text-decoration-color: var(--text-3); }
+.plan-bar { height: 10rpx; margin: 10rpx 0 4rpx; }
+.plan-actions { margin-top: 20rpx; }
+
 /* 统计 */
 .career-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120rpx, 1fr)); gap: 16rpx; margin: 16rpx 0 20rpx; }
 .career-stat { background: var(--input-bg); border-radius: var(--radius-sm); padding: 18rpx 12rpx; text-align: center; }

@@ -47,12 +47,33 @@ function statusOf(q) {
   if ((q.wrongCount || 0) > 0) return 'wrong';
   return 'todo';
 }
+/* 距离目标日期（YYYY-MM-DD）还有多少天；正数=未来，0=今天，负数=已过 */
+function diffDays(target) {
+  const t = new Date(target + 'T00:00:00');
+  const n = new Date(); n.setHours(0, 0, 0, 0);
+  return Math.round((t.getTime() - n.getTime()) / 86400000);
+}
 
 Page({
   data: {
     activeMod: 'today',
     todayHint: '每天 30 分钟，碎片时间也能上岸',
     stats: { books: 0, chapters: 0, points: 0, total: 0, wrong: 0 },
+
+    // 考试倒计时
+    examName: '江苏省事业编 · 计算机',
+    examDate: '',
+    examDateLabel: '',
+    cdState: 'none', // none | future | today | past
+    cdAbs: 0,
+    cdNote: '',
+    cdAction: '设置日期 ›',
+
+    // 复习计划 · 打卡
+    planList: [],
+    planTotal: 0,
+    planDone: 0,
+    planPct: 0,
 
     // 知识书
     booksView: [],
@@ -107,13 +128,18 @@ Page({
     this.ensureSeed();
     this.setData({
       bookCats: BOOK_CATS,
-      todayHint: '每天 30 分钟，碎片时间也能上岸'
+      todayHint: '每天 30 分钟，碎片时间也能上岸',
+      examName: this.db.career.examName || '江苏省事业编 · 计算机',
+      examDate: this.db.career.examDate || ''
     });
     this.renderAll();
     this.renderQuizStart();
   },
 
-  onShow() { /* 数据可能被同步覆盖，重新渲染保持最新 */ },
+  onShow() {
+    /* 跨天回来倒计时可能过期，重算一次 */
+    this.renderCountdown();
+  },
 
   ensureSeed() {
     const db = this.db;
@@ -134,6 +160,8 @@ Page({
   },
 
   renderAll() {
+    this.renderCountdown();
+    this.renderPlan();
     this.renderStats();
     this.renderBooks();
     this.renderFilters();
@@ -164,6 +192,98 @@ Page({
         wrong: q.filter(x => (x.wrongCount || 0) > 0).length
       }
     });
+  },
+
+  /* ============ 考试倒计时 ============ */
+  renderCountdown() {
+    const c = (this.db && this.db.career) || {};
+    const name = c.examName || this.data.examName || '江苏省事业编 · 计算机';
+    const date = c.examDate || '';
+    if (!date) {
+      this.setData({ examName: name, examDate: '', examDateLabel: '', cdState: 'none', cdAbs: 0, cdNote: '', cdAction: '设置日期 ›' });
+      return;
+    }
+    const days = diffDays(date);
+    const state = days > 0 ? 'future' : (days === 0 ? 'today' : 'past');
+    let note = '';
+    if (state === 'future') note = '坚持每天 30 分钟，碎片时间也能上岸';
+    else if (state === 'today') note = '今天就是考试日，放平心态、正常发挥！';
+    else note = '已结束 · 点击可更新下一次考试日期';
+    const parts = date.split('-');
+    this.setData({
+      examName: name, examDate: date,
+      examDateLabel: parts[1] + ' 月 ' + parts[2] + ' 日',
+      cdState: state, cdAbs: Math.abs(days), cdNote: note, cdAction: '修改日期 ›'
+    });
+  },
+  setExamDate() {
+    const cur = this.data.examDate || '2027-04-17';
+    wx.showModal({
+      title: '设置考试日期', editable: true, placeholderText: 'YYYY-MM-DD', content: cur,
+      success: r => {
+        if (!r.confirm) return;
+        const v = (r.content || '').trim();
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(v) || isNaN(new Date(v + 'T00:00:00').getTime())) {
+          wx.showToast({ title: '格式应为 2027-04-17', icon: 'none' });
+          return;
+        }
+        this.db.career.examName = this.data.examName || '江苏省事业编 · 计算机';
+        this.db.career.examDate = v;
+        store.saveDb(this.db);
+        this.renderCountdown();
+        wx.showToast({ title: '已设置考试日期', icon: 'success' });
+      }
+    });
+  },
+
+  /* ============ 复习计划 · 打卡 ============ */
+  planArr() {
+    const db = this.db;
+    if (!Array.isArray(db.career.plan)) db.career.plan = [];
+    return db.career.plan;
+  },
+  renderPlan() {
+    const planList = this.planArr().map(p => ({ id: p.id, text: p.text, done: !!p.done }));
+    const planDone = planList.filter(p => p.done).length;
+    this.setData({
+      planList,
+      planTotal: planList.length,
+      planDone,
+      planPct: planList.length ? Math.round(planDone * 100 / planList.length) : 0
+    });
+  },
+  togglePlan(e) {
+    const id = e.currentTarget.dataset.id;
+    const p = this.planArr().find(x => x.id === id); if (!p) return;
+    p.done = !p.done;
+    store.saveDb(this.db);
+    this.renderPlan();
+    if (p.done) wx.showToast({ title: '打卡完成 ✓', icon: 'none' });
+  },
+  addPlan() {
+    wx.showModal({ title: '添加复习计划', editable: true, placeholderText: '如：公基刷题 30 道', success: r => {
+      if (!r.confirm || !r.content || !r.content.trim()) return;
+      this.planArr().push({ id: 'pl_' + Date.now(), text: r.content.trim(), done: false });
+      store.saveDb(this.db);
+      this.renderPlan();
+    } });
+  },
+  deletePlan(e) {
+    const id = e.currentTarget.dataset.id;
+    wx.showModal({ title: '删除这条计划？', content: '删除后不可恢复', success: r => {
+      if (!r.confirm) return;
+      this.db.career.plan = this.planArr().filter(x => x.id !== id);
+      store.saveDb(this.db);
+      this.renderPlan();
+    } });
+  },
+  resetPlan() {
+    wx.showModal({ title: '重置打卡？', content: '所有计划将变回「未完成」', success: r => {
+      if (!r.confirm) return;
+      this.planArr().forEach(p => { p.done = false; });
+      store.saveDb(this.db);
+      this.renderPlan();
+    } });
   },
 
   /* ============ 知识书 ============ */

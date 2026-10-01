@@ -25,7 +25,15 @@ function defaultDb() {
     career: {
       books: [], questions: [],
       quiz: { history: [] },
-      wrongLog: [], qNotes: {}, picks: {}
+      wrongLog: [], qNotes: {}, picks: {},
+      examName: '江苏省事业编 · 计算机',
+      examDate: '',
+      plan: [
+        { id: 'pl_1', text: '公基刷题 30 道', done: false },
+        { id: 'pl_2', text: '计算机专业课精读 1 章', done: false },
+        { id: 'pl_3', text: '错题复盘 10 道', done: false },
+        { id: 'pl_4', text: '时政素材积累 15 分钟', done: false }
+      ]
     }
   };
 }
@@ -50,6 +58,14 @@ function normalize(db) {
   if (!Array.isArray(g.masteredWords)) g.masteredWords = [];
   if (!g.reviewQ || typeof g.reviewQ !== 'object') g.reviewQ = {};
   if (!g.reviewCfg || typeof g.reviewCfg !== 'object') g.reviewCfg = { fuzzy: 2, unknown: 3 };
+  if (!out.career || typeof out.career !== 'object' || Array.isArray(out.career)) {
+    out.career = JSON.parse(JSON.stringify(d.career));
+  } else {
+    const dc = d.career;
+    if (out.career.examName === undefined) out.career.examName = dc.examName;
+    if (out.career.examDate === undefined) out.career.examDate = dc.examDate;
+    if (!Array.isArray(out.career.plan)) out.career.plan = JSON.parse(JSON.stringify(dc.plan));
+  }
   return out;
 }
 

@@ -2,6 +2,51 @@
 
   <!-- ============ 今日备考 ============ -->
   <view wx:if="{{activeMod==='today'}}">
+
+    <!-- 考试倒计时 -->
+    <view class="career-countdown cd-{{cdState}}" bindtap="setExamDate">
+      <view class="cd-top">
+        <text class="cd-name">⏳ {{examName}}</text>
+        <text class="cd-date">{{examDateLabel?examDateLabel:'未设置'}}</text>
+      </view>
+      <view class="cd-body">
+        <block wx:if="{{cdState==='future'}}">
+          <text class="cd-num">{{cdAbs}}</text><text class="cd-unit">天后开考</text>
+        </block>
+        <block wx:elif="{{cdState==='today'}}">
+          <text class="cd-num cd-num-sm">就是今天</text><text class="cd-unit">🎯 放平心态</text>
+        </block>
+        <block wx:elif="{{cdState==='past'}}">
+          <text class="cd-num">{{cdAbs}}</text><text class="cd-unit">天前已结束</text>
+        </block>
+        <block wx:else>
+          <text class="cd-num cd-num-sm">未设置</text><text class="cd-unit">点击设置考试日期</text>
+        </block>
+      </view>
+      <view class="cd-foot">
+        <text class="cd-note">{{cdNote}}</text>
+        <text class="cd-action">{{cdAction}}</text>
+      </view>
+    </view>
+
+    <!-- 今日复习计划 · 打卡 -->
+    <view class="card">
+      <view class="card-title"><text class="t">✅ 今日复习计划</text><text class="sub">{{planDone}}/{{planTotal}} 已完成</text></view>
+      <view wx:if="{{planList.length===0}}" class="empty">还没有计划，点下方「＋ 添加计划」</view>
+      <block wx:else>
+        <view class="plan-item {{item.done?'done':''}}" wx:for="{{planList}}" wx:key="id">
+          <view class="plan-box" bindtap="togglePlan" data-id="{{item.id}}"><text wx:if="{{item.done}}" class="plan-tick">✓</text></view>
+          <text class="plan-text" bindtap="togglePlan" data-id="{{item.id}}">{{item.text}}</text>
+          <text class="plan-del" catchtap="deletePlan" data-id="{{item.id}}">✕</text>
+        </view>
+        <view class="bar plan-bar"><view class="bar-fill" style="width:{{planPct}}%"></view></view>
+      </block>
+      <view class="career-actions plan-actions">
+        <button class="btn btn-ghost btn-sm" bindtap="addPlan">＋ 添加计划</button>
+        <button wx:if="{{planList.length}}" class="btn btn-ghost btn-sm" bindtap="resetPlan">重置打卡</button>
+      </view>
+    </view>
+
     <view class="card">
       <view class="card-title"><text class="t">📋 今日备考</text></view>
       <view class="sub career-hint">{{todayHint}}</view>
