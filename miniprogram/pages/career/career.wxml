@@ -66,10 +66,6 @@
                       <view class="career-point-title">{{p.title}}<text wx:if="{{p.level==='high'}}" class="career-lvl high">重点</text><text wx:if="{{p.level==='mid'}}" class="career-lvl mid">常考</text></view>
                       <view class="career-point-content">{{p.content}}</view>
                       <view wx:if="{{p.tip}}" class="career-point-tip">💡 <text class="career-tip-b">背诵提示</text>{{p.tip}}</view>
-                      <view class="career-point-actions">
-                        <button class="btn btn-ghost btn-sm" bindtap="editPoint" data-bid="{{item.id}}" data-cid="{{c.id}}" data-pid="{{p.id}}">编辑</button>
-                        <button class="btn btn-ghost btn-sm career-del" bindtap="deletePoint" data-bid="{{item.id}}" data-cid="{{c.id}}" data-pid="{{p.id}}">删除</button>
-                      </view>
                     </view>
                     <button class="btn btn-ghost btn-sm career-add-btn" bindtap="addPoint" data-bid="{{item.id}}" data-cid="{{c.id}}">＋ 添加要点</button>
                   </view>
