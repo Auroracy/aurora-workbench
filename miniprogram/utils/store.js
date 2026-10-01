@@ -1,6 +1,7 @@
 /* 本地存储层 —— 替代网页版的 localStorage
    数据结构与网页版完全一致，方便两边互导 */
 const KEY = 'aurora_db';
+const CP = require('./careerPlanData.js');
 
 function defaultDb() {
   return {
@@ -25,17 +26,16 @@ function defaultDb() {
     career: {
       books: [], questions: [],
       quiz: { history: [] },
-      wrongLog: [], qNotes: {}, picks: {},
-      examName: '江苏省事业编 · 计算机',
-      examDate: '',
-      plan: [
-        { id: 'pl_1', text: '公基刷题 30 道', done: false },
-        { id: 'pl_2', text: '计算机专业课精读 1 章', done: false },
-        { id: 'pl_3', text: '错题复盘 10 道', done: false },
-        { id: 'pl_4', text: '时政素材积累 15 分钟', done: false }
-      ]
+      wrongLog: [], qNotes: {}, picks: {}
+      /* exam / plan 由 normalize() 按 careerPlanData.js 补齐（结构对齐网页版 DB.career.exam / career.plan） */
     }
   };
+}
+
+function pad2(n) { return (n < 10 ? '0' : '') + n; }
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
 }
 
 /* 补齐缺失字段，保证旧数据在版本升级后仍可用 */
@@ -60,12 +60,49 @@ function normalize(db) {
   if (!g.reviewCfg || typeof g.reviewCfg !== 'object') g.reviewCfg = { fuzzy: 2, unknown: 3 };
   if (!out.career || typeof out.career !== 'object' || Array.isArray(out.career)) {
     out.career = JSON.parse(JSON.stringify(d.career));
-  } else {
-    const dc = d.career;
-    if (out.career.examName === undefined) out.career.examName = dc.examName;
-    if (out.career.examDate === undefined) out.career.examDate = dc.examDate;
-    if (!Array.isArray(out.career.plan)) out.career.plan = JSON.parse(JSON.stringify(dc.plan));
   }
+  const c = out.career;
+
+  /* ---- 考试信息：结构与网页版 DB.career.exam 一致 ----
+     兼容上一版小程序的 examName / examDate 两个扁平字段 */
+  const CE = CP.exam;
+  if (!c.exam || typeof c.exam !== 'object' || Array.isArray(c.exam)) {
+    c.exam = {};
+    if (c.examName) c.exam.name = c.examName;
+    if (c.examDate) c.exam.date = c.examDate;
+  }
+  if (!c.exam.name) c.exam.name = CE.name;
+  if (!c.exam.date) c.exam.date = CE.date;
+  if (!c.exam.start) c.exam.start = todayStr();   /* 开始备考日：算备考时间进度 */
+  if (c.exam.time === undefined) c.exam.time = CE.time;
+  if (c.exam.note === undefined) c.exam.note = CE.note;
+  delete c.examName;
+  delete c.examDate;
+
+  /* ---- 复习计划：结构与网页版 DB.career.plan 一致（groups[].tasks[]）---- */
+  if (Array.isArray(c.plan)) {
+    /* 上一版小程序的扁平数组：包成「我的计划」一个分组，保留打卡状态 */
+    c.plan = {
+      groups: [{
+        id: 'cpg_legacy', name: '我的计划', s: 999, e: 0, phase: 1,
+        tasks: c.plan.map(function (p, i) {
+          return { id: p.id || ('cpt_legacy_' + i), text: p.text || '', done: !!p.done, doneAt: '' };
+        })
+      }]
+    };
+  }
+  if (!c.plan || typeof c.plan !== 'object' || Array.isArray(c.plan) ||
+      !Array.isArray(c.plan.groups) || !c.plan.groups.length) {
+    c.plan = JSON.parse(JSON.stringify(CP.plan));
+  }
+  c.plan.groups.forEach(function (g) {
+    if (!Array.isArray(g.tasks)) g.tasks = [];
+    g.tasks.forEach(function (t) {
+      t.done = !!t.done;
+      if (t.doneAt === undefined) t.doneAt = '';
+    });
+  });
+
   return out;
 }
 

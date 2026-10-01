@@ -1,5 +1,6 @@
 const store = require('../../utils/store.js');
 const CD = require('../../utils/careerData.js');
+const CP = require('../../utils/careerPlanData.js');
 
 const CAREER_LABELS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 const BOOK_CATS = ['全部分类', '公共基础', '计算机专业', '考情专项'];
@@ -47,11 +48,29 @@ function statusOf(q) {
   if ((q.wrongCount || 0) > 0) return 'wrong';
   return 'todo';
 }
-/* 距离目标日期（YYYY-MM-DD）还有多少天；正数=未来，0=今天，负数=已过 */
-function diffDays(target) {
-  const t = new Date(target + 'T00:00:00');
-  const n = new Date(); n.setHours(0, 0, 0, 0);
-  return Math.round((t.getTime() - n.getTime()) / 86400000);
+/* 今天零点（与网页版一致：所有天数差按自然日算） */
+function midnight() { const n = new Date(); n.setHours(0, 0, 0, 0); return n; }
+/* 'YYYY-MM-DD' -> Date（零点）；非法返回 null */
+function parseDate(str) {
+  const p = String(str || '').split('-');
+  if (p.length !== 3) return null;
+  const d = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+  if (isNaN(d.getTime())) return null;
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+/* 距考试天数：正数=还有几天，0=今天开考，负数=已过几天；无日期返回 null */
+function daysLeftOf(exam) {
+  const d = parseDate(exam && exam.date);
+  if (!d) return null;
+  return Math.round((d.getTime() - midnight().getTime()) / 86400000);
+}
+/* 阶段划分：按距考天数取第一个满足 min 的阶段（照搬网页 CAREER_PHASES） */
+function phaseOf(days) {
+  for (let i = 0; i < CP.phases.length; i++) {
+    if (days >= CP.phases[i].min) return CP.phases[i];
+  }
+  return CP.phases[CP.phases.length - 1];
 }
 
 Page({
@@ -61,18 +80,19 @@ Page({
     stats: { books: 0, chapters: 0, points: 0, total: 0, wrong: 0 },
 
     // 考试倒计时
-    examName: '江苏省事业编 · 计算机',
-    examDate: '',
-    examDateLabel: '',
-    cdState: 'none', // none | future | today | past
-    cdAbs: 0,
-    cdNote: '',
-    cdAction: '设置日期 ›',
+    cdName: '',
+    cdDays: '--',
+    cdUnit: '',
+    cdNumCls: '',
+    cdPhase: '',
+    cdMeta: '',
+    cdBarPct: 0,
+    cdFootL: '',
+    cdFootR: '',
 
-    // 复习计划 · 打卡
-    planList: [],
-    planTotal: 0,
-    planDone: 0,
+    // 复习计划 · 打卡（按阶段分组）
+    planGroups: [],
+    planProgress: '',
     planPct: 0,
 
     // 知识书
@@ -128,9 +148,7 @@ Page({
     this.ensureSeed();
     this.setData({
       bookCats: BOOK_CATS,
-      todayHint: '每天 30 分钟，碎片时间也能上岸',
-      examName: this.db.career.examName || '江苏省事业编 · 计算机',
-      examDate: this.db.career.examDate || ''
+      todayHint: '每天 30 分钟，碎片时间也能上岸'
     });
     this.renderAll();
     this.renderQuizStart();
@@ -156,7 +174,25 @@ Page({
     if (!db.career.questions || !db.career.questions.length) {
       db.career.questions = JSON.parse(JSON.stringify(CD.questions));
     }
+    /* 题库扩容：按 id 把新题补进已存的旧题库（只增不改，用户自己加的题不覆盖） */
+    this.mergeCareerQuestions();
+    /* 考试倒计时 + 复习计划：老库补默认值（新增任务按 id 只增不改） */
+    this.careerExam();
+    this.mergePlanTasks();
     store.saveDb(db);
+  },
+
+  /* 网页版 mergeCareerQuestions：返回本次新增题数 */
+  mergeCareerQuestions() {
+    const db = this.db;
+    if (!Array.isArray(db.career.questions)) db.career.questions = [];
+    const seen = {};
+    db.career.questions.forEach(q => { seen[q.id] = true; });
+    let added = 0;
+    CD.questions.forEach(dq => {
+      if (!seen[dq.id]) { db.career.questions.push(JSON.parse(JSON.stringify(dq))); added++; }
+    });
+    return added;
   },
 
   renderAll() {
@@ -195,95 +231,257 @@ Page({
   },
 
   /* ============ 考试倒计时 ============ */
+  /* 考试信息（对应网页 careerExam()）：结构与 DB.career.exam 一致 */
+  careerExam() {
+    const c = this.db.career;
+    if (!c.exam || typeof c.exam !== 'object' || Array.isArray(c.exam)) c.exam = {};
+    const e = c.exam;
+    if (!e.name) e.name = CP.exam.name;
+    if (!e.date) e.date = CP.exam.date;
+    if (!e.start) e.start = today();          /* 开始备考日：用于算备考时间进度 */
+    if (e.time === undefined) e.time = CP.exam.time;
+    if (e.note === undefined) e.note = CP.exam.note;
+    return e;
+  },
+  daysLeft() { return daysLeftOf(this.careerExam()); },
+  daysToPhase() { const d = this.daysLeft(); return d === null ? 0 : phaseOf(Math.max(d, 0)).phase; },
+
   renderCountdown() {
-    const c = (this.db && this.db.career) || {};
-    const name = c.examName || this.data.examName || '江苏省事业编 · 计算机';
-    const date = c.examDate || '';
-    if (!date) {
-      this.setData({ examName: name, examDate: '', examDateLabel: '', cdState: 'none', cdAbs: 0, cdNote: '', cdAction: '设置日期 ›' });
-      return;
+    const e = this.careerExam();
+    const d = parseDate(e.date);
+    const days = daysLeftOf(e);
+    const wk = d ? '周' + '日一二三四五六'[d.getDay()] : '';
+    const cdFootL = '考试 ' + (e.date || '--') + (wk ? '（' + wk + '）' : '') + (e.time ? ' ' + e.time : '');
+    let cdDays = '', cdUnit = '', cdNumCls = '', cdPhase = '', cdMeta = '';
+
+    if (days === null) {
+      cdDays = '--'; cdPhase = '未设置考试日期'; cdMeta = '点右上角 ⚙ 设置笔试日期';
+    } else if (days > 0) {
+      cdDays = String(days); cdUnit = '天';
+      if (days <= 14) cdNumCls = 'urgent';
+      else if (days <= 60) cdNumCls = 'warn';
+      const ph = phaseOf(days);
+      cdPhase = '当前阶段 · ' + ph.title;
+      cdMeta = ph.tip;
+    } else if (days === 0) {
+      cdDays = '0'; cdUnit = '天 · 今天开考'; cdNumCls = 'urgent';
+      cdPhase = '今天开考 · 稳住心态正常发挥';
+      cdMeta = '带好准考证、二代身份证、2B 铅笔、黑色签字笔、橡皮（计算机类可带直尺）';
+    } else {
+      cdDays = String(Math.abs(days)); cdUnit = '天前已考完';
+      cdPhase = '本场考试已结束';
+      cdMeta = '点右上角 ⚙ 设置下一场考试日期，倒计时与阶段建议会跟着更新';
     }
-    const days = diffDays(date);
-    const state = days > 0 ? 'future' : (days === 0 ? 'today' : 'past');
-    let note = '';
-    if (state === 'future') note = '坚持每天 30 分钟，碎片时间也能上岸';
-    else if (state === 'today') note = '今天就是考试日，放平心态、正常发挥！';
-    else note = '已结束 · 点击可更新下一次考试日期';
-    const parts = date.split('-');
+
+    /* 备考时间进度：从「开始备考日」到考试日 */
+    let pct = 0, foot = '';
+    const sd = parseDate(e.start);
+    if (sd && d) {
+      const all = Math.round((d.getTime() - sd.getTime()) / 86400000);
+      const used = Math.round((midnight().getTime() - sd.getTime()) / 86400000);
+      if (all > 0) {
+        pct = Math.max(0, Math.min(100, Math.round(used * 100 / all)));
+        foot = '已备考 ' + Math.max(0, used) + ' 天 · 共 ' + all + ' 天';
+      }
+    }
+    if (days !== null && days <= 0) pct = 100;
+
     this.setData({
-      examName: name, examDate: date,
-      examDateLabel: parts[1] + ' 月 ' + parts[2] + ' 日',
-      cdState: state, cdAbs: Math.abs(days), cdNote: note, cdAction: '修改日期 ›'
+      cdName: e.name, cdDays, cdUnit, cdNumCls, cdPhase, cdMeta,
+      cdBarPct: pct, cdFootL, cdFootR: foot ? (foot + '（' + pct + '%）') : ''
     });
   },
-  setExamDate() {
-    const cur = this.data.examDate || '2027-04-17';
+
+  /* 修改考试信息：名称 → 日期 → 时间 → 备注（对应网页的 4 个 prompt） */
+  editExam() {
+    const e = this.careerExam();
     wx.showModal({
-      title: '设置考试日期', editable: true, placeholderText: 'YYYY-MM-DD', content: cur,
-      success: r => {
-        if (!r.confirm) return;
-        const v = (r.content || '').trim();
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(v) || isNaN(new Date(v + 'T00:00:00').getTime())) {
-          wx.showToast({ title: '格式应为 2027-04-17', icon: 'none' });
-          return;
-        }
-        this.db.career.examName = this.data.examName || '江苏省事业编 · 计算机';
-        this.db.career.examDate = v;
-        store.saveDb(this.db);
-        this.renderCountdown();
-        wx.showToast({ title: '已设置考试日期', icon: 'success' });
+      title: '考试名称', editable: true, placeholderText: '如：江苏省事业单位统考 · 计算机类岗位', content: e.name || '',
+      success: r1 => {
+        if (!r1.confirm) return;
+        wx.showModal({
+          title: '考试日期（YYYY-MM-DD）', editable: true, placeholderText: '2027-04-17', content: e.date || '',
+          success: r2 => {
+            if (!r2.confirm) return;
+            const v = String(r2.content || '').trim();
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(v) || !parseDate(v)) {
+              wx.showToast({ title: '格式应为 2027-04-17', icon: 'none' });
+              return;
+            }
+            wx.showModal({
+              title: '考试时间', editable: true, placeholderText: '09:00-11:30', content: e.time || '',
+              success: r3 => {
+                if (!r3.confirm) return;
+                wx.showModal({
+                  title: '备注（科目 / 大纲，可留空）', editable: true, placeholderText: '可留空', content: e.note || '',
+                  success: r4 => {
+                    if (!r4.confirm) return;
+                    e.name = String(r1.content || '').trim() || CP.exam.name;
+                    e.date = v;
+                    e.time = String(r3.content || '').trim();
+                    e.note = String(r4.content || '').trim();
+                    const sd = parseDate(e.start), ed = parseDate(e.date);
+                    if (sd && ed && sd > ed) e.start = today();
+                    store.saveDb(this.db);
+                    this.renderCountdown();
+                    this.renderPlan();       /* 阶段建议日期随考试日期变化 */
+                    wx.showToast({ title: '已保存考试信息', icon: 'success' });
+                  }
+                });
+              }
+            });
+          }
+        });
       }
     });
   },
 
   /* ============ 复习计划 · 打卡 ============ */
-  planArr() {
-    const db = this.db;
-    if (!Array.isArray(db.career.plan)) db.career.plan = [];
-    return db.career.plan;
+  /* 计划数据（对应网页 careerPlan()）：结构与 DB.career.plan 一致 */
+  careerPlan() {
+    const c = this.db.career;
+    const p = c.plan;
+    if (!p || typeof p !== 'object' || Array.isArray(p) || !Array.isArray(p.groups) || !p.groups.length) {
+      c.plan = JSON.parse(JSON.stringify(CP.plan));
+    }
+    const q = c.plan;
+    q.groups.forEach(g => {
+      if (!Array.isArray(g.tasks)) g.tasks = [];
+      g.tasks.forEach(t => { t.done = !!t.done; if (t.doneAt === undefined) t.doneAt = ''; });
+    });
+    return q;
+  },
+  /* 老库补新增的默认任务（按 id 只增不改），返回新增条数 */
+  mergePlanTasks() {
+    const p = this.careerPlan();
+    let added = 0;
+    const seen = {};
+    p.groups.forEach(g => (g.tasks || []).forEach(t => { seen[t.id] = 1; }));
+    CP.plan.groups.forEach(dg => {
+      let g = null;
+      for (let i = 0; i < p.groups.length; i++) { if (p.groups[i].id === dg.id) { g = p.groups[i]; break; } }
+      if (!g) { p.groups.push(JSON.parse(JSON.stringify(dg))); added += dg.tasks.length; return; }
+      dg.tasks.forEach(dt => {
+        if (!seen[dt.id]) { g.tasks.push(JSON.parse(JSON.stringify(dt))); added++; }
+      });
+    });
+    return added;
+  },
+  planStats() {
+    const p = this.careerPlan();
+    let total = 0, done = 0;
+    p.groups.forEach(g => (g.tasks || []).forEach(t => { total++; if (t.done) done++; }));
+    return { total, done, pct: total ? Math.round(done * 100 / total) : 0 };
+  },
+  /* 阶段建议日期（由考试日期反推；起始日不早于今天） */
+  planRange(g) {
+    const d = parseDate(this.careerExam().date);
+    if (!d || typeof g.s !== 'number' || typeof g.e !== 'number') return '';
+    const off = n => { const x = new Date(d.getTime()); x.setDate(x.getDate() - n); return x; };
+    let start = off(g.s);
+    const end = off(g.e);
+    const t = midnight();
+    if (start < t) start = t;
+    const f = x => (x.getMonth() + 1) + '/' + ('0' + x.getDate()).slice(-2);
+    return '建议 ' + f(start) + ' – ' + f(end);
   },
   renderPlan() {
-    const planList = this.planArr().map(p => ({ id: p.id, text: p.text, done: !!p.done }));
-    const planDone = planList.filter(p => p.done).length;
+    const p = this.careerPlan();
+    const st = this.planStats();
+    const curPhase = this.daysToPhase();
+    const planGroups = p.groups.map((g, gi) => {
+      const tasks = g.tasks || [];
+      const done = tasks.filter(t => t.done).length;
+      const isCur = (typeof g.phase === 'number' && g.phase === curPhase);
+      const expanded = (typeof g.expanded === 'boolean') ? g.expanded : isCur;
+      return {
+        gi, name: g.name, isCur, expanded,
+        range: this.planRange(g),
+        done, total: tasks.length,
+        allDone: tasks.length > 0 && done === tasks.length,
+        tasks: tasks.map(t => ({ id: t.id, text: t.text, done: !!t.done }))
+      };
+    });
     this.setData({
-      planList,
-      planTotal: planList.length,
-      planDone,
-      planPct: planList.length ? Math.round(planDone * 100 / planList.length) : 0
+      planGroups,
+      planProgress: st.total ? ('已完成 ' + st.done + ' / ' + st.total + ' 项 · ' + st.pct + '%') : '',
+      planPct: st.pct
     });
   },
-  togglePlan(e) {
-    const id = e.currentTarget.dataset.id;
-    const p = this.planArr().find(x => x.id === id); if (!p) return;
-    p.done = !p.done;
+  togglePlanTask(e) {
+    const d = e.currentTarget.dataset;
+    const p = this.careerPlan();
+    const g = p.groups[d.gi]; if (!g) return;
+    const t = (g.tasks || []).find(x => x.id === d.tid); if (!t) return;
+    t.done = !t.done;
+    t.doneAt = t.done ? today() : '';
     store.saveDb(this.db);
     this.renderPlan();
-    if (p.done) wx.showToast({ title: '打卡完成 ✓', icon: 'none' });
+    if (t.done) wx.showToast({ title: '打卡完成 ✓', icon: 'none' });
   },
-  addPlan() {
-    wx.showModal({ title: '添加复习计划', editable: true, placeholderText: '如：公基刷题 30 道', success: r => {
-      if (!r.confirm || !r.content || !r.content.trim()) return;
-      this.planArr().push({ id: 'pl_' + Date.now(), text: r.content.trim(), done: false });
-      store.saveDb(this.db);
-      this.renderPlan();
-    } });
+  togglePlanGroup(e) {
+    const gi = Number(e.currentTarget.dataset.gi);
+    const p = this.careerPlan();
+    const g = p.groups[gi]; if (!g) return;
+    const isCur = (typeof g.phase === 'number' && g.phase === this.daysToPhase());
+    const cur = (typeof g.expanded === 'boolean') ? g.expanded : isCur;
+    g.expanded = !cur;
+    store.saveDb(this.db);
+    this.renderPlan();
   },
-  deletePlan(e) {
-    const id = e.currentTarget.dataset.id;
-    wx.showModal({ title: '删除这条计划？', content: '删除后不可恢复', success: r => {
-      if (!r.confirm) return;
-      this.db.career.plan = this.planArr().filter(x => x.id !== id);
-      store.saveDb(this.db);
-      this.renderPlan();
-    } });
+  /* 添加任务：先选阶段（当前阶段为默认），再输入内容 */
+  addPlanTask() {
+    const p = this.careerPlan();
+    const curPhase = this.daysToPhase();
+    let defIdx = 0;
+    for (let i = 0; i < p.groups.length; i++) { if (p.groups[i].phase === curPhase) { defIdx = i; break; } }
+    const addTo = gi => {
+      wx.showModal({
+        title: '任务内容', editable: true, placeholderText: '如：公基刷题 30 道',
+        success: r => {
+          if (!r.confirm || !String(r.content || '').trim()) return;
+          p.groups[gi].tasks.push({ id: 'cpt_' + Date.now(), text: String(r.content).trim(), done: false, doneAt: '' });
+          p.groups[gi].expanded = true;
+          store.saveDb(this.db);
+          this.renderPlan();
+        }
+      });
+    };
+    if (p.groups.length > 1) {
+      wx.showActionSheet({
+        itemList: p.groups.map((g, i) => (i + 1) + '. ' + g.name + (i === defIdx ? '（当前阶段）' : '')),
+        success: r => addTo(r.tapIndex),
+        fail: () => {}
+      });
+    } else addTo(0);
+  },
+  delPlanTask(e) {
+    const d = e.currentTarget.dataset;
+    const p = this.careerPlan();
+    const g = p.groups[d.gi]; if (!g) return;
+    const t = (g.tasks || []).find(x => x.id === d.tid); if (!t) return;
+    wx.showModal({
+      title: '删除这条计划？', content: t.text,
+      success: r => {
+        if (!r.confirm) return;
+        g.tasks = g.tasks.filter(x => x.id !== d.tid);
+        store.saveDb(this.db);
+        this.renderPlan();
+      }
+    });
   },
   resetPlan() {
-    wx.showModal({ title: '重置打卡？', content: '所有计划将变回「未完成」', success: r => {
-      if (!r.confirm) return;
-      this.planArr().forEach(p => { p.done = false; });
-      store.saveDb(this.db);
-      this.renderPlan();
-    } });
+    const st = this.planStats();
+    if (!st.done) { wx.showToast({ title: '当前没有已打卡的任务', icon: 'none' }); return; }
+    wx.showModal({
+      title: '清空打卡？', content: '共 ' + st.done + ' 条打卡记录，任务会保留、只取消勾选',
+      success: r => {
+        if (!r.confirm) return;
+        this.careerPlan().groups.forEach(g => (g.tasks || []).forEach(t => { t.done = false; t.doneAt = ''; }));
+        store.saveDb(this.db);
+        this.renderPlan();
+      }
+    });
   },
 
   /* ============ 知识书 ============ */

@@ -3,53 +3,53 @@
   <!-- ============ 今日备考 ============ -->
   <view wx:if="{{activeMod==='today'}}">
 
-    <!-- 考试倒计时 -->
-    <view class="career-countdown cd-{{cdState}}" bindtap="setExamDate">
-      <view class="cd-top">
-        <text class="cd-name">⏳ {{examName}}</text>
-        <text class="cd-date">{{examDateLabel?examDateLabel:'未设置'}}</text>
+    <!-- 考试倒计时（⚙ 可改考试名称/日期/时间） -->
+    <view class="career-cd-card">
+      <view class="career-cd-head">
+        <text class="career-cd-label">{{cdName}}</text>
+        <view class="career-cd-set" bindtap="editExam">⚙</view>
       </view>
-      <view class="cd-body">
-        <block wx:if="{{cdState==='future'}}">
-          <text class="cd-num">{{cdAbs}}</text><text class="cd-unit">天后开考</text>
-        </block>
-        <block wx:elif="{{cdState==='today'}}">
-          <text class="cd-num cd-num-sm">就是今天</text><text class="cd-unit">🎯 放平心态</text>
-        </block>
-        <block wx:elif="{{cdState==='past'}}">
-          <text class="cd-num">{{cdAbs}}</text><text class="cd-unit">天前已结束</text>
-        </block>
-        <block wx:else>
-          <text class="cd-num cd-num-sm">未设置</text><text class="cd-unit">点击设置考试日期</text>
-        </block>
-      </view>
-      <view class="cd-foot">
-        <text class="cd-note">{{cdNote}}</text>
-        <text class="cd-action">{{cdAction}}</text>
-      </view>
-    </view>
-
-    <!-- 今日复习计划 · 打卡 -->
-    <view class="card">
-      <view class="card-title"><text class="t">✅ 今日复习计划</text><text class="sub">{{planDone}}/{{planTotal}} 已完成</text></view>
-      <view wx:if="{{planList.length===0}}" class="empty">还没有计划，点下方「＋ 添加计划」</view>
-      <block wx:else>
-        <view class="plan-item {{item.done?'done':''}}" wx:for="{{planList}}" wx:key="id">
-          <view class="plan-box" bindtap="togglePlan" data-id="{{item.id}}"><text wx:if="{{item.done}}" class="plan-tick">✓</text></view>
-          <text class="plan-text" bindtap="togglePlan" data-id="{{item.id}}">{{item.text}}</text>
-          <text class="plan-del" catchtap="deletePlan" data-id="{{item.id}}">✕</text>
+      <view class="career-cd-body">
+        <view class="career-cd-num {{cdNumCls}}"><text class="b">{{cdDays}}</text><text class="s">{{cdUnit}}</text></view>
+        <view class="career-cd-info">
+          <view class="career-cd-phase">{{cdPhase}}</view>
+          <view class="career-cd-meta">{{cdMeta}}</view>
         </view>
-        <view class="bar plan-bar"><view class="bar-fill" style="width:{{planPct}}%"></view></view>
-      </block>
-      <view class="career-actions plan-actions">
-        <button class="btn btn-ghost btn-sm" bindtap="addPlan">＋ 添加计划</button>
-        <button wx:if="{{planList.length}}" class="btn btn-ghost btn-sm" bindtap="resetPlan">重置打卡</button>
+      </view>
+      <view class="career-cd-bar"><view class="i" style="width:{{cdBarPct}}%"></view></view>
+      <view class="career-cd-foot"><text class="cd-foot-l">{{cdFootL}}</text><text class="cd-foot-r">{{cdFootR}}</text></view>
+    </view>
+
+    <!-- 复习计划 · 打卡 -->
+    <view class="card">
+      <view class="card-title"><text class="t">🗓 复习计划 · 打卡</text><text class="sub">{{planProgress}}</text></view>
+      <view class="career-plan-bar"><view class="i" style="width:{{planPct}}%"></view></view>
+      <view class="career-plan-list">
+        <view class="career-plan-group {{g.isCur?'is-current':''}}" wx:for="{{planGroups}}" wx:for-item="g" wx:key="name">
+          <view class="career-plan-group-head" bindtap="togglePlanGroup" data-gi="{{g.gi}}">
+            <view class="career-plan-group-name">
+              <text class="career-plan-arrow">{{g.expanded?'▾':'▸'}}</text>{{g.name}}<text wx:if="{{g.isCur}}" class="career-plan-cur">当前阶段</text>
+            </view>
+            <text class="career-plan-range">{{g.range}}</text>
+            <text class="career-plan-badge {{g.allDone?'all-done':''}}">{{g.done}}/{{g.total}}</text>
+          </view>
+          <block wx:if="{{g.expanded}}">
+            <view class="career-plan-task {{t.done?'done':''}}" wx:for="{{g.tasks}}" wx:for-item="t" wx:key="id">
+              <view class="career-plan-check" bindtap="togglePlanTask" data-gi="{{g.gi}}" data-tid="{{t.id}}">✓</view>
+              <text class="career-plan-text" bindtap="togglePlanTask" data-gi="{{g.gi}}" data-tid="{{t.id}}">{{t.text}}</text>
+              <text class="career-plan-del" catchtap="delPlanTask" data-gi="{{g.gi}}" data-tid="{{t.id}}">✕</text>
+            </view>
+          </block>
+        </view>
+      </view>
+      <view class="career-actions career-plan-actions">
+        <button class="btn btn-ghost btn-sm" bindtap="addPlanTask">＋ 添加任务</button>
+        <button class="btn btn-ghost btn-sm" bindtap="resetPlan">↺ 清空打卡</button>
       </view>
     </view>
 
     <view class="card">
-      <view class="card-title"><text class="t">📋 今日备考</text></view>
-      <view class="sub career-hint">{{todayHint}}</view>
+      <view class="card-title"><text class="t">📋 今日备考</text><text class="sub">{{todayHint}}</text></view>
       <view class="career-stats">
         <view class="career-stat"><text class="b">{{stats.books}}</text><text class="s">参考书籍</text></view>
         <view class="career-stat"><text class="b">{{stats.chapters}}</text><text class="s">知识章节</text></view>
@@ -58,10 +58,10 @@
         <view class="career-stat career-stat-red"><text class="b">{{stats.wrong}}</text><text class="s">待复习</text></view>
       </view>
       <view class="career-actions">
-        <button class="btn btn-primary btn-sm" bindtap="startQuiz" data-mode="random">🎲 随机抽题（10 道）</button>
-        <button class="btn btn-ghost btn-sm" bindtap="switchMod" data-mod="quiz">📝 模拟自测</button>
-        <button class="btn btn-ghost btn-sm" bindtap="startQuiz" data-mode="wrong">❌ 错题重练</button>
+        <button class="btn btn-primary btn-sm" bindtap="switchMod" data-mod="quiz">📝 模拟自测（按科目抽历年真题）</button>
+        <button class="btn btn-ghost btn-sm" bindtap="startQuiz" data-mode="random">🎲 随机抽题（10 道）</button>
         <button class="btn btn-ghost btn-sm" bindtap="switchMod" data-mod="wrong">📕 错题本</button>
+        <button class="btn btn-ghost btn-sm" bindtap="startQuiz" data-mode="wrong">❌ 错题重练</button>
       </view>
     </view>
     <view class="card">

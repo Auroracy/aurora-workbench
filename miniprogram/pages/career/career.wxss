@@ -1,34 +1,57 @@
 /* 事业编备考 · 移植网页版视觉（px→rpx，复用全局主题变量） */
 .career-page { padding-bottom: 160rpx; }
 
-.career-hint { font-size: 22rpx; color: var(--text-3); margin: -8rpx 0 4rpx; }
+/* ====== 考试倒计时（照搬网页版 .career-cd-*，px→rpx） ====== */
+.career-cd-card { margin-bottom: 24rpx; padding: 30rpx 36rpx 26rpx; border-radius: var(--radius);
+  border: 1rpx solid var(--line-soft);
+  background: linear-gradient(135deg, rgba(21, 164, 155, 0.13), rgba(46, 134, 193, 0.10)); position: relative; }
+.career-cd-head { display: flex; align-items: center; gap: 16rpx; }
+.career-cd-label { font-size: 25rpx; color: var(--text-2); font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.career-cd-set { margin-left: auto; flex: 0 0 auto; width: 52rpx; height: 52rpx; border-radius: 50%;
+  border: 1rpx solid var(--line-soft); background: var(--card); color: var(--text-3);
+  font-size: 26rpx; line-height: 50rpx; text-align: center; }
+.career-cd-body { display: flex; align-items: flex-end; gap: 32rpx; flex-wrap: wrap; margin-top: 8rpx; }
+.career-cd-num { display: flex; align-items: baseline; gap: 12rpx; }
+.career-cd-num .b { font-size: 76rpx; line-height: 0.95; font-weight: 800; color: var(--accent); letter-spacing: -3rpx; font-variant-numeric: tabular-nums; }
+.career-cd-num .s { font-size: 26rpx; font-weight: 600; color: var(--text-2); }
+.career-cd-num.warn .b { color: var(--amber); }
+.career-cd-num.urgent .b { color: var(--red); }
+/* 移动端：阶段信息换行到天数下方、左对齐（网页版 @media(max-width:640px) 同样处理） */
+.career-cd-info { margin-left: 0; text-align: left; width: 100%; }
+.career-cd-phase { font-size: 26rpx; font-weight: 700; color: var(--text); }
+.career-cd-meta { font-size: 23rpx; color: var(--text-3); margin-top: 8rpx; line-height: 1.6; }
+.career-cd-bar { margin-top: 24rpx; height: 12rpx; border-radius: 999rpx; background: rgba(46, 134, 193, 0.16); overflow: hidden; }
+.career-cd-bar .i { display: block; height: 100%; border-radius: 999rpx; background: linear-gradient(90deg, var(--accent), var(--blue)); transition: width .4s; }
+/* 窄屏容不下时整段换行，不把「09:00-11:30」拆开 */
+.career-cd-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4rpx 20rpx;
+  font-size: 22rpx; color: var(--text-3); margin-top: 12rpx; }
+.career-cd-foot .cd-foot-l, .career-cd-foot .cd-foot-r { flex: 0 0 auto; white-space: nowrap; }
 
-/* 考试倒计时（顶部高亮） */
-.career-countdown { border-radius: var(--radius); padding: 26rpx 28rpx; margin-bottom: 24rpx; background: linear-gradient(135deg, #15A49B, #2E86C1); color: #fff; box-shadow: 0 8rpx 28rpx rgba(21, 164, 155, 0.24); }
-.career-countdown.cd-past { background: linear-gradient(135deg, #93A8B6, #6E8798); box-shadow: 0 8rpx 28rpx rgba(110, 135, 152, 0.2); }
-.career-countdown.cd-none { background: linear-gradient(135deg, #BACBD6, #9CB2C0); box-shadow: 0 6rpx 20rpx rgba(156, 178, 192, 0.22); }
-.cd-top { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; }
-.cd-name { font-size: 26rpx; font-weight: 600; }
-.cd-date { font-size: 24rpx; opacity: .88; flex: 0 0 auto; }
-.cd-body { display: flex; align-items: baseline; gap: 12rpx; margin: 6rpx 0 2rpx; }
-.cd-num { font-size: 88rpx; font-weight: 800; line-height: 1.05; letter-spacing: -2rpx; font-variant-numeric: tabular-nums; }
-.cd-num-sm { font-size: 48rpx; letter-spacing: 0; }
-.cd-unit { font-size: 26rpx; opacity: .92; }
-.cd-foot { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; margin-top: 10rpx; }
-.cd-note { flex: 1 1 auto; min-width: 0; font-size: 22rpx; opacity: .85; }
-.cd-action { flex: 0 0 auto; font-size: 21rpx; font-weight: 600; background: rgba(255, 255, 255, 0.22); border-radius: 999rpx; padding: 4rpx 16rpx; }
-
-/* 复习计划 · 打卡 */
-.plan-item { display: flex; align-items: center; gap: 16rpx; padding: 18rpx 20rpx; background: var(--input-bg); border-radius: 14rpx; margin-bottom: 12rpx; }
-.plan-box { flex: 0 0 auto; width: 40rpx; height: 40rpx; border-radius: 12rpx; border: 3rpx solid var(--line); background: var(--card); display: flex; align-items: center; justify-content: center; }
-.plan-tick { font-size: 24rpx; font-weight: 700; color: #fff; line-height: 1; }
-.plan-text { flex: 1 1 auto; min-width: 0; font-size: 27rpx; color: var(--text); line-height: 1.5; }
-.plan-del { flex: 0 0 auto; font-size: 24rpx; color: var(--text-3); padding: 0 8rpx; }
-.plan-item.done { background: var(--accent-bg); }
-.plan-item.done .plan-box { background: var(--accent); border-color: var(--accent); }
-.plan-item.done .plan-text { color: var(--text-3); text-decoration: line-through; text-decoration-color: var(--text-3); }
-.plan-bar { height: 10rpx; margin: 10rpx 0 4rpx; }
-.plan-actions { margin-top: 20rpx; }
+/* ====== 复习计划 · 打卡（照搬网页版 .career-plan-*） ====== */
+.career-plan-bar { height: 12rpx; border-radius: 999rpx; background: var(--input-bg); overflow: hidden; margin: 20rpx 0 28rpx; }
+.career-plan-bar .i { display: block; height: 100%; border-radius: 999rpx; background: linear-gradient(90deg, var(--accent), var(--blue)); transition: width .35s; }
+.career-plan-list { display: flex; flex-direction: column; gap: 28rpx; }
+.career-plan-group { display: flex; flex-direction: column; gap: 14rpx; }
+/* 手机宽度（约 323px 可用）比网页窄，间距/字号各收一点，保证「名称 + 当前阶段 + 建议日期 + 徽标」同一行 */
+.career-plan-group-head { display: flex; align-items: center; gap: 12rpx; flex-wrap: wrap; }
+.career-plan-group-name { font-size: 25rpx; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 10rpx; }
+.career-plan-group.is-current .career-plan-group-name { color: var(--accent); }
+.career-plan-arrow { font-size: 22rpx; }
+.career-plan-cur { font-size: 20rpx; padding: 2rpx 12rpx; border-radius: 999rpx; background: var(--accent); color: #fff; font-weight: 600; }
+.career-plan-range { font-size: 21rpx; color: var(--text-3); }
+.career-plan-badge { margin-left: auto; font-size: 22rpx; color: var(--text-3); background: var(--input-bg); padding: 4rpx 16rpx; border-radius: 999rpx; flex: 0 0 auto; }
+.career-plan-badge.all-done { background: var(--green-bg); color: var(--green); }
+.career-plan-task { display: flex; align-items: flex-start; gap: 20rpx; padding: 18rpx 24rpx; border-radius: 16rpx;
+  border: 1rpx solid var(--line-soft); background: var(--card); }
+.career-plan-task.done { background: var(--input-bg); border-color: transparent; }
+.career-plan-check { flex: 0 0 auto; width: 32rpx; height: 32rpx; margin-top: 2rpx; border-radius: 50%;
+  border: 3rpx solid var(--text-3); color: transparent; font-size: 22rpx; line-height: 30rpx; text-align: center; }
+.career-plan-task.done .career-plan-check { background: var(--accent); border-color: var(--accent); color: #fff; }
+.career-plan-text { flex: 1 1 auto; min-width: 0; font-size: 26rpx; color: var(--text); line-height: 1.6; }
+.career-plan-task.done .career-plan-text { text-decoration: line-through; text-decoration-thickness: 2rpx; color: var(--text-3); }
+.career-plan-del { flex: 0 0 auto; width: 40rpx; height: 40rpx; margin-top: 2rpx; color: var(--text-3);
+  opacity: .4; font-size: 22rpx; line-height: 40rpx; text-align: center; }
+.career-plan-actions { margin-top: 24rpx; }
 
 /* 统计 */
 .career-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120rpx, 1fr)); gap: 16rpx; margin: 16rpx 0 20rpx; }
