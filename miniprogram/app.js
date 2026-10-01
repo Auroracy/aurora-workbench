@@ -11,7 +11,7 @@ const CLOUD_ENV = 'cloud1-d0ga4s8mm02f4c83a';
 
 App({
   globalData: {
-    version: { date: '2026-09-20', desc: '微信小程序版首版：英语每日单词' },
+    version: { date: '2026-10-01', desc: '英语单词 · 早教 · 塑身 · 事业编备考' },
     cloudReady: false
   },
 
