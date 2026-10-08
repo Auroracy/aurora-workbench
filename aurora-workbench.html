@@ -4200,6 +4200,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
         <button class="career-seg-item" data-dseg="bad" onclick="switchCareerDoneSeg('bad')">❌ 答错过 <span class="career-seg-badge" id="careerDoneBadge"></span></button>
         <button class="career-seg-item" data-dseg="ok" onclick="switchCareerDoneSeg('ok')">✅ 一遍过</button>
       </div>
+      <div class="career-seg" id="careerDoneBooks" style="display:none;margin:8px 0 0;"></div>
       <div class="career-actions" style="margin:10px 0 0;">
         <button class="btn btn-primary btn-sm" id="careerRedoBtn" onclick="startCareerRedoQuiz()">♻ 重做这些题</button>
         <button class="btn btn-ghost btn-sm" id="careerDoneClearBtn" onclick="clearCareerDone()">↺ 清空记录</button>
@@ -34726,6 +34727,8 @@ function careerRecordDone(s){
       e = m[q.id] = {
         id:q.id, q:q.question || '', o:(q.options || []).slice(), a:q.answer || '', e:q.explanation || '',
         src:q.source || '', ch:q.chapter || '', sub:q.subject || '', y:q.year || '', gen:!!q._gen,
+        bk:(function(s){ var raw = (String(s).match(/《(.+?)》/) || [])[1] || String(q.subject || '').trim();
+                           return (CAREER_DONE_BK_ALIAS[raw] || raw); })(q.source || ''),
         times:0, ok:0, bad:0, done:false, firstAt:now, lastAt:now, lastOk:false, lastChoice:''
       };
       added++;
@@ -34743,9 +34746,35 @@ function careerDoneItems(){
   return out;
 }
 var careerDoneSeg = 'all';
+var careerDoneBook = '';                 /* 已做题本学科筛选：'' = 全部；否则为知识书名 / 真题科目 */
 var careerDoneOpen = false;              /* 已做题本默认折叠，避免几十条把卡片拉成几千像素 */
 var CAREER_DONE_SHOW = 5;                /* 折叠时列出最近几条（重做/组卷始终用全部） */
 function careerDoneToggleOpen(){ careerDoneOpen = !careerDoneOpen; renderCareerDone(); }
+/* 存档条目属于哪门学科：优先存档字段 bk（新存档直接写），
+   老存档兜底从出处 src 解析《书名》（自动题都带），再退到科目 sub（真题：公基/计算机/职测/考情） */
+var CAREER_DONE_BK_ALIAS = { '公基': '公共基础知识', '计算机专业知识': '计算机', '职业能力测验': '职测' };
+function careerDoneBookOf(e){
+  if(e.bk) return e.bk;
+  var m = String(e.src || '').match(/《(.+?)》/);
+  if(m && m[1]) return m[1];
+  var sub = String(e.sub || '').trim();
+  return sub ? (CAREER_DONE_BK_ALIAS[sub] || sub) : '未分类';
+}
+function careerDoneSwitchBook(bk){
+  careerDoneBook = bk || '';
+  renderCareerDone();
+}
+function careerDoneBookOptions(){
+  var idx = {}, out = [];
+  careerDoneItems().forEach(function(e){
+    var b = careerDoneBookOf(e);
+    if(idx[b] !== undefined){ out[idx[b]].n++; return; }   /* 注意：下标 0 也是合法值，不能用真值判断 */
+    idx[b] = out.length;
+    out.push({ bk: b, n: 1 });
+  });
+  out.sort(function(a, b){ return b.n - a.n; });
+  return out;
+}
 function switchCareerDoneSeg(seg){
   careerDoneSeg = seg || 'all';
   Array.prototype.forEach.call(document.querySelectorAll('#careerDoneSeg .career-seg-item'), function(b){
@@ -34755,6 +34784,7 @@ function switchCareerDoneSeg(seg){
 }
 function careerDoneFiltered(){
   return careerDoneItems().filter(function(e){
+    if(careerDoneBook && careerDoneBookOf(e) !== careerDoneBook) return false;   /* 学科筛选 */
     if(careerDoneSeg === 'bad') return !e.done && e.bad > 0;
     if(careerDoneSeg === 'ok')  return !e.done && !(e.bad > 0);
     return true;
@@ -34769,6 +34799,23 @@ function renderCareerDone(){
   var st = document.getElementById('careerDoneStat');
   if(st) st.textContent = all.length ? ('共 ' + all.length + ' 道 · 答错过 ' + badN + ' · 已掌握 ' + mN) : '';
   var bd = document.getElementById('careerDoneBadge'); if(bd) bd.textContent = badN ? badN : '';
+  /* 学科切换条：存档跨 ≥2 门学科才显示；清单与「重做这些题」跟随筛选，头部统计/清空记录始终看全部 */
+  var segWrap = document.getElementById('careerDoneBooks');
+  if(segWrap){
+    var opts = careerDoneBookOptions();
+    if(opts.length && careerDoneBook && !opts.some(function(o){ return o.bk === careerDoneBook; })) careerDoneBook = '';   /* 筛的书被清空了 → 自动回到全部 */
+    if(opts.length > 1 && all.length){
+      var sh = '<button class="career-seg-item' + (!careerDoneBook ? ' active' : '') + '" onclick="careerDoneSwitchBook(\'\')">全部 ' + all.length + '</button>';
+      opts.forEach(function(o){
+        sh += '<button class="career-seg-item' + (careerDoneBook === o.bk ? ' active' : '') + '" onclick="careerDoneSwitchBook(decodeURIComponent(\'' + encodeURIComponent(o.bk) + '\'))">' + escapeHtml(o.bk) + ' ' + o.n + '</button>';
+      });
+      segWrap.innerHTML = sh;
+      segWrap.style.display = 'flex';
+    } else {
+      segWrap.innerHTML = '';
+      segWrap.style.display = 'none';
+    }
+  }
   var list = careerDoneFiltered();
   var rb = document.getElementById('careerRedoBtn');       if(rb) rb.textContent = '♻ 重做这些题（' + list.length + ' 道）';
   var cb = document.getElementById('careerDoneClearBtn'); if(cb) cb.textContent = '↺ 清空记录' + (all.length ? '（' + all.length + '）' : '');
@@ -34777,7 +34824,7 @@ function renderCareerDone(){
     return;
   }
   if(!list.length){
-    wrap.innerHTML = '<div class="empty-hint">' + (careerDoneSeg === 'bad' ? '没有答错过的题，保持住 🎉' : '这一档暂时没有题目') + '</div>';
+    wrap.innerHTML = '<div class="empty-hint">' + (careerDoneBook ? '「' + escapeHtml(careerDoneBook) + '」下' : '') + (careerDoneSeg === 'bad' ? '没有答错过的题，保持住 🎉' : '这一档暂时没有题目') + '</div>';
     return;
   }
   var shown = list.slice(0, careerDoneOpen ? list.length : Math.min(list.length, CAREER_DONE_SHOW));
@@ -34835,7 +34882,7 @@ function startCareerRedoQuiz(){
   });
   shuffleArray(qs);
   var segTxt = (careerDoneSeg === 'bad' ? '答错过的' : (careerDoneSeg === 'ok' ? '一遍过的' : '全部已做'));
-  var label = '重做 · ' + segTxt + ' ' + qs.length + ' 道';
+  var label = '重做 · ' + segTxt + (careerDoneBook ? ' · ' + careerDoneBook : '') + ' ' + qs.length + ' 道';
   careerQuizState = {
     mode:'learned', subject:label, label:label, questions:qs, i:0,
     correct:0, wrong:0, score:0, perScore:100 / qs.length,
