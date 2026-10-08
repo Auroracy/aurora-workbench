@@ -4183,9 +4183,9 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
       <div class="career-actions" style="margin:0 0 10px;">
         <button class="btn btn-primary btn-sm" onclick="startCareerLearnedQuiz()">🎯 按已学考点出题</button>
         <button class="btn btn-ghost btn-sm" id="careerLearnToggleBtn" onclick="careerLearnedToggleOpen()">▾ 收起清单</button>
-        <button class="btn btn-ghost btn-sm" id="careerAiWriteBtn" onclick="careerAiWriteLearned()">✨ AI 编写真题</button>
         <button class="btn btn-ghost btn-sm" onclick="resetCareerLearned()">↺ 清空勾选</button>
       </div>
+      <div id="careerAiTip" class="sub" style="margin:-2px 0 8px;"></div>
       <div class="career-seg" id="careerLearnedBooks" style="display:none;margin:0 0 10px;"></div>
       <div id="careerLearnedList" class="career-learned-list"></div>
     </div>
@@ -34322,11 +34322,16 @@ function renderCareerLearned(){
   if(st) st.textContent = '已学 ' + all.length + ' / ' + total + ' 个考点 · ' + pctTxt + '%';
   var bar = document.getElementById('careerLearnedBar');
   if(bar) bar.style.width = (all.length ? Math.max(pct, 1) : 0) + '%';
-  var aiBtn = document.getElementById('careerAiWriteBtn');
-  if(aiBtn){
-    aiBtn.textContent = careerAiBtnText();
-    aiBtn.disabled = !!careerAiBusy;
-    aiBtn.style.opacity = careerAiBusy ? '.6' : '';
+  /* 出题时自动编写 AI 真题（无需手动按钮）：这里只提示当前进度/是否配了 Key */
+  var aiTip = document.getElementById('careerAiTip');
+  if(aiTip){
+    if(careerAiBusy) aiTip.textContent = '⏳ AI 正在编写真题…';
+    else if(!careerHasQwenKey()) aiTip.textContent = '未配置通义千问 Key：出题将只用题库真题 + 本地改写';
+    else {
+      var m2 = careerAiQ(), done2 = 0;
+      all.forEach(function(it){ if(m2[it.p.id]) done2++; });
+      aiTip.textContent = '已学考点中 ' + done2 + '/' + all.length + ' 个已有 AI 真题，出题时不足 20 道会自动补写';
+    }
   }
   var btn = document.getElementById('careerLearnToggleBtn');
   if(btn) btn.textContent = careerLearnedOpen ? '▾ 收起清单' : '▸ 展开清单';
@@ -34484,6 +34489,12 @@ function careerMakeOptions(correct, candidates, seed, minLen){
   for(var k = 0; k < 4; k++) options.push(k === pos ? correct : use[di++].t);
   return { options:options, answer:CAREER_LABELS[pos] };
 }
+/* 书名统一成「《X》」：数据里书名常自带书名号，直接再包一层会变成《《X》》 */
+function careerBookLabel(t){
+  var s = String(t == null ? '' : t).trim();
+  if(!s) return '';
+  return /^《.*》$/.test(s) ? s : ('《' + s + '》');
+}
 var _careerTitleMap = null;
 var _careerTitlePool = null;
 function careerTitlePool(){
@@ -34544,10 +34555,10 @@ function careerGenQuestions(item, tipPool, stmtPool, titlePool, round){
     var o1 = careerDistract(item, stmtPool, core, h + 23, 6);
     if(o1) out.push({
       id:'gen_' + p.id + '_s' + careerHash(core).toString(36), _gen:true, year:'', subject:'已学考点', chapter:item.cname,
-      source:'自动出题 · 要点表述（《' + item.btitle + '》）',
+      source:'自动出题 · 要点表述（' + careerBookLabel(item.btitle) + '）',
       question:'以下关于「' + ptitle + '」的表述，正确的是？',
       options:o1.options, answer:o1.answer,
-      explanation:'出自《' + item.btitle + '》' + item.cname + ' · ' + ptitle + '：' + core
+      explanation:'出自' + careerBookLabel(item.btitle) + item.cname + ' · ' + ptitle + '：' + core
     });
   }
 
@@ -34567,10 +34578,10 @@ function careerGenQuestions(item, tipPool, stmtPool, titlePool, round){
       if(!o2) break;
       out.push({
         id:'gen_' + p.id + '_b' + careerHash(bSent).toString(36), _gen:true, year:'', subject:'已学考点', chapter:item.cname,
-        source:'自动出题 · 挖空填词（《' + item.btitle + '》）',
+        source:'自动出题 · 挖空填词（' + careerBookLabel(item.btitle) + '）',
         question:bSent.slice(0, bIdx) + '（　）' + bSent.slice(bIdx + ptitle.length),
         options:o2.options, answer:o2.answer,
-        explanation:'出自《' + item.btitle + '》' + item.cname + ' · ' + ptitle + '。完整表述：' + bSent
+        explanation:'出自' + careerBookLabel(item.btitle) + item.cname + ' · ' + ptitle + '。完整表述：' + bSent
       });
       break;   /* 每个考点一道挖空题即可 */
     }
@@ -34594,7 +34605,7 @@ function careerGenQuestions(item, tipPool, stmtPool, titlePool, round){
       var o3 = careerMakeOptions(wSel.text, ss, h + 71);
       if(o3) out.push({
         id:'gen_' + p.id + '_r' + careerHash(wSel.text).toString(36), _gen:true, year:'', subject:'已学考点', chapter:item.cname,
-        source:'自动出题 · 找错表述（《' + item.btitle + '》）',
+        source:'自动出题 · 找错表述（' + careerBookLabel(item.btitle) + '）',
         question:'以下关于「' + ptitle + '」的表述，错误的是？',
         options:o3.options, answer:o3.answer,
         explanation:'「' + o3.options['ABCD'.indexOf(o3.answer)] + '」并不是「' + ptitle + '」的表述——它出自「' + (tmap[wSel.pid] || '其它考点') + '」；其余三项均为「' + ptitle + '」的正确表述。'
@@ -34607,10 +34618,10 @@ function careerGenQuestions(item, tipPool, stmtPool, titlePool, round){
     var o4 = careerDistract(item, titlePool, ptitle, h + 41, 3);
     if(o4) out.push({
       id:'gen_' + p.id + '_n1', _gen:true, year:'', subject:'已学考点', chapter:item.cname,
-      source:'自动出题 · 考点归属（《' + item.btitle + '》）',
+      source:'自动出题 · 考点归属（' + careerBookLabel(item.btitle) + '）',
       question:'「' + item.cname + '」下的考点是下列哪一个？',
       options:o4.options, answer:o4.answer,
-      explanation:'出自《' + item.btitle + '》' + item.cname + ' · ' + ptitle + '：' + String(p.content || '').slice(0, 80)
+      explanation:'出自' + careerBookLabel(item.btitle) + item.cname + ' · ' + ptitle + '：' + String(p.content || '').slice(0, 80)
     });
   }
   return out;
@@ -34661,7 +34672,7 @@ function careerAiUserPrompt(items){
   var s = '请为以下 ' + items.length + ' 个考点各编写 1 道单选题（pid 必须原样带回）：\n\n';
   items.forEach(function(it, i){
     s += '【' + (i + 1) + '】pid=' + it.pid + '\n';
-    s += '学科/章节：《' + it.btitle + '》· ' + it.cname + '\n';
+    s += '学科/章节：' + careerBookLabel(it.btitle) + ' · ' + it.cname + '\n';
     s += '考点：' + it.title + '\n';
     s += '资料：' + String(it.content || '').slice(0, 600) + '\n\n';
   });
@@ -34720,10 +34731,12 @@ function careerAiWriteBatch(pids, opts){
   });
   if(!todo.length) return Promise.resolve(0);
   var written = 0, err = null;
+  var stopAt = Math.max(0, Number(opts.stopAt) || 0);   /* 够 N 道就停，少写少花钱 */
   var chain = Promise.resolve();
   for(var i = 0; i < todo.length; i += CAREER_AI_BATCH){
     (function(batch){
       chain = chain.then(function(){
+        if(stopAt && written >= stopAt) return;         /* 已经够了，后面的批次不再请求 */
         var items = batch.map(function(pid){
           var it = flat[pid];
           return { pid:pid, title:String(it.p.title || ''), content:String(it.p.content || ''), btitle:it.btitle || '', cname:it.cname || '' };
@@ -34740,7 +34753,7 @@ function careerAiWriteBatch(pids, opts){
               var id = 'ai_' + r.pid + '_' + careerHash(String(r.question)).toString(36);
               careerAiQ()[r.pid] = {
                 id:id, _gen:true, _ai:true, year:'', subject:'已学考点', chapter:it.cname,
-                source:'AI 编写真题 ·《' + it.btitle + '》',
+                source:'AI 编写真题 · ' + careerBookLabel(it.btitle),
                 question:String(r.question).trim(),
                 options:r.options.map(function(o){ return String(o).trim(); }),
                 answer:String(r.answer).trim().toUpperCase().slice(0, 1),
@@ -34790,13 +34803,6 @@ function careerAiWriteLearned(force){
     renderCareerLearned();
     toast('AI 编写失败：' + (e && e.message ? e.message : '未知错误') + '（已回退本地出题）');
   });
-}
-function careerAiBtnText(){
-  if(careerAiBusy) return '⏳ AI 编写中…';
-  var pending = careerAiPending().length;
-  if(pending) return '✨ AI 编写真题（' + pending + '）';
-  var n = careerLearnedItemsAll().filter(function(it){ return careerAiQ()[it.p.id]; }).length;
-  return n ? ('✨ 重新编写（已有 ' + n + ' 道）') : '✨ AI 编写真题';
 }
 /* ---------- 组卷：题库相关真题优先，不足用自动出题补足 ----------
    「已做题本」规则：做过的题不再重复出现；答错过的题保留并排到最前面；手动标记已掌握的不再出现。
@@ -34893,20 +34899,13 @@ function careerBuildLearnedPaper(){
            bankTotal:bankAll.length, genTotal:genAll.length, aiTotal:aiAll.length, points:items.length,
            skipped:(bankAll.length - bankQ.length) + (genAll.length - genQ.length) + (aiAll.length - aiQ.length), recycled:recycled };
 }
-function startCareerLearnedQuiz(){
-  var r = careerBuildLearnedPaper();
-  if(!r){
-    toast(careerLearnedItemsAll().length ? '当前分类下还没有已学考点，切换一下上面的学科分类' : '请先在知识书里勾选「已学」考点');
-    return;
-  }
-  if(!r.paper.length){ toast('这些考点还组不出题，试试多勾几个考点'); return; }
-  /* 每出一轮 round+1：正文多句的考点下一轮换一句考，实现「重新出题」换新题 */
-  DB.career.learnedRound = (Math.max(0, Number(DB.career.learnedRound) || 0) + 1) % 997;
-  saveDb();
+/* 开考：把组卷结果装进答题态（从 startCareerLearnedQuiz 抽出，供异步流程复用） */
+function careerLearnedStartWith(r){
+  if(!r || !r.paper.length) return false;
   var bkName = '';
   if(careerLearnedBook){ (DB.career.books || []).forEach(function(b){ if(b.id === careerLearnedBook) bkName = b.title || ''; }); }
-  var label = (bkName ? '《' + bkName + '》· ' : '') + '题库相关 ' + r.bankUsed +
-              (r.aiUsed ? ' + AI 真题 ' + r.aiUsed : '') + ' + 自动出题 ' + r.genUsed;
+  var label = (bkName ? careerBookLabel(bkName) + ' · ' : '') + '题库相关 ' + r.bankUsed +
+              (r.aiUsed ? ' + AI 真题 ' + r.aiUsed : '') + (r.genUsed ? ' + 自动出题 ' + r.genUsed : '');
   careerQuizState = {
     mode:'learned', subject:label, label:label, questions:r.paper, i:0,
     correct:0, wrong:0, score:0, perScore:100 / r.paper.length,
@@ -34920,7 +34919,48 @@ function startCareerLearnedQuiz(){
   var extra = r.skipped ? ('，已跳过做过的 ' + r.skipped + ' 道') : '';
   if(r.recycled) extra += '（这批考点的题都做完了，这轮重新抽一遍）';
   toast('已按 ' + r.points + ' 个已学考点组卷 ' + r.paper.length + ' 道：题库相关 ' + r.bankUsed +
-        (r.aiUsed ? ' + AI 真题 ' + r.aiUsed : '') + ' + 自动出题 ' + r.genUsed + extra);
+        (r.aiUsed ? ' + AI 真题 ' + r.aiUsed : '') + (r.genUsed ? ' + 自动出题 ' + r.genUsed : '') + extra);
+  return true;
+}
+function careerHasQwenKey(){
+  var k = '';
+  try { k = (typeof getQwenKey === 'function') ? getQwenKey() : (localStorage.getItem('aurora_qwen_key') || ''); } catch(e){ k = ''; }
+  return !!String(k).trim();
+}
+/* 出题：题库真题 + 已缓存 AI 真题优先；不够 20 道时**自动**让 AI 现编（不用手动点按钮），
+   AI 不可用（没配 Key / 请求失败）才退回本地机械改写兜底 */
+function startCareerLearnedQuiz(){
+  var r = careerBuildLearnedPaper();
+  if(!r){
+    toast(careerLearnedItemsAll().length ? '当前分类下还没有已学考点，切换一下上面的学科分类' : '请先在知识书里勾选「已学」考点');
+    return;
+  }
+  if(!r.paper.length){ toast('这些考点还组不出题，试试多勾几个考点'); return; }
+  /* 每出一轮 round+1：正文多句的考点下一轮换一句考，实现「重新出题」换题 */
+  DB.career.learnedRound = (Math.max(0, Number(DB.career.learnedRound) || 0) + 1) % 997;
+  saveDb();
+  var need = CAREER_LEARNED_MAX - (r.bankUsed + r.aiUsed);
+  var m0 = careerAiQ();
+  var pending = (need > 0 ? careerLearnedItems() : []).filter(function(it){ return !m0[it.p.id]; })
+                  .map(function(it){ return it.p.id; });
+  if(need > 0 && pending.length && careerHasQwenKey()){
+    careerAiBusy = true;
+    toast('AI 正在为这些考点编写真题（0/' + need + '）…');
+    careerAiWriteBatch(pending, {
+      stopAt: need,
+      onProgress: function(n){ toast('AI 正在编写真题（' + Math.min(n, need) + '/' + need + '）…'); }
+    }).then(function(){
+      careerAiBusy = false;
+      var r2 = careerBuildLearnedPaper();
+      careerLearnedStartWith((r2 && r2.paper.length) ? r2 : r);
+    }).catch(function(e){
+      careerAiBusy = false;
+      careerLearnedStartWith(careerBuildLearnedPaper() || r);      /* 失败 → 本地题兜底开考 */
+      toast('AI 编写未成功，本轮先用本地出题' + (e && e.message ? '（' + String(e.message).slice(0, 40) + '）' : ''));
+    });
+    return;
+  }
+  careerLearnedStartWith(r);
 }
 function careerLearnedHintText(){
   var n = careerLearnedItems().length;
