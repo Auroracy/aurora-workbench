@@ -2700,6 +2700,19 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
 
 @media(max-width:768px){
   .career-tabbar{left:0!important;border-radius:0;}
+
+/* ====== Tab12 · Java 后端面试（复用 career 版式） ====== */
+.java-module{display:flex;flex-direction:column;gap:16px;}
+.java-badge{font-size:10px;font-weight:600;color:var(--accent);background:var(--accent-bg);border-radius:9px;padding:1px 6px;line-height:1.5;}
+.java-plan-tasks{display:flex;flex-direction:column;gap:6px;margin-top:8px;}
+.java-plan-link{margin-left:auto;flex:0 0 auto;font-size:11.5px;color:var(--accent);background:var(--accent-bg);border-radius:999px;padding:2px 9px;cursor:pointer;white-space:nowrap;}
+.java-plan-link:hover{background:var(--accent);color:#fff;}
+.career-plan-task.done .java-plan-link{color:var(--text-3);background:var(--input-bg);}
+.career-option.is-right{background:var(--green-bg);border:1.5px solid var(--green);color:var(--green);font-weight:600;}
+.career-option.is-wrong{background:var(--red-bg);border:1.5px solid var(--red);color:var(--red);font-weight:600;}
+.career-option.is-picked-wrong{text-decoration:line-through;text-decoration-color:rgba(0,0,0,.3);}
+button.career-option:disabled{cursor:default;opacity:1;}
+.career-done-item.is-mastered{opacity:.6;}
   .career-seg-item{font-size:12px;padding:7px 6px;}
 }
 </style>
@@ -2772,6 +2785,10 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
     <button class="nav-item" data-tab="11" onclick="switchTab(11)">
       <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></span>
       <span class="nav-num">10</span><span class="nav-text">事业编备考 · 公基职测</span>
+    </button>
+    <button class="nav-item" data-tab="12" onclick="switchTab(12)">
+      <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M4 8h13v3a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V8z"/><path d="M17 9h1.5a2.5 2.5 0 0 1 0 5H17"/><path d="M4 21h13"/></svg></span>
+      <span class="nav-num">11</span><span class="nav-text">Java 面试 · 四个月上岸</span>
     </button>
   </nav>
   <div class="sidebar-footer" id="footerDate">
@@ -4330,6 +4347,142 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
   <div class="career-tabbar-spacer"></div>
 </section>
 
+<!-- ========== Tab 12: Java 后端面试 · 四个月上岸计划 ========== -->
+<section id="tab12" class="tab-section">
+  <div class="section-header">
+    <div class="section-title">Java 后端面试 · 四个月上岸</div>
+    <div class="section-desc">220 高频考点 · AI 模拟面试官出题 · 16 周冲刺拿 offer</div>
+  </div>
+
+  <!-- 目标倒计时（常驻 Tab12 顶部） -->
+  <div class="card career-cd-card" id="javaCountdown">
+    <div class="career-cd-head">
+      <div class="career-cd-label" id="javaCdTitle">Java 后端开发 · 拿到 offer</div>
+      <button class="career-cd-set" title="设置目标名称 / 日期" onclick="editJavaExam()">⚙</button>
+    </div>
+    <div class="career-cd-body">
+      <div class="career-cd-num"><b id="javaCdDays">—</b><span id="javaCdUnit">天</span></div>
+      <div class="career-cd-info">
+        <div class="career-cd-phase" id="javaCdPhase"></div>
+        <div class="career-cd-meta" id="javaCdMeta"></div>
+      </div>
+    </div>
+    <div class="career-cd-bar"><i id="javaCdBar" style="width:0%"></i></div>
+    <div class="career-cd-foot"><span id="javaCdFootL"></span><span id="javaCdFootR"></span></div>
+  </div>
+
+  <div class="career-stats" id="javaStats"></div>
+
+  <!-- Module: 知识点背诵 -->
+  <div class="java-module" id="javaModRecite">
+    <div class="card">
+      <div class="card-title-row">
+        <div class="card-title">📚 知识点背诵 · 220 高频考点</div>
+        <div class="sub" id="javaReciteStat"></div>
+      </div>
+      <div class="career-learned-bar"><i id="javaReciteBar" style="width:0%"></i></div>
+      <div class="section-desc" style="margin:-2px 0 10px;">考点来自 JavaGuide 后端面试高频题（背诵版 + 完整版）：<b>正文</b>是面试时背出来的答案，<b>口诀</b>用来速记，<b>详解</b>用来被追问时展开讲。勾「已背」后，出题检测会围绕这些考点出题。</div>
+      <div class="career-seg" id="javaBookSeg" style="display:none;margin:0 0 10px;"></div>
+      <div id="javaSubjects" class="career-subjects"></div>
+    </div>
+  </div>
+
+  <!-- Module: 出题检测 -->
+  <div class="java-module" id="javaModQuiz" style="display:none;">
+    <div class="card">
+      <div class="card-title-row">
+        <div class="card-title">🎤 AI 模拟面试官 · 出题检测</div>
+        <div class="sub" id="javaQuizHint"></div>
+      </div>
+      <div class="section-desc" style="margin:-2px 0 10px;">点「按已背考点出题」时，AI 面试官会先为还没出题的考点现编真题（够 20 道就停），不足的用本地题库补足。</div>
+      <div class="career-actions">
+        <button class="btn btn-primary btn-sm" onclick="startJavaLearnedQuiz()">🎯 按已背考点出题（20 题）</button>
+        <button class="btn btn-ghost btn-sm" onclick="startJavaQuiz('random')">🎲 随机抽题（10 题）</button>
+        <button class="btn btn-ghost btn-sm" onclick="startJavaQuiz('review')">🔁 重复抽查检测</button>
+        <button class="btn btn-ghost btn-sm" onclick="startJavaQuiz('wrong')">❌ 错题重做</button>
+      </div>
+      <div id="javaAiTip" class="sub" style="margin:6px 0 0;"></div>
+    </div>
+
+    <div class="card career-quiz-empty" id="javaQuizEmpty">
+      <div class="empty-hint">🎤 选一种方式开始：优先「按已背考点出题」——AI 面试官只围绕你已经背过的考点提问，边背边测。</div>
+    </div>
+
+    <div class="card" id="javaQuizPanel" style="display:none;">
+      <div class="card-title-row">
+        <div class="card-title" id="javaQuizTitle">🎤 模拟面试</div>
+        <div class="sub" id="javaQuizProgress">第 1 / 10 题</div>
+      </div>
+      <div id="javaQuizBody" class="career-quiz-body"></div>
+      <div id="javaQuizResult" class="career-quiz-result" style="display:none;"></div>
+      <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;">
+        <button class="btn btn-ghost btn-sm" onclick="closeJavaQuiz()">关闭自测</button>
+        <button class="btn btn-primary btn-sm" id="javaQuizNextBtn" style="display:none;" onclick="javaNext()">下一题</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title-row">
+        <div class="card-title">❌ 错题本 · 待复习</div>
+        <div class="sub" id="javaWrongSummary"></div>
+      </div>
+      <div class="section-desc" style="margin:-2px 0 10px;">答错一次计一层（最多 3 层），重做时答对一次减一层，减到 0 自动移出错题本。</div>
+      <div class="career-actions"><button class="btn btn-primary btn-sm" onclick="startJavaQuiz('wrong')">▶ 开始错题重练</button></div>
+      <div id="javaWrongBox" class="career-wrong-list"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title-row">
+        <div class="card-title">🗂 已做题本 · 已选题记录复习</div>
+        <div class="sub" id="javaDoneStat"></div>
+      </div>
+      <div class="section-desc" style="margin:-2px 0 8px;">做过的题全部存档：<b>下次出题不再重复</b>，<b>答错过的会再出现</b>；可按学科筛出来重做，或标记「已掌握」。</div>
+      <div class="career-seg" id="javaDoneSeg">
+        <button class="career-seg-item active" data-dseg="all" onclick="javaSwitchDoneSeg('all')">📚 全部</button>
+        <button class="career-seg-item" data-dseg="bad" onclick="javaSwitchDoneSeg('bad')">❌ 答错过 <span class="career-seg-badge" id="javaDoneBadge"></span></button>
+        <button class="career-seg-item" data-dseg="ok" onclick="javaSwitchDoneSeg('ok')">✅ 一遍过</button>
+      </div>
+      <div class="career-seg" id="javaDoneBooks" style="display:none;margin:8px 0 0;"></div>
+      <div class="career-actions" style="margin:10px 0 0;">
+        <button class="btn btn-primary btn-sm" onclick="javaRedoQuiz()">♻ 重做这些题</button>
+        <button class="btn btn-ghost btn-sm" onclick="javaClearDone()">↺ 清空记录</button>
+      </div>
+      <div id="javaDoneList" class="career-done-list"></div>
+    </div>
+  </div>
+
+  <!-- Module: 16 周计划 -->
+  <div class="java-module" id="javaModPlan" style="display:none;">
+    <div class="card" id="javaPlanCard">
+      <div class="card-title-row">
+        <div class="card-title">🗓 四个月（16 周）上岸计划</div>
+        <div class="sub" id="javaPlanProgress"></div>
+      </div>
+      <div class="section-desc" style="margin:-2px 0 10px;">节奏：前 14 周把 220 个考点过一遍（每周约 16 个）+ 手撕代码；第 15 周项目包装与简历定稿；第 16 周模拟面试 + 集中投递。每周 4 项任务，打完卡才算完成。</div>
+      <div class="career-plan-bar"><i id="javaPlanBar" style="width:0%"></i></div>
+      <div id="javaPlanList" class="career-plan-list"></div>
+      <div class="career-actions" style="margin-top:12px;">
+        <button class="btn btn-ghost btn-sm" onclick="javaResetPlan()">↺ 清空打卡</button>
+        <button class="btn btn-ghost btn-sm" onclick="javaResetPlanAll()">⟲ 恢复默认计划</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 底部固定导航 -->
+  <nav class="career-tabbar" id="javaTabbar">
+    <button class="career-tabbar-item active" data-mod="recite" onclick="switchJavaModule('recite')">
+      <span class="career-tab-ico">📚</span><span class="career-tab-txt">背诵</span>
+    </button>
+    <button class="career-tabbar-item" data-mod="quiz" onclick="switchJavaModule('quiz')">
+      <span class="career-tab-ico">🎤</span><span class="career-tab-txt">检测</span>
+    </button>
+    <button class="career-tabbar-item" data-mod="plan" onclick="switchJavaModule('plan')">
+      <span class="career-tab-ico">🗓</span><span class="career-tab-txt">计划</span>
+    </button>
+  </nav>
+  <div class="career-tabbar-spacer"></div>
+</section>
+
 </main>
 </div>
 
@@ -4909,6 +5062,7 @@ function switchTab(n){
   if(n === 8) initDca();
   if(n === 9) initXwlb();
   if(n === 11) initCareer();
+  if(n === 12) initJava();
   if(n === 10) initWealth();
   /* 离开 Tab4 时停掉自选报价的 60s 定时器（如果用户开了） */
   if(currentTabNum !== 4 && typeof stopWatchAutoRefresh === 'function') stopWatchAutoRefresh();
@@ -16910,6 +17064,7 @@ function renderAllOnSync(){
     if(typeof renderRecipes === 'function' && currentTabNum === 6){ renderRecipeHero(); renderRecipes(); }
     if(typeof renderBooks === 'function' && currentTabNum === 7) renderBooks();
     if(typeof renderCareer === 'function' && currentTabNum === 11) renderCareer();
+    if(typeof renderJava === 'function' && currentTabNum === 12) renderJava();
     if(typeof initWealth === 'function' && currentTabNum === 10){ initWealth(); }
     /* 梦想金库 Tab 10 需要完整重初始化（因为涉及多个子模块） */
   } catch(e){}
@@ -35178,6 +35333,1049 @@ function gotoCareerDone(){
   var el = document.getElementById('careerDoneCard');
   if(el && el.scrollIntoView) el.scrollIntoView({ block: 'start' });
 }
+
+var JAVA_BOOKS = [{"id":"jb_core","title":"Java 核心（基础 · 集合 · 并发 · JVM）","emoji":"☕","category":"Java 核心","desc":"基础 + 集合 + 并发 + JVM，面试必问区，占分最高；这一块答不好基本直接挂。","author":"JavaGuide 高频题背诵版 + 完整版","press":"220 考点","expanded":false,"chapters":[{"id":"jc_core_c1","name":"一、Java 基础","expanded":false,"points":[{"id":"jv_core_c1_p1","title":"Java 语言特点 / 面向对象特性？","content":"封装、继承、多态；平台无关（JVM）、自动内存管理（GC）、支持多线程。","tip":"\"封继多·跨平台·有GC\"。","detail":"- 简单性、面向对象（封装/继承/多态）、平台无关（JVM 字节码）、健壮性（异常处理 + GC）、多线程、网络/分布式支持。 - 封装：隐藏内部实现，暴露接口；继承：代码复用与多态基础；多态：父类引用指向子类对象，运行期动态绑定。 - 补充：Java 编译与解释并存——源码→字节码（编译），字节码由 JVM 解释执行或 JIT 编译为机器码。","level":"high"},{"id":"jv_core_c1_p2","title":"JDK / JRE / JVM 的区别？","content":"JVM 跑字节码；JRE = JVM + 基础类库（运行环境）；JDK = JRE + 编译器 javac 等（开发工具）。","tip":"\"JDK⊃JRE⊃JVM\"，开发 ⊃ 运行 ⊃ 虚拟机。","detail":"- JVM：运行字节码的虚拟机，保证\"一次编译到处运行\"。 - JRE = JVM + 基础类库（运行环境，JDK 9 起不再单独分发 JRE，可用 jlink 定制运行时）。 - JDK = JRE + 开发工具（javac、javadoc、jdb 等）。包含关系：JDK ⊃ JRE ⊃ JVM。","level":"high"},{"id":"jv_core_c1_p3","title":"什么是字节码？为什么 Java 编译与解释并存？","content":"字节码是 .class，面向 JVM 不面向具体 CPU；先编译成字节码，再由 JVM 解释执行或 JIT 编译成机器码。","tip":"\"一次编译，到处跑（Write Once Run Anywhere）\"——靠字节码 + JVM。","detail":"","level":"high"},{"id":"jv_core_c1_p4","title":"8 种基本数据类型？","content":"byte short int long / float double / char / boolean。","tip":"\"4整2浮1字符1布尔\"。","detail":"byte(1) short(2) int(4) long(8) / float(4) double(8) / char(2) / boolean（JVM 规范未规定 boolean 具体大小，通常按 int/byte 处理）。各类型大小不随硬件变化（可移植）。","level":"high"},{"id":"jv_core_c1_p5","title":"基本类型 vs 包装类型？缓存机制？","content":"基本类型存栈、不为 null；包装类型用于泛型、存堆。Byte/Short/Integer/Long 缓存 [-128,127]，Character [0,127]，Boolean 预定义；Float/Double 无缓存。整型比较必须用 equals()。","tip":"\"整数字节-128到127，比大小用 equals\"。","detail":"- 基本类型栈上、不为 null、有默认值；包装类型用于泛型、可为 null、实例通常在堆（JIT 可能标量替换）。 - 比较：基本类型 == 比值；包装类型 == 比引用，数值应一律用 equals()。 - 缓存：Byte/Short/Integer/Long 缓存 [-128,127]（Integer 上限可用 -XX:AutoBoxCacheMax 调）；Character [0,127]；Boolean 预定义 TRUE/FALSE；Float/Double 无缓存。","level":"high"},{"id":"jv_core_c1_p6","title":"自动装箱/拆箱原理？","content":"装箱 valueOf()，拆箱 xxxValue()；频繁拆装箱影响性能。","tip":"\"箱=对象，拆=变基本；valueOf 进、xxxValue 出\"。","detail":"装箱 Integer.valueOf()，拆箱 intValue() 等。频繁拆装箱会创建大量临时对象、影响性能，热点路径应避免。","level":"high"},{"id":"jv_core_c1_p7","title":"浮点数为什么精度丢失？怎么解决？","content":"二进制无法精确表示部分十进制小数（如 0.2）。金额用 BigDecimal。","tip":"\"钱不能用 double，用 BigDecimal\"。","detail":"二进制有限位无法精确表示部分十进制小数（如 0.1+0.2≠0.3）。金额等场景用 BigDecimal（new BigDecimal(\"0.1\") 而非 new BigDecimal(0.1)，指定 RoundingMode），或用 long 以\"分\"为单位存储。","level":"high"},{"id":"jv_core_c1_p8","title":"重载 vs 重写？","content":"重载：同类、同名、参数列表必不同（编译期，静态绑定）。重写：父子类、方法签名相同、访问权限不能更低（运行期，动态绑定，遵循\"两同两小一大\"）。","tip":"\"重 carrier 同名不同参(载)；重写父子同签名(写)\"。","detail":"- 重载（overload）：同类、方法名同、参数列表必不同（类型/个数/顺序），返回类型/访问符可不同 → 编译期静态绑定。 - 重写（override）：父子类、方法签名同、返回类型协变、访问权限不可更低、抛出的受检异常不能更宽 → 运行期动态绑定。原则：\"两同两小一大\"（方法名参数同；返回/异常小；访问权限大）。","level":"high"},{"id":"jv_core_c1_p9","title":"成员变量 vs 局部变量？","content":"成员变量属于对象、有默认值、存堆；局部变量方法内、无默认值必须赋值、存栈帧。","tip":"\"成员有默认在堆，局部无默认在栈\"。","detail":"","level":"high"},{"id":"jv_core_c1_p10","title":"静态方法 vs 实例方法？","content":"静态方法只能访问静态成员，可不建对象调用；实例方法无此限制。","tip":"\"静态只认静态\"。","detail":"","level":"high"},{"id":"jv_core_c1_p11","title":"== vs equals()？","content":"== 比基本类型值 / 引用类型地址；equals() 默认同 ==，重写后比内容（String/包装类已重写）。","tip":"\"== 看地址，equals 看内容(重写后)\"。","detail":"- ==：基本类型比值，引用类型比地址。 - equals()：Object 默认等同 ==；String/包装类已重写比内容。重写 equals() 必须同时重写 hashCode()（相等对象 hash 必相等，反之不要求）。 - HashMap/HashSet 先比 hash 定位桶，再比 equals()，故两方法必须配套。","level":"high"},{"id":"jv_core_c1_p12","title":"接口 vs 抽象类？","content":"接口（JDK8+ 可有默认方法/静态方法）多实现、无状态；抽象类单继承、可有构造和普通字段。","tip":"\"接口多实现无状态，抽象单继承有字段\"。","detail":"- 接口（JDK8 可有 default/static 方法，JDK9 可有 private 方法）：多实现、无状态字段、定义契约。 - 抽象类：单继承、可有构造器、普通字段/方法，用于代码复用。","level":"high"},{"id":"jv_core_c1_p13","title":"字节码 & 为什么跨平台","content":"字节码（.class）是面向 JVM 而非 CPU 的中间指令。好处：既保留解释型语言的可移植，又通过 JIT 接近编译型性能。","tip":"","detail":"字节码（.class）是面向 JVM 而非 CPU 的中间指令。好处：既保留解释型语言的可移植，又通过 JIT 接近编译型性能。","level":"high"},{"id":"jv_core_c1_p14","title":"反射","content":"运行时获取类信息并操作成员（字段/方法/构造器），突破封装。代价：性能损耗（JVM 难内联优化）、破坏封装、安全限制（SecurityManager）。框架（Spring IOC、MyBatis）大量使用。","tip":"","detail":"运行时获取类信息并操作成员（字段/方法/构造器），突破封装。代价：性能损耗（JVM 难内联优化）、破坏封装、安全限制（SecurityManager）。框架（Spring IOC、MyBatis）大量使用。","level":"high"},{"id":"jv_core_c1_p15","title":"异常体系","content":"Throwable → Error（JVM 级，如 OOM/StackOverflow，不应捕获）/ Exception。Exception 分 RuntimeException（空指针、数组越界、类型转换，免检）与受检异常（IOExcep","tip":"","detail":"Throwable → Error（JVM 级，如 OOM/StackOverflow，不应捕获）/ Exception。Exception 分 RuntimeException（空指针、数组越界、类型转换，免检）与受检异常（IOException 等，必须 try 或 throws）。finally 在 return 前执行（return 值已备好但 finally 可改引用/基本值有差异）。","level":"high"},{"id":"jv_core_c1_p16","title":"序列化","content":"对象→字节流（Serializable + ObjectOutputStream）。transient 字段不参与；serialVersionUID 保证版本兼容。替代：JSON（跨语言）、Protocol Buffers（高效）。敏感字段","tip":"","detail":"对象→字节流（Serializable + ObjectOutputStream）。transient 字段不参与；serialVersionUID 保证版本兼容。替代：JSON（跨语言）、Protocol Buffers（高效）。敏感字段序列化需注意安全。","level":"high"},{"id":"jv_core_c1_p17","title":"深拷贝 vs 浅拷贝","content":"浅拷贝：引用类型字段共享同一对象（Object.clone 默认浅拷贝）。深拷贝：递归复制引用对象（序列化/手动复制/第三方库）。注意循环引用。 ---","tip":"","detail":"浅拷贝：引用类型字段共享同一对象（Object.clone 默认浅拷贝）。深拷贝：递归复制引用对象（序列化/手动复制/第三方库）。注意循环引用。 ---","level":"high"}]},{"id":"jc_core_c2","name":"二、Java 集合","expanded":false,"points":[{"id":"jv_core_c2_p1","title":"List / Set / Queue / Map 区别？","content":"List 有序可重复；Set 不可重复；Queue 排队可重复；Map 键值对（key 不可重复）。","tip":"\"List有顺可重，Set唯一，Map键值\"。","detail":"- List：有序、可重复（ArrayList 数组、LinkedList 链表、Vector 同步已淘汰）。 - Set：不可重复（HashSet=HashMap、LinkedHashSet=插入序、TreeSet=红黑树有序）。 - Queue：FIFO（ArrayDeque 数组双端、PriorityQueue 小顶堆）。 - Map：键值对（HashMap、LinkedHashMap、TreeMap、ConcurrentHashMap）。","level":"high"},{"id":"jv_core_c2_p2","title":"ArrayList vs LinkedList？","content":"ArrayList 数组、支持随机访问、尾部插 O(1)；LinkedList 双向链表、头尾 O(1)、随机访问慢。都不线程安全。","tip":"\"查多改少用 Array，增删频繁用 Linked\"。","detail":"ArrayList：Object[] 数组、支持 RandomAccess、下标访问 O(1)；中间插入 O(n)。LinkedList：双向链表、随机访问 O(n)、头尾增删 O(1)。两者均非线程安全。","level":"high"},{"id":"jv_core_c2_p3","title":"HashMap 底层（JDK1.7 vs 1.8）？","content":"1.7：数组 + 链表（拉链法）。1.8：数组 + 链表 + 红黑树；链表长度 >8 且数组长度 ≥64 时树化。","tip":"\"1.7拉链，1.8树化(8且64)\"。","detail":"- 1.7：数组 + 链表；头插法（并发易成环）。 - 1.8：数组 + 链表 + 红黑树；尾插法。树化条件：链表长度 >8 且数组长度 ≥64；否则优先扩容。 - 容量 2 的幂：用 (n-1)&hash 代替取模，位运算更快；hash 扰动 h ^ (h>>>16) 降低碰撞。","level":"high"},{"id":"jv_core_c2_p4","title":"HashMap 扩容 / 加载因子？","content":"默认容量 16、加载因子 0.75、扩容翻倍（阈值=容量×因子=12）。","tip":"\"16·0.75·翻倍·12触发\"。","detail":"默认容量 16、加载因子 0.75、阈值 12；扩容翻倍 + 重新散列（1.8 用高位判定新桶位置，无需重算 hash）。加载因子过小浪费空间、过大增加碰撞。","level":"high"},{"id":"jv_core_c2_p5","title":"ConcurrentHashMap 怎么保证线程安全？","content":"1.7 分段锁 Segment；1.8 用 synchronized + CAS + 链表/红黑树（粒度更细）。","tip":"\"1.7分段锁，1.8 CAS+synchronized\"。","detail":"- 1.7：Segment 分段锁（继承 ReentrantLock），默认 16 段。 - 1.8：Node + synchronized（锁桶头节点）+ CAS，粒度更细；读无锁（volatile 保证可见）。size() 用 baseCount + CounterCell 分段累加。","level":"high"},{"id":"jv_core_c2_p6","title":"为什么 String 适合做 HashMap 的 key？","content":"String 不可变、hashCode() 稳定已重写、重写 equals()，保证哈希稳定与比较正确。","tip":"\"不可变→哈希稳→key 稳\"。","detail":"不可变 → hash 稳定、避免修改导致桶错位；已正确重写 equals/hashCode。","level":"high"},{"id":"jv_core_c2_p7","title":"HashSet / LinkedHashSet / TreeSet？","content":"HashSet 无序（HashMap 实现）；LinkedHashSet 维护插入顺序；TreeSet 红黑树、可排序。","tip":"\"无·插序·排序\"。","detail":"均基于对应 Map；TreeSet 要求元素实现 Comparable 或提供 Comparator。","level":"high"},{"id":"jv_core_c2_p8","title":"fail-fast vs fail-safe？","content":"fail-fast（ArrayList）检测并发修改抛 ConcurrentModificationException；fail-safe（CopyOnWriteArrayList）写时复制快照，不抛但可能读旧值。","tip":"\"fast=立刻报错，safe=读副本不报错\"。","detail":"fail-fast：遍历中检测到 modCount 变化立即抛 ConcurrentModificationException（ArrayList、HashMap）。fail-safe：CopyOnWriteArrayList 写时复制快照，不抛但可能读到旧数据。单线程中也可触发 fail-fast（遍历时 remove 应用迭代器自身方法）。","level":"high"},{"id":"jv_core_c2_p9","title":"Comparable vs Comparator？","content":"Comparable 内部排序（compareTo，java.lang）；Comparator 外部定制排序（compare，java.util）。","tip":"\"Comparable 内，Comparator 外\"。","detail":"Comparable（java.lang，compareTo，类内默认排序）；Comparator（java.util，compare，外部定制、可多种排序）。","level":"high"},{"id":"jv_core_c2_p10","title":"阻塞队列 ArrayBlockingQueue vs LinkedBlockingQueue？","content":"Array 数组、有界、单锁；Linked 链表、默认无界（Integer.MAX）、锁分离（put/take 双锁）。","tip":"\"Array有界单锁，Linked无界双锁\"。","detail":"","level":"high"},{"id":"jv_core_c2_p11","title":"ArrayList 扩容","content":"默认初始 10（懒加载），满后 1.5 倍扩容（old + old>>1），System.arraycopy 拷贝。可 ensureCapacity 预扩、trimToSize 瘦身。","tip":"","detail":"默认初始 10（懒加载），满后 1.5 倍扩容（old + old>>1），System.arraycopy 拷贝。可 ensureCapacity 预扩、trimToSize 瘦身。","level":"high"},{"id":"jv_core_c2_p12","title":"CopyOnWriteArrayList","content":"写时复制整个数组，读无锁、写加锁；适合读多写极少场景；缺点是内存占用与数据延迟。","tip":"","detail":"写时复制整个数组，读无锁、写加锁；适合读多写极少场景；缺点是内存占用与数据延迟。","level":"high"},{"id":"jv_core_c2_p13","title":"阻塞队列","content":"ArrayBlockingQueue：数组、有界、单锁。LinkedBlockingQueue：链表、默认无界（风险 OOM）、锁分离。PriorityBlockingQueue：无界堆。SynchronousQueue：不存元素、直接递交","tip":"","detail":"ArrayBlockingQueue：数组、有界、单锁。LinkedBlockingQueue：链表、默认无界（风险 OOM）、锁分离。PriorityBlockingQueue：无界堆。SynchronousQueue：不存元素、直接递交。DelayQueue：延迟。 ---","level":"high"}]},{"id":"jc_core_c3","name":"三、Java 并发","expanded":false,"points":[{"id":"jv_core_c3_p1","title":"进程 vs 线程？","content":"进程是资源分配基本单位；线程是 CPU 调度最小单位，同进程内线程共享堆+方法区，私有程序计数器/栈。","tip":"\"进程管资源，线程管调度\"。","detail":"进程：资源分配基本单位，独立地址空间。线程：CPU 调度最小单位，同进程内共享堆+方法区，私有程序计数器 + 虚拟机栈 + 本地方法栈。线程切换开销 < 进程。","level":"high"},{"id":"jv_core_c3_p2","title":"并发 vs 并行？同步 vs 异步？","content":"并发＝同时间段；并行＝同时刻（需多核）。同步＝等结果返回；异步＝发了就走（非阻塞）。","tip":"\"并发段、并行刻；同步等、异步走\"。","detail":"并发=同时间段交替；并行=同时刻（需多核）。同步=调用后阻塞等结果；异步=发出即返回（回调/Future）。","level":"high"},{"id":"jv_core_c3_p3","title":"线程生命周期（6 态）？","content":"NEW → RUNNABLE →（BLOCKED / WAITING / TIMED_WAITING）→ TERMINATED。","tip":"\"新·可运行·锁等·无限等·超时等·死\"。","detail":"NEW → RUNNABLE（含运行+就绪） → BLOCKED（等监视器锁） / WAITING（wait/join/park 无参） / TIMED_WAITING（sleep/timewait） → TERMINATED。","level":"high"},{"id":"jv_core_c3_p4","title":"创建线程的方式？","content":"继承 Thread、实现 Runnable/Callable、线程池；本质只有 new Thread().start() 真正建线程。","tip":"\"写法三种，本质一条(start)\"。","detail":"继承 Thread、实现 Runnable（无返回值）、实现 Callable（有返回值 Future）、线程池。本质都是 new Thread().start() 真正创建。","level":"high"},{"id":"jv_core_c3_p5","title":"为什么不能直接调用 run()？","content":"直接调用只是普通方法、仍在原线程；必须 start() 才多线程执行。","tip":"\"run 是方法，start 才起线程\"。","detail":"run() 仅为普通方法，在当前线程执行；start() 才向 JVM 注册新线程并异步调用 run()。","level":"high"},{"id":"jv_core_c3_p6","title":"sleep() vs wait()？","content":"sleep() 不释放锁、时间到自动醒、Thread 类；wait() 释放锁、需 notify() 唤醒、Object 类。","tip":"\"sleep抱锁睡，wait放锁等\"。","detail":"sleep：Thread 静态方法、不释放锁、时间到自动醒。wait：Object 方法、释放监视器锁、需 notify/notifyAll 唤醒（须在 synchronized 内调用）。","level":"high"},{"id":"jv_core_c3_p7","title":"死锁 & 四个必要条件 & 预防？","content":"互斥、请求与保持、不剥夺、循环等待；破坏任一即可预防（如按序申请资源）。","tip":"\"互请不循；破一环即解\"；检测用 jstack/jcmd。","detail":"","level":"high"},{"id":"jv_core_c3_p8","title":"synchronized 原理与锁升级？","content":"同步块靠 monitorenter/monitorexit，方法靠 ACC_SYNCHRONIZED，本质获取对象 monitor。JDK1.6 后锁升级：无锁→偏向锁→轻量级锁→重量级锁（不可降级；偏向锁 JDK15 默认关、18 移除）。","tip":"\"无→偏→轻→重，只升不降\"。","detail":"- 同步块：monitorenter/monitorexit；同步方法：ACC_SYNCHRONIZED。本质获取对象监视器 monitor。 - 锁升级（JDK 1.6+）：无锁 → 偏向锁（单线程乐观） → 轻量级锁（CAS 自旋） → 重量级锁（OS 互斥，线程阻塞）。只升不降。偏向锁因维护成本高，JDK 15 默认关闭、JDK 18 移除。","level":"high"},{"id":"jv_core_c3_p9","title":"volatile 的作用？","content":"保证可见性（happens-before）+ 禁止指令重排序；不保证复合操作原子性（如 i++）。经典用于 DCL 单例。","tip":"\"可见+防重排，不保原子\"。","detail":"保证可见性（写后对其他线程立即可见，happens-before）与禁止指令重排序（内存屏障）。不保证原子性（i++ 非原子）。典型：DCL 单例（INSTANCE 用 volatile 防\"半初始化对象\"被读取）。","level":"high"},{"id":"jv_core_c3_p10","title":"线程池七大参数？","content":"corePoolSize(核心)、maximumPoolSize(最大)、keepAliveTime(空闲线程存活)、unit(时间单位)、workQueue(阻塞队列)、threadFactory(线程工厂)、handler(拒绝策略)。","tip":"\"核心最大·空闲单位·队列工厂·拒绝\"（7 个刚好）。","detail":"1. corePoolSize 核心线程数；2) maximumPoolSize 最大线程数；3) keepAliveTime 空闲线程存活时间；4) unit 时间单位；5) workQueue 阻塞队列；6) threadFactory 线程工厂（命名/优先级）；7) handler 拒绝策略。","level":"high"},{"id":"jv_core_c3_p11","title":"线程池工作流程 & 拒绝策略？","content":"任务来 → 核心线程 → 队列 → 最大线程 → 拒绝。拒绝策略：Abort（抛异常）、CallerRuns（调用者运行）、Discard（静默丢）、DiscardOldest（丢最老）。","tip":"\"先核·再队·后扩·再拒\"；\"抛·跑·丢·丢老\"。","detail":"提交任务：① 核心线程未满则建核心线程；② 满则入队列；③ 队列满则建非核心线程至最大；④ 仍满则触发拒绝策略。 拒绝策略：AbortPolicy（抛 RejectedExecutionException，默认）、CallerRunsPolicy（调用者线程执行）、DiscardPolicy（静默丢弃）、DiscardOldestPolicy（丢弃队首最老任务）。 注意：常见陷阱——队列用无界 LinkedBlockingQueue 时 maximumPoolSize 永不生效；submit 异常被 Future 吞掉，execute 才会走异常链路/Thread.UncaughtExceptionHandler。","level":"high"},{"id":"jv_core_c3_p12","title":"ReentrantLock vs synchronized？","content":"都可重入；ReentrantLock 基于 AQS、需手动 lock/unlock、支持可中断/公平锁/超时/Condition 分组唤醒。","tip":"\"Lock 更灵活但要手动关\"。","detail":"均可重入。ReentrantLock：基于 AQS、API 层、须 lock()/unlock() 配对 try/finally；额外：可中断 lockInterruptibly()、公平/非公平可选、超时 tryLock(time)、Condition 分组唤醒。","level":"high"},{"id":"jv_core_c3_p13","title":"CAS 原理与 ABA？","content":"Compare-And-Swap：V 当前、E 预期、N 新值，相等才更新（乐观锁，底层 CPU 指令）。问题：ABA（用 AtomicStampedReference 加版本号）、自旋开销大、单变量。","tip":"\"VEN 三值比对；ABA 加版本\"。","detail":"Compare-And-Swap：V 当前值、E 预期值、N 新值，仅当 V==E 才原子更新 N（底层 Unsafe + CPU 指令）。问题：① ABA（用 AtomicStampedReference 加版本号）；② 自旋久开销大；③ 仅保证单变量原子（多变量用 AtomicReference）。","level":"high"},{"id":"jv_core_c3_p14","title":"AQS 原理？","content":"AbstractQueuedSynchronizer：用 state（同步状态）+ CLH 双向等待队列实现；支持独占（ReentrantLock）与共享（Semaphore/CountDownLatch）模式。","tip":"\"一个state + 一条等待队列\"。","detail":"AbstractQueuedSynchronizer：核心 state（volatile，同步状态）+ CLH 双向等待队列 + 头尾节点。独占模式（ReentrantLock，tryAcquire/release）、共享模式（Semaphore/CountDownLatch，tryAcquireShared/releaseShared）。阻塞/唤醒基于 LockSupport（park/unpark）。","level":"high"},{"id":"jv_core_c3_p15","title":"ThreadLocal 原理与内存泄漏？","content":"每个 Thread 持有 ThreadLocalMap，key 为 ThreadLocal（弱引用）、value 强引用。ThreadLocal 失强引用后 key 被回收为 null，value 仍在 → 泄漏；线程池长期存活线程务必 remove()。","tip":"\"key弱value强，用完remove防漏\"。","detail":"每个 Thread 持 ThreadLocalMap（key=ThreadLocal 弱引用，value=强引用）。内存泄漏：ThreadLocal 失强引用后 key 被 GC 为 null，但 value 强引用仍在；线程池长生命周期线程不 remove() → 泄漏。务必 try/finally{remove()}。","level":"high"},{"id":"jv_core_c3_p16","title":"Java 线程与 OS 线程","content":"传统平台线程 1:1 映射内核线程（OS 调度）；Java 21 虚拟线程由 JVM 调度，复用少量平台线程，适合高并发 IO。","tip":"","detail":"传统平台线程 1:1 映射内核线程（OS 调度）；Java 21 虚拟线程由 JVM 调度，复用少量平台线程，适合高并发 IO。","level":"high"},{"id":"jv_core_c3_p17","title":"线程私有/共享内存","content":"私有：程序计数器（记录字节码行号，唯一不会 OOM）、虚拟机栈（栈帧/局部变量）、本地方法栈。共享：堆、方法区（元空间）。","tip":"","detail":"私有：程序计数器（记录字节码行号，唯一不会 OOM）、虚拟机栈（栈帧/局部变量）、本地方法栈。共享：堆、方法区（元空间）。","level":"high"},{"id":"jv_core_c3_p18","title":"死锁","content":"四必要条件：互斥、请求与保持、不剥夺、循环等待。预防=破坏任一（一次性分配/按序申请资源）。检测=jstack/jcmd Thread.print/jconsole。避免=银行家算法。","tip":"","detail":"四必要条件：互斥、请求与保持、不剥夺、循环等待。预防=破坏任一（一次性分配/按序申请资源）。检测=jstack/jcmd Thread.print/jconsole。避免=银行家算法。","level":"high"},{"id":"jv_core_c3_p19","title":"Executors 隐患","content":"newFixedThreadPool/newSingleThreadExecutor 用无界队列 → 任务堆积 OOM；newCachedThreadPool 最大线程 Integer.MAX → 线程爆炸。推荐手动 ThreadPoolE","tip":"","detail":"newFixedThreadPool/newSingleThreadExecutor 用无界队列 → 任务堆积 OOM；newCachedThreadPool 最大线程 Integer.MAX → 线程爆炸。推荐手动 ThreadPoolExecutor 并设合理队列+拒绝策略。","level":"high"},{"id":"jv_core_c3_p20","title":"并发工具类","content":"CountDownLatch（倒计时门闩，一次性的等 N 个任务完成）、CyclicBarrier（可重用，等 N 个线程到齐）、Semaphore（信号量限流）、Phaser（分阶段）。CompletableFuture：异步编排（the","tip":"","detail":"CountDownLatch（倒计时门闩，一次性的等 N 个任务完成）、CyclicBarrier（可重用，等 N 个线程到齐）、Semaphore（信号量限流）、Phaser（分阶段）。CompletableFuture：异步编排（thenApply/thenAccept/thenCompose/thenCombine/allOf/anyOf），链式非阻塞。","level":"high"},{"id":"jv_core_c3_p21","title":"原子类","content":"AtomicInteger/Long/Reference、AtomicStampedReference（版本号解决 ABA）、LongAdder（分段 Cell 计数，高并发累加更优于 AtomicLong）。 ---","tip":"","detail":"AtomicInteger/Long/Reference、AtomicStampedReference（版本号解决 ABA）、LongAdder（分段 Cell 计数，高并发累加更优于 AtomicLong）。 ---","level":"high"}]},{"id":"jc_core_c4","name":"四、JVM","expanded":false,"points":[{"id":"jv_core_c4_p1","title":"运行时数据区（线程私有 vs 共享）？","content":"私有：程序计数器、虚拟机栈、本地方法栈。共享：堆、方法区（JDK8 后为元空间，用本地内存）。直接内存不属于规范定义的运行时数据区。","tip":"\"私有三(计数栈栈)，共享堆+方法区\"。","detail":"私有：程序计数器、虚拟机栈、本地方法栈。共享：堆、方法区（JDK8 元空间，用本地内存）。直接内存（Direct Buffer）不在规范内但常被讨论，可 OOM（受 -XX:MaxDirectMemorySize 限制）。","level":"high"},{"id":"jv_core_c4_p2","title":"堆内存划分？","content":"分代：新生代（Eden + 2×Survivor）、老年代；JDK8 起永久代移除、方法区用元空间（本地内存）。","tip":"\"新(Eden+SS)·老·元空间在堆外\"。","detail":"分代：新生代（Eden + Survivor0/Survivor1，默认 8:1:1）、老年代。JDK8 永久代→元空间（本地内存，避免 PermGen OOM）。对象优先 Eden 分配，Minor GC 后存活的进 Survivor，年龄阈值（默认15）晋升老年代；大对象直进老年代。","level":"high"},{"id":"jv_core_c4_p3","title":"对象创建过程（5 步）？","content":"类加载检查 → 分配内存（TLAB/CAS 并发安全）→ 初始化零值 → 设对象头 → 执行 <init>。","tip":"\"查·分·零·头·init\"。","detail":"① 类加载检查；② 分配内存（指针碰撞/空闲列表，并发用 TLAB 或 CAS）；③ 初始化零值；④ 设对象头（类元数据指针、GC 分代年龄、锁状态等，Mark Word + 类型指针）；⑤ 执行 <init>。","level":"high"},{"id":"jv_core_c4_p4","title":"类加载过程 & 双亲委派？","content":"加载→验证→准备(零值)→解析→初始化(执行 <clinit>)。双亲委派：子加载器先委派父加载器，父不能加载才自己来；破坏场景：Tomcat(WebAppClassLoader 隔离)、SPI(线程上下文类加载器)。","tip":"\"装载验准解初；委派向上、不行再下\"。","detail":"加载（字节流→Class 对象）→ 验证（字节码合法）→ 准备（静态变量零值，final 常量直接赋值）→ 解析（符号引用→直接引用，可延迟）→ 初始化（<clinit> 执行静态赋值与静态块，线程安全）。触发初始化：new/getstatic/反射/父类未初始化/主类等；访问编译期常量不触发。","level":"high"},{"id":"jv_core_c4_p5","title":"对象存活判断（可达性分析 / GC Roots）？","content":"可达性分析（非引用计数，防循环引用）：从 GC Roots 出发无引用链即可回收。Roots：栈帧局部变量、本地方法栈、方法区静态/常量、同步锁对象、JNI。","tip":"\"从 Roots 出发，断了就回收\"。","detail":"可达性分析（非引用计数，解决循环引用）：从 GC Roots（栈帧局部变量、本地方法栈、方法区静态/常量、同步锁、JNI 引用）出发无引用链即回收。对象需两次标记（finalize 仅一次）才死亡。","level":"high"},{"id":"jv_core_c4_p6","title":"强软弱虚引用？","content":"强（绝不回收）→ 软（内存不足前清，适合缓存）→ 弱（GC 即收）→ 虚（跟踪回收，get() 恒 null）。","tip":"\"强·软(OOM前)·弱(GC)·虚(跟踪)\"。","detail":"","level":"high"},{"id":"jv_core_c4_p7","title":"垃圾回收算法？","content":"标记-清除（有碎片）、复制（新生代，内存减半）、标记-整理（老年代，无碎片）；分代组合使用。","tip":"\"清(碎)·复(半)·整(移)\"。","detail":"标记-清除（简单有碎片）、复制（新生代，内存减半、无碎片）、标记-整理（老年代，移向一端无碎片）、分代收集（按代组合）。","level":"high"},{"id":"jv_core_c4_p8","title":"Minor / Major / Full GC？","content":"Minor GC：只清新生代（频繁）。Major GC：老年代。Full GC：整堆 + 方法区，开销最大。","tip":"\"小新·老大·全堆\"。","detail":"","level":"high"},{"id":"jv_core_c4_p9","title":"主流收集器特点？","content":"G1（JDK9 默认，Region 化、可预测停顿）；CMS（早期，并发标记清除，有碎片/浮动垃圾）；ZGC（Java11，毫秒级停顿、堆大小无关，牺牲部分吞吐）。","tip":"\"G1默认Region，ZGC超低延迟\"。","detail":"Serial（单线程，Client）、Parallel/ParNew（多线程吞吐）、CMS（并发标记清除，低停顿但有碎片+浮动垃圾）、G1（JDK9 默认，Region 化、可预测停顿、Mixed GC）、ZGC（Java11，并发标记-复制，毫秒级停顿、堆大小无关，Java21 分代）、Shenandoah。选择依 JDK 版本、堆大小、延迟目标权衡。","level":"high"},{"id":"jv_core_c4_p10","title":"OOM 排查工具？","content":"jps(列进程)、jstat(GC 统计)、jmap(堆转储)、jstack(线程栈/死锁)；配合 -XX:+HeapDumpOnOutOfMemoryError + MAT。","tip":"\"ps·stat·map·stack\" 对应 进程·GC·堆·栈。","detail":"jps（列进程）、jstat（GC/各代容量/晋升）、jmap（堆转储/直方图）、jstack（线程栈/死锁）、jcmd、jinfo、jfr（飞行记录，低开销）。MAT 分析 Heap Dump（Dominator Tree、GC Roots 引用链）。线上注意：jmap -dump 可能暂停/增负载，先确认磁盘与影响范围。","level":"high"},{"id":"jv_core_c4_p11","title":"对象访问","content":"句柄池（稳定、GC 移动不需改引用）vs 直接指针（HotSpot 默认，少一次寻址、更快）。","tip":"","detail":"句柄池（稳定、GC 移动不需改引用）vs 直接指针（HotSpot 默认，少一次寻址、更快）。","level":"high"},{"id":"jv_core_c4_p12","title":"双亲委派 & 破坏","content":"子加载器先委派父加载器，父不能加载才自己来（启动类加载器为顶）。好处：避免核心类被篡改/重复加载。破坏场景：Tomcat（WebAppClassLoader 优先加载 Web 应用类做隔离）、SPI（线程上下文类加载器逆向加载）、OSGi。","tip":"","detail":"子加载器先委派父加载器，父不能加载才自己来（启动类加载器为顶）。好处：避免核心类被篡改/重复加载。破坏场景：Tomcat（WebAppClassLoader 优先加载 Web 应用类做隔离）、SPI（线程上下文类加载器逆向加载）、OSGi。类的唯一性 = 全限定名 + 加载它的类加载器。","level":"high"},{"id":"jv_core_c4_p13","title":"四种引用","content":"强（普通，绝不回收）→ 软（内存不足前回收，适合内存敏感缓存）→ 弱（GC 即收，WeakHashMap/ThreadLocal 用）→ 虚（跟踪回收，get() 恒 null，须配 ReferenceQueue）。","tip":"","detail":"强（普通，绝不回收）→ 软（内存不足前回收，适合内存敏感缓存）→ 弱（GC 即收，WeakHashMap/ThreadLocal 用）→ 虚（跟踪回收，get() 恒 null，须配 ReferenceQueue）。","level":"high"},{"id":"jv_core_c4_p14","title":"GC 类型","content":"Minor GC：仅新生代，频繁、快。Major GC：老年代（常伴随 Minor）。Full GC：整堆 + 元空间，开销最大（触发：老年代满、空间分配担保失败、元空间不足、System.gc()、CMS 并发失败）。","tip":"","detail":"Minor GC：仅新生代，频繁、快。Major GC：老年代（常伴随 Minor）。Full GC：整堆 + 元空间，开销最大（触发：老年代满、空间分配担保失败、元空间不足、System.gc()、CMS 并发失败）。","level":"high"},{"id":"jv_core_c4_p15","title":"JVM 关键参数","content":"-Xms/-Xmx（堆初始/最大，服务端常设相等避免抖动）、-Xmn（新生代）、-Xss（线程栈）、-XX:MetaspaceSize/-XX:MaxMetaspaceSize、-XX:+UseG1GC 等收集器选择、-Xlog:gc*（J","tip":"","detail":"-Xms/-Xmx（堆初始/最大，服务端常设相等避免抖动）、-Xmn（新生代）、-Xss（线程栈）、-XX:MetaspaceSize/-XX:MaxMetaspaceSize、-XX:+UseG1GC 等收集器选择、-Xlog:gc*（JDK9+ GC 日志）、-XX:+HeapDumpOnOutOfMemoryError + -XX:HeapDumpPath。","level":"high"},{"id":"jv_core_c4_p16","title":"线上排查思路","content":"CPU 飙高：找高 CPU 进程 → top -Hp 找线程 → 线程 id 转十六进制 → jstack 比对线程栈。OOM：先判断堆/元空间/直接内存/线程数失控。频繁 Full GC：看老年代增长、晋升、回收效果。证据链 > 单指标。","tip":"","detail":"CPU 飙高：找高 CPU 进程 → top -Hp 找线程 → 线程 id 转十六进制 → jstack 比对线程栈。OOM：先判断堆/元空间/直接内存/线程数失控。频繁 Full GC：看老年代增长、晋升、回收效果。证据链 > 单指标。 ---","level":"high"}]},{"id":"jc_core_c5","name":"九、Java IO / NIO","expanded":false,"points":[{"id":"jv_core_c5_p1","title":"字节流和字符流有什么区别？","content":"字节流（InputStream/OutputStream）以 byte 为单位，处理一切二进制数据；字符流（Reader/Writer）以 char 为单位，按字符集编解码，专处理文本、防乱码。转换桥梁是 InputStreamReader / OutputStreamWriter。读写大文件先包 BufferedXxx 缓冲流。","tip":"\"字节通吃，字符专攻文本；大文件先包 Buffered\"。","detail":"","level":"high"},{"id":"jv_core_c5_p2","title":"BIO / NIO / AIO 有什么区别？五种 IO 模型？","content":"一次 IO 分两阶段：等数据、拷数据。BIO 两阶段都阻塞（一连接一线程）；NIO 多路复用（Selector 一个线程轮询多 Channel，就绪才读写）；AIO 两阶段都不阻塞（内核读完回调）。网络编程最常用 IO 多路复用，是 Netty 基础。","tip":"\"BIO 一人盯一桌，NIO 一个服务员轮询多桌，AIO 点完菜坐下等\"。","detail":"mermaid flowchart LR subgraph BIO[同步阻塞] A1[连接] --> A2[一线程阻塞读写] end subgraph NIO[同步非阻塞/多路复用] B1[Selector 单线程] --> B2[轮询多个 Channel] B2 --> B3[就绪才读写] end subgraph AIO[异步] C1[发起即返回] --> C2[内核完成后回调] end - BIO：一连接一线程，上万连接即线程爆炸不可用。 - NIO：java.nio 的 Channel + Buffer + Selector，一个线程管理成千上万连接，Netty 的基础。 - AIO：Java 7 NIO.2 异步通道，操作直接返回，Future/CompletionHandler 拿结果；Linux 下提升有限，Netty 最终弃用。 - 🧠 记忆：\"BIO 一人盯一桌，NIO 一个服务员轮询多桌，AIO 点完菜坐下等上菜\"。","level":"high"},{"id":"jv_core_c5_p3","title":"NIO 三大组件？","content":"Buffer（数据容器，注意 flip）、Channel（双向通道）、Selector（多路复用器，注册 SelectionKey 事件，一线程管多连接）。","tip":"\"Selector 调度中心，Channel 通道，Buffer 卡车；事件驱动\"。","detail":"","level":"high"},{"id":"jv_core_c5_p4","title":"select / poll / epoll 区别？","content":"select 位图、1024 上限、全量拷贝 + O(n) 轮询；poll 用链表无上限但仍 O(n)；epoll 用红黑树 + 就绪链表，O(1) 感知就绪、无需全量拷贝，支持 LT/ET。","tip":"\"select/poll 全扫一遍；epoll 只报有事的那几个\"。","detail":"- select：位图传 fd 集合，最大 1024（FD_SETSIZE）限制，每次全量拷贝 + O(n) 轮询。 - poll：用链表替代位图，无 1024 限制，但仍 O(n) 遍历 + 内核/用户态拷贝。 - epoll（Linux 2.6+，select 增强版）：epoll_create 建红黑树管 fd + 就绪链表，epoll_wait 只返回就绪 fd，O(1) 感知就绪、无需全量拷贝；支持水平触发 LT 与边缘触发 ET。 - 🧠 记忆：\"select/poll 每次全扫一遍；epoll 用红黑树 + 就绪链表，只报有事的那几个\"。","level":"high"},{"id":"jv_core_c5_p5","title":"什么是零拷贝？","content":"传统 read+write 有 4 次上下文切换、4 次拷贝。优化有 mmap+write、sendfile、splice；Java 对应 FileChannel.transferTo()、MappedByteBuffer。Nginx、Kafka 大量使用。","tip":"\"零拷贝不是不拷贝，是少拷贝、少在用户态兜一圈\"。","detail":"- 传统 read + write 经历 4 次上下文切换、4 次数据拷贝（磁盘→内核缓冲→用户缓冲→socket 缓冲→网卡）。 - 优化：mmap + write、sendfile（DMA 把内核缓冲直接送网卡）、splice；Java 对应 FileChannel.transferTo()（底层 sendfile）、MappedByteBuffer（mmap）。 - 收益：文件传输/静态资源服务（Nginx、Kafka）大幅降低 CPU 拷贝与内存带宽消耗。 - 🧠 记忆：\"零拷贝不是不拷贝，是少拷贝、少在用户态兜一圈\"。 ---","level":"high"},{"id":"jv_core_c5_p6","title":"Java IO 流体系：字节流 vs 字符流","content":"- 字节流：InputStream/OutputStream，以 byte（8 bit）为单位，处理一切二进制数据（图片、音视频）。代表 FileInputStream、BufferedInputStream。 - 字符流：Reader/W","tip":"","detail":"- 字节流：InputStream/OutputStream，以 byte（8 bit）为单位，处理一切二进制数据（图片、音视频）。代表 FileInputStream、BufferedInputStream。 - 字符流：Reader/Writer，以 char（16 bit）为单位，按字符集编解码，专处理文本，避免中文乱码。代表 FileReader、BufferedReader。 - 转换桥梁：InputStreamReader（字节→字符，可指定 Charset）、OutputStreamWriter。 - 缓冲流：BufferedXxx 在内存加缓冲区，把多次小 IO 合并成一次大 IO，减少系统调用；读写大文件务必包一层。 - 🧠 口诀：\"字节通吃，字符专攻文本；读写大文件先包 Buffered\"。","level":"high"},{"id":"jv_core_c5_p7","title":"装饰器模式在 IO 中的应用","content":"IO 用装饰器模式动态给流附加能力，而非用继承爆炸出无数子类：new BufferedInputStream(new FileInputStream(f))。 - 好处：组合灵活（可叠加缓冲/压缩/加密），符合开闭原则；InputStrea","tip":"","detail":"IO 用装饰器模式动态给流附加能力，而非用继承爆炸出无数子类：new BufferedInputStream(new FileInputStream(f))。 - 好处：组合灵活（可叠加缓冲/压缩/加密），符合开闭原则；InputStreamReader 则用了适配器模式（字节流→字符流接口）。 - 🧠 记忆：\"流是套娃：File → Buffered → Data，一层套一层加能力\"。","level":"high"},{"id":"jv_core_c5_p8","title":"五种 IO 模型（Unix）","content":"一次 IO 分两阶段：①等待数据就绪（内核等网卡/磁盘）②数据从内核空间拷贝到用户空间。 | 模型 | 阶段① | 阶段② | 特点 | |---|---|---|---| | 同步阻塞 BIO | 阻塞 | 阻塞 | 最简单，一连接一线程","tip":"","detail":"一次 IO 分两阶段：①等待数据就绪（内核等网卡/磁盘）②数据从内核空间拷贝到用户空间。 | 模型 | 阶段① | 阶段② | 特点 | |---|---|---|---| | 同步阻塞 BIO | 阻塞 | 阻塞 | 最简单，一连接一线程 | | 同步非阻塞 NIO | 轮询不阻塞 | 阻塞 | 轮询耗 CPU | | IO 多路复用 | select/epoll 阻塞等待 | 阻塞 | 一线程管多连接 ⭐ | | 信号驱动 | 信号通知 | 阻塞 | 少见 | | 异步 AIO | 不阻塞 | 不阻塞 | 内核全包，回调通知 | - 关键：网络编程最常用 IO 多路复用（Java NIO 的 Selector 即多路复用器）。 - 🧠 口诀：\"两阶段：等数据、拷数据；只有 AIO 两段都不阻塞\"。","level":"high"},{"id":"jv_core_c5_p9","title":"NIO 三大组件：Buffer / Channel / Selector","content":"- Buffer：数据容器（ByteBuffer），核心属性 position/limit/capacity，读写切换要 flip()。 - Channel：双向通道（可读可写），如 FileChannel、SocketChannel、Se","tip":"","detail":"- Buffer：数据容器（ByteBuffer），核心属性 position/limit/capacity，读写切换要 flip()。 - Channel：双向通道（可读可写），如 FileChannel、SocketChannel、ServerSocketChannel。 - Selector：多路复用器，注册多个 Channel 的 SelectionKey（OP_READ/OP_WRITE/OP_ACCEPT/OP_CONNECT），一个线程 select() 轮询就绪事件。 mermaid flowchart TB S[Selector 单线程] -->|注册| Ch1[Channel A] S -->|注册| Ch2[Channel B] Ch1 -.就绪事件.-> S Ch2 -.就绪事件.-> S S --> B[Buffer 读写缓冲区] - 🧠 口诀：\"Selector 是调度中心，Channel 是通道，Buffer 是卡车；事件驱动，就绪才动\"。","level":"high"},{"id":"jv_core_c5_p10","title":"Reactor 与 Proactor 模型","content":"- Reactor（同步 IO 多路复用）：主/从 Reactor 分发就绪事件给 Handler，Handler 自己完成读写——Netty、Nginx 采用；演进：单 Reactor 单线程 → 单 Reactor 多线程 → 主从 R","tip":"","detail":"- Reactor（同步 IO 多路复用）：主/从 Reactor 分发就绪事件给 Handler，Handler 自己完成读写——Netty、Nginx 采用；演进：单 Reactor 单线程 → 单 Reactor 多线程 → 主从 Reactor 多线程。 - Proactor（异步 IO）：由 OS 完成读写并把结果交回调，应用只处理结果，如 Windows IOCP。 mermaid flowchart LR subgraph Reactor R1[Reactor 分发就绪] --> R2[Handler 自己 read/write] end subgraph Proactor P1[发起异步读] --> P2[OS 读完后回调 Handler] end - 一句话：Reactor 是\"就绪了告诉你，你自己去读\"；Proactor 是\"读完了直接给你结果\"。","level":"high"}]},{"id":"jc_core_c6","name":"十、Java 新特性","expanded":false,"points":[{"id":"jv_core_c6_p1","title":"Java 8 有哪些核心特性？","content":"Lambda、Stream、函数式接口（Function/Consumer/Supplier/Predicate）、方法引用、接口 default/static 方法、Optional、新日期时间 API（LocalDateTime 线程安全）、HashMap 红黑树、Metaspace。","tip":"\"Lam流接口默认可选日期\"。","detail":"Lambda（函数式）、Stream（map/filter/reduce）、函数式接口（@FunctionalInterface：Function/Consumer/Supplier/Predicate）、方法引用、接口 default/static 方法、Optional、新日期时间 API（LocalDate/LocalDateTime/Instant，线程安全，取代 SimpleDateFormat）、HashMap 红黑树优化、Metaspace 取代永久代。 - 🧠 口诀：\"Lam流接口默认可选日期\"。","level":"high"},{"id":"jv_core_c6_p2","title":"Record / 密封类 / 模式匹配？","content":"Record（Java16）不可变数据载体，自动生成构造器/访问器/equals；sealed（Java17）限制继承者配合穷举；switch 模式匹配（Java21）类型判断 + 解构替代强转。","tip":"\"Record 装数据、sealed 限继承、模式匹配省强转\"。","detail":"- Record（Java 16 正式）：record Point(int x,int y){}，不可变数据载体，自动生成构造器、访问器、equals/hashCode/toString。 - 密封类 sealed（Java 17）：sealed interface Shape permits Circle, Rect，限制可继承者，配合模式匹配做到穷举。 - switch 模式匹配（Java 21 正式）：case Circle c -> ...，类型判断 + 解构，替代大量 if-else 与强制转换。 - 🧠 口诀：\"Record 装数据、sealed 限继承、模式匹配省强转\"。","level":"high"},{"id":"jv_core_c6_p3","title":"var 与虚拟线程？","content":"var 是局部变量类型推断（编译期定类型，仍静态强类型，非动态）；虚拟线程（Java21）是堆上轻量线程，遇 IO 阻塞自动让出载体线程，适合高并发 IO 密集，CPU 密集无优势。","tip":"\"var 少写类型不是没类型；虚拟线程专治高并发 IO\"。","detail":"- var（Java 10）：局部变量类型推断，编译期确定类型，仍是静态强类型（不是 JS 动态类型）；不能用于成员变量/方法参数/返回值。 - JPMS 模块化（Java 9）：module-info.java 声明 requires/exports，解决类路径冲突与封装；jlink 可定制最小运行时。 - 🧠 记忆：\"var 是少写类型，不是没类型\"。","level":"high"},{"id":"jv_core_c6_p4","title":"虚拟线程（Java 21 正式）","content":"- 由 JVM 调度的轻量级线程，栈存于堆上，创建成本极低，可开启百万级；区别于绑定 OS 线程的平台线程。 - 适合高并发 IO 密集型任务（一请求一虚拟线程，遇阻塞自动卸载并让出载体线程）；CPU 密集型无优势。 - 注意：synchr","tip":"","detail":"- 由 JVM 调度的轻量级线程，栈存于堆上，创建成本极低，可开启百万级；区别于绑定 OS 线程的平台线程。 - 适合高并发 IO 密集型任务（一请求一虚拟线程，遇阻塞自动卸载并让出载体线程）；CPU 密集型无优势。 - 注意：synchronized 会 pin 住载体线程（Java 24+ 已改善）；ThreadLocal 慎用。 - 🧠 记忆：\"虚拟线程=堆上的轻线程，IO 阻塞自动让位，专治高并发 IO\"。","level":"high"},{"id":"jv_core_c6_p5","title":"LTS 版本速查","content":"| 版本 | 关键特性 | |---|---| | Java 8 | Lambda / Stream / Optional / 新日期 | | Java 11 | 标准 HTTP Client / ZGC（实验）/ String 新 API","tip":"","detail":"| 版本 | 关键特性 | |---|---| | Java 8 | Lambda / Stream / Optional / 新日期 | | Java 11 | 标准 HTTP Client / ZGC（实验）/ String 新 API | | Java 17 | Record / sealed / switch 表达式 / 文本块 | | Java 21 | 虚拟线程 / 分代 ZGC / 模式匹配 | - 🧠 记忆：\"8 函数式、11 网络、17 语法、21 并发\"。 ---","level":"high"}]}]},{"id":"jb_db","title":"数据库与缓存（MySQL · Redis · ES）","emoji":"🗄","category":"数据库与缓存","desc":"MySQL 索引/事务/锁 + Redis 缓存三兄弟 + Elasticsearch 检索，后端岗第二主战场。","author":"JavaGuide 高频题背诵版 + 完整版","press":"220 考点","expanded":false,"chapters":[{"id":"jc_db_c1","name":"五、MySQL","expanded":false,"points":[{"id":"jv_db_c1_p1","title":"InnoDB vs MyISAM？","content":"InnoDB：行锁、支持事务/外键/MVCC/崩溃恢复，数据即索引（聚簇）。MyISAM：表锁、均不支持。默认用 InnoDB。","tip":"\"InnoDB 行锁事务聚簇；MyISAM 表锁裸奔\"。","detail":"InnoDB：行级锁（默认）、事务、外键、MVCC、崩溃恢复（redo）、数据即索引（聚簇）。MyISAM：表锁、均不支持、索引数据分离、全文索引（旧版）。默认用 InnoDB。","level":"high"},{"id":"jv_db_c1_p2","title":"事务 ACID？","content":"原子性、一致性、隔离性、持久性。A/I/D 是手段，C 是目的。","tip":"\"原隔持一(致)\"（AID→C）。","detail":"原子性（undo log 回滚）、一致性（约束+应用目的，由 A/I/D 保障）、隔离性（MVCC+锁）、持久性（redo log）。A/I/D 是手段，C 是目的。","level":"high"},{"id":"jv_db_c1_p3","title":"隔离级别与并发问题？","content":"读未提交→读已提交→可重复读（MySQL 默认，靠 MVCC+Next-Key Lock 防幻读）→串行化。问题：脏读、不可重复读、幻读。","tip":"\"未·已·可重·串行；脏·不可重·幻\"。","detail":"读未提交 → 读已提交 → 可重复读（MySQL 默认） → 串行化。问题：脏读（读未提交）、不可重复读（同记录两次值变）、幻读（范围多出/少行）、丢失修改。InnoDB 在 RR 下靠 MVCC + Next-Key Lock 基本杜绝幻读。","level":"high"},{"id":"jv_db_c1_p4","title":"为什么用 B+树做索引？","content":"哈希不支持范围/排序、有冲突；B 树数据分散 IO 不稳；B+树非叶只存键→扇出大 IO 少、叶链表→范围查询友好。","tip":"\"B+ 叶连表，范围快；哈希不会排\"。","detail":"哈希：不支持范围/排序、有冲突。B 树：数据散落节点、IO 不稳。B+树：非叶只存键→扇出大、层数少、IO 少；叶节点链表→范围查询与全表扫描极快；所有查询落叶层、稳定。","level":"high"},{"id":"jv_db_c1_p5","title":"最左前缀原则？","content":"联合索引 (a,b,c) 从最左匹配，遇范围查询停止；只查 c 不命中。","tip":"\"左起匹配，遇范围停\"。","detail":"聚簇索引（InnoDB 主键，叶存整行）；二级索引（叶存主键值）。联合索引 (a,b,c) 按序匹配，遇范围（>、<、like 前缀）停止；只查 c 不命中。覆盖索引：索引含查询全部列→免回表。","level":"high"},{"id":"jv_db_c1_p6","title":"聚簇 vs 非聚簇 / 回表 / 覆盖索引？","content":"InnoDB 主键索引叶存整行（聚簇），非主键索引叶存主键值；查其他列需回主键索引＝回表。索引已含所需全部列＝覆盖索引（免回表）。","tip":"\"主键即数据；非主键存ID→回表；索引全覆盖不回表\"。","detail":"","level":"high"},{"id":"jv_db_c1_p7","title":"MVCC 原理？","content":"多版本并发控制：隐藏字段 + undo log（历史版本）+ Read View（可见性判断），读不加锁、读写不冲突。","tip":"\"隐藏字段+undo+ReadView\"。","detail":"多版本并发控制：每行隐藏 trx_id/roll_pointer + undo log（历史版本链）+ Read View（活跃事务快照，判断可见性）。读不加锁、读写不冲突。RC 每次读建新 Read View（读最新已提交）；RR 事务首次读建 Read View（可重复读）。","level":"high"},{"id":"jv_db_c1_p8","title":"三大日志 redo / undo / binlog？","content":"redo log（InnoDB，崩溃恢复保持久性）；undo log（历史版本，支撑 MVCC 与回滚）；binlog（Server 层，主从同步）。","tip":"\"redo 恢复·undo 回滚/MVCC·binlog 主从\"。","detail":"","level":"high"},{"id":"jv_db_c1_p9","title":"锁类型 & 间隙锁？","content":"表锁 / 行锁（记录锁、间隙锁、临键锁 Next-Key Lock 防幻读）。RR 默认 Next-Key Lock，唯一索引降级为记录锁。","tip":"\"表·行(记录+间隙+临键)\"。","detail":"","level":"high"},{"id":"jv_db_c1_p10","title":"索引失效场景？","content":"不满足最左匹配、列上函数/计算/类型转换、LIKE '%x' 前模糊、OR 一侧无索引、隐式转换。","tip":"\"不最左·函数算·前模糊·隐转换\"。","detail":"不满足最左前缀；索引列函数/运算/类型转换；LIKE '%x' 前模糊；OR 一侧无索引；隐式转换（字符串列传数字）；!=/<> 可能失效；优化器认为全表更快时放弃索引。","level":"high"},{"id":"jv_db_c1_p11","title":"当前读 vs 快照读？","content":"快照读＝普通 SELECT，MVCC 读历史版本不加锁；当前读＝SELECT ... FOR UPDATE/增删改，加锁读实时数据防幻读。","tip":"\"快照不锁历史，当前加锁实时\"。","detail":"","level":"high"},{"id":"jv_db_c1_p12","title":"回表 & 索引下推","content":"二级索引查非索引列需回主键索引取整行（回表）。ICP（Index Condition Pushdown）：将 WHERE 中可由索引过滤的条件在存储引擎层先过滤，减少回表。","tip":"","detail":"二级索引查非索引列需回主键索引取整行（回表）。ICP（Index Condition Pushdown）：将 WHERE 中可由索引过滤的条件在存储引擎层先过滤，减少回表。","level":"high"},{"id":"jv_db_c1_p13","title":"三大日志","content":"redo log（InnoDB，物理日志、循环写、崩溃恢复保持久性，WAL 先写日志）、undo log（逻辑、回滚+支撑 MVCC）、binlog（Server 层、逻辑、主从同步与数据恢复，statement/row/mixed）。两阶","tip":"","detail":"redo log（InnoDB，物理日志、循环写、崩溃恢复保持久性，WAL 先写日志）、undo log（逻辑、回滚+支撑 MVCC）、binlog（Server 层、逻辑、主从同步与数据恢复，statement/row/mixed）。两阶段提交保证 redo 与 binlog 一致。","level":"high"},{"id":"jv_db_c1_p14","title":"锁","content":"粒度：表锁、行锁（记录锁 Record、间隙锁 Gap、临键锁 Next-Key = 记录+间隙，RR 默认防幻读；唯一索引等值命中降级记录锁）。意向锁（表级，表锁与行锁共存协调）。","tip":"","detail":"粒度：表锁、行锁（记录锁 Record、间隙锁 Gap、临键锁 Next-Key = 记录+间隙，RR 默认防幻读；唯一索引等值命中降级记录锁）。意向锁（表级，表锁与行锁共存协调）。","level":"high"},{"id":"jv_db_c1_p15","title":"执行计划 & 慢查询优化","content":"EXPLAIN 看 type（const>ref>range>index>ALL）、key、rows、Extra（Using index 覆盖 / Using filesort / Using temporary）。优化步骤：慢日志/Per","tip":"","detail":"EXPLAIN 看 type（const>ref>range>index>ALL）、key、rows、Extra（Using index 覆盖 / Using filesort / Using temporary）。优化步骤：慢日志/Performance Schema 定位 → EXPLAIN → 建索引/改 SQL/避免 SELECT * / 优化表结构 → 架构（读写分离、缓存）。","level":"high"},{"id":"jv_db_c1_p16","title":"分库分表 & 读写分离","content":"读写分离（主写从读，缓解读压）；分库分表（水平/垂直，解决单表过大）。注意：分布式事务、跨库 JOIN、全局 ID、扩容复杂，仅在明确瓶颈时引入。","tip":"","detail":"读写分离（主写从读，缓解读压）；分库分表（水平/垂直，解决单表过大）。注意：分布式事务、跨库 JOIN、全局 ID、扩容复杂，仅在明确瓶颈时引入。","level":"high"},{"id":"jv_db_c1_p17","title":"三大范式 & 反范式","content":"1NF 原子；2NF 消除部分依赖；3NF 消除传递依赖。实际常做反范式（冗余列、汇总表）换查询性能，按读写比权衡。 ---","tip":"","detail":"1NF 原子；2NF 消除部分依赖；3NF 消除传递依赖。实际常做反范式（冗余列、汇总表）换查询性能，按读写比权衡。 ---","level":"high"}]},{"id":"jc_db_c2","name":"六、Redis","expanded":false,"points":[{"id":"jv_db_c2_p1","title":"Redis 为什么快？","content":"纯内存、单线程事件循环 + IO 多路复用（无锁无上下文切换）、高效数据结构、简单 RESP 协议。6.0 后网络 IO 多线程（命令执行仍单线程）。","tip":"\"内存·单线程·多路复用\"。","detail":"纯内存（纳秒级）、单线程命令执行（无锁无上下文切换）+ IO 多路复用（epoll/kqueue，Reactor）、高效数据结构（SDS/ziplist/skiplist）、简单 RESP 协议。Redis 6.0 后仅网络 IO 多线程，命令执行仍单线程（无线程安全顾虑）。","level":"high"},{"id":"jv_db_c2_p2","title":"五大数据类型？","content":"String、List、Hash、Set、Zset；特殊：HyperLogLog、Bitmap、Geospatial、Bloom Filter。","tip":"\"字列哈集序；HLL位图地理布隆\"。","detail":"String（SDS，二进制安全、O(1) 长度、防溢出）、List（quicklist）、Hash（ziplist→hashtable）、Set（intset/hashtable）、Zset（ziplist/skiplist+dict）、Bitmap、HyperLogLog、Geospatial、Bloom Filter、Stream（消息队列）。","level":"high"},{"id":"jv_db_c2_p3","title":"Zset 为什么用跳表不用红黑树/B+树？","content":"跳表概率平衡、插入删除简单、范围查询高效；B+树为磁盘设计、内存没必要。","tip":"\"跳表范围快、实现简\"。","detail":"","level":"high"},{"id":"jv_db_c2_p4","title":"持久化 RDB vs AOF？","content":"RDB＝某时刻快照，恢复快但可能丢较多数据；AOF＝记写命令，丢失窗口小但文件大。混合持久化（4.0+）折中。","tip":"\"RDB快但可能丢，AOF全但慢；混合最好\"。","detail":"RDB：某时刻全量快照（fork+写时复制），恢复快、文件紧凑，但两次快照间宕机丢数据。AOF：追加写命令（appendfsync everysec 默认/always/no），丢失窗口小，但文件大、恢复慢；AOF 重写压缩。混合持久化（4.0+）：AOF 文件头 RDB 基线 + 增量 AOF，兼顾。","level":"high"},{"id":"jv_db_c2_p5","title":"缓存穿透 & 解决？","content":"查不存在的数据→直击 DB。解决：布隆过滤器（一定不存在/可能存）、缓存空值（短过期）。","tip":"\"穿=查不到；布隆/空值挡\"。","detail":"","level":"high"},{"id":"jv_db_c2_p6","title":"缓存击穿 & 解决？","content":"热点 key 过期瞬间大量请求打 DB。解决：互斥锁（只一个重建）、逻辑过期（不真过期，异步重建）。","tip":"\"击穿=热点过期瞬间；锁/逻辑过期\"。","detail":"","level":"high"},{"id":"jv_db_c2_p7","title":"缓存雪崩 & 解决？","content":"大量 key 同时过期 / Redis 宕机→DB 被打崩。解决：过期时间加随机值、多级缓存、限流降级、高可用集群。","tip":"\"雪崩=集体失效；随机过期+多级+高可用\"。","detail":"","level":"high"},{"id":"jv_db_c2_p8","title":"缓存与数据库一致性？","content":"推荐：Cache-Aside（先更 DB 再删缓存）+ 延迟双删；或 Canal 订阅 binlog 异步更新。容忍短暂不一致。","tip":"\"先DB后删缓存；延迟双删/Canal\"。","detail":"推荐 Cache-Aside（读：缓存没有查 DB 并回填；写：先更 DB 再删缓存）+ 延迟双删（删→更→延时再删）应对并发读写；或 Canal 订阅 binlog 异步更新缓存。保证最终一致，容忍短暂不一致。","level":"high"},{"id":"jv_db_c2_p9","title":"分布式锁？","content":"SETNX 简易锁 / Redisson（看门狗自动续期）/ Redlock 多节点。注意锁误删（用唯一 value + Lua 释放）、超时。","tip":"\"SETNX/Redisson；唯一value+Lua释放\"。","detail":"SET key value NX EX 原子加锁；释放须用 Lua（先比对 value 防误删）+ 锁超时 + 看门狗自动续期（Redisson）。Redlock 多节点（争议：依赖时钟假设）。注意：锁粒度、可重入、故障转移下的安全。","level":"high"},{"id":"jv_db_c2_p10","title":"过期删除 & 内存淘汰？","content":"删除＝惰性 + 定期。淘汰（maxmemory 触发）：volatile-lru/allkeys-lru、lfu、no-eviction 等。","tip":"\"删:惰性+定期；淘:LRU/LFU/不淘汰\"。","detail":"删除：惰性（访问时查过期）+ 定期（随机抽 batch 删）。淘汰（maxmemory）：no-eviction（默认拒绝写）、volatile-lru/allkeys-lru、volatile-lfu/allkeys-lfu、volatile-ttl、volatile-random/allkeys-random。","level":"high"},{"id":"jv_db_c2_p11","title":"主从复制 / 哨兵 / 集群？","content":"主从：主写从读、异步复制。哨兵（Sentinel）：监控+自动故障转移。集群：哈希槽（16384 槽）分片，非一致性哈希。","tip":"\"主从读写分离；哨兵管切换；集群16384槽\"。","detail":"","level":"high"},{"id":"jv_db_c2_p12","title":"Zset 跳表","content":"跳表概率平衡、插入删除简单、范围查询 O(logn) 且实现简洁；B+树为磁盘随机访问设计，内存无需其复杂维护；红黑树范围遍历不如跳表。","tip":"","detail":"跳表概率平衡、插入删除简单、范围查询 O(logn) 且实现简洁；B+树为磁盘随机访问设计，内存无需其复杂维护；红黑树范围遍历不如跳表。","level":"high"},{"id":"jv_db_c2_p13","title":"缓存三大问题","content":"- 穿透：查不存在数据→直击 DB。解决：布隆过滤器（一定不存在/可能存）、缓存空值（短 TTL）。 - 击穿：热点 key 过期瞬间高并发打 DB。解决：互斥锁（只一个线程重建）、逻辑过期（不真过期、异步重建）。 - 雪崩：大量 key","tip":"","detail":"- 穿透：查不存在数据→直击 DB。解决：布隆过滤器（一定不存在/可能存）、缓存空值（短 TTL）。 - 击穿：热点 key 过期瞬间高并发打 DB。解决：互斥锁（只一个线程重建）、逻辑过期（不真过期、异步重建）。 - 雪崩：大量 key 同时过期 / Redis 宕机→DB 崩。解决：过期时间加随机、多级缓存、限流降级、高可用集群、Redis 持久化+哨兵。","level":"high"},{"id":"jv_db_c2_p14","title":"高可用","content":"主从复制（异步，主写从读，故障需人工/哨兵切）；哨兵 Sentinel（监控+自动故障转移+配置中心）；Cluster（16384 哈希槽分片，非一致性哈希，槽映射节点，支持扩缩容）。","tip":"","detail":"主从复制（异步，主写从读，故障需人工/哨兵切）；哨兵 Sentinel（监控+自动故障转移+配置中心）；Cluster（16384 哈希槽分片，非一致性哈希，槽映射节点，支持扩缩容）。","level":"high"},{"id":"jv_db_c2_p15","title":"事务 & 其他","content":"Redis 事务 MULTI/EXEC（非原子回滚，仅入队错误回滚，运行错误不回滚）。Pipeline 批量发送减 RTT（非事务）。Lua 脚本原子执行（分布式锁、限流）。脑裂问题：主从切换可能导致数据丢失，用 min-replicas-","tip":"","detail":"Redis 事务 MULTI/EXEC（非原子回滚，仅入队错误回滚，运行错误不回滚）。Pipeline 批量发送减 RTT（非事务）。Lua 脚本原子执行（分布式锁、限流）。脑裂问题：主从切换可能导致数据丢失，用 min-replicas-to-write 缓解。 ---","level":"high"}]},{"id":"jc_db_c3","name":"十一、数据库扩展（MongoDB / Elasticsearch）","expanded":false,"points":[{"id":"jv_db_c3_p1","title":"MongoDB 和 MySQL 有什么区别？","content":"MySQL 关系型、固定 schema、强事务、JOIN 强；MongoDB 文档型 NoSQL（BSON）、动态 schema、原生分片、水平扩展强，适合半结构化/字段多变/海量读写。","tip":"\"MySQL 表格强约束，MongoDB JSON 灵活存\"。","detail":"","level":"high"},{"id":"jv_db_c3_p2","title":"MongoDB 副本集和分片？","content":"副本集：一主多从 + 仲裁，主写从读、主故障自动选主（高可用）。分片：按分片键分散到多分片（水平扩展），分片键要高基数、写分散避免热点。","tip":"\"副本集保命，分片扩容，分片键要分散\"。","detail":"","level":"high"},{"id":"jv_db_c3_p3","title":"ES 倒排索引原理？","content":"ES 建立\"词 → 文档 ID 列表\"的倒排表，查询时先分词再查倒排表直接定位文档，避免全表扫描。概念：index/mapping（分词器）/shard/replica，中文用 IK 分词。","tip":"\"先分词建'词→文档'索引，查词即定位\"。","detail":"","level":"high"},{"id":"jv_db_c3_p4","title":"ES 与 MySQL 如何配合与同步？","content":"MySQL 存权威数据管写，ES 负责全文检索 + 聚合（高并发读）。同步：双写 / MQ 异步 / Canal 订阅 binlog（准实时、无侵入，主流）/ 定时。注意最终一致与对账，ES 不做权威源。","tip":"\"MySQL 管写，ES 管搜；binlog + Canal 最无侵入\"。","detail":"","level":"high"}]},{"id":"jc_db_c4","name":"十三、数据库扩展：MongoDB 与 Elasticsearch（补充）","expanded":false,"points":[{"id":"jv_db_c4_p1","title":"MongoDB 与 MySQL 区别","content":"| 维度 | MySQL | MongoDB | |---|---|---| | 模型 | 关系型，库/表/行，固定 schema | 文档型 NoSQL，库/集合/文档（BSON），动态 schema | | 事务 | 强，ACID |","tip":"","detail":"| 维度 | MySQL | MongoDB | |---|---|---| | 模型 | 关系型，库/表/行，固定 schema | 文档型 NoSQL，库/集合/文档（BSON），动态 schema | | 事务 | 强，ACID | 4.0+ 支持多文档事务，跨分片受限 | | 扩展 | 垂直为主，水平靠分库分表 | 原生分片水平扩展 | | JOIN | 强 | 弱（聚合 $lookup 能力有限） | | 适用 | 强一致、复杂关联、事务 | 半结构化、字段灵活、快速迭代、海量读写 | - 🧠 记忆：\"MySQL 是表格强约束，MongoDB 是 JSON 灵活存\"。","level":"high"},{"id":"jv_db_c4_p2","title":"MongoDB 索引 / 副本集 / 分片","content":"- 索引：_id 默认唯一；支持单字段、复合、多键（数组）、TTL、文本、地理索引。 - 副本集（Replica Set）：一主多从 + 仲裁，主写从读，主故障自动选主，保证高可用与读扩展。 - 分片（Sharding）：按分片键把数据分散","tip":"","detail":"- 索引：_id 默认唯一；支持单字段、复合、多键（数组）、TTL、文本、地理索引。 - 副本集（Replica Set）：一主多从 + 仲裁，主写从读，主故障自动选主，保证高可用与读扩展。 - 分片（Sharding）：按分片键把数据分散到多分片；分片键要高基数、低重复、写分散（避免热点），分为范围分片与哈希分片。 mermaid flowchart TB App[应用] --> Mongos[Mongos 路由] Mongos --> Cfg[Config Server 元数据] Mongos --> S1[Shard1 副本集] Mongos --> S2[Shard2 副本集] - 不适用：强事务、复杂多表关联、强一致金融记账。 - 🧠 口诀：\"副本集保命，分片扩容，分片键要分散\"。","level":"high"},{"id":"jv_db_c4_p3","title":"Elasticsearch 与倒排索引","content":"- ES 是基于 Lucene 的分布式搜索/分析引擎，核心是倒排索引：建立\"词 → 文档 ID 列表\"映射，查询时直接定位文档，避免全表扫描。 mermaid flowchart LR Doc[\"文档: Java 后端面试\"] -->|分","tip":"","detail":"- ES 是基于 Lucene 的分布式搜索/分析引擎，核心是倒排索引：建立\"词 → 文档 ID 列表\"映射，查询时直接定位文档，避免全表扫描。 mermaid flowchart LR Doc[\"文档: Java 后端面试\"] -->|分词| T1[java] Doc --> T2[后端] Doc --> T3[面试] T1 --> P[\"倒排表 java→doc1,doc3\"] T2 --> P2[\"后端→doc1,doc2\"] Q[查询 面试] -->|查倒排表| P3[直接定位 doc1] - 概念：索引 index ≈ 库、mapping（字段类型 + 分词器）、shard 分片 + replica 副本；中文用 IK 分词器。 - 🧠 记忆：\"ES 靠倒排表：先分词建'词→文档'索引，查词即定位\"。","level":"high"},{"id":"jv_db_c4_p4","title":"ES 与 MySQL 的关系 / 数据同步","content":"- 定位互补：MySQL 存权威数据（增删改、事务），ES 负责全文检索 + 聚合分析（高并发读）→ \"MySQL 主存储 + ES 检索层\"。 - 同步方案：①同步双写（简单但耦合）②MQ 异步（解耦，需幂等）③Canal 订阅 binl","tip":"","detail":"- 定位互补：MySQL 存权威数据（增删改、事务），ES 负责全文检索 + 聚合分析（高并发读）→ \"MySQL 主存储 + ES 检索层\"。 - 同步方案：①同步双写（简单但耦合）②MQ 异步（解耦，需幂等）③Canal 订阅 binlog（准实时、业务无侵入，主流）④定时全量/增量。 - 注意：最终一致、延迟容忍、失败重试与对账；ES 非事务，不做权威源。 - 🧠 口诀：\"MySQL 管写，ES 管搜；binlog + Canal 同步最无侵入\"。 ---","level":"high"}]}]},{"id":"jb_frame","title":"框架与中间件（Spring · MyBatis · RPC/网关）","emoji":"🍃","category":"框架与中间件","desc":"Spring / SpringBoot / MyBatis / RPC / 网关，项目经历追问的主战场。","author":"JavaGuide 高频题背诵版 + 完整版","press":"220 考点","expanded":false,"chapters":[{"id":"jc_frame_c1","name":"七、Spring / SpringBoot（核心高频）","expanded":false,"points":[{"id":"jv_frame_c1_p1","title":"IOC / DI 是什么？","content":"控制反转（IOC）：对象创建与依赖管理交给容器；依赖注入（DI）：容器把依赖\"注入\"对象。二者一体两面。","tip":"\"IOC 交容器，DI 注入来\"。","detail":"IOC：控制反转，对象创建与依赖由容器管理。DI：容器把依赖注入对象（构造器/setter/字段）。AOP：面向切面，将横切（日志/事务/安全）与业务解耦，基于动态代理——有接口用 JDK 动态代理，无接口用 CGLIB（生成子类）。","level":"high"},{"id":"jv_frame_c1_p2","title":"AOP 原理？","content":"面向切面：将横切逻辑（日志/事务/权限）与业务解耦。基于动态代理：有接口用 JDK 动态代理，无接口用 CGLIB。","tip":"\"切面解耦；接口JDK代理，无接口CGLIB\"。","detail":"","level":"high"},{"id":"jv_frame_c1_p3","title":"Bean 生命周期？","content":"实例化 → 属性填充 → Aware 接口 → BeanPostProcessor 前置 → 初始化(init-method/@PostConstruct) → 后置 → 使用 → 销毁(@PreDestroy/destroy-method)。","tip":"\"实→填→Aware→前后置→init→用→毁\"。","detail":"作用域：singleton（默认）、prototype、request、session、application。生命周期：实例化 → 属性填充 → Aware（BeanName/BeanFactory/ApplicationContext） → BeanPostProcessor 前置 → 初始化（@PostConstruct/InitializingBean/init-method） → 后置 → 可用 → 销毁（@PreDestroy/DisposableBean/destroy-method）。","level":"high"},{"id":"jv_frame_c1_p4","title":"循环依赖 & 三级缓存？","content":"A↔B 互相依赖。Spring 用三级缓存（singletonObjects / earlySingletonObjects / singletonFactories）提前暴露半成品 Bean 解决；构造器循环依赖无法解决。","tip":"\"三级缓存暴露早期引用；构造器循环无解\"。","detail":"A↔B 互相依赖。三级缓存：singletonObjects（成品）、earlySingletonObjects（早期引用）、singletonFactories（ObjectFactory，生成早期引用含 AOP 代理）。流程：创建 A 时先暴露 singletonFactories 早期引用 → 填充属性需 B → 创建 B → B 需 A → 从三级缓存拿 A 早期引用（如有 AOP 在此生成代理）→ B 完成 → A 完成。局限：构造器循环依赖无法解决（实例化前就需依赖）；@Async/某些代理场景也会失效。","level":"high"},{"id":"jv_frame_c1_p5","title":"Spring 事务 & 失效场景？","content":"声明式 @Transactional 基于 AOP。失效：方法非 public、自调用（同类内调用不走代理）、异常被 catch、数据库引擎不支持、传播行为不当。","tip":"\"非public·自调用·吞异常→失效\"。","detail":"@Component/@Service/@Repository/@Controller、@Autowired（按类型）、@Qualifier（按名）、@Resource、@Value、@Configuration + @Bean、@Transactional。 ---","level":"high"},{"id":"jv_frame_c1_p6","title":"SpringBoot 自动配置原理？","content":"@SpringBootApplication 含 @EnableAutoConfiguration；spring.factories / AutoConfiguration.imports 加载 XXXAutoConfiguration；按 @Conditional 条件按需装配。","tip":"\"启动注解→扫AutoConfiguration→条件装配\"。","detail":"@SpringBootApplication = @ComponentScan + @EnableAutoConfiguration + @SpringBootConfiguration。@EnableAutoConfiguration 经 AutoConfiguration.imports（旧 spring.factories）加载 XXXAutoConfiguration，按 @ConditionalOnClass/OnMissingBean/OnProperty 等条件按需装配，用户 bean 优先（@ConditionalOnMissingBean）。","level":"high"},{"id":"jv_frame_c1_p7","title":"事务","content":"声明式 @Transactional 基于 AOP 代理。传播行为：REQUIRED（默认，有则加入/无则建）、REQUIRES_NEW（挂起建新）、NESTED（嵌套保存点）、SUPPORTS/NEVER 等。失效场景：方法非 publi","tip":"","detail":"声明式 @Transactional 基于 AOP 代理。传播行为：REQUIRED（默认，有则加入/无则建）、REQUIRES_NEW（挂起建新）、NESTED（嵌套保存点）、SUPPORTS/NEVER 等。失效场景：方法非 public、同类自调用（不走代理）、异常被 catch 未抛出、rollbackFor 不匹配、数据库引擎不支持（MyISAM 无事务）、多线程（事务不跨线程）。","level":"high"}]},{"id":"jc_frame_c2","name":"十三、常用框架与安全（MyBatis / 认证授权 / 数据安全 / 定时任务 / 消息推送）","expanded":false,"points":[{"id":"jv_frame_c2_p1","title":"MyBatis 是什么？和 JDBC、JPA 有什么区别？","content":"MyBatis 是半自动 ORM，封装 JDBC 样板代码但 SQL 自己写；相比 Hibernate/JPA 全自动生成 SQL，MyBatis SQL 可控、易精确优化、适合复杂查询。","tip":"\"MyBatis 半自动 SQL 自己写；Hibernate 全自动它生成\"。","detail":"- 持久层半自动 ORM：封装 JDBC 连接/参数/结果集/资源关闭，SQL 由开发者编写并映射为对象。 - vs JDBC：免去大量样板代码与手工资源管理。vs JPA/Hibernate：SQL 可控、易精确优化（适合复杂查询）；Hibernate 全自动、CRUD 少写代码但 SQL 难控、易 N+1。 - 🧠 口诀：\"MyBatis 半自动，SQL 自己写；Hibernate 全自动，SQL 它生成\"。","level":"high"},{"id":"jv_frame_c2_p2","title":"#{} 和 ${} 的区别？Mapper 接口原理？","content":"#{} 编译成 ? 走 PreparedStatement，防注入（值首选）；${} 直接拼接，有注入风险，仅用于表名/列名（须白名单）。Mapper 用 JDK 动态代理，按\"接口全限定名+方法名\"找到 MappedStatement 执行，无实现类。","tip":"\"值用 #（防注入），名用 $ 但须白名单\"。","detail":"- #{}：编译成 JDBC 占位符 ?，用 PreparedStatement 传参，防 SQL 注入，值参数首选。${}：字符串直接拼接进 SQL，有注入风险，仅用于表名/列名/排序方向（须服务端枚举白名单）。 - Mapper 代理：MyBatis 用 JDK 动态代理为接口生成代理；MapperProxy 按\"接口全限定名 + 方法名\"找到 MappedStatement，MapperMethod 判断增删改查后调 SqlSession 执行，接口无需实现类。 - 🧠 记忆：\"值用 #（预编译防注入），名用 $ 但须白名单\"。","level":"high"},{"id":"jv_frame_c2_p3","title":"MyBatis 一级 / 二级缓存？","content":"一级缓存是 SqlSession 级、默认开，增删改/commit/clearCache 即失效；Spring 无事务时每次新建 Session 故\"看似不生效\"。二级缓存是 namespace 级、跨 Session、需 <cache/>、默认关；分布式不同步、跨 namespace 改表不感知，生产慎用。","tip":"\"一级在 Session 增删改即失效；二级跨 Session 但分布式不同步，慎用\"。","detail":"- 一级缓存：SqlSession 级，默认开启；同一 Session 相同 SQL+参数命中。失效：增删改、clearCache、commit/rollback/close。Spring 无事务时每次调用新建 Session，故\"感觉不生效\"。 - 二级缓存：namespace（Mapper）级，跨 Session 共享，需 XML 配 <cache/>，实体需可序列化；默认关闭。 - 生产慎用二级缓存：多实例不同步、跨 namespace 改表无法感知、外部改库失效、Join 任一表变均过期、命中率低反占内存。 - 🧠 口诀：\"一级在 Session，增删改即失效；二级跨 Session 但分布式不同步，慎用\"。","level":"high"},{"id":"jv_frame_c2_p4","title":"认证 vs 授权？Session vs Token？JWT？","content":"认证=你是谁，授权=你能做什么。Session 服务端有状态（集群需共享）；Token 无状态易扩展。JWT 三截 Header.Payload.Signature，签名防篡改但可解码；无法主动失效 → 短有效期 + 刷新令牌 + 黑名单。","tip":"\"认证是谁授权能干啥；JWT 头.载.签，签名防篡改不能删\"。","detail":"- 认证（Authentication）= 你是谁；授权（Authorization）= 你能做什么，不可混。 - Session/Cookie：服务端存会话、有状态，集群需共享（Redis）；Token：服务端不存或轻存、无状态易扩展。 - JWT = Header.Payload.Signature 三段 Base64Url；签名（HMAC/RSA）保防篡改，但 Payload 默认可解码（别放敏感信息）。JWT 无法天然主动失效 → 短有效期 + 刷新令牌 + Redis 黑名单/版本号。 - 🧠 口诀：\"认证是谁，授权能干啥；JWT 三截：头.载.签，签名防篡改不能删\"。","level":"high"},{"id":"jv_frame_c2_p5","title":"OAuth2 / SSO / RBAC？","content":"OAuth2 是授权框架（让第三方不拿密码拿有限授权）；SSO 一次登录多系统（统一认证中心发票据）；RBAC = 用户-角色-权限-资源，中间加角色解耦。","tip":"\"OAuth2 发令牌，SSO 一中心管多系统，RBAC 靠角色\"。","detail":"- OAuth2：授权框架（非认证协议），让第三方在不拿密码前提下获得有限授权；四角色（资源所有者/客户端/授权服务器/资源服务器），授权码模式最常用。 - SSO 单点登录：一次登录访问多个系统；核心是统一认证中心，登录后下发票据（CAS 的 ST / JWT），各子系统到认证中心校验以共享登录态。 - 🧠 记忆：\"OAuth2 发令牌给第三方；SSO 一个认证中心管多系统\"。","level":"high"},{"id":"jv_frame_c2_p6","title":"对称 / 非对称 / 哈希加密？","content":"对称（AES）同密钥、快；非对称（RSA）公钥加密私钥解密、慢，用于密钥交换/签名；哈希（MD5/SHA）单向不可逆；密码用 BCrypt 加盐慢哈希。HTTPS = 非对称协商密钥 + 对称加密传输。","tip":"\"对称快、非对称安全、哈希单向；密码用 BCrypt 加盐\"。","detail":"| 类型 | 代表 | 特点 | 用途 | |---|---|---|---| | 对称加密 | AES、DES | 同一密钥加解密，快 | 大数据加密、HTTPS 传输体 | | 非对称加密 | RSA、ECC | 公钥加密私钥解密，慢 | 密钥交换、签名 | | 哈希摘要 | MD5、SHA-256 | 单向不可逆、定长 | 校验、指纹 | | 加盐哈希 | BCrypt、scrypt | 加随机盐 + 慢哈希 | 密码存储 | - HTTPS = 非对称协商出对称密钥 + 对称加密传输（兼顾安全与性能）。 - 🧠 记忆：\"对称快、非对称安全、哈希单向；密码用 BCrypt 加盐\"。","level":"high"},{"id":"jv_frame_c2_p7","title":"数据脱敏 / 校验 / 密码为什么只能重置？","content":"脱敏在展示层打码；前后端都要校验，但后端必须重新校验（前端可绕过）；密码单向哈希不可逆，故只能重置不能告诉你原密码。","tip":"\"脱敏在展示，校验在后端，密码只存 BCrypt，忘了只能重置\"。","detail":"- 脱敏：展示层按规则打码（1388888），存储与展示分离。 - 前后端都要校验：前端提升体验，后端必须重新校验（可被绕过），防注入/XSS/CSRF。 - 密码不能明文存储，也不能告诉你原密码（哈希不可逆），忘记密码只能重置；存储用 BCrypt（自带盐 + 慢哈希）。 - 🧠 口诀：\"脱敏在展示，校验在后端，密码只存 BCrypt，忘了只能重置\"。","level":"high"},{"id":"jv_frame_c2_p8","title":"定时任务：单机 vs 分布式？如何防重复执行？","content":"单机用 ScheduledExecutorService / @Scheduled（支持 cron）；分布式用 XXL-JOB（中心化）/ Elastic-Job（去中心化）/ Quartz。防重：分片协调 / 中心化调度 / 分布式锁 / 唯一约束 + 幂等。","tip":"\"单机 ScheduledExecutor，分布式 XXL-JOB / Elastic-Job；防重靠分片+幂等\"。","detail":"- 单机：Timer（单线程、异常即挂）、ScheduledExecutorService（线程池、推荐）、DelayQueue、Spring @Scheduled（支持 cron）、时间轮（Kafka/Dubbo 用）。 - 分布式：Quartz（DB 锁、伪分布式、负载不均）、Elastic-Job（去中心化，ZK/etcd 协调分片）、XXL-JOB（中心化，调度中心+执行器，开箱即用 ⭐）。 - 避免重复执行：中心化调度 / 分片协调 / 分布式锁 / DB 唯一约束 + 幂等；并定义错过执行、超时重试、监控告警策略。 - 🧠 记忆：\"单机 ScheduledExecutor，分布式 XXL-JOB（中心化）/ Elastic-Job（去中心化）；防重靠分片 + 幂等\"。","level":"high"},{"id":"jv_frame_c2_p9","title":"Web 实时消息推送有哪些方案？怎么选？","content":"短轮询 / 长轮询 / iframe 流 / SSE / WebSocket / MQTT。只需服务端推用 SSE（简单、自动重连）；需双向用 WebSocket。生产注意多端连接管理、握手鉴权、心跳重连、数据持久化。","tip":"\"单向 SSE，双向 WebSocket；轮询最土，MQTT 管 IoT\"。","detail":"| 方案 | 方向 | 原理 | 适用 | |---|---|---|---| | 短轮询 | 拉 | 定时 HTTP 请求 | 简单、实时性差 | | 长轮询 | 拉 | 服务端 hold 请求直到有数据 | 准实时、请求多 | | SSE | 服务端→客户端单向 | HTTP text/event-stream 持续推送 | 站内信、行情 ⭐ | | WebSocket | 全双工 | HTTP 握手升级 101，之后 TCP 长连接 | 聊天、游戏 ⭐ | | MQTT | 发布订阅 | 轻量协议，TCP/WS 承载 | IoT | mermaid sequenceDiagram participant C as 客户端 participant S as 服务端 C->>S: HTTP 请求 Upgrade: websocket S-->>C: 101 Switching Protocols C->>S: 双向消息 S->>C: 双向消息 - 选择：只需服务端推 → SSE（简单、自动重连）；需双向 → WebSocket。生产注意多端连接管理、握手鉴权（不信客户端传的 userId）、心跳与重连、数据持久化。 - 🧠 口诀：\"单向 SSE，双向 WebSocket；轮询最土，MQTT 管 IoT\"。 ---","level":"high"},{"id":"jv_frame_c2_p10","title":"MyBatis 执行流程","content":"mermaid flowchart TB A[Mapper 代理] --> B[\"找 MappedStatement(接口名+方法名)\"] B --> C[SqlSource 生成 BoundSql] C --> D{Executor 查一","tip":"","detail":"mermaid flowchart TB A[Mapper 代理] --> B[\"找 MappedStatement(接口名+方法名)\"] B --> C[SqlSource 生成 BoundSql] C --> D{Executor 查一级缓存} D -->|未命中| E[StatementHandler 建 Statement] E --> F[ParameterHandler 设参] F --> G[JDBC 执行] G --> H[ResultSetHandler 映射对象] H --> I[写缓存并返回] - 四组件均可用插件（Interceptor + @Intercepts）拦截；分页插件即拦截 SQL 改写加 LIMIT 与 count。 - 🧠 记忆：\"代理→MappedStatement→Executor→StatementHandler→ParameterHandler→ResultSetHandler\"。","level":"high"},{"id":"jv_frame_c2_p11","title":"RBAC 权限模型","content":"- 用户 → 角色 → 权限 → 资源；用户绑角色、角色绑权限，避免用户与权限直接多对多。 - 进阶：RBAC1 角色继承、RBAC2 角色互斥/基数约束、数据权限（部门/数据范围）。 - 🧠 口诀：\"用户-角色-权限-资源，中间加角色解耦","tip":"","detail":"- 用户 → 角色 → 权限 → 资源；用户绑角色、角色绑权限，避免用户与权限直接多对多。 - 进阶：RBAC1 角色继承、RBAC2 角色互斥/基数约束、数据权限（部门/数据范围）。 - 🧠 口诀：\"用户-角色-权限-资源，中间加角色解耦\"。","level":"high"}]},{"id":"jc_frame_c3","name":"八、分布式中间件与网关（RPC / Dubbo / ZooKeeper / API 网关 / Spring Cloud Gateway）","expanded":false,"points":[{"id":"jv_frame_c3_p1","title":"什么是 RPC？为什么需要它？","content":"RPC（Remote Procedure Call）远程过程调用：让调用远程服务像调用本地方法一样透明。屏蔽网络、序列化、传输细节，提升开发效率并实现系统解耦。","tip":"\"像调本地一样调远程；屏蔽网络/序列化\"。","detail":"RPC（Remote Procedure Call，远程过程调用）解决\"服务之间如何互相调用\"。两台机器上的服务不在同一内存空间，需通过网络传参、接收结果；手写网络编程要自己处理 TCP/UDP、序列化等，成本极高。RPC 框架把这些底层细节封装起来，让调用远程方法像调用本地方法一样简单。 🧠 记忆：\"RPC = 远程调用本地化，封装网络 + 序列化\"。","level":"high"},{"id":"jv_frame_c3_p2","title":"RPC 的核心组成与调用流程？","content":"五大核心：客户端 Stub、服务端 Stub、序列化协议、网络通信、注册中心（可选）。流程：调用方→本地 Stub→序列化→网络→服务端 Stub→反序列化→本地执行→原路返回。","tip":"\"Stub序列化传，Server反序列化执行\"。","detail":"五部分：① 客户端（消费端）；② 客户端 Stub（代理类，把类/方法/参数打包成 RpcRequest）；③ 网络传输（Socket / Netty）；④ 服务端 Stub（反序列化 RpcRequest、反射调用本地方法、封装 RpcResponse）；⑤ 服务端（提供端）。 流程：本地调用 → 客户端 Stub 序列化 RpcRequest → 网络发送 → 服务端 Stub 反序列化并调用 → 结果封装 RpcResponse 序列化回传 → 客户端 Stub 反序列化得到结果。 🧠 口诀：\"客·客桩·网络·服桩·服；请求出去序列化，响应回来反序列化\"。面试要求能\"画出来 + 讲出来\"。","level":"high"},{"id":"jv_frame_c3_p3","title":"有了 HTTP 为什么还要 RPC？","content":"HTTP+REST 是文本协议、无强类型、吞吐一般；RPC 可用二进制协议（Hessian/Protobuf）、长连接、内置服务治理（注册发现/负载/容错），更适合微服务内网高频调用。","tip":"\"内网高频用RPC(二进制+治理)，对外用HTTP(通用)\"。","detail":"RPC 侧重\"方法调用\"语义，多用二进制协议（Dubbo/Hessian2、gRPC/ProtoBuf），报文更小、性能更高，且通常配套服务治理（注册发现、负载均衡、熔断）。HTTP/REST 通用、跨语言、易调试，但文本协议开销大、无内建治理。二者定位不同，非替代关系。 🧠 记忆：\"HTTP 通用易懂，RPC 高效 + 治理\"。","level":"high"},{"id":"jv_frame_c3_p4","title":"常见 RPC 框架对比？","content":"Dubbo（阿里，Java，TCP 私有协议+ZK）、gRPC（Google，HTTP/2+Protobuf，跨语言）、Thrift（Facebook，多语言二进制）、Spring Cloud OpenFeign（HTTP 声明式）。","tip":"\"Dubbo重治理，gRPC跨语言，Feign写HTTP\"。","detail":"- Dubbo：Java 生态、功能完善（服务治理/负载均衡/容错）、社区活跃，Spring Cloud Alibaba 组件。 - gRPC：Google，HTTP/2 + ProtoBuf，跨语言、通信层优秀，但缺服务治理。 - Thrift：Facebook，跨语言、性能好。 - Motan：微博开源，精简版 Dubbo。 选型：Java 后端推荐 Dubbo；跨语言选 gRPC。 🧠 口诀：\"Dubbo 全面，gRPC 跨语言，Thrift 多语言\"。","level":"high"},{"id":"jv_frame_c3_p5","title":"如何设计一个 RPC 框架？","content":"六大件：服务注册发现、通信协议与编解码（序列化）、网络传输（NIO/Netty）、负载均衡、容错（重试/熔断）、监控。核心难点是序列化性能与网络模型。","tip":"\"注册+协议+传输+均衡+容错+监控\"。","detail":"核心要素：服务注册发现（ZooKeeper/Nacos）+ 动态代理（客户端 Stub 屏蔽远程调用）+ 网络通信（Netty）+ 序列化（Kryo/Hessian/ProtoBuf）+ 负载均衡 + 容错。手写简易框架常用 Netty + Kryo + ZooKeeper。 🧠 记忆：\"注册中心 + 代理 + Netty + 序列化 + 负载均衡\"。 ## Dubbo","level":"high"},{"id":"jv_frame_c3_p6","title":"Dubbo 是什么？","content":"高性能 Java RPC 框架，提供透明化远程调用 + 服务治理（注册发现/负载/容错/监控），核心基于 Netty 长连接 + 自定义 Dubbo 协议。","tip":"\"Dubbo=Java RPC+服务治理\"。","detail":"Apache Dubbo 是高性能、轻量级的 RPC 与微服务框架，提供面向接口代理的高性能 RPC 调用、智能容错与负载均衡、服务自动注册发现、流量治理、可观测性等能力；支持 Triple 协议（基于 HTTP/2）、应用级服务发现。 🧠 记忆：\"Dubbo = RPC + 服务治理\"。","level":"high"},{"id":"jv_frame_c3_p7","title":"Dubbo 的核心角色？","content":"Provider（提供者）、Consumer（消费者）、Registry（注册中心，如 ZK/Nacos）、Monitor（监控）、Container（容器）。","tip":"\"提·消·注·监·容\"五角色。","detail":"- Container：服务运行容器（负责加载 Provider），必须。 - Provider：服务提供者（向注册中心注册），必须。 - Consumer：服务消费者（向注册中心订阅），必须。 - Registry：注册中心（服务注册与发现），非必须。 - Monitor：监控中心（统计调用次数/耗时），非必须。 🧠 口诀：\"容·供·消（必须）·册·监（可选）\"。","level":"high"},{"id":"jv_frame_c3_p8","title":"服务暴露与引用流程？","content":"Provider 启动→注册到 Registry；Consumer 启动→订阅 Registry→拿地址列表缓存本地→Netty 直连调用。Registry 只管注册订阅，调用不经它。","tip":"\"暴露注册，引用订阅，直连调用\"。","detail":"config 配置层以 ServiceConfig / ReferenceConfig 管理；Proxy 代理层用动态代理 + Invoker 抽象，让消费方像调本地方法一样调用；Provider 把服务注册到 Registry，Consumer 从 Registry 订阅地址列表并透明发起远程引用。 🧠 记忆：\"Provider 注册暴露，Consumer 订阅引用，Proxy 层透明\"。","level":"high"},{"id":"jv_frame_c3_p9","title":"Dubbo 负载均衡策略？","content":"Random（默认加权随机）、RoundRobin（加权轮询）、LeastActive（最少活跃调用）、ConsistentHash（一致性哈希，同参落同节点）。","tip":"\"随·轮·少活·一致性哈希\"四选一。","detail":"- Random（默认）：按权重随机。 - RoundRobin：加权轮询（2.6.5 后为平滑加权）。 - LeastActive：最小活跃数优先（相等则随机）。 - ConsistentHash：一致性 Hash，相同参数打到同一提供者，引入虚拟节点防倾斜。 均继承 AbstractLoadBalance 并实现 LoadBalance 接口，可通过 SPI 扩展。 🧠 口诀：\"随·轮·最·一(致 Hash)\"。","level":"high"},{"id":"jv_frame_c3_p10","title":"Dubbo 集群容错策略？","content":"Failover（默认，失败重试，读操作用）、Failfast（快速失败，写操作用）、Failsafe（忽略异常）、Failback（失败定时重试）、Forking（并行调多台取快者）。","tip":"\"读Failover重试，写Failfast速败\"。","detail":"Failover（默认，失败切换并重试）、Failfast（快速失败）、Failsafe（失败安全，忽略异常）、Failback（失败自动恢复、定时重发）、Forking（并行调多个取首个成功）、Broadcast（广播全部）、Mock（本地伪装降级）。 🧠 口诀：\"over 重试·fast 快败·safe 忽略·back 重发·forking 并行\"。","level":"high"},{"id":"jv_frame_c3_p11","title":"Dubbo SPI 机制？","content":"Dubbo 增强 JDK SPI：按需加载、支持 IOC/AOP、@Adaptive 自适应扩展、可指定别名。配置文件在 META-INF/dubbo/。","tip":"\"SPI按需加载+自适应；比JDK更强\"。","detail":"Dubbo 增强 Java SPI，实现\"微内核 + 插件\"架构并管理插件生命周期；扩展实现类全路径写入 META-INF/dubbo/接口全限定名（键值对），运行时反射加载，支持按名加载、IOC、AOP。 🧠 记忆：\"Dubbo SPI：配置文件按名加载 + 可扩展（负载均衡/协议/容错都能换）\"。","level":"high"},{"id":"jv_frame_c3_p12","title":"服务注册与发现？","content":"Provider 注册接口节点到 Registry；Consumer 监听变化；节点上下线动态感知，解耦调用方与提供方地址。","tip":"\"注册解耦地址，监听动态感知\"。","detail":"Provider 启动向 Registry 注册；Consumer 启动订阅并拿到地址列表；提供者宕机时注册中心推送事件通知；注册中心整体宕机时，消费者因有本地缓存仍可直连调用（可用性保障）。 🧠 口诀：\"注册中心不是命脉：本地缓存兜底\"。","level":"high"},{"id":"jv_frame_c3_p13","title":"Dubbo vs Spring Cloud？","content":"Dubbo：RPC（TCP 私有协议）、性能高、服务治理强、偏 Java。Spring Cloud：HTTP（REST）、生态全（网关/配置/熔断）、多语言友好、开发快。","tip":"\"Dubbo重RPC性能，Cloud重生态全家桶\"。","detail":"Dubbo 聚焦高性能 RPC 通信 + 服务治理；Spring Cloud 是微服务综合解决方案（网关、配置、链路、熔断等一整套），多基于 HTTP/REST。Dubbo 更常用于\"分布式系统\"，Spring Cloud 更常用于\"微服务体系\"。 🧠 记忆：\"Dubbo 重通信治理，Spring Cloud 重全家桶\"。","level":"high"},{"id":"jv_frame_c3_p14","title":"Dubbo 协议与序列化？","content":"默认 Dubbo 协议（单连接+NIO，适合小数据高并发）；序列化默认 Hessian2，也可 Kryo/FST/Protobuf。Hessian2 跨语言但较慢。","tip":"\"Dubbo协议小数据高并发；序列化Hessian2默认\"。","detail":"序列化支持 JDK 原生、Hessian2（默认）、JSON、Kryo、FST、Protostuff、ProtoBuf。默认 Hessian2；Kryo/FST 性能好但仅 Java（官网推荐 Kryo 用于生产）；跨语言用 Protostuff/ProtoBuf；不推荐 JDK 原生（体积大）与 JSON（性能差）。 🧠 口诀：\"默认 Hessian2；生产 Kryo；跨语言 ProtoBuf\"。 ## ZooKeeper","level":"high"},{"id":"jv_frame_c3_p15","title":"ZooKeeper 是什么？","content":"分布式协调服务，提供统一命名、配置管理、分布式锁、集群选主。本质是靠 ZAB 协议保证一致性的\"内存树（znode）\"存储。","tip":"\"ZK=分布式协调+一致性内存树\"。","detail":"开源分布式协调服务，把复杂易错的分布式一致性问题封装成高效可靠的原语集。底层只做两件事：管理（存储/读取）用户提交的数据 + 提供节点监听服务。 🧠 口诀：\"ZK = 分布式协调：存数据 + 监听\"。","level":"high"},{"id":"jv_frame_c3_p16","title":"ZooKeeper 应用场景？","content":"配置中心、命名服务、分布式锁、选主（Master 选举）、服务注册发现。","tip":"\"配·名·锁·主·注册\"五场景。","detail":"注册中心（Dubbo/早期 Kafka）、配置中心（Watcher 发布订阅、动态配置）、分布式锁（唯一节点 + Watcher）、Master 选举与集群管理。注意：不适合存业务大数据，单节点数据上限 1M。 🧠 口诀：\"注册·配置·锁·选举；数据别超过 1M\"。","level":"high"},{"id":"jv_frame_c3_p17","title":"数据模型 znode？","content":"类文件系统树，每个节点叫 znode，存少量数据（默认上限 1MB）并带版本号；全内存、高吞吐。","tip":"\"树形znode，小数据带版本\"。","detail":"层次化多叉树（类似 Unix 文件系统，/ 分割，根节点 /）。每个数据节点称 znode，是最小数据单元，可有 N 个子节点。 🧠 记忆：\"znode 树 = 文件系统样子\"。","level":"high"},{"id":"jv_frame_c3_p18","title":"节点类型？","content":"持久/临时（Ephemeral，会话断开即删）、顺序（Sequential，自动加递增序号）。组合出 4 种：持久、持久顺序、临时、临时顺序。","tip":"\"持/临 × 顺/非顺 = 4种；临时靠会话\"。","detail":"四类：持久（PERSISTENT，一直存在直至删除）、临时（EPHEMERAL，绑定会话，会话断则消失且只能做叶子）、持久顺序（名称带递增序号）、临时顺序。分布式锁常用临时/临时顺序节点。 🧠 口诀：\"持久·临时·持久顺序·临时顺序\"。","level":"high"},{"id":"jv_frame_c3_p19","title":"Watcher 机制？","content":"客户端对节点注册监听，数据/子节点变化一次性触发通知（watch 是一次性的，需重新注册）。用于配置推送、节点上下线感知。","tip":"\"Watcher一次性，变了推通知\"。","detail":"客户端在指定节点注册 Watcher，当节点数据/结构变化时，服务端把事件通知给客户端（注册-通知模型，推拉结合）。是实现发布订阅、分布式锁的基础。注意：Watcher 是一次性的，触发后需重新注册。 🧠 记忆：\"注册一次、通知一次；通知后要重注册\"。","level":"high"},{"id":"jv_frame_c3_p20","title":"ZAB 协议？","content":"ZooKeeper Atomic Broadcast：保证事务顺序一致。两阶段——Leader 提出 Proposal → 过半 ACK → Commit；崩溃恢复时选新 Leader 并同步。","tip":"\"ZAB=提→过半ACK→提交；崩溃选主同步\"。","detail":"ZooKeeper 专用原子广播协议，支持崩溃恢复。两种模式：消息广播（正常期只有 Leader 处理写，广播给 Follower，过半 ack 后提交）、崩溃恢复（Leader 挂后选主并同步）。用 ZXID（全局事务 ID，高 32 位 epoch + 低 32 位事务号）保证顺序与一致性。它不是标准 Paxos。 🧠 口诀：\"ZAB = 广播 + 恢复；ZXID 定顺序\"。","level":"high"},{"id":"jv_frame_c3_p21","title":"Leader 选举？","content":"集群启动/Leader 宕机时，按 zxid（事务ID）和 myid 选：zxid 大者优先，相同则 myid 大者；需过半选票当选。","tip":"\"先比zxid再比myid，过半当选\"。","detail":"选举阶段选准 Leader（过半票）→ 发现阶段同步事务提议 → 同步阶段同步集群副本 → 广播阶段正式对外服务。比较规则：先比 ZXID（大者优先），相同再比 myid（大者优先）。 🧠 口诀：\"先比 ZXID，再比 myid，过半当选\"。","level":"high"},{"id":"jv_frame_c3_p22","title":"Session 会话？","content":"客户端与 ZK 的 TCP 长连接，有超时时间；心跳保活；临时节点与会话绑定（断会话临时节点消失）。","tip":"\"会话=长连接+心跳；临时节点绑会话\"。","detail":"客户端与服务器之间的 TCP 长连接，用于发请求、收响应、心跳保活、接收 Watcher 通知。有 sessionTimeout，期间重连任一机器会话仍有效。服务端分配全局唯一 sessionID；临时节点生命周期绑定会话。 🧠 记忆：\"Session = 长连接 + 心跳 + 临时节点生命线\"。","level":"high"},{"id":"jv_frame_c3_p23","title":"ZooKeeper 是 CP 还是 AP？","content":"CP。优先保证强一致，Leader 选举/过半写期间不可用，牺牲部分可用性。","tip":"\"ZK是CP：要一致，分区时不可写\"。","detail":"CP。通过 ZAB 过半写成功 + 顺序一致 + 选主恢复保证强一致；集群需半数以上存活才能服务（容忍 P，牺牲极端可用性）。与 Eureka（AP）相反。 🧠 口诀：\"ZK 保一致（CP），Eureka 保可用（AP）\"。","level":"high"},{"id":"jv_frame_c3_p24","title":"ZK 分布式锁 & 过半机制？","content":"锁：抢创临时顺序节点，最小序号者得锁，其余监听前驱，用完删节点释放。过半（quorum）：写/选举需 > 半数节点确认，容忍 (n-1)/2 故障。","tip":"\"最小序号得锁，监听前驱；过半=半数+1\"。","detail":"分布式锁：多客户端争抢同一临时节点，成功者持锁；其余监听该节点，锁释放或宕机（会话断、临时节点消失）时收到通知重抢。可用顺序节点实现共享/独占锁（读锁前面无写请求、写锁前面无任何更小节点）。 过半机制：任何决策需过半节点同意，防少数派做主；推荐奇数节点部署（3 台挂 1 台仍可用），有效防止脑裂。 🧠 口诀：\"临时节点 + 监听 = 锁；过半 + 奇数 = 防脑裂\"。 ## API 网关 & Spring Cloud Gateway","level":"high"},{"id":"jv_frame_c3_p25","title":"什么是 API 网关？为什么需要？","content":"系统唯一入口，统一鉴权、限流、路由、日志、协议转换。解耦客户端与微服务，避免每个服务各自实现横切逻辑。","tip":"\"网关=统一入口；鉴权限流路由日志\"。","detail":"API 网关是客户端与后端服务之间的统一入口，所有请求先经网关再路由到目标服务。微服务下认证/限流/日志/监控每个服务都要，若各服务单独实现会导致代码重复、管理分散、维护成本高，故抽到网关统一处理。 🧠 记忆：\"网关 = 统一入口，收敛公共横切关注点\"。","level":"high"},{"id":"jv_frame_c3_p26","title":"网关核心功能？","content":"路由转发、统一认证授权、限流熔断、请求/响应改写、灰度发布、API 聚合、防刷防爬、日志监控。","tip":"\"路由·鉴权·限流·改写·灰度\"。","detail":"两大职责：请求转发（动态路由、负载均衡、协议转换）+ 请求过滤（鉴权、权限校验、限流熔断、日志）。扩展能力：参数校验、监控告警、响应缓存、响应聚合、灰度发布、异常处理、API 文档、证书管理。注意：强业务规则/复杂字段映射/长事务应回业务服务或 BFF，避免\"巨石网关\"。 🧠 口诀：\"转发 + 过滤；路由·鉴权·限流·熔断·日志\"。","level":"high"},{"id":"jv_frame_c3_p27","title":"常见网关对比？","content":"Nginx（高性能反向代理 L4/L7）、Kong（Nginx+Lua 插件化）、Zuul（Netflix 同步阻塞，已弃）、Spring Cloud Gateway（异步非阻塞 WebFlux，取代 Zuul）。","tip":"\"Nginx硬性能，Kong插件化，SCG异步非阻塞\"。","detail":"- Spring Cloud Gateway：WebFlux + Netty 异步非阻塞、Spring 生态无缝。 - Zuul：1.x 同步阻塞（已维护模式）、2.x 异步但未集成进 Spring Cloud 主流版本。 - Kong：OpenResty（Nginx + Lua），插件丰富、可多语言插件。 - APISIX：OpenResty + etcd，动态路由、插件热加载、云原生。 - OpenResty：Nginx + Lua 可编程。 - ShenYu：WebFlux 响应式、插件热插拔。 选型：Spring 生态选 SCG；高性能/云原生选 APISIX；多语言生态选 Kong；中大型可\"流量网关(Kong/APISIX) + 业务网关(SCG)\"双层架构。 🧠 口诀：\"SCG 亲 Spring，APISIX/Kong 高性能云原生\"。","level":"high"},{"id":"jv_frame_c3_p28","title":"Spring Cloud Gateway 是什么？工作流程？","content":"基于 WebFlux（Reactor 响应式）的异步非阻塞网关。流程：客户端→Route 匹配→Predicate 断言→Filter 链（pre/post）→目标服务。","tip":"\"SCG异步非阻塞；Route→断言→Filter\"。","detail":"基于 Spring WebFlux（Reactor 响应式）+ Netty 的异步非阻塞网关，用于替代 Zuul 1.x。流程：① 路由判断（Gateway Handler Mapping 做 Predicate 匹配）→ ② 请求过滤（Filter Chain，Pre 过滤）→ ③ 转发到后端服务处理 → ④ 响应过滤（Post 过滤）→ ⑤ 返回客户端。 🧠 口诀：\"断言定路由，过滤器前后各一层\"。","level":"high"},{"id":"jv_frame_c3_p29","title":"三大核心概念？","content":"Route（路由：ID+目标URI+断言+过滤器）、Predicate（断言：匹配条件，如 Path/Method/Header）、Filter（过滤器：改请求响应）。组成一条路由规则。","tip":"\"Route路由·Predicate断言·Filter过滤\"三件套。","detail":"- Route（路由）：基本构建块 = ID + 目标 URI + 断言集合 + 过滤器集合。 - Predicate（断言）：Java 8 Predicate，匹配 HTTP 请求（Path/Method/Header 等），多断言逻辑与，第一个匹配成功的路由生效。 - Filter（过滤器）：GatewayFilter，在请求转发前后修改请求/响应。GatewayFilter（局部，单/组路由）与 GlobalFilter（全局，所有路由）。 🧠 口诀：\"Route = ID + URI + 断言 + 过滤器\"。","level":"high"},{"id":"jv_frame_c3_p30","title":"断言与路由的关系？","content":"Predicate 是 Route 的匹配条件：请求满足某 Route 全部断言才走该路由。一个网关可配多条 Route 按序匹配。","tip":"\"断言=路由的准入条件\"。","detail":"一对多（一个路由可含多个断言，须同时满足）；若请求匹配多个路由，取配置顺序第一个匹配成功的路由。 🧠 记忆：\"多断言且关系，多路由取首个\"。","level":"high"},{"id":"jv_frame_c3_p31","title":"如何限流 & 动态路由？","content":"限流：内置 RequestRateLimiter（基于 Redis + 令牌桶）。动态路由：配合 Nacos/配置中心运行时刷新 Route 定义，无需重启。","tip":"\"限流令牌桶走Redis；路由靠配置中心热刷\"。","detail":"限流：内置 RequestRateLimiter（RedisRateLimiter 基于 Redis + Lua 令牌桶，需 reactive Redis 依赖）；或集成 Sentinel 做 route/自定义 API 维度限流。 动态路由：默认 YAML/代码配置需重启；可基于 Nacos 注册中心/Config 动态刷新，运行时更新路由规则，避免重启。 🧠 口诀：\"限流 Redis 令牌桶 / Sentinel；动态路由靠 Nacos 推送\"。","level":"high"},{"id":"jv_frame_c3_p32","title":"全局异常处理？","content":"实现 GlobalFilter 或自定义有序过滤器统一捕获异常，或用 ErrorWebExceptionHandler 返回统一错误格式。","tip":"\"全局Filter统一兜底异常\"。","detail":"不能用 @RestControllerAdvice（那是 Spring MVC 的）；Gateway 基于 WebFlux，需实现 ErrorWebExceptionHandler 并重写 handle 方法（@Order(-1) 优先级最高）。 🧠 记忆：\"Gateway 异常用 ErrorWebExceptionHandler，不是 RestControllerAdvice\"。 ---","level":"high"}]}]},{"id":"jb_dist","title":"分布式与系统设计（高并发 · 高可用）","emoji":"🌐","category":"分布式与系统设计","desc":"高并发、高可用系统设计题，决定你最终能拿多少 K。","author":"JavaGuide 高频题背诵版 + 完整版","press":"220 考点","expanded":false,"chapters":[{"id":"jc_dist_c1","name":"八、分布式与系统设计（精要）","expanded":false,"points":[{"id":"jv_dist_c1_p1","title":"分布式理论","content":"CAP：一致性/可用性/分区容错，三者不可兼得，分区出现时 C/A 取舍（CP 如 ZooKeeper，AP 如 Redis/Eureka）。BASE：基本可用、软状态、最终一致，是 AP 系统的实践折中。","tip":"","detail":"CAP：一致性/可用性/分区容错，三者不可兼得，分区出现时 C/A 取舍（CP 如 ZooKeeper，AP 如 Redis/Eureka）。BASE：基本可用、软状态、最终一致，是 AP 系统的实践折中。","level":"mid"},{"id":"jv_dist_c1_p2","title":"常见一致性方案","content":"两阶段提交（2PC，强一致但阻塞、单点）、三阶段提交（3PC，减阻塞仍有问题）、TCC（Try-Confirm-Cancel，业务层补偿）、最终一致（消息队列 + 本地消息表 / 事务消息）。","tip":"","detail":"两阶段提交（2PC，强一致但阻塞、单点）、三阶段提交（3PC，减阻塞仍有问题）、TCC（Try-Confirm-Cancel，业务层补偿）、最终一致（消息队列 + 本地消息表 / 事务消息）。","level":"mid"},{"id":"jv_dist_c1_p3","title":"消息队列作用","content":"异步、解耦、削峰。常见问题：消息丢失（生产者确认+持久化+消费者 ack）、重复（消费幂等）、顺序（同 key 同分区/队列）、积压（扩容消费者/批量）。","tip":"","detail":"异步、解耦、削峰。常见问题：消息丢失（生产者确认+持久化+消费者 ack）、重复（消费幂等）、顺序（同 key 同分区/队列）、积压（扩容消费者/批量）。","level":"mid"},{"id":"jv_dist_c1_p4","title":"高并发 & 高可用","content":"限流（计数器/滑动窗口/令牌桶/漏桶）、降级（熔断 Hystrix/Sentinel，熔断+限流+降级）、缓存、动静分离、CDN、读写分离、分库分表、集群与负载均衡。","tip":"","detail":"限流（计数器/滑动窗口/令牌桶/漏桶）、降级（熔断 Hystrix/Sentinel，熔断+限流+降级）、缓存、动静分离、CDN、读写分离、分库分表、集群与负载均衡。","level":"mid"},{"id":"jv_dist_c1_p5","title":"系统设计套路","content":"明确需求与量级 → 估算（QPS/存储/带宽）→ 画出架构（客户端→网关→服务→缓存→DB→MQ）→ 数据模型 → 关键设计（缓存策略、分片、一致性、扩容）→ 高可用与容灾 → 权衡与演进。常见题：短链、秒杀、限流、排行榜、评论系统、Fee","tip":"","detail":"明确需求与量级 → 估算（QPS/存储/带宽）→ 画出架构（客户端→网关→服务→缓存→DB→MQ）→ 数据模型 → 关键设计（缓存策略、分片、一致性、扩容）→ 高可用与容灾 → 权衡与演进。常见题：短链、秒杀、限流、排行榜、评论系统、Feed 流。","level":"mid"},{"id":"jv_dist_c1_p6","title":"微服务","content":"拆分（按业务域）、注册中心（Eureka/Nacos）、配置中心、网关（路由/鉴权/限流）、服务调用（Feign/OpenFeign + Ribbon 负载均衡）、熔断降级（Sentinel）、链路追踪（Sleuth/SkyWalking）","tip":"","detail":"拆分（按业务域）、注册中心（Eureka/Nacos）、配置中心、网关（路由/鉴权/限流）、服务调用（Feign/OpenFeign + Ribbon 负载均衡）、熔断降级（Sentinel）、链路追踪（Sleuth/SkyWalking）。痛点：分布式事务、网络不可靠、运维复杂。 ---","level":"mid"}]},{"id":"jc_dist_c2","name":"十四、分布式核心（分布式 ID / 锁 / 事务 / 配置中心）","expanded":false,"points":[{"id":"jv_dist_c2_p1","title":"分布式 ID 有哪些方案？","content":"UUID（简单无序）、数据库自增（单点）、号段模式（批量取号、趋势递增）、Redis INCR（高但有回退风险）、雪花算法（主流）。要\"递增 + 高并发\"选雪花或号段。","tip":"\"UUID/DB/号段/Redis/雪花；要递增又高并发选雪花或号段\"。","detail":"- 要求：全局唯一、高性能、高可用、趋势递增（利于 B+ 树写入）、安全（不暴露业务量）、易用。 - 方案：①UUID（简单但无序、占 128bit）②数据库自增（单点、并发低）③数据库号段模式（批量取号缓存，如美团 Leaf，趋势递增）④Redis INCR（性能高但有回退风险）⑤雪花算法 Snowflake（主流）⑥开源：百度 UidGenerator、美团 Leaf、滴滴 Tinyid。 - 🧠 口诀：\"UUID/DB/号段/Redis/雪花；要递增又高并发选雪花或号段\"。","level":"mid"},{"id":"jv_dist_c2_p2","title":"雪花算法结构与时钟回拨？","content":"64 bit = 1 符号 + 41 时间戳 + 10 机器 ID + 12 序列（每毫秒每节点 4096 个）。时钟回拨解决：拒绝服务 / 等待追回 / 备用 workerId。","tip":"\"1 符号 + 41 时间 + 10 机器 + 12 序列；回拨靠拒绝/等待/备用 ID\"。","detail":"mermaid flowchart LR S[\"1bit 符号=0\"] --> T[\"41bit 毫秒时间戳\"] T --> W[\"10bit 机器ID\"] W --> Q[\"12bit 序列号\"] - 64 bit：符号 1 + 时间戳 41（约 69 年）+ 机器 ID 10（5 数据中心 + 5 工作机）+ 序列 12（每毫秒每节点 4096 个）。 - 时钟回拨（NTP 校时/人工调时）：①拒绝服务（回拨期间不可用）②等待追回 ③备用 workerId；容器环境 workerId 用 ZK/Redis 动态分配。 - 🧠 记忆：\"1 符号 + 41 时间 + 10 机器 + 12 序列；回拨靠拒绝/等待/备用 ID\"。","level":"mid"},{"id":"jv_dist_c2_p3","title":"分布式锁需具备哪些条件？Redis 和 ZK 怎么选？","content":"需互斥、防死锁（TTL）、安全释放、可重入、续约机制，严格场景加 Fencing Token。Redis：SET NX PX + Lua 校验删除，性能高；ZK：临时顺序节点，最小序号得锁、监听前驱、会话断自动释放，CP 更可靠。锁 ≠ 分布式事务。","tip":"\"互斥/TTL/安全释放/可重入/续约；Redis 快，ZK 稳\"。","detail":"","level":"mid"},{"id":"jv_dist_c2_p4","title":"Redisson 看门狗？RedLock？","content":"看门狗：不指定 leaseTime 时默认 30s 且每 10s（1/3）自动续期，防业务未完成锁过期。RedLock：向 5 个独立节点申请、过半成功，但依赖时钟、争议大，生产多不推荐。","tip":"\"看门狗 1/3 续期；RedLock 过半（争议大）\"。","detail":"- 看门狗（Watchdog）：不指定 leaseTime 时 Redisson 默认 30s TTL 并每 10s（1/3）自动续期，防止业务未完成锁提前过期；显式指定则不续期。 - RedLock：向 N 个独立 Redis 主节点（通常 5）申请锁，过半成功才算获取；争议大（依赖时钟、GC 停顿可双持），生产多不推荐。 - ZK 锁：临时顺序节点天然解决\"锁误删\"与\"惊群\"（只监听前驱），会话断开自动释放；缺点是性能低于 Redis。 - 🧠 记忆：\"看门狗 1/3 续期；RedLock 过半（争议大）；ZK 临时顺序节点最稳\"。","level":"mid"},{"id":"jv_dist_c2_p5","title":"CAP / BASE？刚性事务 vs 柔性事务？","content":"CAP 三者最多满足两个（分区不可避免）。BASE = 基本可用 + 软状态 + 最终一致。刚性事务（强一致）：2PC/3PC/XA；柔性事务（最终一致）：TCC/Saga/AT/消息表/事务消息/最大努力通知。","tip":"\"刚性 XA/2PC 强一致；柔性 TCC/Saga/MQ 最终一致\"。","detail":"- CAP：一致性、可用性、分区容错三者最多满足两个（分区不可避免，实际是 CP 或 AP 取舍）。BASE：基本可用、软状态、最终一致（柔性事务基石）。 - 刚性事务（强一致）：2PC、3PC、XA；柔性事务（最终一致）：TCC、Saga、AT、本地消息表、事务消息、最大努力通知。 - 🧠 口诀：\"刚性 XA/2PC 强一致；柔性 TCC/Saga/MQ 最终一致\"。","level":"mid"},{"id":"jv_dist_c2_p6","title":"2PC / 3PC / XA 有什么问题？","content":"2PC：准备→提交，问题有同步阻塞、协调者单点、网络分区数据不一致。XA 是 2PC 在资源层的标准化落地。3PC 加超时机制缓解阻塞，但可能\"部分提交部分回滚\"，工程少用。","tip":"\"2PC 阻塞+单点；3PC 加超时不落地\"。","detail":"- 2PC：准备（预执行不提交）→ 提交/回滚。问题：同步阻塞、协调者单点、网络分区数据不一致。 - XA：X/Open 定义的 DTP 规范，是 2PC 在资源层的标准化落地；业务侵入低但持锁久、吞吐低。 - 3PC：CanCommit → PreCommit → DoCommit，加入超时机制缓解阻塞；但 RM 超时默认提交可能\"部分提交部分回滚\"，工程少用。 - 🧠 记忆：\"2PC 阻塞+单点；3PC 加超时不落地\"。","level":"mid"},{"id":"jv_dist_c2_p7","title":"TCC / Saga / AT / 消息表 / 最大努力通知？","content":"TCC（Try 预留-Confirm-Cancel，须解决幂等/空回滚/悬挂）；Saga（长事务拆本地事务+补偿，无隔离性）；AT（Seata 自动 undo_log 反向补偿，侵入低）；本地消息表/事务消息（业务与消息同事务）；最大努力通知（回调+重试+对账）。","tip":"\"预留用 TCC，长链路用 Saga，低侵入用 AT，异步用消息表，通知用最大努力\"。","detail":"mermaid flowchart TB A[分布式事务方案] --> B[刚性: 2PC/3PC/XA 强一致] A --> C[柔性: 最终一致] C --> D[TCC: Try-Confirm-Cancel 预留资源] C --> E[Saga: 长事务 拆本地事务+补偿] C --> F[AT: Seata 自动 undo_log 反向补偿] C --> G[本地消息表/事务消息: 业务与消息同事务] C --> H[最大努力通知: 回调+重试+幂等] - TCC：Try（预留）→ Confirm（确认）→ Cancel（释放）；须解决幂等、空回滚、悬挂。 - Saga：拆为本地短事务序列 + 反向补偿；无隔离性，补偿必须幂等。 - AT（Seata）：一阶段提交并记 undo_log 前后镜像，二阶段回滚则反向补偿；侵入低。 - 本地消息表 / 事务消息（RocketMQ 半消息）：保证\"本地事务 + 消息投递\"最终一致；消费端必须幂等。 - 最大努力通知：适合支付回调/通知类，重试 + 幂等 + 对账。 - 🧠 记忆：\"短链路预留用 TCC，长链路用 Saga，低侵入用 AT，异步解耦用消息表/事务消息，通知用最大努力\"。","level":"mid"},{"id":"jv_dist_c2_p8","title":"分布式配置中心？","content":"解决配置多、需免重启热更新、权限审计、多环境隔离。推送机制：推 / 拉 / 长轮询（主流）。选型：Apollo（管理强）、Nacos（配置+注册二合一）、Spring Cloud Config（Git、实时性差）。客户端本地快照容灾。","tip":"\"长轮询近实时；Nacos 二合一，Apollo 管理强\"。","detail":"- 为什么：微服务配置多、需免重启热更新、权限审计、多环境隔离、敏感信息安全。 - 推送机制：推（实时、连接多）/ 拉（简单、实时差）/ 长轮询（主流，近实时、省 CPU）——Apollo 用 HTTP 长轮询，Nacos 2.x 用 gRPC 通知 + 客户端拉取。 - 选型：Apollo（管理/审计/灰度强）、Nacos（配置+注册二合一，部署轻）、Spring Cloud Config（Git 存储、简单但实时性差）、K8s ConfigMap。 - 要点：客户端本地快照容灾（配置中心挂了也能启动）、@RefreshScope 刷新边界、版本管理与一键回滚。 - 🧠 口诀：\"长轮询近实时；Nacos 二合一，Apollo 管理强\"。 ---","level":"mid"},{"id":"jv_dist_c2_p9","title":"分布式锁：条件与实现对比","content":"- 应具备：互斥、高可用与防死锁（TTL/租约）、安全释放（校验持有者）、可重入、高性能、获取语义明确、续约机制；严格场景加 Fencing Token。 - 实现：Redis（SET key val NX PX ttl，Lua 校验后删；","tip":"","detail":"- 应具备：互斥、高可用与防死锁（TTL/租约）、安全释放（校验持有者）、可重入、高性能、获取语义明确、续约机制；严格场景加 Fencing Token。 - 实现：Redis（SET key val NX PX ttl，Lua 校验后删；Redisson 看门狗续期）、ZooKeeper（临时顺序节点，最小序号得锁，监听前驱，会话断自动释放，CP 更可靠）、数据库（唯一索引/SELECT FOR UPDATE/GET_LOCK，性能差）。 - 选型：高性能短临界区用 Redis；强一致协调场景用 ZK/etcd。分布式锁 ≠ 分布式事务，锁只控临界区并发，不保证提交成功。 - 🧠 口诀：\"互斥/TTL/安全释放/可重入/续约；Redis 快，ZK 稳\"。","level":"mid"}]},{"id":"jc_dist_c3","name":"十五、高性能（数据库优化 / 负载均衡 / CDN / 消息队列）","expanded":false,"points":[{"id":"jv_dist_c3_p1","title":"高性能优化的回答主线？","content":"先确认目标（QPS/RT/P99/数据量）→ 定位瓶颈 → 选方案 → 讲取舍。链路：CDN→负载均衡→应用（缓存/限流/异步）→数据库（索引/读写分离/分库分表）→MQ 削峰。别一上来堆名词。","tip":"\"目标→瓶颈→方案→取舍\"。","detail":"- 链路视角：用户 → CDN → 负载均衡 → 应用（缓存/限流/异步）→ 数据库（索引/读写分离/分库分表/冷热分离）→ MQ 削峰。 - 回答套路：先确认目标（QPS/RT/P99/数据量）→ 定位瓶颈 → 选方案 → 讲取舍（复杂度/一致性/运维/回滚）。 - 🧠 口诀：\"目标→瓶颈→方案→取舍\"。","level":"mid"},{"id":"jv_dist_c3_p2","title":"读写分离与主从延迟？","content":"一主多从写主读从。主从复制：binlog→relay log→重放。主从延迟源：重放慢、大事务、网络。避免读旧数据：核心链路读主、延迟读取、GTID 位点等待。","tip":"\"binlog→relay log→重放；一致性靠读主/位点等待\"。","detail":"- 读写分离：一主多从，写主读从，提升读扩展。主从复制：主库写 binlog → 从库 I/O 线程拉取写 relay log → SQL 线程重放。 - 主从延迟来源：从库重放慢、大事务、网络、从库规格低。避免读到旧数据：核心链路强制读主（Hint，慎用）、延迟读取、WAIT_FOR_EXECUTED_GTID_SET 位点等待。 - 减少延迟：一主多从、多线程复制、避免大事务、从库规格不低于主库、半同步复制。 - 🧠 记忆：\"binlog→relay log→重放；一致性靠读主/位点等待\"。","level":"mid"},{"id":"jv_dist_c3_p3","title":"分库分表怎么做？有什么后遗症？","content":"垂直（按业务拆库/按列拆表）、水平（按行拆，需分片键：高基数、均匀、避热点）。后遗症：分布式 ID、跨库 JOIN、分布式事务、全局分页、动态扩容。中间件 ShardingSphere。","tip":"\"垂直按业务，水平按行；分了就要解决 ID/JOIN/事务/扩容\"。","detail":"","level":"mid"},{"id":"jv_dist_c3_p4","title":"深度分页为什么慢？怎么优化？","content":"LIMIT 100000,10 会扫描并丢弃前 10 万行。优化：游标分页 WHERE id > lastId（最优）、延迟关联（覆盖索引取主键再回表）、限制最大页数。","tip":"\"深分页别 OFFSET，用 'id > 上次' 游标走\"。","detail":"- LIMIT 100000, 10 要扫描并丢弃前 10 万行，越翻越慢。 - 优化：①游标/键集分页 WHERE id > lastId ORDER BY id LIMIT 10（最优，需稳定有序键）②延迟关联：先用覆盖索引取主键再回表 JOIN ③子查询定位起点 ④限制最大页数 / 改用搜索引擎。 - 🧠 口诀：\"深分页别 OFFSET，用 'id > 上次' 游标走\"。","level":"mid"},{"id":"jv_dist_c3_p5","title":"四层 vs 七层负载均衡？常见算法？","content":"四层（LVS）看 IP+端口、性能强；七层（Nginx）看 URL/Header/Cookie、更灵活（路由/灰度/TLS）。算法：随机/轮询（加权）、哈希、一致性哈希、最小连接、最少活跃、最快响应。","tip":"\"四层看 IP 端口（快），七层看报文内容（灵活）\"。","detail":"| 维度 | 四层（LVS） | 七层（Nginx） | |---|---|---| | 层次 | TCP/UDP | HTTP/HTTPS | | 依据 | IP + 端口 | URL / Header / Cookie | | 性能 | 更强 | 稍低但足够 | | 能力 | 转发 | 路由、灰度、缓存、压缩、TLS 终止 | - 另有服务端 LB（外部请求，Nginx/LVS/F5）与客户端 LB（服务间，Ribbon/Spring Cloud LoadBalancer，进程内无额外网络开销）。 - 🧠 记忆：\"四层看 IP 端口（快），七层看报文内容（灵活）\"。","level":"mid"},{"id":"jv_dist_c3_p6","title":"CDN 工作原理？","content":"把静态资源分发到多地边缘节点实现就近访问。流程：客户端请求 → CNAME → GSLB 按用户 IP/节点状态调度 → 边缘节点命中即返回，未命中回源。核心指标：命中率越高、回源率越低越好。","tip":"\"CNAME→GSLB 调度→边缘节点命中/回源\"。","detail":"mermaid sequenceDiagram participant U as 用户 participant LD as 本地DNS participant G as GSLB调度 participant E as CDN边缘节点 participant O as 源站 U->>LD: 解析域名 LD->>G: CNAME 指向 CDN G->>LD: 返回最优节点 IP U->>E: 请求静态资源 alt 命中缓存 E-->>U: 直接返回 else 未命中 E->>O: 回源取资源 O-->>E: 返回并缓存 E-->>U: 返回给用户 end - CDN = 把静态资源分发到多地边缘节点实现就近访问；区别于动态加速（DCDN/ECDN，不缓存、智能路由 + 协议优化）。 - 核心指标：命中率越高越好、回源率越低越好；优化：文件名带 hash 长缓存、入口文件短缓存、热点预热、精确刷新、保留旧版本。 - 防盗链：Referer（弱）+ 时间戳签名（中）+ IP 黑白名单 + Token 鉴权（强），推荐组合。 - 🧠 记忆：\"CNAME→GSLB 调度→边缘节点命中/回源\"。","level":"mid"},{"id":"jv_dist_c3_p7","title":"消息队列有什么作用？引入什么问题？","content":"作用：异步、削峰、解耦（发布订阅）、分布式事务、顺序、延时。问题：可用性降低、复杂度上升、一致性。判断标准：\"能否晚点完成但不能丢、能恢复、要解耦\"。","tip":"\"异步/削峰/解耦；问自己能否晚点完成但不能丢\"。","detail":"- 作用：异步处理、削峰填谷、系统解耦（发布订阅）、分布式事务、顺序保证、延时任务、数据流处理。 - 引入的问题：系统可用性降低（MQ 挂了）、复杂度上升、一致性问题。 - 判断是否该用 MQ：调用方是否必须立刻拿结果？能否接受最终一致？高峰是否超下游能力？失败是否需重试补偿？团队有无 MQ 运维能力？ - 🧠 口诀：\"异步/削峰/解耦；问自己'能否晚点完成但不能丢'\"。","level":"mid"},{"id":"jv_dist_c3_p8","title":"MQ 如何保证不丢、不重、不乱序、不积压？","content":"不丢：生产确认+重试、Broker 持久化+多副本、消费成功再 ACK。不重：幂等（唯一索引/状态机/消费记录，用业务唯一键）。不乱序：单分区有序。积压：先定位→止血限流→扩容→定位慢逻辑→批处理。","tip":"\"不丢靠确认+持久化+重试，不重靠幂等，不乱序靠单分区\"。","detail":"","level":"mid"},{"id":"jv_dist_c3_p9","title":"分库分表","content":"mermaid flowchart TB A[单库单表瓶颈] --> B[垂直拆分: 按业务/字段] A --> C[水平拆分: 按行/分片键] C --> C1[水平分表: 同库多表] C --> C2[水平分库: 多库多表] - 垂直：","tip":"","detail":"mermaid flowchart TB A[单库单表瓶颈] --> B[垂直拆分: 按业务/字段] A --> C[水平拆分: 按行/分片键] C --> C1[水平分表: 同库多表] C --> C2[水平分库: 多库多表] - 垂直：按业务拆库 / 按列拆表；水平：按行拆，需分片键（高基数、均匀、避免热点），常用 hash / range。 - 后遗症：分布式 ID、跨库 JOIN、分布式事务、全局排序分页、动态扩容（推荐预分 1024 逻辑分片或一致性哈希 / TiDB）。 - 中间件：ShardingSphere（JDBC 少一层代理 / Proxy 支持多语言）。 - 🧠 记忆：\"垂直按业务，水平按行；分了就要解决 ID/JOIN/事务/扩容\"。","level":"mid"},{"id":"jv_dist_c3_p10","title":"负载均衡算法","content":"- 随机（加权）、轮询（加权，Dubbo 借鉴 Nginx 平滑加权轮询）、两次随机、哈希（同参数落同机）、一致性哈希（节点增减只影响相邻，解决哈希重分布）、最小连接数、最少活跃、最快响应时间。 - 生产：先看指标（QPS/RT/P99/错","tip":"","detail":"- 随机（加权）、轮询（加权，Dubbo 借鉴 Nginx 平滑加权轮询）、两次随机、哈希（同参数落同机）、一致性哈希（节点增减只影响相邻，解决哈希重分布）、最小连接数、最少活跃、最快响应时间。 - 生产：先看指标（QPS/RT/P99/错误率）再调算法；慢节点靠健康检查 + 熔断 + 摘流量；避免会话粘滞（会话放 Redis）；灰度规则可回滚。 - 🧠 口诀：\"随/轮/哈希/一致哈希/最小连接/最少活跃/最快响应\"。","level":"mid"},{"id":"jv_dist_c3_p11","title":"消息可靠性 / 幂等 / 顺序 / 积压","content":"mermaid flowchart LR P[生产者] -->|1.发送确认+重试/事务消息| B[Broker] B -->|2.持久化+多副本| B B -->|3.消费成功再 ACK| C[消费者] C -->|失败| D[重试→死信","tip":"","detail":"mermaid flowchart LR P[生产者] -->|1.发送确认+重试/事务消息| B[Broker] B -->|2.持久化+多副本| B B -->|3.消费成功再 ACK| C[消费者] C -->|失败| D[重试→死信队列] E[业务兜底: 对账/补偿/告警] -.-> P E -.-> C - 不丢：生产端确认 + 重试；Broker 持久化 + 多副本；消费端处理成功再 ACK。 - 不重（幂等）：唯一索引、状态机、消费记录表、Redis 去重；用业务唯一键而非消息 ID。 - 不乱序：单分区/单队列内有序（RocketMQ 顺序消息、Kafka 分区内有序），多分区需按业务键路由。 - 积压：先定位（生产突增/消费变慢/分区不足/Broker 异常）→ 止血限流 → 扩容消费与分区 → 定位慢逻辑 → 历史批处理/重放。 - 选型：日志/流式 → Kafka/Pulsar；交易/订单 → RocketMQ；路由灵活 → RabbitMQ。 - 🧠 记忆：\"不丢靠确认+持久化+重试，不重靠幂等，不乱序靠单分区，积压先定位再加消费者\"。 ---","level":"mid"}]},{"id":"jc_dist_c4","name":"十六、高可用（冗余 / 限流 / 降级熔断 / 超时重试 / 幂等 / 多活）","expanded":false,"points":[{"id":"jv_dist_c4_p1","title":"高可用指标：SLA、RTO、RPO？","content":"99.9%≈8.76 小时/年，99.99%≈52.6 分/年。RTO=恢复时间目标（故障到恢复），RPO=恢复点目标（最多丢多少数据）。","tip":"\"RTO 管时间、RPO 管数据；9 越多越难越贵\"。","detail":"- 高可用 = 故障时可控、可隔离、可恢复，而非\"不出故障\"。SLA 几个 9：99%≈3.65 天/年、99.9%≈8.76 小时/年、99.99%≈52.6 分/年、99.999%≈5.26 分/年。 - RTO＝恢复时间目标（故障到恢复）；RPO＝恢复点目标（最多丢多少数据，0 表示不丢）。 - 🧠 口诀：\"RTO 管时间、RPO 管数据；9 越多越难越贵\"。","level":"mid"},{"id":"jv_dist_c4_p2","title":"常见限流算法？分布式限流怎么做？","content":"固定窗口（有边界突刺）、滑动窗口（更精确）、令牌桶（允许突发）、漏桶（恒定速率不容突发）。单机 Guava RateLimiter；分布式 Redis + Lua（原子、省网络）/ Redisson RRateLimiter / Sentinel。","tip":"\"令牌桶留突发，漏桶不容突发；分布式限流 Redis+Lua\"。","detail":"","level":"mid"},{"id":"jv_dist_c4_p3","title":"降级和熔断有什么区别？熔断器三态？","content":"熔断器：Closed（统计）→ Open（拒绝、返回 Fallback）→ Half-Open（放少量探路）。降级=牺牲非核心保核心（大促关推荐保下单）。隔离防雪崩：线程池隔离 vs 信号量隔离。","tip":"\"熔断器闭→开→半开；降级保核心，隔离防级联\"。","detail":"","level":"mid"},{"id":"jv_dist_c4_p4","title":"超时与重试要注意什么？","content":"超时分连接超时/读取超时，下游超时应小于上游。重试用带 Jitter 的指数退避防重试风暴，在线重试 1~3 次；只重试可重试错误（超时/5xx/429），写操作必须幂等才能重试。","tip":"\"指数退避 + Jitter 防风暴；写操作重试必幂等\"。","detail":"- 超时：连接超时（1000~5000ms）、读取超时（1000~3000ms）；设太高慢请求堆积，设太低误超时；下游超时应小于上游，推荐传递 deadline/timeout budget。 - 重试策略：固定间隔、线性退避、指数退避、带 Jitter 的指数退避（分布式首选）——打散同步重试防重试风暴。在线同步重试通常 1~3 次。 - 只重试可重试错误：超时/连接重置/5xx/限流 429；不重试 4xx、参数/权限/业务规则失败；写操作必须幂等才能重试。 - 组合：超时 + 重试 + 限流 + 熔断 + 隔离；用重试预算（重试占比不超 ~10%）兜底。 - 🧠 口诀：\"指数退避 + Jitter 防风暴；写操作重试必幂等\"。","level":"mid"},{"id":"jv_dist_c4_p5","title":"接口幂等有哪些实现方案？","content":"悲观锁、乐观锁（版本号）、唯一索引、去重表、分布式锁、Token 机制（先原子消费再执行）、状态机。优先级：业务唯一键 > DB 唯一索引 > 状态机 > 分布式锁。支付回调：交易号唯一索引 + 状态机 + 同事务 + 重复直接返回成功。","tip":"\"唯一键识别 + 唯一索引兜底 + 状态机防回退\"。","detail":"- 场景：网络重试、用户重复点击、网关/客户端超时重试、MQ 重复投递；资金/库存/订单/券必做。 - 方案：①悲观锁（SELECT ... FOR UPDATE，注意走索引）②乐观锁（版本号/CAS，适合更新）③唯一索引（插入类兜底）④去重表（与业务同事务）⑤分布式锁（Redisson，进锁后仍要查状态）⑥Token 机制（先原子消费 token 再执行，Redis GETDEL/Lua）⑦状态机（防状态回退）。 - 优先级：业务唯一键 > DB 唯一索引兜底 > 状态机 > 分布式锁；资金场景多层兜底。 - 支付回调：transaction_id 建唯一索引 + 订单状态机（UNPAID→PAID）+ 订单/流水/回调记录同事务 + 重复回调直接返回成功。 - 🧠 记忆：\"唯一键识别 + 唯一索引兜底 + 状态机防回退\"。","level":"mid"},{"id":"jv_dist_c4_p6","title":"冗余设计与故障转移？","content":"冗余维度：硬件/服务/数据/网络/地域。故障转移五步：检测→确认（多数派防脑裂）→切换→告警→恢复；有状态系统需 fencing 防旧主双写。例子：Redis Sentinel、Nginx + Keepalived（VIP 漂移）。","tip":"\"冗余 ≠ 高可用，还要检测/切换/演练；有状态防脑裂靠 fencing\"。","detail":"- 冗余维度：硬件（双电源/RAID）、服务（多实例）、数据（主从/多副本）、网络（多运营商/双链路）、地域（同城/异地）。 - 故障转移五步：故障检测（心跳/健康检查）→ 故障确认（多数派防脑裂）→ 切换流量 → 告警 → 恢复；有状态系统需 fencing（防止旧主恢复后双写）。 - 常用：Redis Sentinel（多 Sentinel 判定客观下线并选主，异步复制有 RPO 损失）、Nginx + Keepalived（VRRP + VIP 漂移）。 - 🧠 记忆：\"冗余 ≠ 高可用，还要检测/切换/演练；有状态防脑裂靠 fencing\"。","level":"mid"},{"id":"jv_dist_c4_p7","title":"容灾等级与多活？","content":"冷备（小时~天）→ 温备（分钟级）→ 热备（秒~分钟）→ 多活（近实时）。同城/异地灾备是主备；同城/异地多活是多站点同时承载流量。多活靠单元化路由 + 最终一致；不是所有业务都要多活。","tip":"\"冷→温→热→多活；多活靠单元化路由 + 最终一致\"。","detail":"mermaid flowchart LR A[\"冷备: 需手动启动 小时~天\"] --> B[\"温备: 部分常驻 分钟级\"] B --> C[\"热备: 实时同步可快切 秒~分钟\"] C --> D[\"多活: 多站点同载流量 近实时\"] - 同城灾备/异地灾备：主备站点，防机房/区域灾难。同城多活/异地多活：多站点同时承载流量。 - RPO/RTO 量级：单机无备份（全丢）< 本地备份 < 同城灾备 < 异地灾备 < 同城多活 ≈ 异地多活（秒级）。 - 异地多活难点：数据一致性（单元化路由 + 最终一致 + 冲突解决）、网络延迟、流量调度（DNS/GSLB）、会话管理（无状态或单元路由）、成本；用 CAP 理解取舍。 - 不是所有业务都要多活：强一致跨地域、无法按用户切分、对账能力弱的资金链路需谨慎评估。 - 🧠 记忆：\"冷→温→热→多活；多活靠单元化路由 + 最终一致\"。 ---","level":"mid"},{"id":"jv_dist_c4_p8","title":"限流算法","content":"mermaid flowchart LR A[固定窗口] -->|窗口边界突刺| B[滑动窗口] B -->|更平滑| C[令牌桶] C -->|允许突发| D[漏桶] D -->|恒定速率| E[整形输出] - 固定窗口：简单，但有边界突","tip":"","detail":"mermaid flowchart LR A[固定窗口] -->|窗口边界突刺| B[滑动窗口] B -->|更平滑| C[令牌桶] C -->|允许突发| D[漏桶] D -->|恒定速率| E[整形输出] - 固定窗口：简单，但有边界突刺（两窗口交界双倍放行）。滑动窗口：细分格子滚动统计，更精确。令牌桶：匀速放令牌，允许突发。漏桶：恒定速率流出，强制整形、不容突发。 - 单机：Guava RateLimiter、Bucket4j；分布式：Redis + Lua（原子、省网络）、Redisson RRateLimiter、Sentinel；网关层：Spring Cloud Gateway RedisRateLimiter。 - 🧠 记忆：\"令牌桶留突发，漏桶不容突发；分布式限流 Redis+Lua\"。","level":"mid"},{"id":"jv_dist_c4_p9","title":"降级与熔断","content":"mermaid stateDiagram-v2 [*] --> Closed Closed --> Open: 失败率/慢调用超阈值 Open --> HalfOpen: 冷却时间到(如10s) HalfOpen --> Closed: 探","tip":"","detail":"mermaid stateDiagram-v2 [*] --> Closed Closed --> Open: 失败率/慢调用超阈值 Open --> HalfOpen: 冷却时间到(如10s) HalfOpen --> Closed: 探测成功 HalfOpen --> Open: 探测失败 - 熔断器三态：Closed（正常统计）→ Open（拒绝快速失败，返回 Fallback）→ Half-Open（放少量探路请求）。 - 降级：系统扛不住时牺牲非核心保核心（如大促关推荐保下单），用配置中心做降级开关。Fallback：失败返回兜底结果；Sentinel 中 blockHandler（规则拦截）vs fallback（业务异常）。 - 雪崩：下游慢 → 上游线程占满 → 超时重试放大 → 整链崩。隔离：线程池隔离（强、开销大）vs 信号量隔离（轻量）。 - 选型：老项目 Hystrix（维护模式）；SCA/Dubbo → Sentinel；SB3/Java17+ → Resilience4j。 - 🧠 记忆：\"熔断器闭→开→半开；降级保核心，隔离防级联\"。","level":"mid"}]}]},{"id":"jb_base","title":"工程与计算机基础（工具链 · 网络/OS）","emoji":"🛠","category":"工程与计算机基础","desc":"Maven / Gradle / Docker / Git + 网络与操作系统常识，一面常用来热场。","author":"JavaGuide 高频题背诵版 + 完整版","press":"220 考点","expanded":false,"chapters":[{"id":"jc_base_c1","name":"十二、开发工具链（Maven / Gradle / Docker / Git）","expanded":false,"points":[{"id":"jv_base_c1_p1","title":"Maven 坐标、仓库与依赖范围？","content":"坐标 = groupId + artifactId + version；仓库查找顺序：本地 → 私服 → 中央。scope：compile（默认）/ provided（容器提供）/ runtime（如驱动）/ test。","tip":"\"坐标三件套；本地→私服→中央；scope 决定 jar 进不进包里\"。","detail":"","level":""},{"id":"jv_base_c1_p2","title":"Maven 依赖冲突怎么解？dependencyManagement 有什么用？","content":"传递依赖冲突：路径最短优先，路径相同则先声明优先。dependencyManagement 只统一版本不实际引入，子模块省写 version；dependencies 才真正引入。生命周期由插件执行。","tip":"\"最短路径 + 先声明定版本；dependencyManagement 管版本不引入\"。","detail":"","level":""},{"id":"jv_base_c1_p3","title":"Gradle 和 Maven 有什么区别？","content":"Maven：XML、约定优于配置、生态稳、学习平缓；Gradle：Groovy/Kotlin DSL、脚本即代码、构建更快（增量/缓存/守护进程），适合大型多模块。","tip":"\"Maven 稳、XML 约定；Gradle 快、脚本灵活\"。","detail":"- Gradle：基于 Groovy/Kotlin DSL，脚本即代码，构建更快（增量构建、构建缓存、守护进程），适合大型多模块/Android。 - Maven：XML 配置、约定优于配置、生态成熟稳定、学习曲线平缓。 - 🧠 口诀：\"Maven 稳、XML 约定；Gradle 快、脚本灵活\"。","level":""},{"id":"jv_base_c1_p4","title":"容器和虚拟机的区别？镜像和容器？","content":"虚拟机虚拟硬件带完整 Guest OS（重、启动分钟级）；容器共享宿主内核只打包应用+依赖（轻、秒级）。镜像是只读分层模板，容器是镜像运行的可写实例，仓库用于分发。","tip":"\"镜像只读模板，容器运行实例；共享内核，比 VM 轻\"。","detail":"","level":""},{"id":"jv_base_c1_p5","title":"Docker 数据卷？CMD 和 ENTRYPOINT？","content":"数据卷把数据存宿主机，解决容器删除数据丢失、实现持久化与共享。CMD 可被 docker run 覆盖，ENTRYPOINT 不可（可传参）。","tip":"\"数据放卷不丢；CMD 能覆盖，ENTRYPOINT 不能\"。","detail":"- 数据卷（Volume）：容器删除数据会丢，卷把数据存到宿主机（具名卷或绑定挂载），实现持久化与容器间共享。 - 常用命令：docker run -d -p 8080:8080 -v data:/var/lib/mysql --name x image、ps/logs/exec -it/stop/rm、build -t、push/pull。 - Compose：docker-compose.yml 一条命令编排多容器（应用 + MySQL + Redis），docker compose up -d。 - Dockerfile：FROM→WORKDIR→COPY→RUN→EXPOSE→CMD/ENTRYPOINT；CMD 可被覆盖，ENTRYPOINT 不可（可传参）。 - 🧠 记忆：\"数据放卷不丢；CMD 能覆盖，ENTRYPOINT 不能\"。","level":""},{"id":"jv_base_c1_p6","title":"Git 四个区域？merge vs rebase、reset vs revert？","content":"工作区 →(add) 暂存区 →(commit) 本地仓库 →(push) 远程。merge 留分叉（安全）；rebase 变直线（干净但改写 hash，公共分支禁用）。reset 改历史（危险）；revert 加反向提交（安全）。","tip":"\"merge 留分叉，rebase 变直线；reset 危险，revert 安全\"。","detail":"- merge：产生合并提交，保留分支拓扑（安全、历史有分叉）；rebase：把当前分支提交\"搬\"到目标之后，得到线性历史（干净，但改写 commit hash，已推送的公共分支禁用）。 - reset：移动 HEAD/分支指针改写历史（--soft 留暂存、--mixed 留工作区、--hard 全丢），危险；revert：生成反向提交撤销，安全，适合公共分支。 - 🧠 口诀：\"merge 留分叉，rebase 变直线；reset 改历史（危险），revert 加反提交（安全）\"。 ---","level":""},{"id":"jv_base_c1_p7","title":"Maven 核心概念","content":"- 作用：项目构建 + 依赖管理 + 统一目录结构。 - 坐标：groupId（组织）+ artifactId（模块）+ version，唯一标识构件。 - 仓库：本地（~/.m2）→ 私服（Nexus，团队共享）→ 中央仓库；查找顺序：本","tip":"","detail":"- 作用：项目构建 + 依赖管理 + 统一目录结构。 - 坐标：groupId（组织）+ artifactId（模块）+ version，唯一标识构件。 - 仓库：本地（~/.m2）→ 私服（Nexus，团队共享）→ 中央仓库；查找顺序：本地 → 私服 → 中央。 - 依赖范围 scope：compile（默认，全周期）、provided（编译/测试，运行由容器提供，如 servlet-api）、runtime（运行/测试，如 JDBC 驱动）、test（仅测试，如 JUnit）。 - 🧠 口诀：\"坐标三件套；仓库本地→私服→中央；scope 决定 jar 进不进包里\"。","level":""},{"id":"jv_base_c1_p8","title":"依赖传递与冲突解决 / 生命周期","content":"- 依赖传递：A→B→C 自动传递；冲突时 路径最短优先，路径相同则 先声明优先。 - dependencyManagement：只声明版本不实际引入，子模块引用时统一版本；dependencies 才会真正引入。 - 生命周期（三套）：c","tip":"","detail":"- 依赖传递：A→B→C 自动传递；冲突时 路径最短优先，路径相同则 先声明优先。 - dependencyManagement：只声明版本不实际引入，子模块引用时统一版本；dependencies 才会真正引入。 - 生命周期（三套）：clean / default（validate→compile→test→package→verify→install→deploy）/ site；插件才真正执行任务，阶段通过绑定插件目标完成。 - 🧠 记忆：\"最短路径 + 先声明定版本；dependencyManagement 管版本不引入\"。","level":""},{"id":"jv_base_c1_p9","title":"Docker 核心概念与架构","content":"- 容器 vs 虚拟机：虚拟机虚拟硬件、带完整 Guest OS（重、启动分钟级）；容器共享宿主内核、只打包应用+依赖（轻、启动秒级）。 - 镜像 vs 容器：镜像是只读模板（分层 Union FS），容器是镜像运行的可写实例，仓库（Reg","tip":"","detail":"- 容器 vs 虚拟机：虚拟机虚拟硬件、带完整 Guest OS（重、启动分钟级）；容器共享宿主内核、只打包应用+依赖（轻、启动秒级）。 - 镜像 vs 容器：镜像是只读模板（分层 Union FS），容器是镜像运行的可写实例，仓库（Registry）用于分发。 mermaid flowchart LR C[Docker Client] -->|API| D[Docker Daemon] D --> I[Images 镜像] D --> Ct[Containers 容器] D --> V[Volumes 数据卷] D --> N[Networks 网络] I -->|docker run| Ct - 🧠 口诀：\"镜像只读模板，容器运行实例；共享内核，比 VM 轻\"。","level":""},{"id":"jv_base_c1_p10","title":"Git 核心概念 / 四个区域","content":"mermaid flowchart LR W[工作区 Workspace] -->|git add| S[暂存区 Stage] S -->|git commit| L[本地仓库] L -->|git push| R[远程仓库] R -->|","tip":"","detail":"mermaid flowchart LR W[工作区 Workspace] -->|git add| S[暂存区 Stage] S -->|git commit| L[本地仓库] L -->|git push| R[远程仓库] R -->|git pull/fetch| W - 分布式：每个克隆都有完整历史，无网络也能提交；SVN 集中式依赖服务器。 - 分支本质：指向 commit 的轻量指针，故切换极快。 - 🧠 口诀：\"工作区 add→暂存区 commit→本地 push→远程；分支只是指针\"。","level":""}]},{"id":"jc_base_c2","name":"十、计算机基础（面试补强精要）","expanded":false,"points":[{"id":"jv_base_c2_p1","title":"计算机网络","content":"TCP 三次握手（SYN→SYN+ACK→ACK，防历史连接/确认双方能力）、四次挥手（FIN→ACK→FIN→ACK，TIME_WAIT 2MSL）；TCP 可靠（序号/确认/重传/滑动窗口/拥塞控制）；UDP 无连接不可靠；HTTP 无","tip":"","detail":"TCP 三次握手（SYN→SYN+ACK→ACK，防历史连接/确认双方能力）、四次挥手（FIN→ACK→FIN→ACK，TIME_WAIT 2MSL）；TCP 可靠（序号/确认/重传/滑动窗口/拥塞控制）；UDP 无连接不可靠；HTTP 无状态（Cookie/Session/JWT）；HTTPS = HTTP + TLS（非对称协商密钥 + 对称加密传输）；HTTP/2 多路复用、HTTP/3 QUIC（UDP）。","level":""},{"id":"jv_base_c2_p2","title":"操作系统","content":"进程/线程/协程；进程调度（FCFS/时间片轮转/优先级/多级反馈）；内存管理（分页/分段/虚拟内存/分页+分段）；页面置换（LRU/FIFO/Clock）；死锁（四条件+银行家）；文件系统。","tip":"","detail":"进程/线程/协程；进程调度（FCFS/时间片轮转/优先级/多级反馈）；内存管理（分页/分段/虚拟内存/分页+分段）；页面置换（LRU/FIFO/Clock）；死锁（四条件+银行家）；文件系统。","level":""},{"id":"jv_base_c2_p3","title":"数据结构与算法","content":"数组/链表/栈/队列/哈希表/树（二叉/AVL/红黑/B/B+）/堆/图；排序（快排/归并/堆排/冒泡/插入，复杂度与稳定性）；查找（二分/哈希）；递归/动态规划/贪心/回溯/双指针/滑动窗口。 ---","tip":"","detail":"数组/链表/栈/队列/哈希表/树（二叉/AVL/红黑/B/B+）/堆/图；排序（快排/归并/堆排/冒泡/插入，复杂度与稳定性）；查找（二分/哈希）；递归/动态规划/贪心/回溯/双指针/滑动窗口。 ---","level":""}]}]}];
+
+var JAVA_PLAN_DEFAULT = {"start":"","target":"2027-02-14","groups":[{"id":"jw1","w":1,"title":"第 1 周","focus":"Java 基础 · 语言与面向对象","tasks":[{"id":"jw1_t1","t":"背诵本周 17 个考点（一、Java 基础）","pids":["jv_core_c1_p1","jv_core_c1_p2","jv_core_c1_p3","jv_core_c1_p4","jv_core_c1_p5","jv_core_c1_p6","jv_core_c1_p7","jv_core_c1_p8","jv_core_c1_p9","jv_core_c1_p10","jv_core_c1_p11","jv_core_c1_p12","jv_core_c1_p13","jv_core_c1_p14","jv_core_c1_p15","jv_core_c1_p16","jv_core_c1_p17"]},{"id":"jw1_t2","t":"出题检测：完成 1 组 20 道模拟面试题，正确率目标 ≥ 80%","pids":[]},{"id":"jw1_t3","t":"手撕 String/StringBuilder 陷阱、equals+hashCode 重写、5 种单例（懒汉/饿汉/双重校验/枚举/静态内部类）","pids":[]},{"id":"jw1_t4","t":"周末复盘：错题重做 + 本周笔记归档（30 分钟）","pids":[]}],"expanded":true,"done":{}},{"id":"jw2","w":2,"title":"第 2 周","focus":"集合框架 · 数据结构与源码","tasks":[{"id":"jw2_t1","t":"背诵本周 15 个考点（二、Java 集合 / 三、Java 并发）","pids":["jv_core_c2_p1","jv_core_c2_p2","jv_core_c2_p3","jv_core_c2_p4","jv_core_c2_p5","jv_core_c2_p6","jv_core_c2_p7","jv_core_c2_p8","jv_core_c2_p9","jv_core_c2_p10","jv_core_c2_p11","jv_core_c2_p12","jv_core_c2_p13","jv_core_c3_p1","jv_core_c3_p2"]},{"id":"jw2_t2","t":"出题检测：完成 1 组 20 道模拟面试题，正确率目标 ≥ 80%","pids":[]},{"id":"jw2_t3","t":"手撕 ArrayList 扩容、HashMap put 流程与红黑树转换、用 LinkedHashMap 实现 LRU","pids":[]},{"id":"jw2_t4","t":"周末复盘：错题重做 + 本周笔记归档（30 分钟）","pids":[]}],"expanded":false,"done":{}},{"id":"jw3","w":3,"title":"第 3 周","focus":"并发（上）· 线程基础与 JMM","tasks":[{"id":"jw3_t1","t":"背诵本周 16 个考点（三、Java 并发）","pids":["jv_core_c3_p3","jv_core_c3_p4","jv_core_c3_p5","jv_core_c3_p6","jv_core_c3_p7","jv_core_c3_p8","jv_core_c3_p9","jv_core_c3_p10","jv_core_c3_p11","jv_core_c3_p12","jv_core_c3_p13","jv_core_c3_p14","jv_core_c3_p15","jv_core_c3_p16","jv_core_c3_p17","jv_core_c3_p18"]},{"id":"jw3_t2","t":"出题检测：完成 1 组 20 道模拟面试题，正确率目标 ≥ 80%","pids":[]},{"id":"jw3_t3","t":"手撕两个线程交替打印、生产者消费者（wait/notify 与 BlockingQueue 两版）","pids":[]},{"id":"jw3_t4","t":"周末复盘：错题重做 + 本周笔记归档（30 分钟）","pids":[]}],"expanded":false,"done":{}},{"id":"jw4","w":4,"title":"第 4 周","focus":"并发（下）· 锁与线程池","tasks":[{"id":"jw4_t1","t":"背诵本周 16 个考点（三、Java 并发 / 四、JVM）","pids":["jv_core_c3_p19","jv_core_c3_p20","jv_core_c3_p21","jv_core_c4_p1","jv_core_c4_p2","jv_core_c4_p3","jv_core_c4_p4","jv_core_c4_p5","jv_core_c4_p6","jv_core_c4_p7","jv_core_c4_p8","jv_core_c4_p9","jv_core_c4_p10","jv_core_c4_p11","jv_core_c4_p12","jv_core_c4_p13"]},{"id":"jw4_t2","t":"出题检测：完成 1 组 20 道模拟面试题，正确率目标 ≥ 80%","pids":[]},{"id":"jw4_t3","t":"手撕线程池 7 大参数推导、死锁 demo、volatile 可见性验证；背熟 AQS 与 CAS","pids":[]},{"id":"jw4_t4","t":"周末复盘：错题重做 + 本周笔记归档（30 分钟）","pids":[]}],"expanded":false,"done":{}},{"id":"jw5","w":5,"title":"第 5 周","focus":"JVM · 内存 / GC / 类加载","tasks":[{"id":"jw5_t1","t":"背诵本周 16 个考点（四、JVM / 九、Java IO / NIO / 十、Java 新特性）","pids":["jv_core_c4_p14","jv_core_c4_p15","jv_core_c4_p16","jv_core_c5_p1","jv_core_c5_p2","jv_core_c5_p3","jv_core_c5_p4","jv_core_c5_p5","jv_core_c5_p6","jv_core_c5_p7","jv_core_c5_p8","jv_core_c5_p9","jv_core_c5_p10","jv_core_c6_p1","jv_core_c6_p2","jv_core_c6_p3"]},{"id":"jw5_t2","t":"出题检测：完成 1 组 20 道模拟面试题，正确率目标 ≥ 80%","pids":[]},{"id":"jw5_t3","t":"画出 JVM 内存结构图 + 类加载双亲委派图；跑一次 GC 日志并用工具分析","pids":[]},{"id":"jw5_t4","t":"周末复盘：错题重做 + 本周笔记归档（30 分钟）","pids":[]}],"expanded":false,"done":{}},{"id":"jw6","w":6,"title":"第 6 周","focus":"并发收尾 + IO/NIO + 新特性","tasks":[{"id":"jw6_t1","t":"背诵本周 16 个考点（十、Java 新特性 / 五、MySQL）","pids":["jv_core_c6_p4","jv_core_c6_p5","jv_db_c1_p1","jv_db_c1_p2","jv_db_c1_p3","jv_db_c1_p4","jv_db_c1_p5","jv_db_c1_p6","jv_db_c1_p7","jv_db_c1_p8","jv_db_c1_p9","jv_db_c1_p10","jv_db_c1_p11","jv_db_c1_p12","jv_db_c1_p13","jv_db_c1_p14"]},{"id":"jw6_t2","t":"出题检测：完成 1 组 20 道模拟面试题，正确率目标 ≥ 80%","pids":[]},{"id":"jw6_t3","t":"手撕 NIO 文件拷贝并与传统 IO 对比；Stream/Lambda/Optional 实操一遍","pids":[]},{"id":"jw6_t4","t":"周末复盘：错题重做 + 本周笔记归档（30 分钟）","pids":[]}],"expanded":false,"done":{}},{"id":"jw7","w":7,"title":"第 7 周","focus":"MySQL（上）· 索引与 SQL","tasks":[{"id":"jw7_t1","t":"背诵本周 16 个考点（五、MySQL / 六、Redis）","pids":["jv_db_c1_p15","jv_db_c1_p16","jv_db_c1_p17","jv_db_c2_p1","jv_db_c2_p2","jv_db_c2_p3","jv_db_c2_p4","jv_db_c2_p5","jv_db_c2_p6","jv_db_c2_p7","jv_db_c2_p8","jv_db_c2_p9","jv_db_c2_p10","jv_db_c2_p11","jv_db_c2_p12","jv_db_c2_p13"]},{"id":"jw7_t2","t":"出题检测：完成 1 组 20 道模拟面试题，正确率目标 ≥ 80%","pids":[]},{"id":"jw7_t3","t":"整理 10 个慢 SQL 优化案例；本地复现 5 种索引失效场景","pids":[]},{"id":"jw7_t4","t":"周末复盘：错题重做 + 本周笔记归档（30 分钟）","pids":[]}],"expanded":false,"done":{}},{"id":"jw8","w":8,"title":"第 8 周","focus":"MySQL（下）· 事务 / 锁 / 日志","tasks":[{"id":"jw8_t1","t":"背诵本周 16 个考点（六、Redis / 十一、数据库扩展（MongoDB / Elasticsearch） / 十三、数据库扩展：MongoDB 与 Elasticsearch（补充））","pids":["jv_db_c2_p14","jv_db_c2_p15","jv_db_c3_p1","jv_db_c3_p2","jv_db_c3_p3","jv_db_c3_p4","jv_db_c4_p1","jv_db_c4_p2","jv_db_c4_p3","jv_db_c4_p4","jv_frame_c1_p1","jv_frame_c1_p2","jv_frame_c1_p3","jv_frame_c1_p4","jv_frame_c1_p5","jv_frame_c1_p6"]},{"id":"jw8_t2","t":"出题检测：完成 1 组 20 道模拟面试题，正确率目标 ≥ 80%","pids":[]},{"id":"jw8_t3","t":"复现四种隔离级别下的脏读/不可重复读/幻读；分析一次锁等待","pids":[]},{"id":"jw8_t4","t":"周末复盘：错题重做 + 本周笔记归档（30 分钟）","pids":[]}],"expanded":false,"done":{}},{"id":"jw9","w":9,"title":"第 9 周","focus":"Redis · 数据结构与缓存","tasks":[{"id":"jw9_t1","t":"背诵本周 16 个考点（七、Spring / SpringBoot（核心高频） / 十三、常用框架与安全（MyBatis / 认证授权 / 数据安全 / 定时任务 / 消息推送） / 八、分布式中间件与网关（RPC / Dubbo / ZooKeeper / API 网关 / Spring Cloud Gateway））","pids":["jv_frame_c1_p7","jv_frame_c2_p1","jv_frame_c2_p2","jv_frame_c2_p3","jv_frame_c2_p4","jv_frame_c2_p5","jv_frame_c2_p6","jv_frame_c2_p7","jv_frame_c2_p8","jv_frame_c2_p9","jv_frame_c2_p10","jv_frame_c2_p11","jv_frame_c3_p1","jv_frame_c3_p2","jv_frame_c3_p3","jv_frame_c3_p4"]},{"id":"jw9_t2","t":"出题检测：完成 1 组 20 道模拟面试题，正确率目标 ≥ 80%","pids":[]},{"id":"jw9_t3","t":"写出缓存穿透/击穿/雪崩三套完整代码方案；手撕 Redis 分布式锁（含续期）","pids":[]},{"id":"jw9_t4","t":"周末复盘：错题重做 + 本周笔记归档（30 分钟）","pids":[]}],"expanded":false,"done":{}},{"id":"jw10","w":10,"title":"第 10 周","focus":"ES / MongoDB + Spring 核心","tasks":[{"id":"jw10_t1","t":"背诵本周 16 个考点（八、分布式中间件与网关（RPC / Dubbo / ZooKeeper / API 网关 / Spring Cloud Gateway））","pids":["jv_frame_c3_p5","jv_frame_c3_p6","jv_frame_c3_p7","jv_frame_c3_p8","jv_frame_c3_p9","jv_frame_c3_p10","jv_frame_c3_p11","jv_frame_c3_p12","jv_frame_c3_p13","jv_frame_c3_p14","jv_frame_c3_p15","jv_frame_c3_p16","jv_frame_c3_p17","jv_frame_c3_p18","jv_frame_c3_p19","jv_frame_c3_p20"]},{"id":"jw10_t2","t":"出题检测：完成 1 组 20 道模拟面试题，正确率目标 ≥ 80%","pids":[]},{"id":"jw10_t3","t":"画出 Spring Bean 生命周期图 + 循环依赖三级缓存图；手撕迷你 IOC","pids":[]},{"id":"jw10_t4","t":"周末复盘：错题重做 + 本周笔记归档（30 分钟）","pids":[]}],"expanded":false,"done":{}},{"id":"jw11","w":11,"title":"第 11 周","focus":"MyBatis / 安全 / 定时任务 + 消息","tasks":[{"id":"jw11_t1","t":"背诵本周 16 个考点（八、分布式中间件与网关（RPC / Dubbo / ZooKeeper / API 网关 / Spring Cloud Gateway） / 八、分布式与系统设计（精要））","pids":["jv_frame_c3_p21","jv_frame_c3_p22","jv_frame_c3_p23","jv_frame_c3_p24","jv_frame_c3_p25","jv_frame_c3_p26","jv_frame_c3_p27","jv_frame_c3_p28","jv_frame_c3_p29","jv_frame_c3_p30","jv_frame_c3_p31","jv_frame_c3_p32","jv_dist_c1_p1","jv_dist_c1_p2","jv_dist_c1_p3","jv_dist_c1_p4"]},{"id":"jw11_t2","t":"出题检测：完成 1 组 20 道模拟面试题，正确率目标 ≥ 80%","pids":[]},{"id":"jw11_t3","t":"手撕 MyBatis 插件与分页；JWT / OAuth2 登录流程画时序图","pids":[]},{"id":"jw11_t4","t":"周末复盘：错题重做 + 本周笔记归档（30 分钟）","pids":[]}],"expanded":false,"done":{}},{"id":"jw12","w":12,"title":"第 12 周","focus":"RPC / Dubbo / ZooKeeper / 网关（上）","tasks":[{"id":"jw12_t1","t":"背诵本周 16 个考点（八、分布式与系统设计（精要） / 十四、分布式核心（分布式 ID / 锁 / 事务 / 配置中心） / 十五、高性能（数据库优化 / 负载均衡 / CDN / 消息队列））","pids":["jv_dist_c1_p5","jv_dist_c1_p6","jv_dist_c2_p1","jv_dist_c2_p2","jv_dist_c2_p3","jv_dist_c2_p4","jv_dist_c2_p5","jv_dist_c2_p6","jv_dist_c2_p7","jv_dist_c2_p8","jv_dist_c2_p9","jv_dist_c3_p1","jv_dist_c3_p2","jv_dist_c3_p3","jv_dist_c3_p4","jv_dist_c3_p5"]},{"id":"jw12_t2","t":"出题检测：完成 1 组 20 道模拟面试题，正确率目标 ≥ 80%","pids":[]},{"id":"jw12_t3","t":"手撕一个 mini RPC（Netty + ZK 注册发现）；吃透 Dubbo SPI 与负载均衡","pids":[]},{"id":"jw12_t4","t":"周末复盘：错题重做 + 本周笔记归档（30 分钟）","pids":[]}],"expanded":false,"done":{}},{"id":"jw13","w":13,"title":"第 13 周","focus":"分布式核心 · ID / 锁 / 事务 / 配置中心","tasks":[{"id":"jw13_t1","t":"背诵本周 16 个考点（十五、高性能（数据库优化 / 负载均衡 / CDN / 消息队列） / 十六、高可用（冗余 / 限流 / 降级熔断 / 超时重试 / 幂等 / 多活） / 十二、开发工具链（Maven / Gradle / Docker / Git））","pids":["jv_dist_c3_p6","jv_dist_c3_p7","jv_dist_c3_p8","jv_dist_c3_p9","jv_dist_c3_p10","jv_dist_c3_p11","jv_dist_c4_p1","jv_dist_c4_p2","jv_dist_c4_p3","jv_dist_c4_p4","jv_dist_c4_p5","jv_dist_c4_p6","jv_dist_c4_p7","jv_dist_c4_p8","jv_dist_c4_p9","jv_base_c1_p1"]},{"id":"jw13_t2","t":"出题检测：完成 1 组 20 道模拟面试题，正确率目标 ≥ 80%","pids":[]},{"id":"jw13_t3","t":"手撕雪花算法分布式 ID；Redisson 分布式锁；可靠消息最终一致性 demo","pids":[]},{"id":"jw13_t4","t":"周末复盘：错题重做 + 本周笔记归档（30 分钟）","pids":[]}],"expanded":false,"done":{}},{"id":"jw14","w":14,"title":"第 14 周","focus":"高性能 + 高可用 + 工程基础","tasks":[{"id":"jw14_t1","t":"背诵本周 12 个考点（十二、开发工具链（Maven / Gradle / Docker / Git） / 十、计算机基础（面试补强精要））","pids":["jv_base_c1_p2","jv_base_c1_p3","jv_base_c1_p4","jv_base_c1_p5","jv_base_c1_p6","jv_base_c1_p7","jv_base_c1_p8","jv_base_c1_p9","jv_base_c1_p10","jv_base_c2_p1","jv_base_c2_p2","jv_base_c2_p3"]},{"id":"jw14_t2","t":"出题检测：完成 1 组 20 道模拟面试题，正确率目标 ≥ 80%","pids":[]},{"id":"jw14_t3","t":"手撕令牌桶/漏桶限流 + 熔断降级；整理幂等设计 8 种套路","pids":[]},{"id":"jw14_t4","t":"周末复盘：错题重做 + 本周笔记归档（30 分钟）","pids":[]}],"expanded":false,"done":{}},{"id":"jw15","w":15,"title":"第 15 周","focus":"冲刺（一）· 高频总复盘 + 项目包装 + 简历","tasks":[{"id":"jw15_t1","t":"总复盘：把 172 个高频考点快速过一遍，重点刷这 40 个","pids":["jv_core_c1_p1","jv_core_c1_p2","jv_core_c1_p3","jv_core_c1_p4","jv_core_c1_p5","jv_core_c1_p6","jv_core_c1_p7","jv_core_c1_p8","jv_core_c1_p9","jv_core_c1_p10","jv_core_c1_p11","jv_core_c1_p12","jv_core_c1_p13","jv_core_c1_p14","jv_core_c1_p15","jv_core_c1_p16","jv_core_c1_p17","jv_core_c2_p1","jv_core_c2_p2","jv_core_c2_p3","jv_core_c2_p4","jv_core_c2_p5","jv_core_c2_p6","jv_core_c2_p7","jv_core_c2_p8","jv_core_c2_p9","jv_core_c2_p10","jv_core_c2_p11","jv_core_c2_p12","jv_core_c2_p13","jv_core_c3_p1","jv_core_c3_p2","jv_core_c3_p3","jv_core_c3_p4","jv_core_c3_p5","jv_core_c3_p6","jv_core_c3_p7","jv_core_c3_p8","jv_core_c3_p9","jv_core_c3_p10"]},{"id":"jw15_t2","t":"出题检测：完成 1 组 20 道模拟面试题，正确率目标 ≥ 80%","pids":[]},{"id":"jw15_t3","t":"把 2 个项目改写成「难点—方案—数据」三段式；简历定稿并找人改 2 遍","pids":[]},{"id":"jw15_t4","t":"周末复盘：错题重做 + 本周笔记归档（30 分钟）","pids":[]}],"expanded":false,"done":{}},{"id":"jw16","w":16,"title":"第 16 周","focus":"冲刺（二）· 模拟面试 + 投递 + 复盘","tasks":[{"id":"jw16_t1","t":"随身过高频八股：每天 20 个考点口述一遍，卡壳的回看详解","pids":[]},{"id":"jw16_t2","t":"出题检测：完成 1 组 20 道模拟面试题，正确率目标 ≥ 80%","pids":[]},{"id":"jw16_t3","t":"约 5 场模拟面试并录音复盘；投递 30 家，每次笔试当天做错题归档","pids":[]},{"id":"jw16_t4","t":"周末复盘：错题重做 + 本周笔记归档（30 分钟）","pids":[]}],"expanded":false,"done":{}}]};
+
+/* ============================================================
+   Tab 12 · Java 后端面试 · 四个月上岸计划
+   1) 知识点背诵（220 考点）  2) AI 模拟面试官出题检测（错题/抽查/已做题本）
+   3) 16 周（四个月）详细复习计划
+   ============================================================ */
+var JAVA_LEARNED_MAX = 20;      /* 每次固定出题数 */
+var JAVA_RANDOM_MAX = 10;       /* 随机抽题数 */
+var JAVA_REVIEW_MAX = 10;       /* 重复抽查题数 */
+var JAVA_AI_BATCH = 5;          /* AI 一次编写几个考点 */
+var JAVA_DONE_SHOW = 5;         /* 已做题本折叠时显示条数 */
+var javaAiBusy = false;
+var javaQuizState = null;
+var javaModule = 'recite';
+var javaBookFilter = '';        /* 背诵模块：按书筛选 */
+var javaDoneSeg = 'all';        /* 已做题本：all / bad / ok */
+var javaDoneBook = '';          /* 已做题本：按学科筛选 */
+var javaDoneOpen = false;
+var javaDetailOpen = {};        /* 考点「详解」展开态（不入库） */
+
+/* 默认目标日 = 今天 + 4 个月 */
+function javaDefaultTarget(){
+  var d = new Date();
+  var day = d.getDate();
+  d.setDate(1);
+  d.setMonth(d.getMonth() + 4);
+  var last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+  d.setDate(Math.min(day, last));
+  return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+}
+/* ---------------- 数据初始化 ---------------- */
+function javaDb(){
+  if(!DB.java) DB.java = {};
+  var j = DB.java;
+  if(!j.meta) j.meta = {};
+  if(!j.genAi) j.genAi = {};
+  if(!j.doneQ) j.doneQ = {};
+  if(!j.wrong) j.wrong = {};
+  if(!j.notes) j.notes = {};
+  if(!j.quizLog) j.quizLog = [];
+  if(!j.books) j.books = JSON.parse(JSON.stringify(JAVA_BOOKS));
+  if(!j.plan) j.plan = JSON.parse(JSON.stringify(JAVA_PLAN_DEFAULT));
+  if(!j.exam) j.exam = { name: 'Java 后端开发 · 拿到 offer', date: javaDefaultTarget() };
+  if(!j.exam.date) j.exam.date = javaDefaultTarget();
+  if(typeof j.learnedRound !== 'number') j.learnedRound = 0;
+  if(!j.plan.target) j.plan.target = j.exam.date;
+  return j;
+}
+/* 新增考点/周计划时按 id 只增不改地合并到老库 */
+function javaMergeBooks(){
+  var db = javaDb(), added = 0;
+  JAVA_BOOKS.forEach(function(sb){
+    var tb = null;
+    (db.books || []).forEach(function(x){ if(x.id === sb.id) tb = x; });
+    if(!tb){
+      db.books.push(JSON.parse(JSON.stringify(sb)));
+      sb.chapters.forEach(function(c){ added += c.points.length; });
+      return;
+    }
+    sb.chapters.forEach(function(sc){
+      var tc = null;
+      (tb.chapters || []).forEach(function(x){ if(x.id === sc.id) tc = x; });
+      if(!tc){
+        tb.chapters.push(JSON.parse(JSON.stringify(sc)));
+        added += sc.points.length;
+        return;
+      }
+      sc.points.forEach(function(sp){
+        var has = false;
+        (tc.points || []).forEach(function(x){ if(x.id === sp.id) has = true; });
+        if(!has){ tc.points.push(JSON.parse(JSON.stringify(sp))); added++; }
+      });
+    });
+  });
+  var pg = db.plan.groups || [];
+  (JAVA_PLAN_DEFAULT.groups || []).forEach(function(sg){
+    var has = false;
+    pg.forEach(function(x){ if(x.id === sg.id) has = true; });
+    if(!has) pg.push(JSON.parse(JSON.stringify(sg)));
+  });
+  if(added) saveDb();
+  return added;
+}
+function initJava(){
+  javaDb();
+  javaMergeBooks();
+  renderJavaCountdown();
+  renderJavaStats();
+  renderJavaRecite();
+  renderJavaQuizHome();
+  renderJavaDone();
+  renderJavaWrong();
+  renderJavaPlan();
+}
+
+/* ---------------- 基础工具 ---------------- */
+function javaHash(s){
+  var h = 5381; s = String(s || '');
+  for(var i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+  return h;
+}
+function javaRng(seed){
+  var s = (seed >>> 0) || 1;
+  return function(){
+    s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0;
+    return s / 4294967296;
+  };
+}
+function javaShuffle(arr, seed){
+  var a = arr.slice(), r = javaRng(seed || 1);
+  for(var i = a.length - 1; i > 0; i--){
+    var j = Math.floor(r() * (i + 1));
+    var t = a[i]; a[i] = a[j]; a[j] = t;
+  }
+  return a;
+}
+function javaFlatPoints(){
+  var out = [];
+  (javaDb().books || []).forEach(function(b){
+    (b.chapters || []).forEach(function(c){
+      (c.points || []).forEach(function(p){
+        out.push({ p: p, bid: b.id, btitle: b.title, cat: b.category, cid: c.id, cname: c.name });
+      });
+    });
+  });
+  return out;
+}
+function javaTotalPoints(){ return javaFlatPoints().length; }
+function javaPointIsDone(pid){ var v = javaDb().meta[pid]; return !!(v && v.done); }
+function javaPointNote(pid){ var v = javaDb().meta[pid]; return (v && v.note) ? v.note : ''; }
+function javaDonePointCount(){
+  var n = 0;
+  Object.keys(javaDb().meta).forEach(function(k){ if(javaDb().meta[k] && javaDb().meta[k].done) n++; });
+  return n;
+}
+function javaLearnedItems(){ return javaFlatPoints().filter(function(it){ return javaPointIsDone(it.p.id); }); }
+
+/* ---------------- 倒计时 ---------------- */
+function javaExam(){ return javaDb().exam; }
+function javaParseDate(str){
+  var m = String(str || '').match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if(!m) return null;
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+}
+function javaDaysLeft(){
+  var d = javaParseDate(javaExam().date);
+  if(!d) return null;
+  var now = new Date(); now.setHours(0, 0, 0, 0);
+  return Math.round((d - now) / 86400000);
+}
+function renderJavaCountdown(){
+  var el = document.getElementById('javaCdTitle');
+  if(!el) return;
+  var days = javaDaysLeft();
+  el.textContent = javaExam().name;
+  var num = document.getElementById('javaCdDays');
+  var unit = document.getElementById('javaCdUnit');
+  if(days === null){ num.textContent = '—'; unit.textContent = '天'; }
+  else if(days > 0){ num.textContent = days; unit.textContent = '天'; }
+  else if(days === 0){ num.textContent = '今天'; unit.textContent = ''; }
+  else { num.textContent = Math.abs(days); unit.textContent = '天前'; }
+  var st = javaPlanStats();
+  var done = javaDonePointCount(), total = javaTotalPoints();
+  document.getElementById('javaCdPhase').textContent = '距目标：' + javaExam().date + ' · 已背 ' + done + '/' + total + ' 考点';
+  document.getElementById('javaCdMeta').textContent = '计划完成 ' + st.done + '/' + st.total + ' 项 · 已做题 ' + Object.keys(javaDb().doneQ).length + ' 道 · 待复习错题 ' + javaWrongCount() + ' 道';
+  var pct = total ? Math.round(done / total * 100) : 0;
+  var bar = document.getElementById('javaCdBar');
+  if(bar) bar.style.width = pct + '%';
+  document.getElementById('javaCdFootL').textContent = '背诵进度 ' + pct + '%';
+  document.getElementById('javaCdFootR').textContent = days === null ? '请先设置目标日期' : (days > 0 ? ('还有 ' + Math.ceil(days / 7) + ' 周') : '已到目标日，冲！');
+}
+function editJavaExam(){
+  var e = javaExam();
+  var name = prompt('目标（如：Java 后端开发 · 拿到 offer）：', e.name);
+  if(name === null) return;
+  var date = prompt('目标日期（YYYY-MM-DD，默认今天起 4 个月）：', e.date);
+  if(date === null) return;
+  if(!javaParseDate(date)){ toast('日期格式不对，示例：2027-02-14'); return; }
+  e.name = name.trim(); e.date = date.trim();
+  javaDb().plan.target = e.date;
+  saveDb(); renderJavaCountdown(); renderJavaPlan();
+}
+
+/* ---------------- 总体统计 ---------------- */
+function renderJavaStats(){
+  var box = document.getElementById('javaStats');
+  if(!box) return;
+  var done = javaDonePointCount(), total = javaTotalPoints();
+  var st = javaPlanStats();
+  var dq = Object.keys(javaDb().doneQ).length;
+  var last = (javaDb().quizLog || []).slice(-1)[0];
+  var acc = last ? Math.round(last.right / last.total * 100) : null;
+  var items = [
+    ['已背考点', done + ' / ' + total, (total ? Math.round(done / total * 100) : 0) + '%'],
+    ['已做题', String(dq), '道'],
+    ['待复习错题', String(javaWrongCount()), '道'],
+    ['计划完成', st.done + ' / ' + st.total, (st.total ? Math.round(st.done / st.total * 100) : 0) + '%'],
+    ['上次自测', acc === null ? '—' : acc + '%', last ? (last.right + '/' + last.total) : '未测']
+  ];
+  box.innerHTML = items.map(function(it){
+    return '<div class="career-stat"><b>' + escapeHtml(it[1]) + '</b>' +
+      '<span>' + escapeHtml(it[0]) + (it[2] ? ' · ' + escapeHtml(it[2]) : '') + '</span></div>';
+  }).join('');
+}
+
+/* ---------------- 模块切换 ---------------- */
+function switchJavaModule(name){
+  javaModule = name;
+  ['recite', 'quiz', 'plan'].forEach(function(m){
+    var el = document.getElementById('javaMod' + m.charAt(0).toUpperCase() + m.slice(1));
+    if(el) el.style.display = (m === name) ? '' : 'none';
+  });
+  var tb = document.getElementById('javaTabbar');
+  if(tb) tb.querySelectorAll('.career-tabbar-item').forEach(function(b){
+    b.classList.toggle('active', b.getAttribute('data-mod') === name);
+  });
+  if(name === 'recite') renderJavaRecite();
+  if(name === 'quiz'){ renderJavaQuizHome(); renderJavaDone(); renderJavaWrong(); }
+  if(name === 'plan') renderJavaPlan();
+}
+
+/* ============================================================
+   模块一：知识点背诵
+   ============================================================ */
+function javaTogglePointDone(pid){
+  var m = javaDb().meta;
+  if(!m[pid]) m[pid] = { done: false, doneAt: '', note: '' };
+  m[pid].done = !m[pid].done;
+  m[pid].doneAt = m[pid].done ? today() : '';
+  saveDb();
+  renderJavaStats(); renderJavaCountdown(); renderJavaRecite(); renderJavaQuizHome(); renderJavaPlan();
+}
+function javaPointNoteInput(pid, val){
+  var m = javaDb().meta;
+  if(!m[pid]) m[pid] = { done: false, doneAt: '', note: '' };
+  m[pid].note = val;
+}
+function javaPointNoteInputEnd(pid){ saveDb(); }
+function javaToggleDetail(pid){ javaDetailOpen[pid] = !javaDetailOpen[pid]; renderJavaRecite(); }
+function javaToggleBook(bid){
+  (javaDb().books || []).forEach(function(b){ if(b.id === bid) b.expanded = !b.expanded; });
+  saveDb(); renderJavaRecite();
+}
+function javaToggleChapter(bid, cid){
+  (javaDb().books || []).forEach(function(b){
+    if(b.id !== bid) return;
+    (b.chapters || []).forEach(function(c){ if(c.id === cid) c.expanded = !c.expanded; });
+  });
+  saveDb(); renderJavaRecite();
+}
+function javaSwitchBookFilter(bid){ javaBookFilter = bid || ''; renderJavaRecite(); }
+function javaExpandPids(pids){
+  /* 计划里点「去背」→ 展开相关章节并跳到背诵模块 */
+  var map = {};
+  (pids || []).forEach(function(p){ map[p] = 1; });
+  (javaDb().books || []).forEach(function(b){
+    (b.chapters || []).forEach(function(c){
+      var hit = false;
+      (c.points || []).forEach(function(p){ if(map[p.id]) hit = true; });
+      if(hit){ c.expanded = true; b.expanded = true; }
+    });
+  });
+  saveDb();
+  switchJavaModule('recite');
+  renderJavaRecite();
+  toast('已展开本周考点，往下背就行');
+}
+function renderJavaRecite(){
+  var wrap = document.getElementById('javaSubjects');
+  if(!wrap) return;
+  /* 正在备注输入框里打字时不重建列表（20s 同步轮询会触发本函数） */
+  var ae = document.activeElement;
+  if(ae && wrap.contains(ae) && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) return;
+  var list = (javaDb().books || []).filter(function(b){ return !javaBookFilter || b.id === javaBookFilter; });
+  var html = '';
+  list.forEach(function(b){
+    var pc = 0, dc = 0;
+    (b.chapters || []).forEach(function(c){
+      (c.points || []).forEach(function(p){ pc++; if(javaPointIsDone(p.id)) dc++; });
+    });
+    html += '<div class="career-subject career-book" data-bid="' + escapeHtml(b.id) + '">';
+    html += '<div class="career-book-head" onclick="javaToggleBook(\'' + b.id + '\')">';
+    html += '<span class="career-toggle">' + (b.expanded ? '▼' : '▶') + '</span>';
+    html += '<span class="career-book-emoji">' + escapeHtml(b.emoji || '📖') + '</span>';
+    html += '<div class="career-book-meta"><div class="career-book-title">' + escapeHtml(b.title) + '</div>';
+    html += '<div class="career-book-sub">' + escapeHtml(b.category || '') + '</div></div>';
+    html += '<span class="career-count">' + pc + ' 考点' + (dc ? ' · 已背 ' + dc : '') + '</span>';
+    html += '</div>';
+    if(b.expanded){
+      if(b.desc) html += '<div class="career-book-desc">' + escapeHtml(b.desc) + '</div>';
+      html += '<div class="career-chapters">';
+      (b.chapters || []).forEach(function(c){
+        var ct = (c.points || []).length, cd = 0;
+        (c.points || []).forEach(function(p){ if(javaPointIsDone(p.id)) cd++; });
+        html += '<div class="career-chapter" data-cid="' + escapeHtml(c.id) + '">';
+        html += '<div class="career-chapter-head" onclick="javaToggleChapter(\'' + b.id + '\',\'' + c.id + '\')">';
+        html += '<span class="career-toggle">' + (c.expanded ? '▼' : '▶') + '</span>';
+        html += '<span>' + escapeHtml(c.name) + '</span>';
+        html += '<span class="career-count">' + ct + ' 考点' + (cd ? ' · 已背 ' + cd : '') + '</span>';
+        html += '</div>';
+        if(c.expanded){
+          html += '<div class="career-points">';
+          (c.points || []).forEach(function(p){
+            var lvl = p.level === 'high' ? 'high' : (p.level === 'mid' ? 'mid' : '');
+            var isDone = javaPointIsDone(p.id);
+            html += '<div class="career-point' + (lvl ? ' lv-' + lvl : '') + (isDone ? ' is-done' : '') + '" data-pid="' + escapeHtml(p.id) + '">';
+            html += '<div class="career-point-title">' + escapeHtml(p.title) +
+              (lvl ? ' <span class="career-lvl ' + lvl + '">' + (lvl === 'high' ? '高频' : '常考') + '</span>' : '') +
+              '<span class="career-point-done-chip" style="display:' + (isDone ? 'inline-block' : 'none') + ';">✓ 已背</span></div>';
+            html += '<div class="career-point-content">' + escapeHtml(p.content) + '</div>';
+            if(p.tip) html += '<div class="career-point-tip">💡 <b>背诵口诀</b>' + escapeHtml(p.tip) + '</div>';
+            if(javaDetailOpen[p.id] && p.detail){
+              html += '<div class="career-point-tip" style="margin-top:6px;">📖 <b>面试详解</b>\n' + escapeHtml(p.detail) + '</div>';
+            }
+            html += '<div class="career-point-foot">';
+            html += '<label class="career-point-check' + (isDone ? ' is-on' : '') + '" title="勾选表示已经背下来"><input type="checkbox"' + (isDone ? ' checked' : '') + ' onchange="javaTogglePointDone(\'' + p.id + '\')"><span>已背</span></label>';
+            html += '<input class="career-point-note-input" type="text" placeholder="＋ 加一行备注（自动保存）" value="' + escapeHtml(javaPointNote(p.id)) + '" oninput="javaPointNoteInput(\'' + p.id + '\', this.value)" onblur="javaPointNoteInputEnd(\'' + p.id + '\')">';
+            if(p.detail) html += '<button class="btn btn-ghost btn-xs" onclick="javaToggleDetail(\'' + p.id + '\')">' + (javaDetailOpen[p.id] ? '收起详解' : '详解') + '</button>';
+            html += '</div></div>';
+          });
+          html += '</div>';
+        }
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+  });
+  wrap.innerHTML = html || '<div class="empty-hint">暂无考点</div>';
+  /* 顶部学科筛选 */
+  var seg = document.getElementById('javaBookSeg');
+  if(seg){
+    var bs = javaDb().books || [];
+    if(bs.length > 1){
+      seg.style.display = '';
+      seg.innerHTML = '<button class="career-seg-item' + (javaBookFilter === '' ? ' active' : '') + '" onclick="javaSwitchBookFilter(\'\')">📚 全部</button>' +
+        bs.map(function(b){
+          return '<button class="career-seg-item' + (javaBookFilter === b.id ? ' active' : '') + '" onclick="javaSwitchBookFilter(\'' + b.id + '\')">' + escapeHtml(b.category || b.title) + '</button>';
+        }).join('');
+    } else { seg.style.display = 'none'; }
+  }
+  var st = document.getElementById('javaReciteStat');
+  if(st) st.textContent = '已背 ' + javaDonePointCount() + ' / ' + javaTotalPoints() + ' 考点';
+  var bar = document.getElementById('javaReciteBar');
+  if(bar) bar.style.width = (javaTotalPoints() ? Math.round(javaDonePointCount() / javaTotalPoints() * 100) : 0) + '%';
+}
+
+/* ============================================================
+   模块二：出题检测（AI 模拟面试官）
+   ============================================================ */
+function javaHasQwenKey(){
+  var k = '';
+  try { k = (typeof getQwenKey === 'function') ? getQwenKey() : (localStorage.getItem('aurora_qwen_key') || ''); } catch(e){ k = ''; }
+  return !!k;
+}
+function javaAiQ(){ return javaDb().genAi; }
+function javaAiCount(){ return Object.keys(javaAiQ()).length; }
+function javaAiValid(q){
+  if(!q || !q.pid || !q.question) return false;
+  if(!q.options || q.options.length !== 4) return false;
+  for(var i = 0; i < 4; i++){ if(!q.options[i] || String(q.options[i]).length < 2) return false; }
+  var a = String(q.answer || '').toUpperCase().slice(0, 1);
+  if(['A', 'B', 'C', 'D'].indexOf(a) < 0) return false;
+  var set = {};
+  q.options.forEach(function(o){ set[String(o).trim()] = 1; });
+  return Object.keys(set).length === 4;
+}
+function javaAiSystem(){
+  return '你是国内一线互联网公司的 Java 后端面试官（8 年经验），正在给候选人出笔试单选题。\n' +
+    '任务：围绕给定的每一个「考点」，各编写 1 道高质量的四选一单项选择题。\n' +
+    '要求：\n' +
+    '1) 题干要像真实面试题：场景化提问、概念对比辨析、源码结论、参数/默认值取值、坑点判断、"下列说法错误的是"。' +
+    '不要一律用"以下说法正确的是"，也不要照抄考点标题当题干。\n' +
+    '2) 四个选项都围绕该考点：正确项是该考点的关键结论/取值；干扰项用真实易混淆的说法' +
+    '（如把 HashMap 与 ConcurrentHashMap 的行为混写、把 RDB 与 AOF 特点对调、把隔离级别的现象错位）。只有一个正确。\n' +
+    '3) 四个选项长度接近、措辞具体、都是中文（技术术语可保留英文），不要带 A. B. C. D. 前缀；' +
+    '不要出现"以上都对/都不对/无法确定"这类凑数项。\n' +
+    '4) 只能依据给出的考点资料出题，不得编造资料里没有的版本号、默认值、参数与结论。\n' +
+    '5) explanation：像面试官点评，一句话点出正确依据 + 关键干扰项错在哪。\n' +
+    '6) follow：面试官最可能追问的一句话（20 字以内）。\n' +
+    '只输出 JSON 数组，不要任何解释文字，格式：\n' +
+    '[{"pid":"考点id","question":"题干","options":["选项1","选项2","选项3","选项4"],"answer":"A","explanation":"解析","follow":"追问"}]';
+}
+function javaAiUserPrompt(items){
+  var s = '请为以下 ' + items.length + ' 个 Java 面试考点各编写 1 道单选题（pid 必须原样带回）：\n\n';
+  items.forEach(function(it, i){
+    s += '【' + (i + 1) + '】pid=' + it.pid + '\n';
+    s += '方向：' + it.btitle + ' · ' + it.cname + '\n';
+    s += '考点：' + it.title + '\n';
+    s += '背诵答案：' + String(it.content || '').slice(0, 400) + '\n';
+    if(it.detail) s += '详解：' + String(it.detail).slice(0, 700) + '\n';
+    s += '\n';
+  });
+  return s;
+}
+function javaAiWriteBatch(pids, opts){
+  opts = opts || {};
+  var flat = {}, todo = [];
+  javaFlatPoints().forEach(function(it){ flat[it.p.id] = it; });
+  (pids || []).forEach(function(pid){
+    if(flat[pid] && !(javaAiQ()[pid] && !opts.force)) todo.push(pid);
+  });
+  if(!todo.length) return Promise.resolve(0);
+  var written = 0, err = null;
+  var stopAt = Math.max(0, Number(opts.stopAt) || 0);
+  var chain = Promise.resolve();
+  for(var i = 0; i < todo.length; i += JAVA_AI_BATCH){
+    (function(batch){
+      chain = chain.then(function(){
+        if(stopAt && written >= stopAt) return;
+        var items = batch.map(function(pid){
+          var it = flat[pid];
+          return { pid: pid, title: it.p.title, content: it.p.content, detail: it.p.detail || '', btitle: it.btitle || '', cname: it.cname || '' };
+        });
+        return callQwenChat(javaAiSystem(), javaAiUserPrompt(items), 'qwen-plus', { enable_search: true })
+          .then(function(arr){
+            var got = 0, map = {};
+            items.forEach(function(x){ map[x.pid] = x; });
+            (arr || []).forEach(function(r){
+              var it = map[r && r.pid];
+              if(!it) return;
+              r.answer = String(r.answer || '').trim().toUpperCase().slice(0, 1);
+              if(!javaAiValid(r)) return;
+              var id = 'jai_' + r.pid + '_' + javaHash(String(r.question)).toString(36);
+              javaAiQ()[r.pid] = {
+                id: id, _gen: true, _ai: true, pid: r.pid,
+                subject: 'Java 面试', chapter: it.cname, book: it.btitle,
+                source: 'AI 模拟面试官 · 《' + it.btitle + '》',
+                question: String(r.question).trim(),
+                options: r.options.map(function(o){ return String(o).trim(); }),
+                answer: r.answer,
+                explanation: String(r.explanation || '').trim(),
+                follow: String(r.follow || '').trim(),
+                at: Date.now()
+              };
+              got++;
+            });
+            written += got;
+            if(typeof opts.onProgress === 'function') opts.onProgress(written, todo.length);
+          });
+      }).catch(function(e){ err = e; });
+    })(todo.slice(i, i + JAVA_AI_BATCH));
+  }
+  return chain.then(function(){
+    if(written) saveDb();
+    if(err && !written) throw err;
+    return written;
+  });
+}
+
+/* ---------------- 本地兜底出题 ---------------- */
+var JAVA_STOP_TERMS = { and:1, the:1, for:1, not:1, are:1, this:1, that:1, with:1, from:1, into:1, than:1, then:1, will:1, must:1, only:1, more:1, most:1, some:1, such:1, when:1, which:1, while:1, what:1, how:1, why:1, can:1, has:1, have:1, its:1, was:1, were:1, but:1, all:1, any:1, one:1, two:1, use:1, used:1, new:1, get:1, set:1, put:1, add:1, key:1, name:1, size:1, type:1, data:1, obj:1, ref:1, var:1, log:1, api:1, url:1, http:1, rpc:1 };
+function javaStatements(p){
+  var out = [];
+  var src = String(p.detail || '') + '\n' + String(p.content || '');
+  src.split(/\n+/).forEach(function(line){
+    line = line.replace(/^\s*[-•·*#]+[\s.]*/, '').replace(/^\s*\d+[.、)]\s*/, '').trim();
+    if(!line) return;
+    line.split(/[。；;]/).forEach(function(s){
+      s = s.trim().replace(/\s+/g, ' ');
+      if(s.length >= 12 && s.length <= 62 && out.indexOf(s) < 0) out.push(s);
+    });
+  });
+  return out;
+}
+function javaTerms(text){
+  var out = [], set = {};
+  (String(text || '').match(/[A-Za-z][A-Za-z0-9+#._-]{2,20}/g) || []).forEach(function(t){
+    var low = t.toLowerCase();
+    if(set[t] || JAVA_STOP_TERMS[low]) return;
+    if(t.length < 3) return;
+    set[t] = 1; out.push(t);
+  });
+  return out;
+}
+function javaMakeOptions(correct, candidates, seed, minLen){
+  var lo = (typeof minLen === 'number') ? minLen : 6;
+  var used = {}; used[correct] = 1;
+  var picks = [];
+  var cand = (candidates || []).filter(function(c){ return c && !used[c] && c.length >= lo && c.length <= 62; });
+  var r = javaRng(seed || 1);
+  while(picks.length < 3 && cand.length){
+    var c = cand.splice(Math.floor(r() * cand.length), 1)[0];
+    if(used[c]) continue;
+    used[c] = 1; picks.push(c);
+  }
+  if(picks.length < 3) return null;
+  var opts = javaShuffle([correct].concat(picks), (seed || 1) + 7);
+  return { options: opts, answer: String.fromCharCode(65 + opts.indexOf(correct)) };
+}
+/* 干扰项池：同学科优先、其次同书、最后全局 */
+function javaDistractPool(item, all){
+  var same = [], book = [], rest = [];
+  (all || []).forEach(function(x){
+    if(x.pid === item.pid) return;
+    if(item.cid && x.cid === item.cid) same.push(x.text);
+    else if(item.bid && x.bid === item.bid) book.push(x.text);
+    else rest.push(x.text);
+  });
+  if(same.length >= 3) return same.concat(book).concat(rest);
+  return same.concat(book).concat(rest);
+}
+function javaGenForItems(items, round){
+  var out = [];
+  var all = [], allTerms = [], termsByBid = {};
+  javaFlatPoints().forEach(function(it){
+    javaStatements(it.p).forEach(function(s){ all.push({ pid: it.p.id, bid: it.bid, cid: it.cid, text: s }); });
+    var ts = javaTerms(it.p.title + ' ' + it.p.content + ' ' + String(it.p.detail || '').slice(0, 200));
+    termsByBid[it.bid] = (termsByBid[it.bid] || []).concat(ts);
+    allTerms = allTerms.concat(ts);
+  });
+  (items || []).forEach(function(it){
+    var h = javaHash(it.p.id + '_' + round);
+    var ss = javaStatements(it.p);
+    var kind = h % 3;
+    var title = String(it.p.title || '').replace(/[？?]+$/, '').trim();
+    var core = title.split(/[\/（(]/)[0].trim() || title;
+    if(ss.length >= 1 && (kind === 0 || kind === 1)){
+      var correct = ss[h % ss.length];
+      var pool = javaDistractPool({ pid: it.p.id, bid: it.bid, cid: it.cid }, all);
+      var mk = javaMakeOptions(correct, pool, h);
+      if(mk){
+        out.push({
+          id: 'jg_' + it.p.id + '_' + h.toString(36),
+          _gen: true, pid: it.p.id,
+          subject: 'Java 面试', chapter: it.cname, book: it.btitle,
+          source: '本地出题 · 《' + it.btitle + '》',
+          question: (kind === 0 ? ('下列关于「' + core + '」的说法，正确的一项是？') : ('关于「' + core + '」，面试官问到的下列说法中，正确的一项是？')),
+          options: mk.options, answer: mk.answer,
+          explanation: '考点：' + title + '。' + String(it.p.content || '').slice(0, 120),
+          follow: ''
+        });
+        return;
+      }
+    }
+    /* 挖空填术语 */
+    var ts = javaTerms(it.p.content + ' ' + it.p.title);
+    if(ts.length){
+      var tq = ts[h % ts.length];
+      var local = (termsByBid[it.bid] || []).filter(function(x){ return x !== tq; });
+      var candT = (local.length >= 3 ? local : local.concat(allTerms)).filter(function(x){ return x !== tq; });
+      var mk2 = javaMakeOptions(tq, candT, h + 31, 3);
+      if(mk2){
+        out.push({
+          id: 'jk_' + it.p.id + '_' + h.toString(36),
+          _gen: true, pid: it.p.id,
+          subject: 'Java 面试', chapter: it.cname, book: it.btitle,
+          source: '本地出题 · 《' + it.btitle + '》',
+          question: '【填空】' + title + ' —— 这里说的是：',
+          options: mk2.options, answer: mk2.answer,
+          explanation: '考点：' + title + '。' + String(it.p.content || '').slice(0, 120),
+          follow: ''
+        });
+      }
+    }
+  });
+  return out;
+}
+/* 已做题本规则：0 跳过 / 1 没做过 / 2 答错过（优先） */
+function javaKeepQ(q){
+  var d = javaDb().doneQ[q.id];
+  if(!d) return 1;
+  if(d.done) return 0;
+  return d.bad > 0 ? 2 : 0;
+}
+function javaBuildLearnedPaper(){
+  var items = javaLearnedItems();
+  if(!items.length) items = javaFlatPoints().slice();
+  var aiQ = javaAiQ();
+  var paper = [], aiUsed = 0;
+  var aiList = [];
+  items.forEach(function(it){
+    var q = aiQ[it.p.id];
+    if(q){ var k = javaKeepQ(q); if(k > 0) aiList.push({ q: q, k: k }); }
+  });
+  aiList.sort(function(a, b){ return b.k - a.k; });
+  paper = aiList.map(function(x){ return x.q; });
+  aiUsed = paper.length;
+  var genUsed = 0;
+  if(paper.length < JAVA_LEARNED_MAX){
+    var round = javaDb().learnedRound || 0;
+    var gen = javaGenForItems(items, round).filter(function(q){ return javaKeepQ(q) > 0; });
+    gen.sort(function(a, b){ return javaKeepQ(b) - javaKeepQ(a); });
+    var need = JAVA_LEARNED_MAX - paper.length;
+    gen = gen.slice(0, need);
+    genUsed = gen.length;
+    paper = paper.concat(gen);
+  }
+  if(paper.length < JAVA_LEARNED_MAX){
+    var extra = javaGenForItems(javaFlatPoints(), 991).filter(function(q){
+      return javaKeepQ(q) > 0 && !paper.some(function(x){ return x.id === q.id; });
+    });
+    paper = paper.concat(extra).slice(0, JAVA_LEARNED_MAX);
+  }
+  return { paper: paper, aiUsed: aiUsed, genUsed: genUsed, total: paper.length };
+}
+function javaLearnedStartWith(r){
+  if(!r || !r.paper || !r.paper.length){ toast('暂时组不出题，先去背几个考点吧'); return; }
+  javaQuizState = {
+    paper: r.paper, idx: 0, mode: 'learned',
+    label: '🎯 按已背考点出题（AI ' + r.aiUsed + ' · 本地 ' + (r.total - r.aiUsed) + '）',
+    right: 0, answered: 0, log: []
+  };
+  switchJavaModule('quiz');
+  javaShowQuestion();
+}
+function startJavaLearnedQuiz(){
+  var items = javaLearnedItems();
+  var r = javaBuildLearnedPaper();
+  javaDb().learnedRound = ((javaDb().learnedRound || 0) + 1) % 997;
+  saveDb();
+  var need = JAVA_LEARNED_MAX - r.aiUsed;
+  var m0 = javaAiQ();
+  var pending = (need > 0 ? items : []).filter(function(it){ return !m0[it.p.id]; }).map(function(it){ return it.p.id; });
+  if(need > 0 && pending.length && javaHasQwenKey()){
+    javaAiBusy = true;
+    toast('AI 面试官正在出题（0/' + need + '）…');
+    javaAiWriteBatch(pending, {
+      stopAt: need,
+      onProgress: function(n){ toast('AI 面试官正在出题（' + Math.min(n, need) + '/' + need + '）…'); }
+    }).then(function(){
+      javaAiBusy = false;
+      var r2 = javaBuildLearnedPaper();
+      javaLearnedStartWith((r2 && r2.paper.length) ? r2 : r);
+    }).catch(function(e){
+      javaAiBusy = false;
+      javaLearnedStartWith(javaBuildLearnedPaper() || r);
+      toast('AI 出题未成功，本轮先用本地出题…');
+    });
+    return;
+  }
+  if(!items.length) toast('还没勾「已背」考点，本次先随机抽题');
+  javaLearnedStartWith(r);
+}
+function startJavaQuiz(mode){
+  var paper = [];
+  if(mode === 'wrong'){
+    var w = javaDb().wrong;
+    Object.keys(w).forEach(function(k){
+      var d = javaDb().doneQ[k];
+      if(d) paper.push(javaDoneToQuestion(d));
+    });
+    paper.sort(function(a, b){ return (javaDb().wrong[b.id] || {}).times - (javaDb().wrong[a.id] || {}).times; });
+    paper = paper.slice(0, JAVA_RANDOM_MAX);
+    if(!paper.length){ toast('错题本是空的，先去做一套题'); return; }
+  } else if(mode === 'review'){
+    var all = [];
+    var dq = javaDb().doneQ;
+    Object.keys(dq).forEach(function(k){
+      var d = dq[k];
+      if(d.done) return;
+      all.push({ q: javaDoneToQuestion(d), score: (d.bad > 0 ? 2 : 1), at: d.at || 0 });
+    });
+    if(!all.length){ toast('还没有已做题记录，先做一套再回来抽查'); return; }
+    all.sort(function(a, b){ return (b.score - a.score) || (a.at - b.at); });
+    paper = all.slice(0, JAVA_REVIEW_MAX).map(function(x){ return x.q; });
+  } else {
+    var flat = javaShuffle(javaFlatPoints(), Date.now() % 100000);
+    var aiQ = javaAiQ();
+    flat.forEach(function(it){ if(paper.length < JAVA_RANDOM_MAX && aiQ[it.p.id]) paper.push(aiQ[it.p.id]); });
+    if(paper.length < JAVA_RANDOM_MAX){
+      var gen = javaShuffle(javaGenForItems(flat, Date.now() % 5000), Date.now() % 3000);
+      gen.forEach(function(q){ if(paper.length < JAVA_RANDOM_MAX) paper.push(q); });
+    }
+    if(!paper.length){ toast('题库还没准备好'); return; }
+  }
+  javaQuizState = {
+    paper: paper, idx: 0, mode: mode,
+    label: mode === 'wrong' ? '❌ 错题重做' : (mode === 'review' ? '🔁 重复抽查检测' : '🎲 随机抽题'),
+    right: 0, answered: 0, log: []
+  };
+  switchJavaModule('quiz');
+  javaShowQuestion();
+}
+function javaRedoQuiz(){
+  var list = javaDoneFiltered();
+  if(!list.length){ toast('当前筛选下没有题'); return; }
+  var paper = list.slice(0, JAVA_LEARNED_MAX).map(function(d){ return javaDoneToQuestion(d); });
+  javaQuizState = { paper: paper, idx: 0, mode: 'redo', label: '♻ 已做题本重做', right: 0, answered: 0, log: [] };
+  switchJavaModule('quiz');
+  javaShowQuestion();
+}
+function javaDoneToQuestion(d){
+  return {
+    id: d.id, pid: d.pid || '', subject: d.subject || 'Java 面试', chapter: d.chapter || '', book: d.book || '',
+    source: d.source || '', question: d.question, options: (d.options || []).slice(), answer: d.answer,
+    explanation: d.explanation || '', follow: d.follow || '', _gen: true
+  };
+}
+/* ---------------- 答题渲染 ---------------- */
+function javaShowQuestion(){
+  var st = javaQuizState;
+  var panel = document.getElementById('javaQuizPanel');
+  var empty = document.getElementById('javaQuizEmpty');
+  if(!st || !panel){ return; }
+  panel.style.display = '';
+  if(empty) empty.style.display = 'none';
+  var q = st.paper[st.idx];
+  document.getElementById('javaQuizTitle').textContent = '🎤 ' + st.label;
+  document.getElementById('javaQuizProgress').textContent = '第 ' + (st.idx + 1) + ' / ' + st.paper.length + ' 题 · 已答对 ' + st.right;
+  var html = '<div class="career-quiz-q">' + (st.idx + 1) + '. ' + escapeHtml(q.question) + '</div>';
+  html += '<div class="career-q-meta"><span>' + escapeHtml(q.source || 'Java 面试') + '</span>' +
+    (q.chapter ? '<span>· ' + escapeHtml(q.chapter) + '</span>' : '') +
+    (q._ai ? '<span class="java-badge">AI 题</span>' : '') + '</div>';
+  html += '<div class="career-quiz-options">';
+  ['A', 'B', 'C', 'D'].forEach(function(L){
+    var txt = q.options['ABCD'.indexOf(L)];
+    if(txt === undefined) return;
+    html += '<button class="btn btn-ghost career-option" id="javaOpt_' + L + '" onclick="javaPick(\'' + L + '\')">' +
+      '<b>' + L + '.</b> ' + escapeHtml(txt) + '</button>';
+  });
+  html += '</div>';
+  html += '<div id="javaFeedback"></div>';
+  document.getElementById('javaQuizBody').innerHTML = html;
+  document.getElementById('javaQuizResult').style.display = 'none';
+  var nb = document.getElementById('javaQuizNextBtn');
+  if(nb) nb.style.display = 'none';
+}
+function javaPick(letter){
+  var st = javaQuizState;
+  if(!st) return;
+  var q = st.paper[st.idx];
+  var ok = (letter === q.answer);
+  st.answered++;
+  if(ok) st.right++;
+  st.log.push({ id: q.id, ok: ok });
+  javaRecordAnswer(q, ok);
+  ['A', 'B', 'C', 'D'].forEach(function(L){
+    var b = document.getElementById('javaOpt_' + L);
+    if(!b) return;
+    b.classList.add(L === q.answer ? 'is-right' : 'is-wrong');
+    b.disabled = true;
+    if(L === letter && !ok) b.classList.add('is-picked-wrong');
+  });
+  var fb = '<div class="career-quiz-feedback ' + (ok ? 'correct' : 'wrong') + '">' + (ok ? '✅ 答对了' : '❌ 答错了，正确答案 ' + q.answer) + '</div>';
+  fb += '<div class="career-quiz-explain"><b>解析：</b>' + escapeHtml(q.explanation || '（本题暂无解析）') +
+    (q.follow ? '<br><b>面试官追问：</b>' + escapeHtml(q.follow) : '') + '</div>';
+  document.getElementById('javaFeedback').innerHTML = fb;
+  var nb = document.getElementById('javaQuizNextBtn');
+  if(nb){ nb.style.display = ''; nb.textContent = (st.idx + 1 >= st.paper.length) ? '查看结果' : '下一题'; }
+  renderJavaStats(); renderJavaCountdown(); renderJavaWrong(); renderJavaDone();
+}
+function javaNext(){
+  var st = javaQuizState;
+  if(!st) return;
+  if(st.idx + 1 >= st.paper.length){ javaFinishQuiz(); return; }
+  st.idx++;
+  javaShowQuestion();
+}
+function javaFinishQuiz(){
+  var st = javaQuizState;
+  if(!st) return;
+  var total = st.paper.length, right = st.right;
+  var acc = total ? Math.round(right / total * 100) : 0;
+  javaDb().quizLog.push({ at: Date.now(), mode: st.mode, total: total, right: right });
+  if(javaDb().quizLog.length > 60) javaDb().quizLog = javaDb().quizLog.slice(-60);
+  saveDb();
+  var msg = acc >= 80 ? '🔥 稳了，这个正确率面试能打' : (acc >= 60 ? '👌 及格线，错题记得回炉' : '⚠️ 低于 60%，把错题考点重新背一遍');
+  var html = '<div class="career-quiz-summary">正确率 ' + acc + '%（' + right + '/' + total + '）<div style="font-size:13px;font-weight:400;color:var(--text-2);margin-top:6px;">' + msg + '</div></div>';
+  html += '<div class="career-quiz-review">' + st.log.map(function(x, i){
+    return '<div class="career-quiz-review-item ' + (x.ok ? 'correct' : 'wrong') + '">' + (i + 1) + '. ' + (x.ok ? '✅' : '❌') + ' ' + escapeHtml(String(st.paper[i].question).slice(0, 42)) + '</div>';
+  }).join('') + '</div>';
+  document.getElementById('javaQuizResult').innerHTML = html;
+  document.getElementById('javaQuizResult').style.display = '';
+  document.getElementById('javaQuizBody').innerHTML = '';
+  document.getElementById('javaQuizProgress').textContent = '已完成';
+  var nb = document.getElementById('javaQuizNextBtn');
+  if(nb) nb.style.display = 'none';
+  renderJavaStats(); renderJavaQuizHome(); renderJavaDone(); renderJavaWrong(); renderJavaCountdown();
+}
+function closeJavaQuiz(){
+  javaQuizState = null;
+  var panel = document.getElementById('javaQuizPanel');
+  var empty = document.getElementById('javaQuizEmpty');
+  if(panel) panel.style.display = 'none';
+  if(empty) empty.style.display = '';
+  renderJavaQuizHome(); renderJavaDone(); renderJavaWrong();
+}
+function javaRecordAnswer(q, ok){
+  var db = javaDb();
+  var d = db.doneQ[q.id];
+  if(!d){
+    d = {
+      id: q.id, pid: q.pid || '', question: q.question, options: (q.options || []).slice(),
+      answer: q.answer, explanation: q.explanation || '', follow: q.follow || '',
+      subject: q.subject || 'Java 面试', chapter: q.chapter || '', book: q.book || '',
+      source: q.source || '', ok: 0, bad: 0, done: false, at: Date.now(), times: 0
+    };
+    db.doneQ[q.id] = d;
+  }
+  d.times = (d.times || 0) + 1;
+  d.at = Date.now();
+  if(ok){
+    d.ok++;
+    if(db.wrong[q.id]){
+      db.wrong[q.id].times = Math.max(0, (db.wrong[q.id].times || 1) - 1);
+      if(db.wrong[q.id].times <= 0) delete db.wrong[q.id];
+    }
+  } else {
+    d.bad++;
+    var w = db.wrong[q.id] || { times: 0, at: Date.now() };
+    w.times = Math.min(3, (w.times || 0) + 1);
+    w.at = Date.now();
+    db.wrong[q.id] = w;
+  }
+  saveDb();
+}
+function javaWrongCount(){ return Object.keys(javaDb().wrong || {}).length; }
+function javaWrongMaster(qid){
+  var db = javaDb();
+  if(db.doneQ[qid]) db.doneQ[qid].done = true;
+  delete db.wrong[qid];
+  saveDb(); renderJavaWrong(); renderJavaDone(); renderJavaStats();
+}
+function renderJavaQuizHome(){
+  var el = document.getElementById('javaQuizHint');
+  if(!el) return;
+  var learned = javaLearnedItems().length;
+  var ai = javaAiCount();
+  var w = javaWrongCount();
+  var dq = Object.keys(javaDb().doneQ).length;
+  var txt = '已背 ' + learned + ' / ' + javaTotalPoints() + ' 考点 · AI 面试官已出题 ' + ai + ' 道 · 已做题 ' + dq + ' 道 · 待复习错题 ' + w + ' 道';
+  if(!javaHasQwenKey()) txt += '（未配置通义千问 Key，出题走本地题库）';
+  el.textContent = txt;
+  var tip = document.getElementById('javaAiTip');
+  if(tip) tip.textContent = javaHasQwenKey()
+    ? '点「按已背考点出题」时，AI 面试官会自动为还没出题的考点现编真题，够 20 道就停。'
+    : '提示：配置通义千问 Key 后，出题会由 AI 模拟面试官联网现编真题。';
+}
+
+/* ---------------- 错题本 ---------------- */
+function renderJavaWrong(){
+  var box = document.getElementById('javaWrongBox');
+  if(!box) return;
+  var db = javaDb();
+  var ids = Object.keys(db.wrong || {});
+  ids.sort(function(a, b){ return (db.wrong[b].at || 0) - (db.wrong[a].at || 0); });
+  var sum = document.getElementById('javaWrongSummary');
+  if(sum) sum.textContent = ids.length ? ('待复习 ' + ids.length + ' 道（答对一次减一层，减到 0 自动出本）') : '暂无错题';
+  if(!ids.length){ box.innerHTML = '<div class="empty-hint">错题本是空的，做完一套题后答错的题会自动进这里</div>'; return; }
+  box.innerHTML = ids.map(function(k){
+    var d = db.doneQ[k] || {};
+    var times = db.wrong[k].times || 1;
+    return '<div class="career-wrong-item">' +
+      '<div class="career-wrong-q">' + escapeHtml(String(d.question || '').slice(0, 90)) + '</div>' +
+      '<div class="career-q-meta"><span>' + escapeHtml(d.book || 'Java 面试') + '</span>' +
+      (d.chapter ? '<span>· ' + escapeHtml(d.chapter) + '</span>' : '') +
+      '<span>· 错 ' + times + ' 次</span><span>· 正确项 ' + escapeHtml(d.answer || '') + '</span></div>' +
+      '<div class="career-q-actions"><button class="btn btn-ghost btn-xs" onclick="javaShowSnapshot(\'' + k + '\')">看解析</button>' +
+      '<button class="btn btn-ghost btn-xs" onclick="javaWrongMaster(\'' + k + '\')">✓ 已掌握</button></div>' +
+      '<div id="javaSnap_' + k + '" style="display:none;" class="career-quiz-explain">' + escapeHtml(d.explanation || '（暂无解析）') + '</div>' +
+      '</div>';
+  }).join('');
+}
+function javaShowSnapshot(qid){
+  var el = document.getElementById('javaSnap_' + qid);
+  if(el) el.style.display = (el.style.display === 'none') ? '' : 'none';
+}
+
+/* ---------------- 已做题本（已选题记录复习） ---------------- */
+function javaDoneItems(){
+  var dq = javaDb().doneQ;
+  return Object.keys(dq).map(function(k){ return dq[k]; });
+}
+function javaDoneFiltered(){
+  var list = javaDoneItems();
+  if(javaDoneSeg === 'bad') list = list.filter(function(d){ return (d.bad || 0) > 0 && !d.done; });
+  else if(javaDoneSeg === 'ok') list = list.filter(function(d){ return !(d.bad > 0) && !d.done; });
+  if(javaDoneBook) list = list.filter(function(d){ return javaDoneBookOf(d) === javaDoneBook; });
+  list.sort(function(a, b){ return (b.at || 0) - (a.at || 0); });
+  return list;
+}
+function javaDoneBookOf(e){ return e.book || '未分类'; }
+function javaSwitchDoneSeg(s){ javaDoneSeg = s; renderJavaDone(); }
+function javaSwitchDoneBook(bk){ javaDoneBook = bk || ''; renderJavaDone(); }
+function javaDoneToggleOpen(){ javaDoneOpen = !javaDoneOpen; renderJavaDone(); }
+function renderJavaDone(){
+  var box = document.getElementById('javaDoneList');
+  if(!box) return;
+  var all = javaDoneItems();
+  var list = javaDoneFiltered();
+  var st = document.getElementById('javaDoneStat');
+  if(st) st.textContent = '共 ' + all.length + ' 道 · 当前 ' + list.length + ' 道';
+  var seg = document.getElementById('javaDoneSeg');
+  if(seg) seg.querySelectorAll('.career-seg-item').forEach(function(b){
+    b.classList.toggle('active', b.getAttribute('data-dseg') === javaDoneSeg);
+  });
+  var badge = document.getElementById('javaDoneBadge');
+  if(badge) badge.textContent = all.filter(function(d){ return (d.bad || 0) > 0 && !d.done; }).length || '';
+  /* 学科筛选 */
+  var booksEl = document.getElementById('javaDoneBooks');
+  if(booksEl){
+    var idx = {}, names = [];
+    all.forEach(function(d){
+      var bk = javaDoneBookOf(d);
+      if(idx[bk] === undefined){ idx[bk] = names.length; names.push(bk); }
+    });
+    if(names.length > 1){
+      booksEl.style.display = '';
+      booksEl.innerHTML = '<button class="career-seg-item' + (javaDoneBook === '' ? ' active' : '') + '" onclick="javaSwitchDoneBook(\'\')">📚 全部</button>' +
+        names.map(function(n){
+          return '<button class="career-seg-item' + (javaDoneBook === n ? ' active' : '') + '" onclick="javaSwitchDoneBook(\'' + n.replace(/'/g, '') + '\')">' + escapeHtml(n) + '</button>';
+        }).join('');
+    } else { booksEl.style.display = 'none'; javaDoneBook = ''; }
+  }
+  if(!list.length){ box.innerHTML = '<div class="empty-hint">这里还没有记录，做完一套题就会自动存档</div>'; return; }
+  var show = javaDoneOpen ? list : list.slice(0, JAVA_DONE_SHOW);
+  box.innerHTML = show.map(function(d){
+    var tag = d.done ? '✅ 已掌握' : ((d.bad || 0) > 0 ? ('❌ 错 ' + d.bad + ' 次') : ('✅ 对 ' + (d.ok || 0) + ' 次'));
+    return '<div class="career-done-item' + (d.done ? ' is-mastered' : '') + '">' +
+      '<div class="career-done-q">' + escapeHtml(String(d.question || '').slice(0, 90)) + '</div>' +
+      '<div class="career-q-meta"><span>' + escapeHtml(javaDoneBookOf(d)) + '</span>' +
+      (d.chapter ? '<span>· ' + escapeHtml(d.chapter) + '</span>' : '') +
+      '<span>· ' + tag + '</span><span>· 做 ' + (d.times || 0) + ' 次</span></div>' +
+      '<div class="career-q-actions"><button class="btn btn-ghost btn-xs" onclick="javaShowSnapshot2(\'' + d.id + '\')">看解析</button>' +
+      '<button class="btn btn-ghost btn-xs" onclick="javaDoneToggleMastered(\'' + d.id + '\')">' + (d.done ? '↺ 恢复' : '✓ 已掌握') + '</button></div>' +
+      '<div id="javaSnap2_' + d.id + '" style="display:none;" class="career-quiz-explain">' + escapeHtml(d.explanation || '（暂无解析）') + '</div>' +
+      '</div>';
+  }).join('') + (javaDoneOpen || list.length <= JAVA_DONE_SHOW ? '' :
+    '<button class="btn btn-ghost btn-sm" style="margin-top:8px;" onclick="javaDoneToggleOpen()">展开全部 ' + list.length + ' 道</button>');
+}
+function javaShowSnapshot2(qid){
+  var el = document.getElementById('javaSnap2_' + qid);
+  if(el) el.style.display = (el.style.display === 'none') ? '' : 'none';
+}
+function javaDoneToggleMastered(qid){
+  var d = javaDb().doneQ[qid];
+  if(!d) return;
+  d.done = !d.done;
+  if(d.done) delete javaDb().wrong[qid];
+  saveDb(); renderJavaDone(); renderJavaWrong(); renderJavaStats();
+}
+function javaClearDone(){
+  if(!confirm('确定清空已做题记录？错题本也会一并清空。')) return;
+  javaDb().doneQ = {}; javaDb().wrong = {};
+  saveDb(); renderJavaDone(); renderJavaWrong(); renderJavaStats(); renderJavaQuizHome();
+}
+
+/* ============================================================
+   模块三：四个月（16 周）复习计划
+   ============================================================ */
+function javaPlan(){ return javaDb().plan; }
+function javaPlanStats(){
+  var g = javaPlan().groups || [];
+  var total = 0, done = 0;
+  g.forEach(function(w){
+    (w.tasks || []).forEach(function(t){ total++; if(w.done && w.done[t.id]) done++; });
+  });
+  return { total: total, done: done };
+}
+function javaToggleWeek(gid){
+  (javaPlan().groups || []).forEach(function(g){ if(g.id === gid) g.expanded = !g.expanded; });
+  saveDb(); renderJavaPlan();
+}
+function javaTogglePlanTask(gid, tid){
+  var g = null;
+  (javaPlan().groups || []).forEach(function(x){ if(x.id === gid) g = x; });
+  if(!g) return;
+  g.done = g.done || {};
+  g.done[tid] = !g.done[tid];
+  saveDb(); renderJavaPlan(); renderJavaStats(); renderJavaCountdown();
+}
+function javaAddPlanTask(gid){
+  var g = null;
+  (javaPlan().groups || []).forEach(function(x){ if(x.id === gid) g = x; });
+  if(!g) return;
+  var t = prompt('给「' + g.title + '」加一条任务：');
+  if(!t) return;
+  g.tasks = g.tasks || [];
+  g.tasks.push({ id: 'jt_' + Date.now(), t: t.trim(), pids: [] });
+  saveDb(); renderJavaPlan(); renderJavaStats();
+}
+function javaResetPlan(){
+  if(!confirm('确定清空 16 周的打卡记录？（任务本身保留）')) return;
+  (javaPlan().groups || []).forEach(function(g){ g.done = {}; });
+  saveDb(); renderJavaPlan(); renderJavaStats(); renderJavaCountdown();
+  toast('已清空打卡');
+}
+function javaResetPlanAll(){
+  if(!confirm('确定恢复成默认的 16 周计划？你自己加的任务会丢失。')) return;
+  javaDb().plan = JSON.parse(JSON.stringify(JAVA_PLAN_DEFAULT));
+  saveDb(); renderJavaPlan(); renderJavaStats();
+  toast('已恢复默认计划');
+}
+function renderJavaPlan(){
+  var box = document.getElementById('javaPlanList');
+  if(!box) return;
+  var groups = javaPlan().groups || [];
+  var st = javaPlanStats();
+  var sub = document.getElementById('javaPlanProgress');
+  if(sub) sub.textContent = '完成 ' + st.done + ' / ' + st.total + ' 项';
+  var bar = document.getElementById('javaPlanBar');
+  if(bar) bar.style.width = (st.total ? Math.round(st.done / st.total * 100) : 0) + '%';
+  var html = '';
+  groups.forEach(function(g){
+    var gt = (g.tasks || []).length, gd = 0;
+    (g.tasks || []).forEach(function(t){ if(g.done && g.done[t.id]) gd++; });
+    html += '<div class="career-plan-group' + (gd === gt && gt ? ' is-finished' : '') + '">';
+    html += '<div class="career-plan-group-head" onclick="javaToggleWeek(\'' + g.id + '\')">';
+    html += '<span class="career-plan-group-name"><span>' + (g.expanded ? '▾' : '▸') + '</span>' +
+      '<span class="career-plan-name">' + escapeHtml(g.title) + '</span></span>';
+    html += '<span class="career-plan-range">' + escapeHtml(g.focus || '') + '</span>';
+    html += '<span class="career-plan-badge' + ((gt && gd === gt) ? ' all-done' : '') + '">' + gd + '/' + gt + '</span>';
+    html += '</div>';
+    if(g.expanded){
+      html += '<div class="java-plan-tasks">';
+      (g.tasks || []).forEach(function(t){
+        var on = !!(g.done && g.done[t.id]);
+        html += '<div class="career-plan-task' + (on ? ' done' : '') + '">';
+        html += '<button class="career-plan-check" title="' + (on ? '取消打卡' : '打卡完成') + '" onclick="javaTogglePlanTask(\'' + g.id + '\',\'' + t.id + '\')">✓</button>';
+        html += '<div class="career-plan-text">' + escapeHtml(t.t) + '</div>';
+        if(t.pids && t.pids.length){
+          var dn = t.pids.filter(function(p){ return javaPointIsDone(p); }).length;
+          html += '<span class="java-plan-link" onclick="javaExpandPids(' + JSON.stringify(t.pids).replace(/"/g, '&quot;') + ')">去背 ' + dn + '/' + t.pids.length + ' →</span>';
+        }
+        html += '</div>';
+      });
+      html += '<button class="btn btn-ghost btn-xs" onclick="javaAddPlanTask(\'' + g.id + '\')">＋ 加一条任务</button>';
+      html += '</div>';
+    }
+    html += '</div>';
+  });
+  box.innerHTML = html;
+}
+
+/* ---------------- 同步轮询入口 ---------------- */
+function renderJava(){
+  if(typeof javaDb !== 'function') return;
+  javaDb();
+  renderJavaCountdown();
+  renderJavaStats();
+  if(javaModule === 'recite'){
+    var ae = document.activeElement, wrap = document.getElementById('javaSubjects');
+    if(!(ae && wrap && wrap.contains(ae) && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA'))) renderJavaRecite();
+  }
+  if(javaModule === 'quiz'){ renderJavaQuizHome(); renderJavaDone(); renderJavaWrong(); }
+  if(javaModule === 'plan') renderJavaPlan();
+}
+
 var careerQuizState = null;
 
 function switchCareerModule(name){
