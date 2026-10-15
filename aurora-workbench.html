@@ -2712,6 +2712,10 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
 .career-option.is-wrong{background:var(--red-bg);border:1.5px solid var(--red);color:var(--red);font-weight:600;}
 .career-option.is-picked-wrong{text-decoration:line-through;text-decoration-color:rgba(0,0,0,.3);}
 button.career-option:disabled{cursor:default;opacity:1;}
+/* 手机端窄屏：选项按钮允许换行（.btn 基类 nowrap 会横向撑破卡片；Tab11 自测同款一并修复） */
+.career-quiz-options .career-option{white-space:normal;word-break:break-word;width:100%;text-align:left;}
+.java-module .career-quiz-q,.java-module .career-quiz-explain,.java-module .career-quiz-feedback{word-break:break-word;}
+#javaQuizBody,#javaQuizResult{overflow-wrap:anywhere;}
 .career-done-item.is-mastered{opacity:.6;}
   .career-seg-item{font-size:12px;padding:7px 6px;}
 }
