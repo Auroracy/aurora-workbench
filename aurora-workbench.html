@@ -2717,6 +2717,12 @@ button.career-option:disabled{cursor:default;opacity:1;}
 .java-module .career-quiz-q,.java-module .career-quiz-explain,.java-module .career-quiz-feedback{word-break:break-word;}
 #javaQuizBody,#javaQuizResult{overflow-wrap:anywhere;}
 .career-done-item.is-mastered{opacity:.6;}
+/* 背诵列表：三态（已掌握/已背）+ AI 出题状态 */
+.career-point-done-chip.is-mastered{background:var(--accent);color:#fff;border-color:var(--accent);}
+.career-point-ai-chip{font-size:10px;padding:1px 6px;border-radius:10px;background:#EEF3F6;color:#9aa6ad;border:1px solid #dfe6ea;margin-left:6px;vertical-align:middle;white-space:nowrap;}
+.career-point-ai-chip.on{background:var(--accent-bg);color:var(--accent);border-color:#bfe6e1;}
+/* 结束页操作按钮 */
+.career-quiz-result-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
   .career-seg-item{font-size:12px;padding:7px 6px;}
 }
 </style>
@@ -4398,14 +4404,16 @@ button.career-option:disabled{cursor:default;opacity:1;}
         <div class="card-title">🎤 AI 模拟面试官 · 出题检测</div>
         <div class="sub" id="javaQuizHint"></div>
       </div>
-      <div class="section-desc" style="margin:-2px 0 10px;">点「按已背考点出题」时，AI 面试官会先为还没出题的考点现编真题（够 20 道就停），不足的用本地题库补足。</div>
+      <div class="section-desc" style="margin:-2px 0 10px;">全部题目由 AI 模拟面试官联网现编。先点「🤖 一键生成」建好全库 AI 题，之后「按已背考点出题」只考你背过的、「随机抽题」全库抽、「重复抽查」优先弱项。</div>
       <div class="career-actions">
-        <button class="btn btn-primary btn-sm" onclick="startJavaLearnedQuiz()">🎯 按已背考点出题（20 题）</button>
+        <button class="btn btn-primary btn-sm" onclick="javaGenerateAllAi()">🤖 一键为全部考点生成 AI 题</button>
+        <button class="btn btn-ghost btn-sm" onclick="startJavaLearnedQuiz()">🎯 按已背考点出题（20 题）</button>
         <button class="btn btn-ghost btn-sm" onclick="startJavaQuiz('random')">🎲 随机抽题（10 题）</button>
         <button class="btn btn-ghost btn-sm" onclick="startJavaQuiz('review')">🔁 重复抽查检测</button>
         <button class="btn btn-ghost btn-sm" onclick="startJavaQuiz('wrong')">❌ 错题重做</button>
       </div>
       <div id="javaAiTip" class="sub" style="margin:6px 0 0;"></div>
+      <div id="javaQuizSuggest" class="sub" style="margin:6px 0 0;color:var(--accent);font-weight:500;"></div>
     </div>
 
     <div class="card career-quiz-empty" id="javaQuizEmpty">
@@ -35476,6 +35484,12 @@ function javaDonePointCount(){
   Object.keys(javaDb().meta).forEach(function(k){ if(javaDb().meta[k] && javaDb().meta[k].done) n++; });
   return n;
 }
+function javaMasteredCount(){
+  var n = 0;
+  Object.keys(javaDb().meta).forEach(function(k){ if(javaDb().meta[k] && javaDb().meta[k].mastered) n++; });
+  return n;
+}
+function javaPointMastered(pid){ var v = javaDb().meta[pid]; return !!(v && v.mastered); }
 function javaLearnedItems(){ return javaFlatPoints().filter(function(it){ return javaPointIsDone(it.p.id); }); }
 
 /* ---------------- 倒计时 ---------------- */
@@ -35504,7 +35518,8 @@ function renderJavaCountdown(){
   else { num.textContent = Math.abs(days); unit.textContent = '天前'; }
   var st = javaPlanStats();
   var done = javaDonePointCount(), total = javaTotalPoints();
-  document.getElementById('javaCdPhase').textContent = '距目标：' + javaExam().date + ' · 已背 ' + done + '/' + total + ' 考点';
+  var mastered = javaMasteredCount();
+  document.getElementById('javaCdPhase').textContent = '距目标：' + javaExam().date + ' · 已背 ' + done + '/' + total + ' · 已掌握 ' + mastered + '/' + total + ' 考点';
   document.getElementById('javaCdMeta').textContent = '计划完成 ' + st.done + '/' + st.total + ' 项 · 已做题 ' + Object.keys(javaDb().doneQ).length + ' 道 · 待复习错题 ' + javaWrongCount() + ' 道';
   var pct = total ? Math.round(done / total * 100) : 0;
   var bar = document.getElementById('javaCdBar');
@@ -35533,8 +35548,10 @@ function renderJavaStats(){
   var dq = Object.keys(javaDb().doneQ).length;
   var last = (javaDb().quizLog || []).slice(-1)[0];
   var acc = last ? Math.round(last.right / last.total * 100) : null;
+  var mastered = javaMasteredCount();
   var items = [
     ['已背考点', done + ' / ' + total, (total ? Math.round(done / total * 100) : 0) + '%'],
+    ['已掌握', mastered + ' / ' + total, (total ? Math.round(mastered / total * 100) : 0) + '%'],
     ['已做题', String(dq), '道'],
     ['待复习错题', String(javaWrongCount()), '道'],
     ['计划完成', st.done + ' / ' + st.total, (st.total ? Math.round(st.done / st.total * 100) : 0) + '%'],
@@ -35646,10 +35663,16 @@ function renderJavaRecite(){
           (c.points || []).forEach(function(p){
             var lvl = p.level === 'high' ? 'high' : (p.level === 'mid' ? 'mid' : '');
             var isDone = javaPointIsDone(p.id);
-            html += '<div class="career-point' + (lvl ? ' lv-' + lvl : '') + (isDone ? ' is-done' : '') + '" data-pid="' + escapeHtml(p.id) + '">';
+            var pm = javaDb().meta[p.id];
+            var pMastered = !!(pm && pm.mastered);
+            var pChip = pMastered ? '<span class="career-point-done-chip is-mastered">✅ 已掌握</span>'
+              : (isDone ? '<span class="career-point-done-chip">✓ 已背</span>' : '');
+            var pAi = !!(javaAiQ()[p.id]);
+            var pAiChip = '<span class="career-point-ai-chip' + (pAi ? ' on' : '') + '" title="' + (pAi ? '该考点已有 AI 真题' : '该考點还没 AI 题，点「🤖 一键生成」补上') + '">' + (pAi ? 'AI✓' : '待出') + '</span>';
+            html += '<div class="career-point' + (lvl ? ' lv-' + lvl : '') + (isDone ? ' is-done' : '') + (pMastered ? ' is-mastered' : '') + '" data-pid="' + escapeHtml(p.id) + '">';
             html += '<div class="career-point-title">' + escapeHtml(p.title) +
               (lvl ? ' <span class="career-lvl ' + lvl + '">' + (lvl === 'high' ? '高频' : '常考') + '</span>' : '') +
-              '<span class="career-point-done-chip" style="display:' + (isDone ? 'inline-block' : 'none') + ';">✓ 已背</span></div>';
+              pChip + pAiChip + '</div>';
             html += '<div class="career-point-content">' + escapeHtml(p.content) + '</div>';
             if(p.tip) html += '<div class="career-point-tip">💡 <b>背诵口诀</b>' + escapeHtml(p.tip) + '</div>';
             if(javaDetailOpen[p.id] && p.detail){
@@ -36020,10 +36043,16 @@ function javaFinishQuiz(){
   if(javaDb().quizLog.length > 60) javaDb().quizLog = javaDb().quizLog.slice(-60);
   saveDb();
   var msg = acc >= 80 ? '🔥 稳了，这个正确率面试能打' : (acc >= 60 ? '👌 及格线，错题记得回炉' : '⚠️ 低于 60%，把错题考点重新背一遍');
+  var wrongN = st.log.filter(function(x){ return !x.ok; }).length;
   var html = '<div class="career-quiz-summary">正确率 ' + acc + '%（' + right + '/' + total + '）<div style="font-size:13px;font-weight:400;color:var(--text-2);margin-top:6px;">' + msg + '</div></div>';
   html += '<div class="career-quiz-review">' + st.log.map(function(x, i){
     return '<div class="career-quiz-review-item ' + (x.ok ? 'correct' : 'wrong') + '">' + (i + 1) + '. ' + (x.ok ? '✅' : '❌') + ' ' + escapeHtml(String(st.paper[i].question).slice(0, 42)) + '</div>';
   }).join('') + '</div>';
+  html += '<div class="career-quiz-result-actions">';
+  if(wrongN > 0) html += '<button class="btn btn-primary btn-sm" onclick="javaRedoWrongInQuiz()">🔁 只重做 ' + wrongN + ' 道错题</button>';
+  html += '<button class="btn btn-ghost btn-sm" onclick="startJavaQuiz(\'random\')">🎲 再来一套随机</button>';
+  html += '<button class="btn btn-ghost btn-sm" onclick="closeJavaQuiz()">关闭</button>';
+  html += '</div>';
   document.getElementById('javaQuizResult').innerHTML = html;
   document.getElementById('javaQuizResult').style.display = '';
   document.getElementById('javaQuizBody').innerHTML = '';
@@ -36056,12 +36085,14 @@ function javaRecordAnswer(q, ok){
   d.at = Date.now();
   if(ok){
     d.ok++;
+    if(q.pid){ var m = db.meta[q.pid] || (db.meta[q.pid] = { done: false, doneAt: '', note: '' }); m.mastered = true; m.masteredAt = Date.now(); }
     if(db.wrong[q.id]){
       db.wrong[q.id].times = Math.max(0, (db.wrong[q.id].times || 1) - 1);
       if(db.wrong[q.id].times <= 0) delete db.wrong[q.id];
     }
   } else {
     d.bad++;
+    if(q.pid){ var m2 = db.meta[q.pid] || (db.meta[q.pid] = { done: false, doneAt: '', note: '' }); m2.mastered = false; }
     var w = db.wrong[q.id] || { times: 0, at: Date.now() };
     w.times = Math.min(3, (w.times || 0) + 1);
     w.at = Date.now();
@@ -36090,6 +36121,42 @@ function renderJavaQuizHome(){
   if(tip) tip.textContent = javaHasQwenKey()
     ? '所有题目都由 AI 模拟面试官联网现编真题，没有任何本地生成题。点「按已背考点出题」会为还没出题的考点补题，够 20 道就停。'
     : '提示：配置通义千问 Key 后，所有题目都将由 AI 模拟面试官联网现编。';
+  var sug = document.getElementById('javaQuizSuggest');
+  if(sug){
+    var masteredNow = javaMasteredCount();
+    var remain = javaTotalPoints() - masteredNow;
+    var newN = Math.max(3, Math.min(12, Math.ceil(remain / 16)));
+    sug.textContent = javaHasQwenKey()
+      ? ('今日建议：新背 ' + newN + ' 个考点 + 做 1 套自测；还差 ' + remain + ' 个考点未掌握。')
+      : '配置通义千问 Key 后，点「🤖 一键生成」即可建好全库 AI 题。';
+  }
+}
+function javaGenerateAllAi(){
+  if(!javaHasQwenKey()){ toast('需要先配置通义千问 Key，AI 才能出题'); return; }
+  var aiQ = javaAiQ();
+  var pending = javaFlatPoints().filter(function(it){ return !aiQ[it.p.id]; }).map(function(it){ return it.p.id; });
+  if(!pending.length){ toast('全部 ' + javaTotalPoints() + ' 个考点都已经有 AI 题了 🎉'); return; }
+  javaAiBusy = true;
+  toast('AI 正在为全部考点编真题（0/' + pending.length + '）…');
+  javaAiWriteBatch(pending, {
+    stopAt: pending.length,
+    onProgress: function(n){ toast('AI 正在为全部考点编真题（' + Math.min(n, pending.length) + '/' + pending.length + '）…'); }
+  }).then(function(written){
+    javaAiBusy = false;
+    toast('AI 题库建好啦：新生成 ' + written + ' 道，共 ' + javaAiCount() + ' 道');
+    renderJavaQuizHome(); renderJavaRecite(); renderJavaStats();
+  }).catch(function(e){
+    javaAiBusy = false;
+    toast('AI 出题失败：' + (e && e.message ? e.message : '网络或密钥异常'));
+  });
+}
+function javaRedoWrongInQuiz(){
+  var st = javaQuizState; if(!st) return;
+  var wrongPaper = [];
+  st.log.forEach(function(x, i){ if(!x.ok && st.paper[i]) wrongPaper.push(st.paper[i]); });
+  if(!wrongPaper.length){ toast('这套没有错题'); return; }
+  javaQuizState = { paper: wrongPaper, idx: 0, mode: 'quizwrong', label: '🔁 重做错题（' + wrongPaper.length + ' 道）', right: 0, answered: 0, log: [] };
+  switchJavaModule('quiz'); javaShowQuestion();
 }
 
 /* ---------------- 错题本 ---------------- */
