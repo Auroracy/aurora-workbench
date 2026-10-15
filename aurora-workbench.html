@@ -2723,6 +2723,18 @@ button.career-option:disabled{cursor:default;opacity:1;}
 .career-point-ai-chip.on{background:var(--accent-bg);color:var(--accent);border-color:#bfe6e1;}
 /* 结束页操作按钮 */
 .career-quiz-result-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+/* 口述题：答案要点 + 自评按钮 */
+.java-oral-points{padding-left:18px;margin:6px 0 10px;color:var(--text-1);}
+.java-oral-points li{margin:4px 0;}
+.java-oral-self{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+/* 追问收藏 */
+.java-follow-save{margin-top:10px;}
+#javaFollowBtn.is-saved{color:var(--accent);border-color:var(--accent);background:var(--accent-bg);}
+.career-follow-list{display:flex;flex-direction:column;gap:10px;}
+.career-follow-item{padding:10px 12px;background:var(--card-bg);border-radius:8px;border:1px solid var(--border);}
+.career-follow-q{font-weight:500;color:var(--text-1);margin-bottom:4px;word-break:break-word;}
+.career-follow-f{color:var(--text-1);font-size:14px;margin-bottom:6px;padding:6px 8px;background:var(--accent-bg);border-radius:6px;word-break:break-word;}
+.career-follow-f::before{content:'💬 ';}
   .career-seg-item{font-size:12px;padding:7px 6px;}
 }
 </style>
@@ -4404,13 +4416,23 @@ button.career-option:disabled{cursor:default;opacity:1;}
         <div class="card-title">🎤 AI 模拟面试官 · 出题检测</div>
         <div class="sub" id="javaQuizHint"></div>
       </div>
-      <div class="section-desc" style="margin:-2px 0 10px;">全部题目由 AI 模拟面试官联网现编。先点「🤖 一键生成」建好全库 AI 题，之后「按已背考点出题」只考你背过的、「随机抽题」全库抽、「重复抽查」优先弱项。</div>
+      <div class="section-desc" style="margin:-2px 0 10px;">全部题目由 AI 模拟面试官联网现编。先点「🤖 一键生成」建好全库 AI 题，之后「按已背考点出题」只考你背过的、「随机抽题」全库抽、「重复抽查」优先弱项；「模拟面试（口述题）」没有 A/B/C/D，像真实面试一样口述回答。</div>
       <div class="career-actions">
         <button class="btn btn-primary btn-sm" onclick="javaGenerateAllAi()">🤖 一键为全部考点生成 AI 题</button>
         <button class="btn btn-ghost btn-sm" onclick="startJavaLearnedQuiz()">🎯 按已背考点出题（20 题）</button>
         <button class="btn btn-ghost btn-sm" onclick="startJavaQuiz('random')">🎲 随机抽题（10 题）</button>
         <button class="btn btn-ghost btn-sm" onclick="startJavaQuiz('review')">🔁 重复抽查检测</button>
         <button class="btn btn-ghost btn-sm" onclick="startJavaQuiz('wrong')">❌ 错题重做</button>
+        <button class="btn btn-ghost btn-sm" onclick="startJavaOralQuiz('learned')">🎤 模拟面试（口述题）</button>
+      </div>
+
+      <div class="card" style="margin-top:14px;">
+        <div class="card-title-row">
+          <div class="card-title">🎯 追问收藏夹 · 面试官追问复习</div>
+          <div class="sub" id="javaFollowSummary"></div>
+        </div>
+        <div class="section-desc" style="margin:-2px 0 10px;">答题时遇到好的「面试官追问」，点「💾 收藏此追问」就会集中到这里，面试前快速过一遍。</div>
+        <div id="javaFollowBox" class="career-follow-list"></div>
       </div>
       <div id="javaAiTip" class="sub" style="margin:6px 0 0;"></div>
       <div id="javaQuizSuggest" class="sub" style="margin:6px 0 0;color:var(--accent);font-weight:500;"></div>
@@ -35389,6 +35411,9 @@ function javaDb(){
   if(!j.wrong) j.wrong = {};
   if(!j.notes) j.notes = {};
   if(!j.quizLog) j.quizLog = [];
+  if(!j.followUps) j.followUps = [];
+  if(!j.oralQ) j.oralQ = {};
+  if(!j.oralDone) j.oralDone = {};
   if(!j.books) j.books = JSON.parse(JSON.stringify(JAVA_BOOKS));
   if(!j.plan) j.plan = JSON.parse(JSON.stringify(JAVA_PLAN_DEFAULT));
   if(!j.exam) j.exam = { name: 'Java 后端开发 · 拿到 offer', date: javaDefaultTarget() };
@@ -35731,6 +35756,39 @@ function javaAiValid(q){
   q.options.forEach(function(o){ set[String(o).trim()] = 1; });
   return Object.keys(set).length === 4;
 }
+function javaOralQ(){ return javaDb().oralQ; }
+function javaOralCount(){ return Object.keys(javaOralQ()).length; }
+function javaOralValid(q){
+  if(!q || !q.pid || !q.question) return false;
+  if(!q.answerPoints || !q.answerPoints.length || q.answerPoints.length < 2) return false;
+  var good = q.answerPoints.filter(function(x){ return String(x || '').trim().length >= 4; }).length;
+  return good >= 2;
+}
+function javaOralSystem(){
+  return '你是国内一线互联网公司的 Java 后端面试官（8 年经验），正在对候选人进行技术面试。\n' +
+    '任务：围绕给定的每一个「考点」，各出 1 道开放式面试问答题（没有 A/B/C/D 选项）。\n' +
+    '要求：\n' +
+    '1) 题目要像真实面试官口头提问：用「请说一下」「介绍一下」「谈谈你的理解」「什么场景下会…」「为什么…」等自然问法，不要带任何选项。\n' +
+    '2) 考点覆盖要全面：既可能问概念原理，也可能问使用场景、优缺点、源码细节、常见坑点、与其他技术的对比。\n' +
+    '3) answerPoints：列出候选人回答时必须提到的 3~5 个关键得分点，每个点一句话，按重要性排序。\n' +
+    '4) explanation：像面试官点评，说明这道题想考察什么、答到哪些点算过关、常见漏答是什么。\n' +
+    '5) follow：面试官听完回答后最可能追问的一句话（20 字以内）。\n' +
+    '只能依据给出的考点资料出题，不得编造资料里没有的版本号、默认值、参数与结论。\n' +
+    '只输出 JSON 数组，不要任何解释文字，格式：\n' +
+    '[{"pid":"考点id","question":"题干","answerPoints":["要点1","要点2","要点3"],"explanation":"点评","follow":"追问"}]';
+}
+function javaOralUserPrompt(items){
+  var s = '请为以下 ' + items.length + ' 个 Java 面试考点各编写 1 道开放式面试问答题（pid 必须原样带回）：\n\n';
+  items.forEach(function(it, i){
+    s += '【' + (i + 1) + '】pid=' + it.pid + '\n';
+    s += '方向：' + it.btitle + ' · ' + it.cname + '\n';
+    s += '考点：' + it.title + '\n';
+    s += '背诵答案：' + String(it.content || '').slice(0, 400) + '\n';
+    if(it.detail) s += '详解：' + String(it.detail).slice(0, 700) + '\n';
+    s += '\n';
+  });
+  return s;
+}
 function javaAiSystem(){
   return '你是国内一线互联网公司的 Java 后端面试官（8 年经验），正在给候选人出笔试单选题。\n' +
     '任务：围绕给定的每一个「考点」，各编写 1 道高质量的四选一单项选择题。\n' +
@@ -35795,6 +35853,58 @@ function javaAiWriteBatch(pids, opts){
                 question: String(r.question).trim(),
                 options: r.options.map(function(o){ return String(o).trim(); }),
                 answer: r.answer,
+                explanation: String(r.explanation || '').trim(),
+                follow: String(r.follow || '').trim(),
+                at: Date.now()
+              };
+              got++;
+            });
+            written += got;
+            if(typeof opts.onProgress === 'function') opts.onProgress(written, todo.length);
+          });
+      }).catch(function(e){ err = e; });
+    })(todo.slice(i, i + JAVA_AI_BATCH));
+  }
+  return chain.then(function(){
+    if(written) saveDb();
+    if(err && !written) throw err;
+    return written;
+  });
+}
+function javaAiWriteOralBatch(pids, opts){
+  opts = opts || {};
+  var flat = {}, todo = [];
+  javaFlatPoints().forEach(function(it){ flat[it.p.id] = it; });
+  (pids || []).forEach(function(pid){
+    if(flat[pid] && !(javaOralQ()[pid] && !opts.force)) todo.push(pid);
+  });
+  if(!todo.length) return Promise.resolve(0);
+  var written = 0, err = null;
+  var stopAt = Math.max(0, Number(opts.stopAt) || 0);
+  var chain = Promise.resolve();
+  for(var i = 0; i < todo.length; i += JAVA_AI_BATCH){
+    (function(batch){
+      chain = chain.then(function(){
+        if(stopAt && written >= stopAt) return;
+        var items = batch.map(function(pid){
+          var it = flat[pid];
+          return { pid: pid, title: it.p.title, content: it.p.content, detail: it.p.detail || '', btitle: it.btitle || '', cname: it.cname || '' };
+        });
+        return callQwenChat(javaOralSystem(), javaOralUserPrompt(items), 'qwen-plus', { enable_search: true })
+          .then(function(arr){
+            var got = 0, map = {};
+            items.forEach(function(x){ map[x.pid] = x; });
+            (arr || []).forEach(function(r){
+              var it = map[r && r.pid];
+              if(!it) return;
+              if(!javaOralValid(r)) return;
+              var id = 'jor_' + r.pid + '_' + javaHash(String(r.question)).toString(36);
+              javaOralQ()[r.pid] = {
+                id: id, _oral: true, pid: r.pid,
+                subject: 'Java 面试', chapter: it.cname, book: it.btitle,
+                source: 'AI 模拟面试官 · 《' + it.btitle + '》',
+                question: String(r.question).trim(),
+                answerPoints: (r.answerPoints || []).map(function(o){ return String(o).trim(); }).filter(function(o){ return o; }),
                 explanation: String(r.explanation || '').trim(),
                 follow: String(r.follow || '').trim(),
                 at: Date.now()
@@ -35959,6 +36069,59 @@ function startJavaQuiz(mode){
   switchJavaModule('quiz');
   javaShowQuestion();
 }
+function javaBuildOralPaper(mode){
+  var oralQ = javaOralQ();
+  var out = [], seen = {};
+  if(mode === 'learned'){
+    var items = javaLearnedItems();
+    if(!items.length) items = javaFlatPoints().slice();
+    items.forEach(function(it){
+      var q = oralQ[it.p.id];
+      if(q && !seen[q.id]){ out.push(q); seen[q.id] = 1; }
+    });
+  } else {
+    javaShuffle(javaFlatPoints(), Date.now() % 100000).forEach(function(it){
+      var q = oralQ[it.p.id];
+      if(q && !seen[q.id] && out.length < JAVA_RANDOM_MAX){ out.push(q); seen[q.id] = 1; }
+    });
+  }
+  return out;
+}
+function javaOralStartWith(paper){
+  if(!paper || !paper.length){ toast('暂时组不出口述题，AI 正在编题或考点为空'); return; }
+  javaQuizState = {
+    paper: paper, idx: 0, mode: 'oral',
+    label: '🎤 模拟面试（口述题 ' + paper.length + ' 道）',
+    right: 0, answered: 0, log: []
+  };
+  switchJavaModule('quiz');
+  javaShowQuestion();
+}
+function startJavaOralQuiz(mode){
+  if(!javaHasQwenKey()){ toast('需要先配置通义千问 Key，AI 才能出口述题'); return; }
+  mode = mode || 'random';
+  var items = mode === 'learned' ? javaLearnedItems() : javaFlatPoints().slice();
+  if(mode === 'learned' && !items.length){ toast('还没有勾「已背」的考点，先在「背诵」里标记几个吧'); return; }
+  var oralQ = javaOralQ();
+  var need = JAVA_RANDOM_MAX - items.filter(function(it){ return oralQ[it.p.id]; }).length;
+  if(need > 0){
+    var pending = items.filter(function(it){ return !oralQ[it.p.id]; }).map(function(it){ return it.p.id; });
+    javaAiBusy = true;
+    toast('AI 面试官正在编口述题（0/' + Math.min(need, pending.length) + '）…');
+    javaAiWriteOralBatch(pending, {
+      stopAt: need,
+      onProgress: function(n){ toast('AI 面试官正在编口述题（' + Math.min(n, need) + '/' + need + '）…'); }
+    }).then(function(){
+      javaAiBusy = false;
+      javaOralStartWith(javaBuildOralPaper(mode));
+    }).catch(function(e){
+      javaAiBusy = false;
+      toast('AI 出题失败：' + (e && e.message ? e.message : '网络或密钥异常'));
+    });
+    return;
+  }
+  javaOralStartWith(javaBuildOralPaper(mode));
+}
 function javaRedoQuiz(){
   var list = javaDoneFiltered();
   if(!list.length){ toast('当前筛选下没有题'); return; }
@@ -35983,25 +36146,53 @@ function javaShowQuestion(){
   panel.style.display = '';
   if(empty) empty.style.display = 'none';
   var q = st.paper[st.idx];
-  document.getElementById('javaQuizTitle').textContent = '🎤 ' + st.label;
-  document.getElementById('javaQuizProgress').textContent = '第 ' + (st.idx + 1) + ' / ' + st.paper.length + ' 题 · 已答对 ' + st.right;
+  document.getElementById('javaQuizTitle').textContent = (st.mode === 'oral' ? '🎤 ' : '🎤 ') + st.label;
+  var progressLabel = st.mode === 'oral' ? '已自评答对' : '已答对';
+  document.getElementById('javaQuizProgress').textContent = '第 ' + (st.idx + 1) + ' / ' + st.paper.length + ' 题 · ' + progressLabel + ' ' + st.right;
   var html = '<div class="career-quiz-q">' + (st.idx + 1) + '. ' + escapeHtml(q.question) + '</div>';
   html += '<div class="career-q-meta"><span>' + escapeHtml(q.source || 'Java 面试') + '</span>' +
     (q.chapter ? '<span>· ' + escapeHtml(q.chapter) + '</span>' : '') +
-    (q._ai ? '<span class="java-badge">AI 题</span>' : '') + '</div>';
-  html += '<div class="career-quiz-options">';
-  ['A', 'B', 'C', 'D'].forEach(function(L){
-    var txt = q.options['ABCD'.indexOf(L)];
-    if(txt === undefined) return;
-    html += '<button class="btn btn-ghost career-option" id="javaOpt_' + L + '" onclick="javaPick(\'' + L + '\')">' +
-      '<b>' + L + '.</b> ' + escapeHtml(txt) + '</button>';
-  });
-  html += '</div>';
+    (q._oral ? '<span class="java-badge">口述题</span>' : (q._ai ? '<span class="java-badge">AI 题</span>' : '')) + '</div>';
+  if(st.mode === 'oral'){
+    html += '<div class="career-quiz-options">' +
+      '<button class="btn btn-primary career-option" onclick="javaShowOralAnswer()">👁 看参考答案</button>' +
+      '</div>';
+  } else {
+    html += '<div class="career-quiz-options">';
+    ['A', 'B', 'C', 'D'].forEach(function(L){
+      var txt = q.options['ABCD'.indexOf(L)];
+      if(txt === undefined) return;
+      html += '<button class="btn btn-ghost career-option" id="javaOpt_' + L + '" onclick="javaPick(\'' + L + '\')">' +
+        '<b>' + L + '.</b> ' + escapeHtml(txt) + '</button>';
+    });
+    html += '</div>';
+  }
   html += '<div id="javaFeedback"></div>';
   document.getElementById('javaQuizBody').innerHTML = html;
   document.getElementById('javaQuizResult').style.display = 'none';
   var nb = document.getElementById('javaQuizNextBtn');
   if(nb) nb.style.display = 'none';
+}
+function javaShowOralAnswer(){
+  var st = javaQuizState; if(!st || st.mode !== 'oral') return;
+  var q = st.paper[st.idx];
+  var points = (q.answerPoints || []).map(function(p, i){ return '<li>' + (i + 1) + '. ' + escapeHtml(p) + '</li>'; }).join('');
+  var fb = '<div class="career-quiz-feedback correct">📝 参考答案要点</div>';
+  fb += '<div class="career-quiz-explain"><ol class="java-oral-points">' + (points || '<li>暂无要点</li>') + '</ol>' +
+    '<b>解析：</b>' + escapeHtml(q.explanation || '（暂无解析）') +
+    (q.follow ? '<br><b>面试官追问：</b>' + escapeHtml(q.follow) : '') + '</div>';
+  fb += '<div class="java-oral-self">' +
+    '<button class="btn btn-primary btn-sm" onclick="javaOralSelf(true)">✅ 我答对了</button>' +
+    '<button class="btn btn-ghost btn-sm" onclick="javaOralSelf(false)">❌ 还需加强</button>' +
+    '</div>';
+  document.getElementById('javaFeedback').innerHTML = fb;
+}
+function javaOralSelf(ok){
+  var st = javaQuizState; if(!st || st.mode !== 'oral') return;
+  st.answered++;
+  if(ok) st.right++;
+  st.log.push({ id: st.paper[st.idx].id, ok: ok });
+  javaNext();
 }
 function javaPick(letter){
   var st = javaQuizState;
@@ -36022,6 +36213,12 @@ function javaPick(letter){
   var fb = '<div class="career-quiz-feedback ' + (ok ? 'correct' : 'wrong') + '">' + (ok ? '✅ 答对了' : '❌ 答错了，正确答案 ' + q.answer) + '</div>';
   fb += '<div class="career-quiz-explain"><b>解析：</b>' + escapeHtml(q.explanation || '（本题暂无解析）') +
     (q.follow ? '<br><b>面试官追问：</b>' + escapeHtml(q.follow) : '') + '</div>';
+  if(q.follow){
+    var saved = javaIsFollowUpSaved(q.id);
+    fb += '<div class="java-follow-save">' +
+      '<button class="btn btn-ghost btn-xs' + (saved ? ' is-saved' : '') + '" id="javaFollowBtn" onclick="javaSaveFollowUpCurrent()">' +
+      (saved ? '✓ 已收藏' : '💾 收藏此追问') + '</button></div>';
+  }
   document.getElementById('javaFeedback').innerHTML = fb;
   var nb = document.getElementById('javaQuizNextBtn');
   if(nb){ nb.style.display = ''; nb.textContent = (st.idx + 1 >= st.paper.length) ? '查看结果' : '下一题'; }
@@ -36042,17 +36239,30 @@ function javaFinishQuiz(){
   javaDb().quizLog.push({ at: Date.now(), mode: st.mode, total: total, right: right });
   if(javaDb().quizLog.length > 60) javaDb().quizLog = javaDb().quizLog.slice(-60);
   saveDb();
-  var msg = acc >= 80 ? '🔥 稳了，这个正确率面试能打' : (acc >= 60 ? '👌 及格线，错题记得回炉' : '⚠️ 低于 60%，把错题考点重新背一遍');
-  var wrongN = st.log.filter(function(x){ return !x.ok; }).length;
-  var html = '<div class="career-quiz-summary">正确率 ' + acc + '%（' + right + '/' + total + '）<div style="font-size:13px;font-weight:400;color:var(--text-2);margin-top:6px;">' + msg + '</div></div>';
-  html += '<div class="career-quiz-review">' + st.log.map(function(x, i){
-    return '<div class="career-quiz-review-item ' + (x.ok ? 'correct' : 'wrong') + '">' + (i + 1) + '. ' + (x.ok ? '✅' : '❌') + ' ' + escapeHtml(String(st.paper[i].question).slice(0, 42)) + '</div>';
-  }).join('') + '</div>';
-  html += '<div class="career-quiz-result-actions">';
-  if(wrongN > 0) html += '<button class="btn btn-primary btn-sm" onclick="javaRedoWrongInQuiz()">🔁 只重做 ' + wrongN + ' 道错题</button>';
-  html += '<button class="btn btn-ghost btn-sm" onclick="startJavaQuiz(\'random\')">🎲 再来一套随机</button>';
-  html += '<button class="btn btn-ghost btn-sm" onclick="closeJavaQuiz()">关闭</button>';
-  html += '</div>';
+  var html = '';
+  if(st.mode === 'oral'){
+    var msg = acc >= 80 ? '🔥 自评掌握得不错，继续保持' : (acc >= 60 ? '👌 过半掌握，薄弱环节再背一遍' : '⚠️ 自评掌握较少，建议把对应考点重新背诵');
+    html += '<div class="career-quiz-summary">口述题练习完成 · 自评掌握 ' + acc + '%（' + right + '/' + total + '）<div style="font-size:13px;font-weight:400;color:var(--text-2);margin-top:6px;">' + msg + '</div></div>';
+    html += '<div class="career-quiz-review">' + st.log.map(function(x, i){
+      return '<div class="career-quiz-review-item ' + (x.ok ? 'correct' : 'wrong') + '">' + (i + 1) + '. ' + (x.ok ? '✅' : '❌') + ' ' + escapeHtml(String(st.paper[i].question).slice(0, 42)) + '</div>';
+    }).join('') + '</div>';
+    html += '<div class="career-quiz-result-actions">';
+    html += '<button class="btn btn-primary btn-sm" onclick="startJavaOralQuiz(\'learned\')">🎤 再来一套口述题</button>';
+    html += '<button class="btn btn-ghost btn-sm" onclick="closeJavaQuiz()">关闭</button>';
+    html += '</div>';
+  } else {
+    var msg = acc >= 80 ? '🔥 稳了，这个正确率面试能打' : (acc >= 60 ? '👌 及格线，错题记得回炉' : '⚠️ 低于 60%，把错题考点重新背一遍');
+    var wrongN = st.log.filter(function(x){ return !x.ok; }).length;
+    html += '<div class="career-quiz-summary">正确率 ' + acc + '%（' + right + '/' + total + '）<div style="font-size:13px;font-weight:400;color:var(--text-2);margin-top:6px;">' + msg + '</div></div>';
+    html += '<div class="career-quiz-review">' + st.log.map(function(x, i){
+      return '<div class="career-quiz-review-item ' + (x.ok ? 'correct' : 'wrong') + '">' + (i + 1) + '. ' + (x.ok ? '✅' : '❌') + ' ' + escapeHtml(String(st.paper[i].question).slice(0, 42)) + '</div>';
+    }).join('') + '</div>';
+    html += '<div class="career-quiz-result-actions">';
+    if(wrongN > 0) html += '<button class="btn btn-primary btn-sm" onclick="javaRedoWrongInQuiz()">🔁 只重做 ' + wrongN + ' 道错题</button>';
+    html += '<button class="btn btn-ghost btn-sm" onclick="startJavaQuiz(\'random\')">🎲 再来一套随机</button>';
+    html += '<button class="btn btn-ghost btn-sm" onclick="closeJavaQuiz()">关闭</button>';
+    html += '</div>';
+  }
   document.getElementById('javaQuizResult').innerHTML = html;
   document.getElementById('javaQuizResult').style.display = '';
   document.getElementById('javaQuizBody').innerHTML = '';
@@ -36068,6 +36278,69 @@ function closeJavaQuiz(){
   if(panel) panel.style.display = 'none';
   if(empty) empty.style.display = '';
   renderJavaQuizHome(); renderJavaDone(); renderJavaWrong();
+}
+function javaFollowUps(){ return javaDb().followUps || []; }
+function javaIsFollowUpSaved(qid){
+  return javaFollowUps().some(function(x){ return x.qid === qid; });
+}
+function javaSaveFollowUpCurrent(){
+  var st = javaQuizState; if(!st || !st.paper[st.idx]) return;
+  var q = st.paper[st.idx];
+  if(!q.follow){ toast('本题没有追问可收藏'); return; }
+  var r = javaSaveFollowUp(q);
+  var btn = document.getElementById('javaFollowBtn');
+  if(btn && r.saved){ btn.textContent = '✓ 已收藏'; btn.classList.add('is-saved'); }
+  toast(r.saved ? '已收藏到「追问收藏夹」' : '这条追问已经收藏过了');
+}
+function javaSaveFollowUp(q){
+  var list = javaFollowUps();
+  if(list.some(function(x){ return x.qid === q.id; })) return { saved: false };
+  var item = {
+    id: 'jf_' + javaHash(q.id + '|' + q.follow).toString(36) + '_' + Date.now().toString(36),
+    qid: q.id, pid: q.pid || '',
+    question: String(q.question || '').slice(0, 200),
+    follow: String(q.follow || '').slice(0, 120),
+    answer: String(q.answer || ''),
+    explanation: String(q.explanation || '').slice(0, 500),
+    source: q.source || '', chapter: q.chapter || '', book: q.book || '',
+    at: Date.now()
+  };
+  list.unshift(item);
+  if(list.length > 200) list = list.slice(0, 200);
+  javaDb().followUps = list;
+  saveDb();
+  renderJavaFollowUps();
+  return { saved: true, item: item };
+}
+function javaDeleteFollowUp(id){
+  var list = javaFollowUps().filter(function(x){ return x.id !== id; });
+  javaDb().followUps = list;
+  saveDb();
+  renderJavaFollowUps();
+}
+function renderJavaFollowUps(){
+  var box = document.getElementById('javaFollowBox');
+  if(!box) return;
+  var list = javaFollowUps();
+  var sum = document.getElementById('javaFollowSummary');
+  if(sum) sum.textContent = list.length ? ('已收藏 ' + list.length + ' 条追问') : '暂无收藏的追问';
+  if(!list.length){ box.innerHTML = '<div class="empty-hint">答题时遇到好的「面试官追问」，点「💾 收藏此追问」就会集中到这里复习</div>'; return; }
+  box.innerHTML = list.map(function(d, i){
+    return '<div class="career-follow-item">' +
+      '<div class="career-follow-q">' + (i + 1) + '. ' + escapeHtml(d.question) + '</div>' +
+      '<div class="career-follow-f">💬 ' + escapeHtml(d.follow) + '</div>' +
+      '<div class="career-q-meta"><span>' + escapeHtml(d.book || 'Java 面试') + '</span>' +
+      (d.chapter ? '<span>· ' + escapeHtml(d.chapter) + '</span>' : '') +
+      '<span>· ' + fmtDate(new Date(d.at)) + '</span></div>' +
+      '<div class="career-q-actions"><button class="btn btn-ghost btn-xs" onclick="javaShowFollowExplain(\'' + d.id + '\')">看解析</button>' +
+      '<button class="btn btn-ghost btn-xs" onclick="javaDeleteFollowUp(\'' + d.id + '\')">删除</button></div>' +
+      '<div id="javaFollowExp_' + d.id + '" style="display:none;" class="career-quiz-explain">' + escapeHtml(d.explanation || '（暂无解析）') + '</div>' +
+      '</div>';
+  }).join('');
+}
+function javaShowFollowExplain(id){
+  var el = document.getElementById('javaFollowExp_' + id);
+  if(el) el.style.display = (el.style.display === 'none') ? '' : 'none';
 }
 function javaRecordAnswer(q, ok){
   var db = javaDb();
@@ -36112,14 +36385,16 @@ function renderJavaQuizHome(){
   if(!el) return;
   var learned = javaLearnedItems().length;
   var ai = javaAiCount();
+  var oral = javaOralCount();
+  var fu = javaFollowUps().length;
   var w = javaWrongCount();
   var dq = Object.keys(javaDb().doneQ).length;
-  var txt = '已背 ' + learned + ' / ' + javaTotalPoints() + ' 考点 · AI 面试官已出题 ' + ai + ' 道 · 已做题 ' + dq + ' 道 · 待复习错题 ' + w + ' 道';
+  var txt = '已背 ' + learned + ' / ' + javaTotalPoints() + ' 考点 · AI 单选题 ' + ai + ' 道 · 口述题 ' + oral + ' 道 · 已做题 ' + dq + ' 道 · 收藏追问 ' + fu + ' 条 · 待复习错题 ' + w + ' 道';
   if(!javaHasQwenKey()) txt += '（未配置通义千问 Key，AI 无法出题）';
   el.textContent = txt;
   var tip = document.getElementById('javaAiTip');
   if(tip) tip.textContent = javaHasQwenKey()
-    ? '所有题目都由 AI 模拟面试官联网现编真题，没有任何本地生成题。点「按已背考点出题」会为还没出题的考点补题，够 20 道就停。'
+    ? '所有题目都由 AI 模拟面试官联网现编真题，没有任何本地生成题。点「按已背考点出题」会为还没出题的考点补题，够 20 道就停；「模拟面试（口述题）」没有 A/B/C/D，像真实面试一样口述回答。'
     : '提示：配置通义千问 Key 后，所有题目都将由 AI 模拟面试官联网现编。';
   var sug = document.getElementById('javaQuizSuggest');
   if(sug){
@@ -36127,9 +36402,10 @@ function renderJavaQuizHome(){
     var remain = javaTotalPoints() - masteredNow;
     var newN = Math.max(3, Math.min(12, Math.ceil(remain / 16)));
     sug.textContent = javaHasQwenKey()
-      ? ('今日建议：新背 ' + newN + ' 个考点 + 做 1 套自测；还差 ' + remain + ' 个考点未掌握。')
+      ? ('今日建议：新背 ' + newN + ' 个考点 + 做 1 套自测 / 1 套口述题；还差 ' + remain + ' 个考点未掌握。')
       : '配置通义千问 Key 后，点「🤖 一键生成」即可建好全库 AI 题。';
   }
+  renderJavaFollowUps();
 }
 function javaGenerateAllAi(){
   if(!javaHasQwenKey()){ toast('需要先配置通义千问 Key，AI 才能出题'); return; }
