@@ -35791,114 +35791,7 @@ function javaAiWriteBatch(pids, opts){
   });
 }
 
-/* ---------------- 本地兜底出题 ---------------- */
-var JAVA_STOP_TERMS = { and:1, the:1, for:1, not:1, are:1, this:1, that:1, with:1, from:1, into:1, than:1, then:1, will:1, must:1, only:1, more:1, most:1, some:1, such:1, when:1, which:1, while:1, what:1, how:1, why:1, can:1, has:1, have:1, its:1, was:1, were:1, but:1, all:1, any:1, one:1, two:1, use:1, used:1, new:1, get:1, set:1, put:1, add:1, key:1, name:1, size:1, type:1, data:1, obj:1, ref:1, var:1, log:1, api:1, url:1, http:1, rpc:1 };
-function javaStatements(p){
-  var out = [];
-  var src = String(p.detail || '') + '\n' + String(p.content || '');
-  src.split(/\n+/).forEach(function(line){
-    line = line.replace(/^\s*[-•·*#]+[\s.]*/, '').replace(/^\s*\d+[.、)]\s*/, '').trim();
-    if(!line) return;
-    line.split(/[。；;]/).forEach(function(s){
-      s = s.trim().replace(/\s+/g, ' ');
-      if(s.length >= 12 && s.length <= 62 && out.indexOf(s) < 0) out.push(s);
-    });
-  });
-  return out;
-}
-function javaTerms(text){
-  var out = [], set = {};
-  (String(text || '').match(/[A-Za-z][A-Za-z0-9+#._-]{2,20}/g) || []).forEach(function(t){
-    var low = t.toLowerCase();
-    if(set[t] || JAVA_STOP_TERMS[low]) return;
-    if(t.length < 3) return;
-    set[t] = 1; out.push(t);
-  });
-  return out;
-}
-function javaMakeOptions(correct, candidates, seed, minLen){
-  var lo = (typeof minLen === 'number') ? minLen : 6;
-  var used = {}; used[correct] = 1;
-  var picks = [];
-  var cand = (candidates || []).filter(function(c){ return c && !used[c] && c.length >= lo && c.length <= 62; });
-  var r = javaRng(seed || 1);
-  while(picks.length < 3 && cand.length){
-    var c = cand.splice(Math.floor(r() * cand.length), 1)[0];
-    if(used[c]) continue;
-    used[c] = 1; picks.push(c);
-  }
-  if(picks.length < 3) return null;
-  var opts = javaShuffle([correct].concat(picks), (seed || 1) + 7);
-  return { options: opts, answer: String.fromCharCode(65 + opts.indexOf(correct)) };
-}
-/* 干扰项池：同学科优先、其次同书、最后全局 */
-function javaDistractPool(item, all){
-  var same = [], book = [], rest = [];
-  (all || []).forEach(function(x){
-    if(x.pid === item.pid) return;
-    if(item.cid && x.cid === item.cid) same.push(x.text);
-    else if(item.bid && x.bid === item.bid) book.push(x.text);
-    else rest.push(x.text);
-  });
-  if(same.length >= 3) return same.concat(book).concat(rest);
-  return same.concat(book).concat(rest);
-}
-function javaGenForItems(items, round){
-  var out = [];
-  var all = [], allTerms = [], termsByBid = {};
-  javaFlatPoints().forEach(function(it){
-    javaStatements(it.p).forEach(function(s){ all.push({ pid: it.p.id, bid: it.bid, cid: it.cid, text: s }); });
-    var ts = javaTerms(it.p.title + ' ' + it.p.content + ' ' + String(it.p.detail || '').slice(0, 200));
-    termsByBid[it.bid] = (termsByBid[it.bid] || []).concat(ts);
-    allTerms = allTerms.concat(ts);
-  });
-  (items || []).forEach(function(it){
-    var h = javaHash(it.p.id + '_' + round);
-    var ss = javaStatements(it.p);
-    var kind = h % 3;
-    var title = String(it.p.title || '').replace(/[？?]+$/, '').trim();
-    var core = title.split(/[\/（(]/)[0].trim() || title;
-    if(ss.length >= 1 && (kind === 0 || kind === 1)){
-      var correct = ss[h % ss.length];
-      var pool = javaDistractPool({ pid: it.p.id, bid: it.bid, cid: it.cid }, all);
-      var mk = javaMakeOptions(correct, pool, h);
-      if(mk){
-        out.push({
-          id: 'jg_' + it.p.id + '_' + h.toString(36),
-          _gen: true, pid: it.p.id,
-          subject: 'Java 面试', chapter: it.cname, book: it.btitle,
-          source: '本地出题 · 《' + it.btitle + '》',
-          question: (kind === 0 ? ('下列关于「' + core + '」的说法，正确的一项是？') : ('关于「' + core + '」，面试官问到的下列说法中，正确的一项是？')),
-          options: mk.options, answer: mk.answer,
-          explanation: '考点：' + title + '。' + String(it.p.content || '').slice(0, 120),
-          follow: ''
-        });
-        return;
-      }
-    }
-    /* 挖空填术语 */
-    var ts = javaTerms(it.p.content + ' ' + it.p.title);
-    if(ts.length){
-      var tq = ts[h % ts.length];
-      var local = (termsByBid[it.bid] || []).filter(function(x){ return x !== tq; });
-      var candT = (local.length >= 3 ? local : local.concat(allTerms)).filter(function(x){ return x !== tq; });
-      var mk2 = javaMakeOptions(tq, candT, h + 31, 3);
-      if(mk2){
-        out.push({
-          id: 'jk_' + it.p.id + '_' + h.toString(36),
-          _gen: true, pid: it.p.id,
-          subject: 'Java 面试', chapter: it.cname, book: it.btitle,
-          source: '本地出题 · 《' + it.btitle + '》',
-          question: '【填空】' + title + ' —— 这里说的是：',
-          options: mk2.options, answer: mk2.answer,
-          explanation: '考点：' + title + '。' + String(it.p.content || '').slice(0, 120),
-          follow: ''
-        });
-      }
-    }
-  });
-  return out;
-}
+/* 本地兜底出题已移除：全部题目都由 AI 模拟面试官联网现编，不再本地生成 */
 /* 已做题本规则：0 跳过 / 1 没做过 / 2 答错过（优先） */
 function javaKeepQ(q){
   var d = javaDb().doneQ[q.id];
@@ -35910,70 +35803,69 @@ function javaBuildLearnedPaper(){
   var items = javaLearnedItems();
   if(!items.length) items = javaFlatPoints().slice();
   var aiQ = javaAiQ();
-  var paper = [], aiUsed = 0;
   var aiList = [];
   items.forEach(function(it){
     var q = aiQ[it.p.id];
     if(q){ var k = javaKeepQ(q); if(k > 0) aiList.push({ q: q, k: k }); }
   });
   aiList.sort(function(a, b){ return b.k - a.k; });
-  paper = aiList.map(function(x){ return x.q; });
-  aiUsed = paper.length;
-  var genUsed = 0;
-  if(paper.length < JAVA_LEARNED_MAX){
-    var round = javaDb().learnedRound || 0;
-    var gen = javaGenForItems(items, round).filter(function(q){ return javaKeepQ(q) > 0; });
-    gen.sort(function(a, b){ return javaKeepQ(b) - javaKeepQ(a); });
-    var need = JAVA_LEARNED_MAX - paper.length;
-    gen = gen.slice(0, need);
-    genUsed = gen.length;
-    paper = paper.concat(gen);
-  }
-  if(paper.length < JAVA_LEARNED_MAX){
-    var extra = javaGenForItems(javaFlatPoints(), 991).filter(function(q){
-      return javaKeepQ(q) > 0 && !paper.some(function(x){ return x.id === q.id; });
-    });
-    paper = paper.concat(extra).slice(0, JAVA_LEARNED_MAX);
-  }
-  return { paper: paper, aiUsed: aiUsed, genUsed: genUsed, total: paper.length };
+  var paper = aiList.map(function(x){ return x.q; });
+  return { paper: paper, aiUsed: paper.length, genUsed: 0, total: paper.length };
 }
 function javaLearnedStartWith(r){
   if(!r || !r.paper || !r.paper.length){ toast('暂时组不出题，先去背几个考点吧'); return; }
   javaQuizState = {
     paper: r.paper, idx: 0, mode: 'learned',
-    label: '🎯 按已背考点出题（AI ' + r.aiUsed + ' · 本地 ' + (r.total - r.aiUsed) + '）',
+    label: '🎯 按已背考点出题（AI 已出 ' + r.aiUsed + ' 道）',
     right: 0, answered: 0, log: []
   };
   switchJavaModule('quiz');
   javaShowQuestion();
 }
 function startJavaLearnedQuiz(){
+  if(!javaHasQwenKey()){
+    toast('需要先配置通义千问 Key，AI 才能为考点出题');
+    return;
+  }
   var items = javaLearnedItems();
-  var r = javaBuildLearnedPaper();
-  javaDb().learnedRound = ((javaDb().learnedRound || 0) + 1) % 997;
-  saveDb();
-  var need = JAVA_LEARNED_MAX - r.aiUsed;
-  var m0 = javaAiQ();
-  var pending = (need > 0 ? items : []).filter(function(it){ return !m0[it.p.id]; }).map(function(it){ return it.p.id; });
-  if(need > 0 && pending.length && javaHasQwenKey()){
+  if(!items.length){
+    toast('还没有勾「已背」的考点，先在「背诵」里标记几个吧');
+    return;
+  }
+  var aiQ = javaAiQ();
+  var have = items.filter(function(it){ return aiQ[it.p.id]; }).length;
+  var need = JAVA_LEARNED_MAX - have;
+  if(need > 0){
+    var pending = items.filter(function(it){ return !aiQ[it.p.id]; }).map(function(it){ return it.p.id; });
     javaAiBusy = true;
-    toast('AI 面试官正在出题（0/' + need + '）…');
+    toast('AI 面试官正在为还没出题的考点编真题（0/' + need + '）…');
     javaAiWriteBatch(pending, {
       stopAt: need,
-      onProgress: function(n){ toast('AI 面试官正在出题（' + Math.min(n, need) + '/' + need + '）…'); }
+      onProgress: function(n){ toast('AI 面试官正在为还没出题的考点编真题（' + Math.min(n, need) + '/' + need + '）…'); }
     }).then(function(){
       javaAiBusy = false;
-      var r2 = javaBuildLearnedPaper();
-      javaLearnedStartWith((r2 && r2.paper.length) ? r2 : r);
+      var r = javaBuildLearnedPaper();
+      if(r.paper.length < JAVA_LEARNED_MAX){
+        toast('AI 已为 ' + r.paper.length + ' 个考点出题，还差 ' + (JAVA_LEARNED_MAX - r.paper.length) + ' 个考点没生成（可再点一次补充）');
+      }
+      javaLearnedStartWith(r);
     }).catch(function(e){
       javaAiBusy = false;
-      javaLearnedStartWith(javaBuildLearnedPaper() || r);
-      toast('AI 出题未成功，本轮先用本地出题…');
+      toast('AI 出题失败：' + (e && e.message ? e.message : '网络或密钥异常'));
     });
     return;
   }
-  if(!items.length) toast('还没勾「已背」考点，本次先随机抽题');
-  javaLearnedStartWith(r);
+  javaLearnedStartWith(javaBuildLearnedPaper());
+}
+function javaRandomAiPaper(){
+  var out = [], seen = {};
+  var aiQ = javaAiQ();
+  javaShuffle(javaFlatPoints(), Date.now() % 100000).forEach(function(it){
+    if(out.length < JAVA_RANDOM_MAX && aiQ[it.p.id] && !seen[aiQ[it.p.id].id]){
+      out.push(aiQ[it.p.id]); seen[aiQ[it.p.id].id] = 1;
+    }
+  });
+  return out;
 }
 function startJavaQuiz(mode){
   var paper = [];
@@ -35998,14 +35890,43 @@ function startJavaQuiz(mode){
     all.sort(function(a, b){ return (b.score - a.score) || (a.at - b.at); });
     paper = all.slice(0, JAVA_REVIEW_MAX).map(function(x){ return x.q; });
   } else {
-    var flat = javaShuffle(javaFlatPoints(), Date.now() % 100000);
-    var aiQ = javaAiQ();
-    flat.forEach(function(it){ if(paper.length < JAVA_RANDOM_MAX && aiQ[it.p.id]) paper.push(aiQ[it.p.id]); });
-    if(paper.length < JAVA_RANDOM_MAX){
-      var gen = javaShuffle(javaGenForItems(flat, Date.now() % 5000), Date.now() % 3000);
-      gen.forEach(function(q){ if(paper.length < JAVA_RANDOM_MAX) paper.push(q); });
+    var paper = javaRandomAiPaper();
+    if(paper.length < JAVA_RANDOM_MAX && javaHasQwenKey()){
+      var pending = javaFlatPoints().filter(function(it){ return !javaAiQ()[it.p.id]; }).map(function(it){ return it.p.id; });
+      if(pending.length){
+        var need = JAVA_RANDOM_MAX - paper.length;
+        javaAiBusy = true;
+        toast('AI 面试官正在为更多考点编真题（0/' + need + '）…');
+        javaAiWriteBatch(pending.slice(0, need * 3), {
+          stopAt: need,
+          onProgress: function(n){ toast('AI 面试官正在为更多考点编真题（' + Math.min(n, need) + '/' + need + '）…'); }
+        }).then(function(){
+          javaAiBusy = false;
+          var paper2 = javaRandomAiPaper();
+          if(!paper2.length){ toast('AI 暂时没生成有效题，稍后再试'); return; }
+          javaQuizState = {
+            paper: paper2, idx: 0, mode: 'random',
+            label: '🎲 随机抽题（AI ' + paper2.length + ' 道）',
+            right: 0, answered: 0, log: []
+          };
+          switchJavaModule('quiz');
+          javaShowQuestion();
+        }).catch(function(e){
+          javaAiBusy = false;
+          toast('AI 出题失败：' + (e && e.message ? e.message : '网络或密钥异常'));
+        });
+        return;
+      }
     }
-    if(!paper.length){ toast('题库还没准备好'); return; }
+    if(!paper.length){ toast('AI 题库还是空的，先去「按已背考点出题」让 AI 编几道'); return; }
+    if(paper.length < JAVA_RANDOM_MAX) toast('AI 题库目前 ' + Object.keys(javaAiQ()).length + ' 道，已抽满 ' + paper.length + ' 道；去「按已背考点出题」可让 AI 多出些题');
+    javaQuizState = {
+      paper: paper, idx: 0, mode: 'random',
+      label: '🎲 随机抽题（AI ' + paper.length + ' 道）',
+      right: 0, answered: 0, log: []
+    };
+    switchJavaModule('quiz');
+    javaShowQuestion();
   }
   javaQuizState = {
     paper: paper, idx: 0, mode: mode,
@@ -36163,12 +36084,12 @@ function renderJavaQuizHome(){
   var w = javaWrongCount();
   var dq = Object.keys(javaDb().doneQ).length;
   var txt = '已背 ' + learned + ' / ' + javaTotalPoints() + ' 考点 · AI 面试官已出题 ' + ai + ' 道 · 已做题 ' + dq + ' 道 · 待复习错题 ' + w + ' 道';
-  if(!javaHasQwenKey()) txt += '（未配置通义千问 Key，出题走本地题库）';
+  if(!javaHasQwenKey()) txt += '（未配置通义千问 Key，AI 无法出题）';
   el.textContent = txt;
   var tip = document.getElementById('javaAiTip');
   if(tip) tip.textContent = javaHasQwenKey()
-    ? '点「按已背考点出题」时，AI 面试官会自动为还没出题的考点现编真题，够 20 道就停。'
-    : '提示：配置通义千问 Key 后，出题会由 AI 模拟面试官联网现编真题。';
+    ? '所有题目都由 AI 模拟面试官联网现编真题，没有任何本地生成题。点「按已背考点出题」会为还没出题的考点补题，够 20 道就停。'
+    : '提示：配置通义千问 Key 后，所有题目都将由 AI 模拟面试官联网现编。';
 }
 
 /* ---------------- 错题本 ---------------- */
