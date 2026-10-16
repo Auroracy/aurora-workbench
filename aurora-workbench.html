@@ -35756,7 +35756,14 @@ function javaAiValid(q){
   if(['A', 'B', 'C', 'D'].indexOf(a) < 0) return false;
   var set = {};
   q.options.forEach(function(o){ set[String(o).trim()] = 1; });
-  return Object.keys(set).length === 4;
+  if(Object.keys(set).length !== 4) return false;
+  // 追问及其参考答案必须完整，否则收藏夹里点开没有解析
+  if(!q.follow || String(q.follow).trim().length < 2) return false;
+  if(!Array.isArray(q.followAnswerPoints) || q.followAnswerPoints.length < 3) return false;
+  var goodPoints = q.followAnswerPoints.filter(function(p){ return String(p).trim().length >= 4; }).length;
+  if(goodPoints < 3) return false;
+  if(!q.followExplanation || String(q.followExplanation).trim().length < 10) return false;
+  return true;
 }
 function javaOralQ(){ return javaDb().oralQ; }
 function javaOralCount(){ return Object.keys(javaOralQ()).length; }
@@ -35793,7 +35800,7 @@ function javaOralUserPrompt(items){
 }
 function javaAiSystem(){
   return '你是国内一线互联网公司的 Java 后端面试官（8 年经验），正在给候选人出笔试单选题。\n' +
-    '任务：围绕给定的每一个「考点」，各编写 1 道高质量的四选一单项选择题，并附带 1 道面试官追问及其参考答案。\n' +
+    '任务：围绕给定的每一个「考点」，各编写 1 道高质量的四选一单项选择题，并附带 1 道面试官追问及其完整参考答案。\n' +
     '要求：\n' +
     '1) 题干要像真实面试题：场景化提问、概念对比辨析、源码结论、参数/默认值取值、坑点判断、"下列说法错误的是"。' +
     '不要一律用"以下说法正确的是"，也不要照抄考点标题当题干。\n' +
@@ -35803,9 +35810,10 @@ function javaAiSystem(){
     '不要出现"以上都对/都不对/无法确定"这类凑数项。\n' +
     '4) 只能依据给出的考点资料出题，不得编造资料里没有的版本号、默认值、参数与结论。\n' +
     '5) explanation：像面试官点评，一句话点出正确依据 + 关键干扰项错在哪。\n' +
-    '6) follow：面试官最可能追问的一句话（20 字以内）。\n' +
-    '7) followAnswerPoints：对 `follow` 追问的参考答案，列出 3~5 个关键得分点（每点一句话，按重要性排序）。\n' +
-    '8) followExplanation：对追问的面试官点评（50 字以内，点出考点依据与常见漏答）。\n' +
+    '6) follow：面试官最可能追问的一句话（20 字以内，必须非空）。\n' +
+    '7) followAnswerPoints：对 `follow` 追问的参考答案，必须列出 3~5 个关键得分点（每点一句话，按重要性排序，禁止为空数组）。\n' +
+    '8) followExplanation：对追问的面试官点评（50 字以内，必须非空，点出考点依据与常见漏答）。\n' +
+    '以上 8 个字段缺一不可，followAnswerPoints 至少 3 个有效要点，followExplanation 至少 10 个字。\n' +
     '只输出 JSON 数组，不要任何解释文字，格式：\n' +
     '[{"pid":"考点id","question":"题干","options":["选项1","选项2","选项3","选项4"],"answer":"A","explanation":"解析","follow":"追问","followAnswerPoints":["要点1","要点2","要点3"],"followExplanation":"点评"}]';
 }
