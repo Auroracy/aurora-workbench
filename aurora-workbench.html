@@ -17194,7 +17194,7 @@ function init(){
     now.getFullYear() + '年' + (now.getMonth()+1) + '月' + now.getDate() + '日 周' + weekdays[now.getDay()];
   // Init cloud sync button
   updateCloudBtn();
-  // Init default tab (Java)
+  // Init Tab1（重排序后默认打开 Java 面试）
   initJava();
   // Init recipe hero
   renderRecipeHero();
@@ -35819,53 +35819,65 @@ function javaAiUserPrompt(items){
 }
 function javaAiWriteBatch(pids, opts){
   opts = opts || {};
-  var flat = {}, todo = [];
+  var flat = {}, todo0 = [];
   javaFlatPoints().forEach(function(it){ flat[it.p.id] = it; });
   (pids || []).forEach(function(pid){
-    if(flat[pid] && !(javaAiQ()[pid] && !opts.force)) todo.push(pid);
+    if(flat[pid] && !(javaAiQ()[pid] && !opts.force)) todo0.push(pid);
   });
-  if(!todo.length) return Promise.resolve(0);
+  if(!todo0.length) return Promise.resolve(0);
   var written = 0, err = null;
   var stopAt = Math.max(0, Number(opts.stopAt) || 0);
-  var chain = Promise.resolve();
-  for(var i = 0; i < todo.length; i += JAVA_AI_BATCH){
-    (function(batch){
-      chain = chain.then(function(){
-        if(stopAt && written >= stopAt) return;
-        var items = batch.map(function(pid){
-          var it = flat[pid];
-          return { pid: pid, title: it.p.title, content: it.p.content, detail: it.p.detail || '', btitle: it.btitle || '', cname: it.cname || '' };
-        });
-        return callQwenChat(javaAiSystem(), javaAiUserPrompt(items), 'qwen-plus', { enable_search: true })
-          .then(function(arr){
-            var got = 0, map = {};
-            items.forEach(function(x){ map[x.pid] = x; });
-            (arr || []).forEach(function(r){
-              var it = map[r && r.pid];
-              if(!it) return;
-              r.answer = String(r.answer || '').trim().toUpperCase().slice(0, 1);
-              if(!javaAiValid(r)) return;
-              var id = 'jai_' + r.pid + '_' + javaHash(String(r.question)).toString(36);
-              javaAiQ()[r.pid] = {
-                id: id, _gen: true, _ai: true, pid: r.pid,
-                subject: 'Java 面试', chapter: it.cname, book: it.btitle,
-                source: 'AI 模拟面试官 · 《' + it.btitle + '》',
-                question: String(r.question).trim(),
-                options: r.options.map(function(o){ return String(o).trim(); }),
-                answer: r.answer,
-                explanation: String(r.explanation || '').trim(),
-                follow: String(r.follow || '').trim(),
-                at: Date.now()
-              };
-              got++;
-            });
-            written += got;
-            if(typeof opts.onProgress === 'function') opts.onProgress(written, todo.length);
+  function runPass(todo){
+    if(!todo.length) return Promise.resolve();
+    var chain = Promise.resolve();
+    for(var i = 0; i < todo.length; i += JAVA_AI_BATCH){
+      (function(batch){
+        chain = chain.then(function(){
+          if(stopAt && written >= stopAt) return;
+          var items = batch.map(function(pid){
+            var it = flat[pid];
+            return { pid: pid, title: it.p.title, content: it.p.content, detail: it.p.detail || '', btitle: it.btitle || '', cname: it.cname || '' };
           });
-      }).catch(function(e){ err = e; });
-    })(todo.slice(i, i + JAVA_AI_BATCH));
+          return callQwenChat(javaAiSystem(), javaAiUserPrompt(items), 'qwen-plus', { enable_search: true })
+            .then(function(arr){
+              var got = 0, map = {};
+              items.forEach(function(x){ map[x.pid] = x; });
+              (arr || []).forEach(function(r){
+                var it = map[r && r.pid];
+                if(!it) return;
+                r.answer = String(r.answer || '').trim().toUpperCase().slice(0, 1);
+                if(!javaAiValid(r)) return;
+                var id = 'jai_' + r.pid + '_' + javaHash(String(r.question)).toString(36);
+                javaAiQ()[r.pid] = {
+                  id: id, _gen: true, _ai: true, pid: r.pid,
+                  subject: 'Java 面试', chapter: it.cname, book: it.btitle,
+                  source: 'AI 模拟面试官 · 《' + it.btitle + '》',
+                  question: String(r.question).trim(),
+                  options: r.options.map(function(o){ return String(o).trim(); }),
+                  answer: r.answer,
+                  explanation: String(r.explanation || '').trim(),
+                  follow: String(r.follow || '').trim(),
+                  at: Date.now()
+                };
+                got++;
+              });
+              written += got;
+              if(typeof opts.onProgress === 'function') opts.onProgress(written, todo0.length);
+            });
+        }).catch(function(e){ err = e; });
+      })(todo.slice(i, i + JAVA_AI_BATCH));
+    }
+    return chain;
   }
-  return chain.then(function(){
+  function missingPids(){ return todo0.filter(function(pid){ return !javaAiQ()[pid]; }); }
+  var pass = 0;
+  function loop(){
+    if(stopAt && written >= stopAt) return Promise.resolve();
+    if(!missingPids().length) return Promise.resolve();
+    if(++pass > 3) return Promise.resolve();   /* 最多 3 轮，避免死循环 / 滥用额度 */
+    return runPass(missingPids()).then(loop);
+  }
+  return loop().then(function(){
     if(written) saveDb();
     if(err && !written) throw err;
     return written;
@@ -35873,51 +35885,63 @@ function javaAiWriteBatch(pids, opts){
 }
 function javaAiWriteOralBatch(pids, opts){
   opts = opts || {};
-  var flat = {}, todo = [];
+  var flat = {}, todo0 = [];
   javaFlatPoints().forEach(function(it){ flat[it.p.id] = it; });
   (pids || []).forEach(function(pid){
-    if(flat[pid] && !(javaOralQ()[pid] && !opts.force)) todo.push(pid);
+    if(flat[pid] && !(javaOralQ()[pid] && !opts.force)) todo0.push(pid);
   });
-  if(!todo.length) return Promise.resolve(0);
+  if(!todo0.length) return Promise.resolve(0);
   var written = 0, err = null;
   var stopAt = Math.max(0, Number(opts.stopAt) || 0);
-  var chain = Promise.resolve();
-  for(var i = 0; i < todo.length; i += JAVA_AI_BATCH){
-    (function(batch){
-      chain = chain.then(function(){
-        if(stopAt && written >= stopAt) return;
-        var items = batch.map(function(pid){
-          var it = flat[pid];
-          return { pid: pid, title: it.p.title, content: it.p.content, detail: it.p.detail || '', btitle: it.btitle || '', cname: it.cname || '' };
-        });
-        return callQwenChat(javaOralSystem(), javaOralUserPrompt(items), 'qwen-plus', { enable_search: true })
-          .then(function(arr){
-            var got = 0, map = {};
-            items.forEach(function(x){ map[x.pid] = x; });
-            (arr || []).forEach(function(r){
-              var it = map[r && r.pid];
-              if(!it) return;
-              if(!javaOralValid(r)) return;
-              var id = 'jor_' + r.pid + '_' + javaHash(String(r.question)).toString(36);
-              javaOralQ()[r.pid] = {
-                id: id, _oral: true, pid: r.pid,
-                subject: 'Java 面试', chapter: it.cname, book: it.btitle,
-                source: 'AI 模拟面试官 · 《' + it.btitle + '》',
-                question: String(r.question).trim(),
-                answerPoints: (r.answerPoints || []).map(function(o){ return String(o).trim(); }).filter(function(o){ return o; }),
-                explanation: String(r.explanation || '').trim(),
-                follow: String(r.follow || '').trim(),
-                at: Date.now()
-              };
-              got++;
-            });
-            written += got;
-            if(typeof opts.onProgress === 'function') opts.onProgress(written, todo.length);
+  function runPass(todo){
+    if(!todo.length) return Promise.resolve();
+    var chain = Promise.resolve();
+    for(var i = 0; i < todo.length; i += JAVA_AI_BATCH){
+      (function(batch){
+        chain = chain.then(function(){
+          if(stopAt && written >= stopAt) return;
+          var items = batch.map(function(pid){
+            var it = flat[pid];
+            return { pid: pid, title: it.p.title, content: it.p.content, detail: it.p.detail || '', btitle: it.btitle || '', cname: it.cname || '' };
           });
-      }).catch(function(e){ err = e; });
-    })(todo.slice(i, i + JAVA_AI_BATCH));
+          return callQwenChat(javaOralSystem(), javaOralUserPrompt(items), 'qwen-plus', { enable_search: true })
+            .then(function(arr){
+              var got = 0, map = {};
+              items.forEach(function(x){ map[x.pid] = x; });
+              (arr || []).forEach(function(r){
+                var it = map[r && r.pid];
+                if(!it) return;
+                if(!javaOralValid(r)) return;
+                var id = 'jor_' + r.pid + '_' + javaHash(String(r.question)).toString(36);
+                javaOralQ()[r.pid] = {
+                  id: id, _oral: true, pid: r.pid,
+                  subject: 'Java 面试', chapter: it.cname, book: it.btitle,
+                  source: 'AI 模拟面试官 · 《' + it.btitle + '》',
+                  question: String(r.question).trim(),
+                  answerPoints: (r.answerPoints || []).map(function(o){ return String(o).trim(); }).filter(function(o){ return o; }),
+                  explanation: String(r.explanation || '').trim(),
+                  follow: String(r.follow || '').trim(),
+                  at: Date.now()
+                };
+                got++;
+              });
+              written += got;
+              if(typeof opts.onProgress === 'function') opts.onProgress(written, todo0.length);
+            });
+        }).catch(function(e){ err = e; });
+      })(todo.slice(i, i + JAVA_AI_BATCH));
+    }
+    return chain;
   }
-  return chain.then(function(){
+  function missingPids(){ return todo0.filter(function(pid){ return !javaOralQ()[pid]; }); }
+  var pass = 0;
+  function loop(){
+    if(stopAt && written >= stopAt) return Promise.resolve();
+    if(!missingPids().length) return Promise.resolve();
+    if(++pass > 3) return Promise.resolve();   /* 最多 3 轮，避免死循环 / 滥用额度 */
+    return runPass(missingPids()).then(loop);
+  }
+  return loop().then(function(){
     if(written) saveDb();
     if(err && !written) throw err;
     return written;
@@ -35939,10 +35963,11 @@ function javaBuildLearnedPaper(){
   var aiList = [];
   items.forEach(function(it){
     var q = aiQ[it.p.id];
-    if(q){ var k = javaKeepQ(q); if(k > 0) aiList.push({ q: q, k: k }); }
+    if(q) aiList.push({ q: q, k: javaKeepQ(q) });
   });
+  // 错题(2)优先，其次未做过(1)，已掌握(0)兜底，保证满 JAVA_LEARNED_MAX 题
   aiList.sort(function(a, b){ return b.k - a.k; });
-  var paper = aiList.map(function(x){ return x.q; });
+  var paper = aiList.slice(0, JAVA_LEARNED_MAX).map(function(x){ return x.q; });
   return { paper: paper, aiUsed: paper.length, genUsed: 0, total: paper.length };
 }
 function javaLearnedStartWith(r){
