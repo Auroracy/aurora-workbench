@@ -2726,6 +2726,8 @@ button.career-option:disabled{cursor:default;opacity:1;}
 /* 口述题：答案要点 + 自评按钮 */
 .java-oral-points{padding-left:18px;margin:6px 0 10px;color:var(--text-1);}
 .java-oral-points li{margin:4px 0;}
+.java-follow-answer-points{padding-left:18px;margin:4px 0 10px;color:var(--text-1);}
+.java-follow-answer-points li{margin:3px 0;}
 .java-oral-self{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
 /* 追问收藏 */
 .java-follow-save{margin-top:10px;}
@@ -35791,7 +35793,7 @@ function javaOralUserPrompt(items){
 }
 function javaAiSystem(){
   return '你是国内一线互联网公司的 Java 后端面试官（8 年经验），正在给候选人出笔试单选题。\n' +
-    '任务：围绕给定的每一个「考点」，各编写 1 道高质量的四选一单项选择题。\n' +
+    '任务：围绕给定的每一个「考点」，各编写 1 道高质量的四选一单项选择题，并附带 1 道面试官追问及其参考答案。\n' +
     '要求：\n' +
     '1) 题干要像真实面试题：场景化提问、概念对比辨析、源码结论、参数/默认值取值、坑点判断、"下列说法错误的是"。' +
     '不要一律用"以下说法正确的是"，也不要照抄考点标题当题干。\n' +
@@ -35802,8 +35804,10 @@ function javaAiSystem(){
     '4) 只能依据给出的考点资料出题，不得编造资料里没有的版本号、默认值、参数与结论。\n' +
     '5) explanation：像面试官点评，一句话点出正确依据 + 关键干扰项错在哪。\n' +
     '6) follow：面试官最可能追问的一句话（20 字以内）。\n' +
+    '7) followAnswerPoints：对 `follow` 追问的参考答案，列出 3~5 个关键得分点（每点一句话，按重要性排序）。\n' +
+    '8) followExplanation：对追问的面试官点评（50 字以内，点出考点依据与常见漏答）。\n' +
     '只输出 JSON 数组，不要任何解释文字，格式：\n' +
-    '[{"pid":"考点id","question":"题干","options":["选项1","选项2","选项3","选项4"],"answer":"A","explanation":"解析","follow":"追问"}]';
+    '[{"pid":"考点id","question":"题干","options":["选项1","选项2","选项3","选项4"],"answer":"A","explanation":"解析","follow":"追问","followAnswerPoints":["要点1","要点2","要点3"],"followExplanation":"点评"}]';
 }
 function javaAiUserPrompt(items){
   var s = '请为以下 ' + items.length + ' 个 Java 面试考点各编写 1 道单选题（pid 必须原样带回）：\n\n';
@@ -35857,6 +35861,8 @@ function javaAiWriteBatch(pids, opts){
                   answer: r.answer,
                   explanation: String(r.explanation || '').trim(),
                   follow: String(r.follow || '').trim(),
+                  followAnswerPoints: Array.isArray(r.followAnswerPoints) ? r.followAnswerPoints.map(function(o){ return String(o).trim(); }).filter(function(o){ return o; }) : [],
+                  followExplanation: String(r.followExplanation || '').trim(),
                   at: Date.now()
                 };
                 got++;
@@ -36323,10 +36329,9 @@ function javaSaveFollowUp(q){
   var item = {
     id: 'jf_' + javaHash(q.id + '|' + q.follow).toString(36) + '_' + Date.now().toString(36),
     qid: q.id, pid: q.pid || '',
-    question: String(q.question || '').slice(0, 200),
     follow: String(q.follow || '').slice(0, 120),
-    answer: String(q.answer || ''),
-    explanation: String(q.explanation || '').slice(0, 500),
+    followAnswerPoints: Array.isArray(q.followAnswerPoints) ? q.followAnswerPoints.slice(0,8).map(function(o){ return String(o).trim(); }).filter(function(o){ return o; }) : [],
+    followExplanation: String(q.followExplanation || '').slice(0, 500),
     source: q.source || '', chapter: q.chapter || '', book: q.book || '',
     at: Date.now()
   };
@@ -36351,15 +36356,21 @@ function renderJavaFollowUps(){
   if(sum) sum.textContent = list.length ? ('已收藏 ' + list.length + ' 条追问') : '暂无收藏的追问';
   if(!list.length){ box.innerHTML = '<div class="empty-hint">答题时遇到好的「面试官追问」，点「💾 收藏此追问」就会集中到这里复习</div>'; return; }
   box.innerHTML = list.map(function(d, i){
+    var pts = d.followAnswerPoints || [];
+    var ansHtml = pts.length ?
+      '<div style="margin:4px 0 6px;font-weight:500;">参考答案：</div>' +
+      '<ol class="java-follow-answer-points">' + pts.map(function(p){ return '<li>' + escapeHtml(p) + '</li>'; }).join('') + '</ol>' :
+      '<p style="color:var(--text-2);font-size:13px;margin:4px 0;">旧数据未记录追问解析，可删除后重新收藏此追问。</p>';
+    var exp = escapeHtml(d.followExplanation || '');
     return '<div class="career-follow-item">' +
-      '<div class="career-follow-q">' + (i + 1) + '. ' + escapeHtml(d.question) + '</div>' +
-      '<div class="career-follow-f">💬 ' + escapeHtml(d.follow) + '</div>' +
+      '<div class="career-follow-f">' + (i + 1) + '. ' + escapeHtml(d.follow) + '</div>' +
       '<div class="career-q-meta"><span>' + escapeHtml(d.book || 'Java 面试') + '</span>' +
       (d.chapter ? '<span>· ' + escapeHtml(d.chapter) + '</span>' : '') +
       '<span>· ' + fmtDate(new Date(d.at)) + '</span></div>' +
       '<div class="career-q-actions"><button class="btn btn-ghost btn-xs" onclick="javaShowFollowExplain(\'' + d.id + '\')">看解析</button>' +
       '<button class="btn btn-ghost btn-xs" onclick="javaDeleteFollowUp(\'' + d.id + '\')">删除</button></div>' +
-      '<div id="javaFollowExp_' + d.id + '" style="display:none;" class="career-quiz-explain">' + escapeHtml(d.explanation || '（暂无解析）') + '</div>' +
+      '<div id="javaFollowExp_' + d.id + '" style="display:none;" class="career-quiz-explain">' + ansHtml +
+      (exp ? '<div style="margin-top:8px;"><b>点评：</b>' + exp + '</div>' : '') + '</div>' +
       '</div>';
   }).join('');
 }
