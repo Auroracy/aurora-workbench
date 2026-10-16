@@ -17196,7 +17196,7 @@ function init(){
     now.getFullYear() + '年' + (now.getMonth()+1) + '月' + now.getDate() + '日 周' + weekdays[now.getDay()];
   // Init cloud sync button
   updateCloudBtn();
-  // Init Tab1（重排序后默认打开 Java 面试）
+  // Init Tab12
   initJava();
   // Init recipe hero
   renderRecipeHero();
@@ -35830,6 +35830,7 @@ function javaAiWriteBatch(pids, opts){
   });
   if(!todo0.length) return Promise.resolve(0);
   var written = 0, err = null;
+  var writtenPids = {};
   var stopAt = Math.max(0, Number(opts.stopAt) || 0);
   function runPass(todo){
     if(!todo.length) return Promise.resolve();
@@ -35865,6 +35866,7 @@ function javaAiWriteBatch(pids, opts){
                   followExplanation: String(r.followExplanation || '').trim(),
                   at: Date.now()
                 };
+                writtenPids[r.pid] = 1;
                 got++;
               });
               written += got;
@@ -35875,7 +35877,7 @@ function javaAiWriteBatch(pids, opts){
     }
     return chain;
   }
-  function missingPids(){ return todo0.filter(function(pid){ return !javaAiQ()[pid]; }); }
+  function missingPids(){ return todo0.filter(function(pid){ return !writtenPids[pid] && (!javaAiQ()[pid] || opts.force); }); }
   var pass = 0;
   function loop(){
     if(stopAt && written >= stopAt) return Promise.resolve();
@@ -35898,6 +35900,7 @@ function javaAiWriteOralBatch(pids, opts){
   });
   if(!todo0.length) return Promise.resolve(0);
   var written = 0, err = null;
+  var writtenPids = {};
   var stopAt = Math.max(0, Number(opts.stopAt) || 0);
   function runPass(todo){
     if(!todo.length) return Promise.resolve();
@@ -35929,6 +35932,7 @@ function javaAiWriteOralBatch(pids, opts){
                   follow: String(r.follow || '').trim(),
                   at: Date.now()
                 };
+                writtenPids[r.pid] = 1;
                 got++;
               });
               written += got;
@@ -35939,7 +35943,7 @@ function javaAiWriteOralBatch(pids, opts){
     }
     return chain;
   }
-  function missingPids(){ return todo0.filter(function(pid){ return !javaOralQ()[pid]; }); }
+  function missingPids(){ return todo0.filter(function(pid){ return !writtenPids[pid] && (!javaOralQ()[pid] || opts.force); }); }
   var pass = 0;
   function loop(){
     if(stopAt && written >= stopAt) return Promise.resolve();
@@ -35955,25 +35959,19 @@ function javaAiWriteOralBatch(pids, opts){
 }
 
 /* 本地兜底出题已移除：全部题目都由 AI 模拟面试官联网现编，不再本地生成 */
-/* 已做题本规则：0 跳过 / 1 没做过 / 2 答错过（优先） */
-function javaKeepQ(q){
-  var d = javaDb().doneQ[q.id];
-  if(!d) return 1;
-  if(d.done) return 0;
-  return d.bad > 0 ? 2 : 0;
-}
 function javaBuildLearnedPaper(){
   var items = javaLearnedItems();
   if(!items.length) items = javaFlatPoints().slice();
   var aiQ = javaAiQ();
-  var aiList = [];
+  var doneQ = javaDb().doneQ;
+  // 按已背考点出题：已出过且已答过的题不再重复出现，未做过的才进考卷
+  var paper = [];
   items.forEach(function(it){
     var q = aiQ[it.p.id];
-    if(q) aiList.push({ q: q, k: javaKeepQ(q) });
+    if(q && !doneQ[q.id]) paper.push(q);
   });
-  // 错题(2)优先，其次未做过(1)，已掌握(0)兜底，保证满 JAVA_LEARNED_MAX 题
-  aiList.sort(function(a, b){ return b.k - a.k; });
-  var paper = aiList.slice(0, JAVA_LEARNED_MAX).map(function(x){ return x.q; });
+  javaShuffle(paper, Date.now() % 100000);
+  paper = paper.slice(0, JAVA_LEARNED_MAX);
   return { paper: paper, aiUsed: paper.length, genUsed: 0, total: paper.length };
 }
 function javaLearnedStartWith(r){
@@ -35997,20 +35995,41 @@ function startJavaLearnedQuiz(){
     return;
   }
   var aiQ = javaAiQ();
-  var have = items.filter(function(it){ return aiQ[it.p.id]; }).length;
-  var need = JAVA_LEARNED_MAX - have;
+  var doneQ = javaDb().doneQ;
+  // 分类：ready=有题且未做过（直接用）；fresh=从没出过题；stale=有题但已做过（需重出，避免重复）
+  var ready = [], fresh = [], stale = [];
+  items.forEach(function(it){
+    var q = aiQ[it.p.id];
+    if(q && !doneQ[q.id]) ready.push(it);
+    else if(!q) fresh.push(it);
+    else stale.push(it);
+  });
+  var need = JAVA_LEARNED_MAX - ready.length;
   if(need > 0){
-    var pending = items.filter(function(it){ return !aiQ[it.p.id]; }).map(function(it){ return it.p.id; });
+    var pending = [];
+    // 先补全新考点，再重出已做过的；每次点击都优先保证不重复
+    javaShuffle(fresh, Date.now() % 100000).slice(0, need).forEach(function(it){ pending.push(it.p.id); });
+    if(pending.length < need){
+      var stillNeed = need - pending.length;
+      // 越早答过的越优先重出（避免总重出刚做过的）
+      stale.sort(function(a, b){
+        var qa = aiQ[a.p.id], qb = aiQ[b.p.id];
+        var da = doneQ[qa.id] || {}, db = doneQ[qb.id] || {};
+        return (da.at || 0) - (db.at || 0);
+      });
+      stale.slice(0, stillNeed).forEach(function(it){ pending.push(it.p.id); });
+    }
     javaAiBusy = true;
-    toast('AI 面试官正在为还没出题的考点编真题（0/' + need + '）…');
+    toast('AI 面试官正在出题（0/' + pending.length + '）…');
     javaAiWriteBatch(pending, {
-      stopAt: need,
-      onProgress: function(n){ toast('AI 面试官正在为还没出题的考点编真题（' + Math.min(n, need) + '/' + need + '）…'); }
+      stopAt: pending.length,
+      force: true,
+      onProgress: function(n){ toast('AI 面试官正在出题（' + Math.min(n, pending.length) + '/' + pending.length + '）…'); }
     }).then(function(){
       javaAiBusy = false;
       var r = javaBuildLearnedPaper();
       if(r.paper.length < JAVA_LEARNED_MAX){
-        toast('AI 已为 ' + r.paper.length + ' 个考点出题，还差 ' + (JAVA_LEARNED_MAX - r.paper.length) + ' 个考点没生成（可再点一次补充）');
+        toast('AI 已出新题 ' + r.paper.length + ' 道，还差 ' + (JAVA_LEARNED_MAX - r.paper.length) + ' 道（可再点一次补充）');
       }
       javaLearnedStartWith(r);
     }).catch(function(e){
