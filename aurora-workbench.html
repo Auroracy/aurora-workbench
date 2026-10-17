@@ -2740,6 +2740,13 @@ button.career-option:disabled{cursor:default;opacity:1;}
 /* 口述题：未做完的一套「继续」提示条 */
 .java-oral-resume{margin:8px 0 0;padding:8px 10px;border-radius:8px;background:var(--accent-bg);border:1px solid #bfe6e1;color:var(--accent);font-size:13px;line-height:1.5;}
 #javaOralReviewBtn.is-open{background:var(--accent-bg);border-color:var(--accent);color:var(--accent);}
+/* 查看已出题：学习模式（镜像自测：题目 → 看参考答案 → 自评） */
+.java-oral-review-summary{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:13px;color:var(--text-1);background:var(--input-bg);border-radius:8px;padding:8px 10px;margin-bottom:12px;}
+.java-oral-review-ans{margin-top:10px;padding:10px 12px;background:var(--input-bg);border-radius:8px;border:1px solid var(--border);font-size:14px;color:var(--text-1);line-height:1.6;word-break:break-word;}
+.java-oral-review-ans b{color:var(--text-1);}
+.java-review-q{color:var(--text-1);font-size:14px;font-weight:500;margin-bottom:6px;padding:6px 8px;background:var(--accent-bg);border-radius:6px;word-break:break-word;}
+.java-badge.is-ok{color:var(--green);background:var(--green-bg);border:1px solid #bfe3c9;}
+.java-badge.is-weak{color:#b7791f;background:#fdf3e2;border:1px solid #f0d9b0;}
   .career-seg-item{font-size:12px;padding:7px 6px;}
 }
 </style>
@@ -36683,29 +36690,81 @@ function javaRenderOralReview(){
   if(box.style.display === 'none') return;
   var all = Object.keys(javaOralQ()).map(function(k){ return javaOralQ()[k]; });
   if(!all.length){ box.innerHTML = '<div class="empty-hint">还没有生成过口述题，点上面的「🎯 按已背考点面试」先生成一套吧</div>'; return; }
-  box.innerHTML = '<div class="section-desc" style="margin:0 0 10px;">以下为已保存的全部口述题（刷新不丢），可随时翻看、对照要点、收藏追问到收藏夹。</div>' +
-    all.map(function(q, i){
-      var pts = (q.answerPoints || []).map(function(p, j){ return '<li>' + (j + 1) + '. ' + escapeHtml(p) + '</li>'; }).join('');
-      var fb = '<div style="margin:4px 0 2px;font-weight:500;">参考答案要点：</div><ol class="java-oral-points">' + (pts || '<li>暂无要点</li>') + '</ol><b>解析：</b>' + escapeHtml(q.explanation || '（暂无解析）');
-      var followBlock = '';
-      if(q.follow){
-        var fpts = q.followAnswerPoints || [];
-        followBlock = '<div class="career-quiz-explain" style="margin-top:8px;"><b>🎤 面试官追问：</b>' + escapeHtml(q.follow);
-        if(fpts.length){
-          followBlock += '<div style="margin:6px 0 2px;font-weight:500;">追问参考答案：</div><ol class="java-follow-answer-points">' + fpts.map(function(p){ return '<li>' + escapeHtml(p) + '</li>'; }).join('') + '</ol>';
-          if(q.followExplanation) followBlock += '<div style="margin-top:4px;"><b>点评：</b>' + escapeHtml(q.followExplanation) + '</div>';
-        }
-        followBlock += '</div>';
-        var saved = javaIsFollowUpSaved(q.id);
-        followBlock += '<div class="java-follow-save"><button class="btn btn-ghost btn-xs' + (saved ? ' is-saved' : '') + '" id="javaRevFollow_' + i + '" onclick="javaSaveFollowUpById(\'' + q.id + '\', this)">' + (saved ? '✓ 已收藏' : '💾 收藏此追问') + '</button></div>';
+  var rev = javaDb().oralReview || {};
+  var viewed = 0, mastered = 0;
+  all.forEach(function(q){ var r = rev[q.id] || {}; if(r.viewed){ viewed++; if(r.ok) mastered++; } });
+  var weak = viewed - mastered;
+  var total = all.length;
+  var header = '<div class="section-desc" style="margin:0 0 10px;">已保存口述题共 ' + total + ' 道，建议按「题目 → 参考答案 → 自评」逐题过一遍。</div>' +
+    '<div class="java-oral-review-summary">已看解析 ' + viewed + '/' + total + ' · 已掌握 ' + mastered + '/' + total + ' · 还需练习 ' + weak + '/' + total +
+    (viewed ? ' <button class="btn btn-ghost btn-xs" onclick="javaReviewClear()">↺ 清空学习进度</button>' : '') + '</div>';
+  box.innerHTML = header + all.map(function(q, i){
+    var r = rev[q.id] || {};
+    var rid = q.id;
+    var badge = r.ok ? '<span class="java-badge is-ok">✅ 已掌握</span>' : (r.viewed ? '<span class="java-badge is-weak">🔄 还需练习</span>' : '');
+    var saved = javaIsFollowUpSaved(rid);
+    var pts = (q.answerPoints || []).map(function(p, j){ return '<li>' + (j + 1) + '. ' + escapeHtml(p) + '</li>'; }).join('');
+    var ansBlock = '<div id="javaReviewAns_' + rid + '" class="java-oral-review-ans" style="display:none;">' +
+      '<div style="margin:4px 0 2px;font-weight:500;">参考答案要点：</div><ol class="java-oral-points">' + (pts || '<li>暂无要点</li>') + '</ol>' +
+      '<b>解析：</b>' + escapeHtml(q.explanation || '（暂无解析）');
+    if(q.follow){
+      var fpts = q.followAnswerPoints || [];
+      ansBlock += '<div class="career-quiz-explain" style="margin-top:8px;"><b>🎤 面试官追问：</b>' + escapeHtml(q.follow);
+      if(fpts.length){
+        ansBlock += '<div style="margin:6px 0 2px;font-weight:500;">追问参考答案：</div><ol class="java-follow-answer-points">' + fpts.map(function(p){ return '<li>' + escapeHtml(p) + '</li>'; }).join('') + '</ol>';
+        if(q.followExplanation) ansBlock += '<div style="margin-top:4px;"><b>点评：</b>' + escapeHtml(q.followExplanation) + '</div>';
       }
-      return '<div class="career-follow-item">' +
-        '<div class="career-follow-f">' + (i + 1) + '. ' + escapeHtml(q.question) + '</div>' +
-        '<div class="career-q-meta"><span>' + escapeHtml(q.book || 'Java 面试') + '</span>' +
-        (q.chapter ? '<span>· ' + escapeHtml(q.chapter) + '</span>' : '') +
-        (q._oral ? '<span class="java-badge">口述题</span>' : '') + '</div>' +
-        '<div class="career-quiz-explain">' + fb + '</div>' + followBlock + '</div>';
-    }).join('');
+      ansBlock += '</div>';
+    }
+    ansBlock += '<div class="java-oral-self">' +
+      '<button class="btn btn-primary btn-sm" onclick="javaReviewRate(\'' + rid + '\', true)">✅ 我答对了 / 已掌握</button>' +
+      '<button class="btn btn-ghost btn-sm" onclick="javaReviewRate(\'' + rid + '\', false)">❌ 还要再练</button>' +
+      '</div></div>';
+    return '<div class="career-follow-item" id="javaReviewItem_' + rid + '">' +
+      '<div class="java-review-q">' + (i + 1) + '. ' + escapeHtml(q.question) + ' ' + badge + '</div>' +
+      '<div class="career-q-meta"><span>' + escapeHtml(q.book || 'Java 面试') + '</span>' +
+      (q.chapter ? '<span>· ' + escapeHtml(q.chapter) + '</span>' : '') +
+      (q._oral ? '<span class="java-badge">口述题</span>' : '') + '</div>' +
+      '<div class="java-oral-self">' +
+      '<button class="btn btn-primary btn-sm" onclick="javaReviewShowAnswer(\'' + rid + '\')">👁 看参考答案</button>' +
+      '<button class="btn btn-ghost btn-xs' + (saved ? ' is-saved' : '') + '" onclick="javaSaveFollowUpById(\'' + rid + '\', this)">' + (saved ? '✓ 已收藏' : '💾 收藏此追问') + '</button>' +
+      '</div>' + ansBlock + '</div>';
+  }).join('');
+  /* 之前已看/已评的题，默认展开答案 */
+  all.forEach(function(q){ if((rev[q.id]||{}).viewed){ var el = document.getElementById('javaReviewAns_' + q.id); if(el) el.style.display = ''; } });
+}
+/* 学习模式：展开/收起某道题的参考答案 */
+function javaReviewShowAnswer(qid){
+  var el = document.getElementById('javaReviewAns_' + qid);
+  if(!el) return;
+  var hidden = (el.style.display === 'none' || !el.style.display);
+  if(hidden){
+    el.style.display = '';
+    var db = javaDb();
+    if(!db.oralReview) db.oralReview = {};
+    if(!db.oralReview[qid]) db.oralReview[qid] = { viewed: true, ok: false, at: Date.now() };
+    else db.oralReview[qid].viewed = true;
+    saveDb();
+    javaRenderOralReview();
+  } else {
+    el.style.display = 'none';
+  }
+}
+/* 学习模式：自评某道题（会了 / 还要练），持久化进度 */
+function javaReviewRate(qid, ok){
+  var db = javaDb();
+  if(!db.oralReview) db.oralReview = {};
+  db.oralReview[qid] = { viewed: true, ok: ok, at: Date.now() };
+  saveDb();
+  javaRenderOralReview();
+  toast(ok ? '标记为已掌握' : '标记为还需练习');
+}
+/* 清空口述题学习进度 */
+function javaReviewClear(){
+  javaDb().oralReview = {};
+  saveDb();
+  javaRenderOralReview();
+  toast('已清空口述题学习进度');
 }
 /* 从「已出题」列表里直接收藏某道口述题的追问 */
 function javaSaveFollowUpById(qid, btn){
