@@ -2741,6 +2741,9 @@ button.career-option:disabled{cursor:default;opacity:1;}
 .java-oral-resume{margin:8px 0 0;padding:8px 10px;border-radius:8px;background:var(--accent-bg);border:1px solid #bfe6e1;color:var(--accent);font-size:13px;line-height:1.5;}
 #javaOralReviewBtn.is-open{background:var(--accent-bg);border-color:var(--accent);color:var(--accent);}
 /* 查看已出题：学习模式（镜像自测：题目 → 看参考答案 → 自评） */
+.java-oral-review-nav{display:flex;justify-content:space-between;align-items:center;margin:0 0 12px;padding:8px 10px;background:var(--input-bg);border-radius:8px;}
+.java-oral-review-nav span:first-child,.java-oral-review-nav span:last-child{flex:1;}
+.java-oral-review-pos{font-size:13px;font-weight:600;color:var(--text-1);text-align:center;}
 .java-oral-review-summary{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:13px;color:var(--text-1);background:var(--input-bg);border-radius:8px;padding:8px 10px;margin-bottom:12px;}
 .java-oral-review-ans{margin-top:10px;padding:10px 12px;background:var(--input-bg);border-radius:8px;border:1px solid var(--border);font-size:14px;color:var(--text-1);line-height:1.6;word-break:break-word;}
 .java-oral-review-ans b{color:var(--text-1);}
@@ -35435,6 +35438,7 @@ var JAVA_AI_BATCH = 5;          /* AI 一次编写几个考点 */
 var JAVA_DONE_SHOW = 5;         /* 已做题本折叠时显示条数 */
 var javaAiBusy = false;
 var javaQuizState = null;
+var javaOralReviewIdx = 0;       /* 查看已出题：当前学习题号 */
 var javaModule = 'plan';
 var javaBookFilter = '';        /* 背诵模块：按书筛选 */
 var javaDoneSeg = 'all';        /* 已做题本：all / bad / ok */
@@ -36676,6 +36680,7 @@ function javaReviewOral(){
   var box = document.getElementById('javaOralReview');
   if(!box) return;
   if(box.style.display === 'none' || !box.style.display){
+    javaOralReviewIdx = 0;
     box.style.display = '';
     javaRenderOralReview();
     var b = document.getElementById('javaOralReviewBtn'); if(b) b.classList.add('is-open');
@@ -36695,45 +36700,52 @@ function javaRenderOralReview(){
   all.forEach(function(q){ var r = rev[q.id] || {}; if(r.viewed){ viewed++; if(r.ok) mastered++; } });
   var weak = viewed - mastered;
   var total = all.length;
-  var header = '<div class="section-desc" style="margin:0 0 10px;">已保存口述题共 ' + total + ' 道，建议按「题目 → 参考答案 → 自评」逐题过一遍。</div>' +
-    '<div class="java-oral-review-summary">已看解析 ' + viewed + '/' + total + ' · 已掌握 ' + mastered + '/' + total + ' · 还需练习 ' + weak + '/' + total +
-    (viewed ? ' <button class="btn btn-ghost btn-xs" onclick="javaReviewClear()">↺ 清空学习进度</button>' : '') + '</div>';
-  box.innerHTML = header + all.map(function(q, i){
-    var r = rev[q.id] || {};
-    var rid = q.id;
-    var badge = r.ok ? '<span class="java-badge is-ok">✅ 已掌握</span>' : (r.viewed ? '<span class="java-badge is-weak">🔄 还需练习</span>' : '');
-    var saved = javaIsFollowUpSaved(rid);
-    var pts = (q.answerPoints || []).map(function(p, j){ return '<li>' + (j + 1) + '. ' + escapeHtml(p) + '</li>'; }).join('');
-    var ansBlock = '<div id="javaReviewAns_' + rid + '" class="java-oral-review-ans" style="display:none;">' +
+  var idx = Math.max(0, Math.min(javaOralReviewIdx || 0, total - 1));
+  javaOralReviewIdx = idx;
+  var q = all[idx];
+  var r = rev[q.id] || {};
+  var rid = q.id;
+  var badge = r.ok ? '<span class="java-badge is-ok">✅ 已掌握</span>' : (r.viewed ? '<span class="java-badge is-weak">🔄 还需练习</span>' : '');
+  var saved = javaIsFollowUpSaved(rid);
+  var pts = (q.answerPoints || []).map(function(p, j){ return '<li>' + (j + 1) + '. ' + escapeHtml(p) + '</li>'; }).join('');
+  var ansBlock = '<div id="javaReviewAns_' + rid + '" class="java-oral-review-ans" style="display:none;">' +
       '<div style="margin:4px 0 2px;font-weight:500;">参考答案要点：</div><ol class="java-oral-points">' + (pts || '<li>暂无要点</li>') + '</ol>' +
       '<b>解析：</b>' + escapeHtml(q.explanation || '（暂无解析）');
-    if(q.follow){
-      var fpts = q.followAnswerPoints || [];
-      ansBlock += '<div class="career-quiz-explain" style="margin-top:8px;"><b>🎤 面试官追问：</b>' + escapeHtml(q.follow);
-      if(fpts.length){
-        ansBlock += '<div style="margin:6px 0 2px;font-weight:500;">追问参考答案：</div><ol class="java-follow-answer-points">' + fpts.map(function(p){ return '<li>' + escapeHtml(p) + '</li>'; }).join('') + '</ol>';
-        if(q.followExplanation) ansBlock += '<div style="margin-top:4px;"><b>点评：</b>' + escapeHtml(q.followExplanation) + '</div>';
-      }
-      ansBlock += '</div>';
+  if(q.follow){
+    var fpts = q.followAnswerPoints || [];
+    ansBlock += '<div class="career-quiz-explain" style="margin-top:8px;"><b>🎤 面试官追问：</b>' + escapeHtml(q.follow);
+    if(fpts.length){
+      ansBlock += '<div style="margin:6px 0 2px;font-weight:500;">追问参考答案：</div><ol class="java-follow-answer-points">' + fpts.map(function(p){ return '<li>' + escapeHtml(p) + '</li>'; }).join('') + '</ol>';
+      if(q.followExplanation) ansBlock += '<div style="margin-top:4px;"><b>点评：</b>' + escapeHtml(q.followExplanation) + '</div>';
     }
-    ansBlock += '<div class="java-oral-self">' +
+    ansBlock += '</div>';
+  }
+  ansBlock += '<div class="java-oral-self">' +
       '<button class="btn btn-primary btn-sm" onclick="javaReviewRate(\'' + rid + '\', true)">✅ 我答对了 / 已掌握</button>' +
       '<button class="btn btn-ghost btn-sm" onclick="javaReviewRate(\'' + rid + '\', false)">❌ 还要再练</button>' +
       '</div></div>';
-    return '<div class="career-follow-item" id="javaReviewItem_' + rid + '">' +
-      '<div class="java-review-q">' + (i + 1) + '. ' + escapeHtml(q.question) + ' ' + badge + '</div>' +
+  var showBtn = r.viewed ? '' : '<button class="btn btn-primary btn-sm" onclick="javaReviewShowAnswer(\'' + rid + '\')">👁 看参考答案</button>';
+  var nav = '<div class="java-oral-review-nav">' +
+      (idx > 0 ? '<button class="btn btn-ghost btn-sm" onclick="javaReviewPrev()">⬅ 上一题</button>' : '<span></span>') +
+      '<span class="java-oral-review-pos">' + (idx + 1) + ' / ' + total + '</span>' +
+      (idx < total - 1 ? '<button class="btn btn-ghost btn-sm" onclick="javaReviewNext()">下一题 ➡</button>' : '<span></span>') +
+      '</div>';
+  var header = '<div class="section-desc" style="margin:0 0 10px;">已保存口述题共 ' + total + ' 道，建议按「题目 → 参考答案 → 自评」逐题过一遍。</div>' +
+    '<div class="java-oral-review-summary">已看解析 ' + viewed + '/' + total + ' · 已掌握 ' + mastered + '/' + total + ' · 还需练习 ' + weak + '/' + total +
+    (viewed ? ' <button class="btn btn-ghost btn-xs" onclick="javaReviewClear()">↺ 清空学习进度</button>' : '') + '</div>';
+  box.innerHTML = header + nav +
+    '<div class="career-follow-item" id="javaReviewItem_' + rid + '">' +
+      '<div class="java-review-q">' + (idx + 1) + '. ' + escapeHtml(q.question) + ' ' + badge + '</div>' +
       '<div class="career-q-meta"><span>' + escapeHtml(q.book || 'Java 面试') + '</span>' +
       (q.chapter ? '<span>· ' + escapeHtml(q.chapter) + '</span>' : '') +
       (q._oral ? '<span class="java-badge">口述题</span>' : '') + '</div>' +
-      '<div class="java-oral-self">' +
-      '<button class="btn btn-primary btn-sm" onclick="javaReviewShowAnswer(\'' + rid + '\')">👁 看参考答案</button>' +
+      '<div class="java-oral-self">' + showBtn +
       '<button class="btn btn-ghost btn-xs' + (saved ? ' is-saved' : '') + '" onclick="javaSaveFollowUpById(\'' + rid + '\', this)">' + (saved ? '✓ 已收藏' : '💾 收藏此追问') + '</button>' +
       '</div>' + ansBlock + '</div>';
-  }).join('');
   /* 之前已看/已评的题，默认展开答案 */
-  all.forEach(function(q){ if((rev[q.id]||{}).viewed){ var el = document.getElementById('javaReviewAns_' + q.id); if(el) el.style.display = ''; } });
+  if(r.viewed){ var el = document.getElementById('javaReviewAns_' + rid); if(el) el.style.display = ''; }
 }
-/* 学习模式：展开/收起某道题的参考答案 */
+/* 学习模式：展开/收起当前题目的参考答案 */
 function javaReviewShowAnswer(qid){
   var el = document.getElementById('javaReviewAns_' + qid);
   if(!el) return;
@@ -36750,18 +36762,30 @@ function javaReviewShowAnswer(qid){
     el.style.display = 'none';
   }
 }
-/* 学习模式：自评某道题（会了 / 还要练），持久化进度 */
+/* 学习模式：自评当前题目（会了 / 还要练），自动进入下一题 */
 function javaReviewRate(qid, ok){
   var db = javaDb();
   if(!db.oralReview) db.oralReview = {};
   db.oralReview[qid] = { viewed: true, ok: ok, at: Date.now() };
   saveDb();
-  javaRenderOralReview();
-  toast(ok ? '标记为已掌握' : '标记为还需练习');
+  var all = Object.keys(javaOralQ()).map(function(k){ return javaOralQ()[k]; });
+  var total = all.length;
+  if(javaOralReviewIdx < total - 1){
+    javaOralReviewIdx++;
+    javaRenderOralReview();
+    toast(ok ? '已掌握，进入下一题' : '还需练习，进入下一题');
+  } else {
+    javaRenderOralReview();
+    toast('最后一题：' + (ok ? '已掌握' : '还需练习'));
+  }
 }
+/* 翻题：上一题 / 下一题 */
+function javaReviewPrev(){ if((javaOralReviewIdx || 0) > 0){ javaOralReviewIdx--; javaRenderOralReview(); } }
+function javaReviewNext(){ var total = Object.keys(javaOralQ()).length; if((javaOralReviewIdx || 0) < total - 1){ javaOralReviewIdx++; javaRenderOralReview(); } }
 /* 清空口述题学习进度 */
 function javaReviewClear(){
   javaDb().oralReview = {};
+  javaOralReviewIdx = 0;
   saveDb();
   javaRenderOralReview();
   toast('已清空口述题学习进度');
