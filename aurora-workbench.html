@@ -2738,7 +2738,8 @@ button.career-option:disabled{cursor:default;opacity:1;}
 .career-follow-f{color:var(--text-1);font-size:14px;margin-bottom:6px;padding:6px 8px;background:var(--accent-bg);border-radius:6px;word-break:break-word;}
 .career-follow-f::before{content:'💬 ';}
 /* 口述题：未做完的一套「继续」提示条 */
-.java-oral-resume{margin:8px 0 0;padding:8px 10px;border-radius:8px;background:var(--accent-bg);border:1px solid #bfe6e1;color:var(--accent);font-size:13px;line-height:1.5;}
+.java-oral-resume{margin:8px 0 0;padding:8px 10px;border-radius:8px;background:var(--accent-bg);border:1px solid #bfe6e1;color:var(--accent);font-size:13px;line-height:1.5;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+.java-oral-discard{white-space:nowrap;flex:0 0 auto;}
 #javaOralReviewBtn.is-open{background:var(--accent-bg);border-color:var(--accent);color:var(--accent);}
 /* 查看已出题：学习模式（镜像自测：题目 → 看参考答案 → 自评） */
 .java-oral-review-nav{display:flex;justify-content:space-between;align-items:center;margin:0 0 12px;padding:8px 10px;background:var(--input-bg);border-radius:8px;}
@@ -36255,34 +36256,63 @@ function javaOralStartWith(paper){
 }
 function startJavaOralQuiz(mode){
   if(!javaHasQwenKey()){ toast('需要先配置通义千问 Key，AI 才能出口述题'); return; }
-  /* 锁：当前还有一套口述题没答完，必须先答完或「关闭」才能出新的 */
+  /* 锁：当前还有一套口述题没答完，必须先答完或「放弃这套」才能出新的 */
   var sess = javaOralSession();
   if(sess && sess.pids && sess.answered < sess.pids.length){
-    toast('请先把当前这套口述题答完（已答 ' + sess.answered + '/' + sess.pids.length + ' 题），或点「关闭」结束后再出新的');
+    toast('请先把当前这套口述题答完（已答 ' + sess.answered + '/' + sess.pids.length + ' 题），或点「放弃这套 · 重新出题」后再出新的');
     return;
   }
   mode = mode || 'random';
-  var items = mode === 'learned' ? javaLearnedItems() : javaFlatPoints().slice();
-  if(mode === 'learned' && !items.length){ toast('还没有勾「已背」的考点，先在「背诵」里标记几个吧'); return; }
   var oralQ = javaOralQ();
-  var need = JAVA_RANDOM_MAX - items.filter(function(it){ return oralQ[it.p.id]; }).length;
-  if(need > 0){
-    var pending = items.filter(function(it){ return !oralQ[it.p.id]; }).map(function(it){ return it.p.id; });
+  var pool = mode === 'learned' ? javaLearnedItems() : javaFlatPoints().slice();
+  if(mode === 'learned' && !pool.length){ toast('还没有勾「已背」的考点，先在「背诵」里标记几个吧'); return; }
+  /* 每次出题都现编「一套新题」：优先挑还没出过口述题的考点，旧题一律保留不覆盖 */
+  var fresh = javaShuffle(pool.filter(function(it){ return !oralQ[it.p.id]; }), Date.now() % 100000)
+                .slice(0, JAVA_RANDOM_MAX).map(function(it){ return it.p.id; });
+  var pids = fresh.slice();
+  if(pids.length < JAVA_RANDOM_MAX){
+    /* 新考点不足 10 个（全部考点都出过题了）→ 从存量题里按最早生成补足 */
+    var used = {}; pids.forEach(function(p){ used[p] = 1; });
+    var rest = Object.keys(oralQ).filter(function(p){ return !used[p] && oralQ[p]; });
+    rest.sort(function(a, b){ return (oralQ[a].at || 0) - (oralQ[b].at || 0); });
+    while(pids.length < JAVA_RANDOM_MAX && rest.length) pids.push(rest.shift());
+  }
+  if(!pids.length){ toast('暂时组不出口述题，AI 正在编题或考点为空'); return; }
+  /* 组卷严格用本次选定的 pids，保证新编的题一定进这一套、旧题不会被洗进来顶替 */
+  var startPaper = function(){
+    var paper = pids.map(function(p){ return javaOralQ()[p]; }).filter(Boolean);
+    if(paper.length < JAVA_RANDOM_MAX){
+      var seen = {}; paper.forEach(function(q){ seen[q.id] = 1; });
+      Object.keys(oralQ).forEach(function(p){
+        var q = oralQ[p];
+        if(paper.length < JAVA_RANDOM_MAX && q && !seen[q.id]){ paper.push(q); seen[q.id] = 1; }
+      });
+    }
+    javaOralStartWith(paper);
+  };
+  var todo = fresh.filter(function(p){ return !oralQ[p]; });
+  if(todo.length){
     javaAiBusy = true;
-    toast('AI 面试官正在编口述题（0/' + Math.min(need, pending.length) + '）…');
-    javaAiWriteOralBatch(pending, {
-      stopAt: need,
-      onProgress: function(n){ toast('AI 面试官正在编口述题（' + Math.min(n, need) + '/' + need + '）…'); }
+    toast('AI 面试官正在编新的口述题（0/' + todo.length + '）…');
+    javaAiWriteOralBatch(todo, {
+      stopAt: todo.length,
+      onProgress: function(n){ toast('AI 面试官正在编新的口述题（' + Math.min(n, todo.length) + '/' + todo.length + '）…'); }
     }).then(function(){
       javaAiBusy = false;
-      javaOralStartWith(javaBuildOralPaper(mode));
+      startPaper();
     }).catch(function(e){
       javaAiBusy = false;
       toast('AI 出题失败：' + (e && e.message ? e.message : '网络或密钥异常'));
     });
     return;
   }
-  javaOralStartWith(javaBuildOralPaper(mode));
+  startPaper();
+}
+/* 主动放弃当前这套口述题 → 解锁，可立即重新出题 */
+function javaDiscardOralSession(){
+  javaSetOralSession(null);
+  closeJavaQuiz();
+  toast('已结束当前这套，可以重新出题了');
 }
 function javaRedoQuiz(){
   var list = javaDoneFiltered();
@@ -36659,7 +36689,7 @@ function renderJavaOralHome(){
   el.textContent = '已背 ' + learned + ' / ' + javaTotalPoints() + ' 考点 · 口述题 ' + oral + ' 道 · 收藏追问 ' + fu + ' 条';
   var tip = document.getElementById('javaOralTip');
   if(tip) tip.textContent = javaHasQwenKey()
-    ? '口述题没有 A/B/C/D：看完题先自己说出来，再点「看参考答案」对照要点自评。面试官追问可一键收藏。已生成的题会一直保留，刷新也不丢；答完一套才能出新的。'
+    ? '口述题没有 A/B/C/D：看完题先自己说出来，再点「看参考答案」对照要点自评。面试官追问可一键收藏。每次出题都会现编一套新题，旧题全部保留、刷新不丢；答完一套（或点「放弃这套」）才能再出新的。'
     : '提示：配置通义千问 Key 后才能进行口述面试。';
   /* 未做完的一套 → 提示「继续」 */
   var sess = javaOralSession();
@@ -36667,7 +36697,8 @@ function renderJavaOralHome(){
   if(resume){
     if(sess && sess.pids && sess.answered < sess.pids.length){
       resume.style.display = '';
-      resume.textContent = '📌 有一套未做完的口述题（已答 ' + sess.answered + '/' + sess.pids.length + '），切到本标签即可从断点继续';
+      resume.innerHTML = '📌 有一套未做完的口述题（已答 ' + sess.answered + '/' + sess.pids.length + '），切到本标签即可从断点继续' +
+        '<button class="btn btn-ghost btn-xs java-oral-discard" onclick="javaDiscardOralSession()">放弃这套 · 重新出题</button>';
     } else { resume.style.display = 'none'; }
   }
   /* 已出题查看按钮文案 */
