@@ -6982,6 +6982,36 @@ var AI_ENGINES = {
   gemini:   { label:'Gemini Vision', tag:'需访问 Google', url:null, keyStore:'aurora_gemini_key' }
 };
 var ENGINE_ORDER = ['qwen','zhipu','deepseek','doubao','gemini'];
+/* AI 请求统一封装（2026-11-06）：智谱 open.bigmodel.cn 的 OPTIONS 预检不返回
+   Access-Control-Allow-* 头，浏览器带 Authorization 的跨域 POST 会被直接拦成
+   TypeError: Failed to fetch —— 这不是 Key 失效、也不是免费额度取消。
+   策略：先按原样直连（百炼 dashscope 支持 CORS，行为完全不变）；只有遇到
+   网络/CORS 层失败，才自动回落到同源 server.js 的 /api/ai/chat 转发。
+   静态托管（GitHub Pages）无该路由时，凭 X-Aurora-Ai-Proxy 头识别并保留原错误。 */
+function aiChatFetch(url, opts){
+  return fetch(url, opts).catch(function(err){
+    var m = String(err && (err.message || err) || '');
+    if(!/Failed to fetch|NetworkError|Load failed|Network request failed/i.test(m)) throw err;
+    var payload;
+    try { payload = JSON.parse(opts.body); } catch(e){ throw err; }
+    var h = opts.headers || {};
+    var auth = h.Authorization || h.authorization || '';
+    return fetch('/api/ai/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url:url, key:String(auth).replace(/^Bearer\s+/i, ''), payload:payload })
+    }).then(function(r){
+      var viaProxy = false;
+      try { viaProxy = !!(r && r.headers && r.headers.get && r.headers.get('X-Aurora-Ai-Proxy') === '1'); } catch(e){}
+      if(!viaProxy) throw err;   /* 静态托管没有代理路由，保留原始 CORS 错误 */
+      return r;
+    }).catch(function(e){
+      if(e === err) throw err;
+      console.warn('[AI 代理] 回落请求失败：', e && (e.message || e));
+      throw err;
+    });
+  });
+}
 function getEngineKey(eng){
   var ks = (AI_ENGINES[eng] || {}).keyStore;
   return ks ? (localStorage.getItem(ks) || '') : '';
@@ -7130,7 +7160,7 @@ async function testOpenAIKey(eng){
   if(hint){ hint.classList.remove('show'); }
   try {
     var resp = await Promise.race([
-      fetch(cfg.url, {
+      aiChatFetch(cfg.url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
         body: JSON.stringify({ model: cfg.textModel, messages: [{ role: 'user', content: 'hi' }], max_tokens: 5 })
@@ -7532,7 +7562,7 @@ function analyzeMealPhotoOpenAI(base64, key, cb, apiUrl, model){
     temperature: 0.1
   });
   Promise.race([
-    fetch(url, {
+    aiChatFetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
       body: body
@@ -7579,7 +7609,7 @@ function analyzeMealPhoto(base64, eng, cb){
 function callTextOpenAI(userPrompt, sysPrompt, key, apiUrl, model){
   if(!key) return Promise.reject(new Error('未配置密钥'));
   return Promise.race([
-    fetch(apiUrl, {
+    aiChatFetch(apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
       body: JSON.stringify({
@@ -13695,7 +13725,7 @@ function analyzeFundScreenshot(base64, cb){
     var body = JSON.stringify(bodyObj);
 
     Promise.race([
-      fetch(q.url, { method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer ' + q.key }, body:body }),
+      aiChatFetch(q.url, { method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer ' + q.key }, body:body }),
       new Promise(function(_, r){ setTimeout(function(){ r(new Error('超时')); }, 25000); })
     ]).then(function(res){
       return res.text().then(function(text){
@@ -34962,7 +34992,7 @@ function callQwenChat(sysPrompt, userPrompt, model, extra){
       timer = setTimeout(function(){ rej(new Error('请求超时（90s）')); }, 90000);
     });
     return Promise.race([
-      fetch(url, { method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer ' + key }, body:JSON.stringify(b) }),
+      aiChatFetch(url, { method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer ' + key }, body:JSON.stringify(b) }),
       timeout
     ]).then(function(resp){
       if(timer) clearTimeout(timer);

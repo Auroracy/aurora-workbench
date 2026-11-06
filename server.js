@@ -13,6 +13,7 @@
  *        /api/fundgz         天天基金实时估值
  *        /api/ifzq           腾讯月线（定投30月均线 / 黄金ETF）
  *        /api/qt             腾讯行情（指数/自选，直连也行，留作兜底）
+ *        /api/ai/chat        AI 大模型同源代理（智谱/百炼/DeepSeek/豆包，绕开 CORS 预检）
  *   3) 提供 /api/db 全量数据读写（Redis 优先，未配则降级 JSON 文件）
  *        GET  /api/db     拉取全量数据（无需 token，建议仅内网/本机使用）
  *        POST /api/db     保存全量数据（无需 token，Content-Type: application/json）
@@ -62,6 +63,16 @@ const CORS = {
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
 };
+
+/* AI 上游白名单：只放行这 4 个 OpenAI 兼容端点，防止 /api/ai/chat 被当开放代理。
+   智谱 open.bigmodel.cn 的 OPTIONS 预检不返回任何 CORS 头，浏览器直连必然
+   TypeError: Failed to fetch；走同源代理后由服务端发请求，绕开同源策略。 */
+const AI_UPSTREAM_URLS = [
+  'https://open.bigmodel.cn/api/paas/v4/chat/completions',
+  'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
+  'https://api.deepseek.com/v1/chat/completions',
+  'https://ark.cn-beijing.volces.com/api/v3/chat/completions'
+];
 
 // ---------- 数据持久化层（Redis 优先，未配则降级 JSON 文件） ----------
 let redisClient = null;
@@ -228,6 +239,70 @@ function proxyRaw(target, referer, res) {
     const ct = (headers && headers['content-type']) || 'application/json; charset=utf-8';
     res.writeHead(200, Object.assign({}, CORS, { 'Content-Type': ct, 'Cache-Control': 'public, max-age=20' }));
     res.end(buf);
+  });
+}
+
+/* POST /api/ai/chat  ——  AI 大模型同源代理
+   请求体 { url, key, payload }；url 必须在 AI_UPSTREAM_URLS 白名单内。
+   原样透传上游状态码 / 响应体，前端的 401 / 402 / 429 判断才不会失真。
+   X-Aurora-Ai-Proxy 头用于让前端区分「404 来自本代理」与「静态托管无此路由」。 */
+function handleAiChat(req, res) {
+  const aiErr = function (st, obj) {
+    return sendJSON(res, st, obj, { 'X-Aurora-Ai-Proxy': '1' });
+  };
+  let chunks = [];
+  let tooBig = false;
+  req.on('data', function (c) {
+    chunks.push(c);
+    const size = chunks.reduce(function (s, b) { return s + b.length; }, 0);
+    if (size > 8 * 1024 * 1024) { tooBig = true; req.destroy(); }
+  });
+  req.on('end', function () {
+    if (tooBig) return aiErr(413, { error: 'payload too large' });
+    let p;
+    try { p = JSON.parse(Buffer.concat(chunks).toString('utf-8')); }
+    catch (e) { return aiErr(400, { error: 'invalid JSON' }); }
+    if (AI_UPSTREAM_URLS.indexOf(p.url) < 0) {
+      return aiErr(400, { error: 'upstream not allowed' });
+    }
+    const payload = JSON.stringify(p.payload || {});
+    const u = new URL(p.url);
+    const opts = {
+      method: 'POST',
+      hostname: u.hostname,
+      port: 443,
+      path: u.pathname + u.search,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + String(p.key || ''),
+        'Content-Length': Buffer.byteLength(payload)
+      }
+    };
+    let settled = false;
+    const up = https.request(opts, function (r) {
+      const bufs = [];
+      r.on('data', function (c) { bufs.push(c); });
+      r.on('end', function () {
+        if (settled) return;
+        settled = true;
+        const ct = (r.headers && r.headers['content-type']) || 'application/json; charset=utf-8';
+        res.writeHead(r.statusCode || 502, Object.assign({}, CORS, {
+          'Content-Type': ct,
+          'Cache-Control': 'no-store',
+          'X-Aurora-Ai-Proxy': '1'
+        }));
+        res.end(Buffer.concat(bufs));
+      });
+    });
+    up.on('error', function (e) {
+      if (settled) return;
+      settled = true;
+      console.warn('[ai/chat] upstream error:', e && e.message);
+      aiErr(502, { error: 'AI upstream: ' + String(e && e.message || e) });
+    });
+    up.setTimeout(95000, function () { up.destroy(new Error('upstream timeout')); });
+    up.write(payload);
+    up.end();
   });
 }
 
@@ -977,7 +1052,7 @@ const server = http.createServer(function (req, res) {
   if (req.method === 'OPTIONS') { res.writeHead(204, CORS); return res.end(); }
 
   if (pathname === '/health') {
-    return sendJSON(res, 200, { ok: true, ts: Date.now(), routes: ['/api/sge', '/api/sina', '/api/eastmoney/ann', '/api/eastmoney/proxy', '/api/fundgz', '/api/fundgz-batch', '/api/fund-gsz', '/api/fund-history', '/api/ifzq', '/api/qt', '/api/cctv/xwlb', '/api/cctv/xwlb-parse', '/api/db', '/api/wordbanks', '/api/wordbank', '/api/worddef'], store: redisMode ? 'redis' : 'json-file' });
+    return sendJSON(res, 200, { ok: true, ts: Date.now(), routes: ['/api/sge', '/api/sina', '/api/eastmoney/ann', '/api/eastmoney/proxy', '/api/fundgz', '/api/fundgz-batch', '/api/fund-gsz', '/api/fund-history', '/api/ifzq', '/api/qt', '/api/cctv/xwlb', '/api/cctv/xwlb-parse', '/api/db', '/api/ai/chat', '/api/wordbanks', '/api/wordbank', '/api/worddef'], store: redisMode ? 'redis' : 'json-file' });
   }
 
   // 全量数据读写（Redis 优先 / JSON 文件兜底，无需 token）
@@ -1006,6 +1081,10 @@ const server = http.createServer(function (req, res) {
   }
 
   if (pathname.startsWith('/api/')) {
+    if (pathname === '/api/ai/chat') {
+      if (req.method !== 'POST') return sendJSON(res, 405, { error: 'method not allowed' });
+      return handleAiChat(req, res);
+    }
     if (pathname === '/api/sge') return handleSge(res);
     if (pathname === '/api/sina') return handleSina(res, qs);
     if (pathname === '/api/eastmoney/ann') return handleEastmoneyAnn(res, qs);
