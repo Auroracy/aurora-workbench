@@ -4507,18 +4507,19 @@ button.career-option:disabled{cursor:default;opacity:1;}
         <div class="card-title">🎙 模拟面试 · 口述问答</div>
         <div class="sub" id="javaOralHint"></div>
       </div>
-      <div class="section-desc" style="margin:-2px 0 10px;">像真实面试一样没有 A/B/C/D：AI 面试官口头提问，你口述回答后看参考要点自评；每题附「面试官追问」，可一键收藏到追问收藏夹复习。</div>
+      <div class="section-desc" style="margin:-2px 0 10px;">像真实面试一样没有 A/B/C/D：题目按 220 个考点本地即时生成，点一下立刻开考、不联网不等待；每题附参考要点与「面试官追问」，可一键收藏复习。</div>
       <div class="career-actions">
         <button class="btn btn-primary btn-sm" onclick="startJavaOralQuiz('learned')">🎯 按已背考点面试（10 题）</button>
         <button class="btn btn-ghost btn-sm" onclick="startJavaOralQuiz('random')">🎲 随机口述面试（10 题）</button>
         <button class="btn btn-ghost btn-sm" id="javaOralReviewBtn" onclick="javaReviewOral()">📖 查看已出题</button>
+        <button class="btn btn-ghost btn-sm" onclick="javaAiExpandOralBank()">✨ AI 扩充题库（可选）</button>
       </div>
       <div id="javaOralTip" class="sub" style="margin:6px 0 0;"></div>
       <div id="javaOralResume" class="java-oral-resume" style="display:none;"></div>
     </div>
 
     <div class="card career-quiz-empty" id="javaOralQuizEmpty">
-      <div class="empty-hint">🎙 选一种方式开始：优先「按已背考点面试」——AI 面试官只围绕你已经背过的考点口述提问。</div>
+      <div class="empty-hint">🎙 选一种方式开始：优先「按已背考点面试」——只围绕你已经背过的考点提问，零网络请求、立刻开考。</div>
     </div>
 
     <div class="card" id="javaOralQuizPanel" style="display:none;">
@@ -36424,7 +36425,7 @@ function javaBuildOralPaper(mode){
   return out;
 }
 function javaOralStartWith(paper){
-  if(!paper || !paper.length){ toast('暂时组不出口述题，AI 正在编题或考点为空'); return; }
+  if(!paper || !paper.length){ toast('暂时组不出口述题，请检查考点资料'); return; }
   javaQuizState = {
     paper: paper, idx: 0, mode: 'oral',
     label: '🎙 模拟面试（口述题 ' + paper.length + ' 道）',
@@ -36434,9 +36435,99 @@ function javaOralStartWith(paper){
   switchJavaModule('oral');
   javaShowQuestion();
 }
+/* ===== 本地口述题库：零网络请求，点一下立刻开考 =====
+   题目由 220 个考点的标题 / 正文 / 要点按固定 qid 即时合成，不预存 440 道题、
+   不占用 localStorage 与云同步带宽。每个考点 2 种问法 = 440 个组合，
+   出题时优先抽「没出过」的组合并写入题库；全部出过之后按最早出题时间循环复习。
+   旧 AI 题（jor_*）与「查看已出题」学习流完全保留，互不影响。 */
+var JAVA_ORAL_LOCAL_VARIANTS = 2;
+function javaLocalOralId(pid, v){ return 'jloc_' + pid + '_' + v; }
+function javaSplitPoints(text, max){
+  var parts = String(text || '').replace(/\r/g, '').split(/(?:[。；;!?！？\n]+|\d+[.、)]\s*)/);
+  var out = [];
+  parts.forEach(function(x){
+    x = String(x || '').replace(/^[\s\-·•>*]+/, '').trim();
+    if(x.length >= 4 && out.length < (max || 4)) out.push(x.slice(0, 120));
+  });
+  return out;
+}
+function javaLocalQuestionText(it, v){
+  var title = String(it.p.title || '这个知识点').trim();
+  var qs = [
+    '请介绍一下「' + title + '」：它的核心原理是什么，实际项目里通常在什么场景下用？',
+    '面试常问「' + title + '」，请从实现原理、使用注意点和常见坑三个角度讲一讲。',
+    '谈谈你对「' + title + '」的理解，如果能结合一次具体实践说明为什么这么做会更好。',
+    '如果让你给新人讲清楚「' + title + '」，你会重点讲哪几个点？为什么？'
+  ];
+  var h = Math.abs(javaHash(String(it.p.id)) % 2);
+  return qs[(v % 2) * 2 + h];
+}
+function javaLocalFollow(it){
+  var title = String(it.p.title || '这个考点');
+  var pool = [
+    '如果把「' + title + '」放到高并发生产环境，最容易踩的坑是什么？你会怎么排查？',
+    '面试官追问：在实际项目里，你会在什么情况下刻意不用「' + title + '」？为什么？',
+    '再深入一点：「' + title + '」和相近方案相比，做取舍时最该看哪几个指标？',
+    '如果线上因为「' + title + '」出了问题，你的定位顺序和回滚策略是什么？'
+  ];
+  return pool[Math.abs(javaHash(String(it.p.id)) % pool.length)];
+}
+function javaLocalOralQuestion(it, v){
+  var p = it.p;
+  var content = String(p.content || '').trim();
+  var detail = String(p.detail || '').trim();
+  var tip = String(p.tip || '').trim();
+  var title = String(p.title || '这个知识点').trim();
+  var points = javaSplitPoints(content, 4);
+  if(points.length < 2) points = javaSplitPoints(content + '。' + detail + '。' + tip, 4);
+  if(points.length < 2) points = ['先说清「' + title + '」的定义与它要解决的问题', '再结合项目说明使用场景、边界条件与注意点'];
+  var fPts = javaSplitPoints(tip + '。' + detail, 3);
+  if(fPts.length < 3) fPts = ['先复现并确认影响范围，不要直接改代码掩盖问题', '对照原理逐项排查配置、并发与边界条件', '补充监控与回归用例，验证修复后不再复发'];
+  return {
+    id: javaLocalOralId(p.id, v), _oral: true, _local: true, pid: p.id,
+    subject: 'Java 面试', chapter: it.cname || '', book: it.btitle || '',
+    source: '本地题库 · 《' + (it.btitle || 'Java 知识书') + '》',
+    question: javaLocalQuestionText(it, v),
+    answerPoints: points.slice(0, 4),
+    explanation: (content + (detail ? '\n' + detail : '')).slice(0, 600) || '参考答案要点见知识书原文。',
+    follow: javaLocalFollow(it),
+    followAnswerPoints: fPts.slice(0, 3),
+    followExplanation: ((tip || '结合原理与项目实践展开，先讲判断依据，再讲取舍与验证方式。') +
+      '（追问建议对照知识书原文补充自己的项目案例）').slice(0, 300),
+    at: Date.now()
+  };
+}
+function javaBuildLocalPaper(mode){
+  var pool = mode === 'learned' ? javaLearnedItems() : javaFlatPoints().slice();
+  if(!pool.length) return [];
+  var bank = javaOralQ(), cand = [];
+  pool.forEach(function(it){
+    for(var v = 0; v < JAVA_ORAL_LOCAL_VARIANTS; v++){
+      var id = javaLocalOralId(it.p.id, v);
+      cand.push({ it: it, v: v, id: id, used: !!bank[id] });
+    }
+  });
+  var fresh = javaShuffle(cand.filter(function(c){ return !c.used; }).slice(), Date.now() % 100000);
+  var chosen = fresh.slice(0, JAVA_RANDOM_MAX);
+  if(chosen.length < JAVA_RANDOM_MAX){
+    var used = cand.filter(function(c){ return c.used; }).sort(function(a, b){
+      return ((bank[a.id] && bank[a.id].at) || 0) - ((bank[b.id] && bank[b.id].at) || 0);
+    });
+    var seen = {}; chosen.forEach(function(c){ seen[c.id] = 1; });
+    used.forEach(function(c){
+      if(chosen.length < JAVA_RANDOM_MAX && !seen[c.id]){ chosen.push(c); seen[c.id] = 1; }
+    });
+  }
+  var added = 0;
+  var paper = chosen.map(function(c){
+    if(!bank[c.id]){ bank[c.id] = javaLocalOralQuestion(c.it, c.v); added++; }
+    return bank[c.id];
+  });
+  if(added) saveDb();
+  return paper;
+}
 function startJavaOralQuiz(mode){
-  if(!javaHasQwenKey()){ toast('需要先配置 AI 出题引擎 Key（推荐智谱 GLM）'); return; }
-  /* 锁：当前还有一套口述题没答完，必须先答完或「放弃这套」才能出新的 */
+  /* 零网络请求：题目全部来自本地考点资料，同步组卷、立刻开考 */
   var sess = javaOralSession();
   var total = javaOralSessionTotal(sess);
   if(sess && total && sess.answered < total){
@@ -36449,51 +36540,33 @@ function startJavaOralQuiz(mode){
     toast(mode === 'learned' ? '还没有勾「已背」的考点，先在「背诵」里标记几个吧' : '考点为空，暂时组不出题');
     return;
   }
-  /* 每次固定现编 10 道新题：池子不够就循环洗牌补足，同一考点换角度再问，旧题永不覆盖 */
-  var slots = [], seed = Date.now() % 100000;
-  while(slots.length < JAVA_RANDOM_MAX){
-    javaShuffle(pool.slice(), (seed + slots.length * 7919) % 100000).forEach(function(it){
-      if(slots.length < JAVA_RANDOM_MAX) slots.push(it.p.id);
-    });
-  }
-  var newIds = [], started = false, guardTimer = null;
+  var paper = javaBuildLocalPaper(mode);
+  if(!paper.length){ toast('暂时组不出口述题'); return; }
+  javaOralStartWith(paper);
+}
+/* 可选：用户主动点「AI 扩充题库」才发请求；失败完全不影响本地出题 */
+function javaAiExpandOralBank(){
+  if(javaAiBusy){ toast('正在扩充题库，请稍候'); return; }
+  if(!javaHasQwenKey()){ toast('需要 AI 出题引擎 Key（推荐智谱 GLM）才能扩充；不扩充也照样能出题'); return; }
+  var have = {};
+  javaOralAll().forEach(function(q){ if(q && q.pid && !q._local) have[q.pid] = 1; });
+  var flat = javaFlatPoints();
+  var pids = flat.filter(function(it){ return !have[it.p.id]; }).map(function(it){ return it.p.id; });
+  if(!pids.length) pids = flat.map(function(it){ return it.p.id; });
+  pids = javaShuffle(pids, Date.now() % 100000).slice(0, 30);
+  var want = pids.length;
   javaAiBusy = true;
-  toast('AI 面试官正在编新的口述题（0/' + JAVA_RANDOM_MAX + '）…');
-  var startPaper = function(reason){
-    if(started) return;
-    started = true;
+  toast('AI 扩充题库（0/' + want + '）…');
+  javaAiWriteOralBatch(pids, {
+    stopAt: want,
+    onProgress: function(n, totalN){ toast('AI 扩充题库（' + Math.min(n, totalN) + '/' + totalN + '）…'); }
+  }).then(function(n){
     javaAiBusy = false;
-    if(guardTimer){ clearTimeout(guardTimer); guardTimer = null; }
-    var bank = javaOralQ();
-    /* 组卷严格用本次现编出来的新题 qid，不足才用旧题补足 10 题 */
-    var paper = newIds.map(function(id){ return bank[id]; }).filter(Boolean);
-    if(paper.length < JAVA_RANDOM_MAX){
-      var seen = {}; paper.forEach(function(q){ seen[q.id] = 1; });
-      javaOralAll().forEach(function(q){
-        if(paper.length < JAVA_RANDOM_MAX && q && !seen[q.id]){ paper.push(q); seen[q.id] = 1; }
-      });
-    }
-    if(!paper.length){ toast('暂时没有可用的口述题，请稍后重试'); return; }
-    if(reason) toast(reason);
-    javaOralStartWith(paper);
-  };
-  var batchP = javaAiWriteOralBatch(slots, {
-    stopAt: JAVA_RANDOM_MAX,
-    writtenIds: newIds,
-    onProgress: function(n, totalN, stage){
-      if(stage && String(stage).indexOf('请求中') >= 0)
-        toast('AI 面试官正在编新的口述题（' + Math.min(n, totalN) + '/' + totalN + '）· ' + stage);
-      else
-        toast('AI 面试官正在编新的口述题（' + Math.min(n, totalN) + '/' + totalN + '）…');
-    }
-  }).then(function(){ startPaper(''); })
-    .catch(function(){ startPaper('AI 出题遇到网络问题，先用已有题开始面试'); });
-  /* 总兜底：AI 迟迟不返回也不能让用户干等「0/10」，超时立刻开考 */
-  Promise.race([
-    batchP,
-    new Promise(function(res){ guardTimer = setTimeout(res, JAVA_ORAL_TOTAL_TIMEOUT); })
-  ]).then(function(){
-    if(!started) startPaper('AI 出题较慢，先用已编好的题开始面试');
+    renderJavaOralHome();
+    toast(n ? ('✓ 已扩充 ' + n + ' 道 AI 题，可在「查看已出题」里复习') : '这次没编出新题，本地题库照常可用');
+  }).catch(function(e){
+    javaAiBusy = false;
+    toast('AI 扩充失败：' + String(e && e.message || '网络问题').slice(0, 60) + '；本地题库不受影响');
   });
 }
 /* 主动放弃当前这套口述题 → 解锁，可立即重新出题 */
@@ -36855,7 +36928,7 @@ function renderJavaQuizHome(){
   el.textContent = txt;
   var tip = document.getElementById('javaAiTip');
   if(tip) tip.textContent = javaHasQwenKey()
-    ? '所有题目都由 AI 模拟面试官现编真题，没有任何本地生成题。点「按已背考点出题」会为还没出题的考点补题，够 20 道就停；像真实面试一样的口述问答在底部「口述」标签。'
+    ? '单选题由 AI 模拟面试官现编，点「按已背考点出题」会为还没出题的考点补题，够 20 道就停；底部「口述」标签的问答题由本地考点题库即时生成，点出题不联网。'
     : '提示：配置 AI 出题引擎 Key（推荐智谱 GLM）后，所有题目都将由 AI 模拟面试官现编。';
   var sug = document.getElementById('javaQuizSuggest');
   if(sug){
@@ -36876,9 +36949,7 @@ function renderJavaOralHome(){
   var fu = javaFollowUps().length;
   el.textContent = '已背 ' + learned + ' / ' + javaTotalPoints() + ' 考点 · 口述题 ' + oral + ' 道 · 收藏追问 ' + fu + ' 条';
   var tip = document.getElementById('javaOralTip');
-  if(tip) tip.textContent = javaHasQwenKey()
-    ? '口述题没有 A/B/C/D：看完题先自己说出来，再点「看参考答案」对照要点自评。面试官追问可一键收藏。每次出题都会固定现编 10 道新题（同一考点会换角度再问），旧题全部保留、刷新不丢；答完一套（或点「放弃这套」）才能再出新的。当前出题引擎：' + (typeof quizAiLabel === 'function' ? quizAiLabel() : 'AI') + '。'
-    : '提示：配置 AI 出题引擎 Key（推荐智谱 GLM）后才能进行口述面试。';
+  if(tip) tip.textContent = '口述题没有 A/B/C/D：看完题先自己说出来，再点「看参考答案」对照要点自评。题目全部来自本地考点资料，点出题不联网、立刻开考；每次优先抽没出过的新角度（共 440 种问法），旧题全部保留、刷新不丢；答完一套（或点「放弃这套」）才能再出新的。想要 AI 新编的题，点「✨ AI 扩充题库」。';
   /* 未做完的一套 → 提示「继续」 */
   var sess = javaOralSession();
   var resume = document.getElementById('javaOralResume');
