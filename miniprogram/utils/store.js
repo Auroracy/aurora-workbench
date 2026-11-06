@@ -1,173 +1,271 @@
-/* 本地存储层 —— 替代网页版的 localStorage
-   数据结构与网页版完全一致，方便两边互导 */
-const KEY = 'aurora_db';
-const CP = require('./careerPlanData.js');
+/* 本地数据 + 「按考点归类、重复出题、加强记忆」的出题引擎
+   设计：每道题都挂在 point 上；记录每个考点的 对/错/连对/最近练习时间；
+   抽题时用加权轮盘：新考点↑、错过↑、连对↓、久未复习↑ —— 错题和生疏考点会被反复抽到。 */
+var Q = require('./questions.js');
+var P = require('./points.js');
 
-function defaultDb() {
-  return {
-    earlyEd: { totalHours: 48, records: [], customCourses: [] },
-    fitness: {
-      fastStart: '08:00', fastEnd: '16:00',
-      meals: [], weights: [], exercises: [], recipeIdx: 0,
-      goalWeight: 50, calorieBudget: 1300
-    },
-    words: {
-      bank: 'core',
-      dailyRecords: {},
-      game: {
-        xp: 0, level: 1, combo: 0, bestCombo: 0, streak: 0, lastDay: '', clears: 0,
-        totalCorrect: 0, totalWrong: 0, badges: [], masteredWords: [], questBest: {},
-        quest: null, mode: 'study', reviewQ: {}, reviewCfg: { fuzzy: 2, unknown: 3 }, reviewMastered: 0
-      }
-    },
-    recipes: { items: [] },
-    reading: { books: [] },
-    xwlb: { cache: {} },
-    career: {
-      books: [], questions: [],
-      quiz: { history: [] },
-      wrongLog: [], qNotes: {}, picks: {}
-      /* exam / plan 由 normalize() 按 careerPlanData.js 补齐（结构对齐网页版 DB.career.exam / career.plan） */
-    }
-  };
-}
+var KEY = 'km1_db_v1';
+var DAY = 86400000;
+var cache = null;
 
-function pad2(n) { return (n < 10 ? '0' : '') + n; }
-function todayStr() {
-  const d = new Date();
+function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+function todayStr(ts) {
+  var d = ts ? new Date(ts) : new Date();
   return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
 }
 
-/* 补齐缺失字段，保证旧数据在版本升级后仍可用 */
-function normalize(db) {
-  const d = defaultDb();
-  const out = db && typeof db === 'object' ? db : {};
-  for (const k in d) {
-    if (out[k] === undefined) out[k] = d[k];
-  }
-  if (!out.words || typeof out.words !== 'object') out.words = d.words;
-  if (out.words.bank === undefined) out.words.bank = 'core';
-  if (!out.words.dailyRecords || typeof out.words.dailyRecords !== 'object') out.words.dailyRecords = {};
-  if (!out.words.game || typeof out.words.game !== 'object') out.words.game = d.words.game;
-  const g = out.words.game;
-  const dg = d.words.game;
-  for (const k in dg) {
-    if (g[k] === undefined) g[k] = dg[k];
-  }
-  if (!Array.isArray(g.badges)) g.badges = [];
-  if (!Array.isArray(g.masteredWords)) g.masteredWords = [];
-  if (!g.reviewQ || typeof g.reviewQ !== 'object') g.reviewQ = {};
-  if (!g.reviewCfg || typeof g.reviewCfg !== 'object') g.reviewCfg = { fuzzy: 2, unknown: 3 };
-  if (!out.career || typeof out.career !== 'object' || Array.isArray(out.career)) {
-    out.career = JSON.parse(JSON.stringify(d.career));
-  }
-  const c = out.career;
-
-  /* ---- 考试信息：结构与网页版 DB.career.exam 一致 ----
-     兼容上一版小程序的 examName / examDate 两个扁平字段 */
-  const CE = CP.exam;
-  if (!c.exam || typeof c.exam !== 'object' || Array.isArray(c.exam)) {
-    c.exam = {};
-    if (c.examName) c.exam.name = c.examName;
-    if (c.examDate) c.exam.date = c.examDate;
-  }
-  if (!c.exam.name) c.exam.name = CE.name;
-  if (!c.exam.date) c.exam.date = CE.date;
-  if (!c.exam.start) c.exam.start = todayStr();   /* 开始备考日：算备考时间进度 */
-  if (c.exam.time === undefined) c.exam.time = CE.time;
-  if (c.exam.note === undefined) c.exam.note = CE.note;
-  delete c.examName;
-  delete c.examDate;
-
-  /* ---- 复习计划：结构与网页版 DB.career.plan 一致（groups[].tasks[]）---- */
-  if (Array.isArray(c.plan)) {
-    /* 上一版小程序的扁平数组：包成「我的计划」一个分组，保留打卡状态 */
-    c.plan = {
-      groups: [{
-        id: 'cpg_legacy', name: '我的计划', s: 999, e: 0, phase: 1,
-        tasks: c.plan.map(function (p, i) {
-          return { id: p.id || ('cpt_legacy_' + i), text: p.text || '', done: !!p.done, doneAt: '' };
-        })
-      }]
-    };
-  }
-  if (!c.plan || typeof c.plan !== 'object' || Array.isArray(c.plan) ||
-      !Array.isArray(c.plan.groups) || !c.plan.groups.length) {
-    c.plan = JSON.parse(JSON.stringify(CP.plan));
-  }
-  c.plan.groups.forEach(function (g) {
-    if (!Array.isArray(g.tasks)) g.tasks = [];
-    g.tasks.forEach(function (t) {
-      t.done = !!t.done;
-      if (t.doneAt === undefined) t.doneAt = '';
-    });
-  });
-
-  return out;
+function defaultDb() {
+  return {
+    ver: 1,
+    font: 1,                                  /* 0 标准 / 1 大字 / 2 超大字 */
+    stats: { total: 0, right: 0, rounds: 0, today: '', todayTotal: 0 },
+    points: {},                               /* pointId -> {right,wrong,streak,lastAt} */
+    wrong: {},                                /* qid -> {times,cleared,picked,lastAt,point} */
+    history: []                               /* 最近 20 组练习 */
+  };
 }
 
 function loadDb() {
-  let raw = null;
-  try {
-    raw = wx.getStorageSync(KEY);
-  } catch (e) {
-    raw = null;
-  }
-  return normalize(raw);
+  if (cache) return cache;
+  var raw = null;
+  try { if (typeof wx !== 'undefined' && wx.getStorageSync) raw = wx.getStorageSync(KEY); } catch (e) { raw = null; }
+  var db = (raw && typeof raw === 'object' && !Array.isArray(raw)) ? raw : defaultDb();
+  var d = defaultDb();
+  db.ver = 1;
+  if (typeof db.font !== 'number') db.font = d.font;
+  db.font = Math.max(0, Math.min(2, db.font));
+  db.stats = Object.assign({}, d.stats, db.stats || {});
+  if (db.stats.today !== todayStr()) { db.stats.today = todayStr(); db.stats.todayTotal = 0; }
+  db.points = db.points && typeof db.points === 'object' ? db.points : {};
+  db.wrong = db.wrong && typeof db.wrong === 'object' ? db.wrong : {};
+  if (!Array.isArray(db.history)) db.history = [];
+  cache = db;
+  return db;
 }
 
 function saveDb(db) {
-  try {
-    wx.setStorageSync(KEY, db || {});
-    return true;
-  } catch (e) {
-    console.error('[Aurora] 保存失败', e);
-    wx.showToast({ title: '本地存储写入失败', icon: 'none' });
-    return false;
-  }
+  cache = db || cache;
+  try { if (typeof wx !== 'undefined' && wx.setStorageSync) wx.setStorageSync(KEY, cache); } catch (e) {}
+  return cache;
 }
 
-/* 导出 JSON 字符串（供网页版/备份使用） */
-function exportDb() {
-  try {
-    return JSON.stringify(loadDb(), null, 2);
-  } catch (e) {
-    return '';
-  }
+function resetAll() { cache = defaultDb(); return saveDb(); }
+function clearWrong() { var db = loadDb(); db.wrong = {}; return saveDb(); }
+function setFont(n) { var db = loadDb(); db.font = Math.max(0, Math.min(2, Number(n) || 0)); return saveDb().font; }
+function getFont() { return loadDb().font; }
+
+/* ---------- 掌握度 ---------- */
+function pointStat(db, pid) {
+  return db.points[pid] || { right: 0, wrong: 0, streak: 0, lastAt: 0 };
+}
+function isMastered(s) {
+  var n = (s.right || 0) + (s.wrong || 0);
+  return n >= 2 && s.right >= 2 && s.right / n >= 0.75;
+}
+function masteredCount(db) {
+  var n = 0;
+  P.POINT_IDS.forEach(function (pid) { if (isMastered(pointStat(db, pid))) n++; });
+  return n;
 }
 
-/* 从 JSON 字符串导入（把网页版数据搬过来 / 恢复备份）
-   mode: 'merge' 合并覆盖同名 key；'replace' 整体替换 */
-function importDb(text, mode) {
-  if (!text) return { ok: false, msg: '内容为空' };
-  let obj;
-  try {
-    obj = JSON.parse(text);
-  } catch (e) {
-    return { ok: false, msg: '不是合法的 JSON' };
-  }
-  if (!obj || typeof obj !== 'object') return { ok: false, msg: '数据格式不正确' };
-  try {
-    let next;
-    if (mode === 'replace') {
-      next = normalize(obj);
-    } else {
-      const cur = loadDb();
-      for (const k in obj) {
-        if (Object.prototype.hasOwnProperty.call(obj, k)) cur[k] = obj[k];
-      }
-      next = normalize(cur);
-    }
-    saveDb(next);
-    return { ok: true, msg: '导入成功' };
-  } catch (e) {
-    return { ok: false, msg: '导入失败：' + (e.message || e) };
-  }
+/* ---------- 出题权重：新考点 / 错过 / 久未练 优先，连对降权 ---------- */
+function pointWeight(db, pid, now) {
+  var s = pointStat(db, pid);
+  var w = 1;
+  if (!s.right && !s.wrong) w += 1.2;                 /* 完全没练过：先见一面 */
+  w += Math.min(s.wrong || 0, 6) * 0.7;              /* 错过越多，越要重复 */
+  if (s.streak >= 2) w *= 0.45;                      /* 连对两次，暂时少出 */
+  if (s.streak >= 4) w *= 0.6;                       /* 已经很熟，再降 */
+  var days = s.lastAt ? (now - s.lastAt) / DAY : 0;  /* 间隔重复：越久没练越该复习 */
+  w *= 1 + Math.min(Math.max(days, 0), 7) * 0.12;
+  return Math.max(w, 0.05);
 }
 
-function resetDb() {
-  saveDb(defaultDb());
-  return loadDb();
+function pickWeighted(items, weights, rnd) {
+  var total = 0, i;
+  for (i = 0; i < weights.length; i++) total += weights[i];
+  var r = rnd() * total, acc = 0;
+  for (i = 0; i < items.length; i++) { acc += weights[i]; if (r <= acc) return items[i]; }
+  return items[items.length - 1];
+}
+function shuffle(arr, rnd) {
+  var a = arr.slice();
+  for (var i = a.length - 1; i > 0; i--) {
+    var j = Math.floor(rnd() * (i + 1));
+    var t = a[i]; a[i] = a[j]; a[j] = t;
+  }
+  return a;
 }
 
-module.exports = { KEY, defaultDb, normalize, loadDb, saveDb, exportDb, importDb, resetDb };
+/* 组卷：opts = {cat, point, mode:'normal'|'wrong', size, rnd}
+   - 同考点有多道变式题时优先不重复；题出完了会循环再出（这正是「重复出题加强记忆」）
+   - 尽量不让相邻两题来自同一考点 */
+function buildPaper(opts) {
+  opts = opts || {};
+  var db = loadDb();
+  var now = opts.now || Date.now();
+  var rnd = opts.rnd || Math.random;
+  var size = Math.max(1, opts.size || 10);
+  var mode = opts.mode || 'normal';
+
+  var pool;
+  if (mode === 'wrong') {
+    var ids = Object.keys(db.wrong);
+    var byId = {};
+    Q.QUESTIONS.forEach(function (q) { byId[q.id] = q; });
+    pool = ids.map(function (id) { return byId[id]; }).filter(Boolean);
+    pool.sort(function (a, b) { return (db.wrong[b.id].times || 0) - (db.wrong[a.id].times || 0); });
+  } else if (opts.point) {
+    pool = (Q.BY_POINT[opts.point] || []).slice();
+  } else if (opts.cat && Q.BY_CAT[opts.cat]) {
+    pool = Q.BY_CAT[opts.cat].slice();
+  } else {
+    pool = Q.QUESTIONS.slice();
+  }
+  if (!pool.length) return [];
+
+  /* 按考点分桶 */
+  var groups = {}, pids = [];
+  pool.forEach(function (q) {
+    if (!groups[q.point]) { groups[q.point] = []; pids.push(q.point); }
+    groups[q.point].push(q);
+  });
+
+  var paper = [], used = {}, guard = 0;
+  while (paper.length < size && guard++ < size * 60) {
+    var cand = pids.slice();
+    /* 上一题的考点降权，避免连续两题撞在同一考点 */
+    var last = paper.length ? paper[paper.length - 1].point : '';
+    var weights = cand.map(function (pid) {
+      var w = pointWeight(db, pid, now);
+      if (pid === last && cand.length > 1) w *= 0.25;
+      /* 该考点的变式题都出过了 → 权重降低但仍可重复出 */
+      var fresh = groups[pid].filter(function (q) { return !used[q.id]; }).length;
+      if (!fresh) w *= 0.35;
+      return w;
+    });
+    var pid = pickWeighted(cand, weights, rnd);
+    var freshList = groups[pid].filter(function (q) { return !used[q.id]; });
+    var list = freshList.length ? freshList : groups[pid];
+    var q = list[Math.floor(rnd() * list.length)];
+    used[q.id] = 1;
+    paper.push(q);
+  }
+  return paper;
+}
+
+/* ---------- 答题记录 ---------- */
+function recordAnswer(q, picked, correct) {
+  var db = loadDb();
+  var now = Date.now();
+  if (db.stats.today !== todayStr(now)) { db.stats.today = todayStr(now); db.stats.todayTotal = 0; }
+  db.stats.total++;
+  db.stats.todayTotal++;
+  if (correct) db.stats.right++;
+
+  var s = db.points[q.point] || { right: 0, wrong: 0, streak: 0, lastAt: 0 };
+  if (correct) { s.right++; s.streak++; } else { s.wrong++; s.streak = 0; }
+  s.lastAt = now;
+  db.points[q.point] = s;
+
+  if (!correct) {
+    var w = db.wrong[q.id] || { times: 0, cleared: 0, picked: picked, lastAt: now, point: q.point };
+    w.times++; w.cleared = 0; w.picked = picked; w.lastAt = now; w.point = q.point;
+    db.wrong[q.id] = w;
+  } else if (db.wrong[q.id]) {
+    /* 错题要连着答对 2 次才「毕业」，避免蒙对一次就放过 */
+    db.wrong[q.id].cleared = (db.wrong[q.id].cleared || 0) + 1;
+    if (db.wrong[q.id].cleared >= 2) delete db.wrong[q.id];
+  }
+  saveDb(db);
+  return { mastered: isMastered(s), stat: s };
+}
+
+/* 一组练习结束：写历史，返回复盘信息 */
+function finishRound(paper, answers) {
+  var db = loadDb();
+  var right = 0, cats = {}, wrongPoints = {};
+  paper.forEach(function (q, i) {
+    var ok = !!answers[i] && answers[i].correct;
+    if (ok) right++;
+    cats[q.catName] = (cats[q.catName] || 0) + (ok ? 0 : 1);
+    if (!ok) wrongPoints[q.pointName] = (wrongPoints[q.pointName] || 0) + 1;
+  });
+  db.stats.rounds++;
+  var rec = { date: todayStr(), time: Date.now(), total: paper.length, right: right };
+  db.history.unshift(rec);
+  if (db.history.length > 20) db.history = db.history.slice(0, 20);
+  saveDb(db);
+  var catList = Object.keys(cats).filter(function (k) { return cats[k] > 0; })
+    .map(function (k) { return { name: k, wrong: cats[k] }; })
+    .sort(function (a, b) { return b.wrong - a.wrong; });
+  var pointList = Object.keys(wrongPoints)
+    .map(function (k) { return { name: k, wrong: wrongPoints[k] }; })
+    .sort(function (a, b) { return b.wrong - a.wrong; });
+  return { total: paper.length, right: right, rate: paper.length ? Math.round(right * 100 / paper.length) : 0, catList: catList, pointList: pointList };
+}
+
+/* ---------- 页面取数 ---------- */
+function overview() {
+  var db = loadDb();
+  var st = db.stats;
+  return {
+    font: db.font,
+    total: st.total,
+    todayTotal: st.todayTotal,
+    right: st.right,
+    rate: st.total ? Math.round(st.right * 100 / st.total) : 0,
+    rounds: st.rounds,
+    mastered: masteredCount(db),
+    pointTotal: P.POINT_IDS.length,
+    wrongCount: Object.keys(db.wrong).length,
+    history: db.history.slice(0, 5)
+  };
+}
+
+function catList() {
+  var db = loadDb();
+  return P.CATS.map(function (c) {
+    var total = 0, done = 0, right = 0, wrong = 0;
+    c.points.forEach(function (p) {
+      var s = pointStat(db, p.id);
+      total++;
+      if (isMastered(s)) done++;
+      right += s.right || 0; wrong += s.wrong || 0;
+    });
+    return {
+      id: c.id, no: c.no, name: c.name, sub: c.sub, mnemonic: c.mnemonic,
+      notes: c.notes, pointTotal: total, mastered: done,
+      practiced: right + wrong, wrong: wrong,
+      pct: total ? Math.round(done * 100 / total) : 0,
+      questionCount: (Q.BY_CAT[c.id] || []).length
+    };
+  });
+}
+
+function wrongList() {
+  var db = loadDb();
+  var byId = {};
+  Q.QUESTIONS.forEach(function (q) { byId[q.id] = q; });
+  return Object.keys(db.wrong).map(function (id) {
+    var w = db.wrong[id], q = byId[id];
+    if (!q) return null;
+    return {
+      id: id, q: q.q, pointName: q.pointName, catName: q.catName,
+      options: q.options, answer: q.answer, tip: q.tip, key: q.key,
+      picked: w.picked, times: w.times,
+      pickedText: q.options[w.picked] || '未作答',
+      answerText: q.options[q.answer]
+    };
+  }).filter(Boolean).sort(function (a, b) { return b.times - a.times; });
+}
+
+module.exports = {
+  KEY: KEY,
+  loadDb: loadDb, saveDb: saveDb, resetAll: resetAll, clearWrong: clearWrong,
+  setFont: setFont, getFont: getFont,
+  buildPaper: buildPaper, recordAnswer: recordAnswer, finishRound: finishRound,
+  overview: overview, catList: catList, wrongList: wrongList,
+  pointWeight: pointWeight, isMastered: isMastered, pointStat: pointStat,
+  todayStr: todayStr
+};

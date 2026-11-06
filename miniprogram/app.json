@@ -1,33 +1,36 @@
 {
   "pages": [
     "pages/index/index",
-    "pages/english/english",
-    "pages/earlyed/earlyed",
-    "pages/fitness/fitness",
-    "pages/career/career"
+    "pages/points/points",
+    "pages/quiz/quiz",
+    "pages/wrong/wrong"
   ],
   "window": {
     "backgroundTextStyle": "dark",
-    "navigationBarBackgroundColor": "#15A49B",
-    "navigationBarTitleText": "Aurora 工作台",
+    "navigationBarBackgroundColor": "#0F766E",
+    "navigationBarTitleText": "科目一 · 慢慢练",
     "navigationBarTextStyle": "white",
-    "backgroundColor": "#EEF3F6",
-    "backgroundColorTop": "#EEF3F6",
-    "backgroundColorBottom": "#EEF3F6"
+    "backgroundColor": "#F5F7F9",
+    "backgroundColorTop": "#F5F7F9",
+    "backgroundColorBottom": "#F5F7F9"
   },
   "tabBar": {
-    "color": "#9CB2C0",
-    "selectedColor": "#15A49B",
+    "color": "#6B7C88",
+    "selectedColor": "#0F766E",
     "backgroundColor": "#FFFFFF",
     "borderStyle": "white",
     "list": [
       {
         "pagePath": "pages/index/index",
-        "text": "今日"
+        "text": "练习"
       },
       {
-        "pagePath": "pages/english/english",
-        "text": "英语"
+        "pagePath": "pages/points/points",
+        "text": "考点"
+      },
+      {
+        "pagePath": "pages/wrong/wrong",
+        "text": "错题"
       }
     ]
   },

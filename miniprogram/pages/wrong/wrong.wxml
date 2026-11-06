@@ -1,0 +1,27 @@
+<view class="pg fs-{{fontLevel}}">
+
+  <view class="card intro">
+    <view class="card-title">错题本：{{count}} 题</view>
+    <view class="sub">做错的题会自动收进来。同一道题连着答对 2 次，才会从这里毕业。</view>
+  </view>
+
+  <button class="big-btn primary" bindtap="practice">重练错题（{{count}} 题）</button>
+  <button class="big-btn soft" bindtap="goPractice">回去做新题</button>
+
+  <block wx:if="{{count}}">
+    <view class="card wcard" wx:for="{{list}}" wx:key="id">
+      <view class="wtag">{{item.catName}} · {{item.pointName}}　错 {{item.times}} 次</view>
+      <view class="wq">{{item.q}}</view>
+      <view class="wline wrong-line">我选了：{{item.pickedText}}</view>
+      <view class="wline right-line">正确答案：{{item.answerText}}</view>
+      <view class="tip-card"><text class="tip-label">记住这句</text>{{item.tip}}</view>
+    </view>
+    <view class="footer-link" bindtap="clearWrong">清空错题本</view>
+  </block>
+
+  <view wx:else class="empty">
+    <view class="empty-icon">✓</view>
+    <view>现在一道错题都没有，很好！</view>
+    <view class="sub">去做一组新题吧，做错的会自动收进来。</view>
+  </view>
+</view>

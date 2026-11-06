@@ -1,0 +1,39 @@
+.intro { background: #EAF4F3; box-shadow: none; border: 2rpx solid #CFE7E3; }
+
+.cat.opened { border: 3rpx solid var(--main); }
+.cat-head { display: flex; align-items: flex-start; gap: 18rpx; }
+.cat-no {
+  flex: 0 0 auto; width: 60rpx; height: 60rpx; line-height: 60rpx;
+  text-align: center; border-radius: 18rpx;
+  background: #EAF4F3; color: var(--main);
+  font-size: var(--fs-sub); font-weight: 800;
+}
+.cat-main { flex: 1; min-width: 0; }
+.cat-name { font-size: var(--fs-base); font-weight: 800; color: var(--ink); line-height: 1.4; }
+.cat-sub { font-size: var(--fs-sub); color: var(--ink-2); margin-top: 8rpx; line-height: 1.6; }
+.cat-arrow { flex: 0 0 auto; font-size: var(--fs-sub); color: var(--main); padding-top: 8rpx; }
+
+.cat-progress { display: flex; align-items: center; gap: 18rpx; margin-top: 24rpx; }
+.bar { flex: 1; height: 18rpx; background: #E9EFF3; border-radius: 999rpx; overflow: hidden; }
+.bar-in { display: block; height: 100%; background: linear-gradient(90deg, #15A49B, #2E86C1); border-radius: 999rpx; }
+.pct { font-size: var(--fs-sub); color: var(--ink-2); flex: 0 0 auto; }
+.cat-meta { font-size: var(--fs-sub); color: var(--ink-3); margin-top: 14rpx; }
+
+.cat-btns { display: flex; gap: 18rpx; margin-top: 24rpx; }
+.mini-btn {
+  flex: 1; text-align: center; padding: 18rpx 0;
+  border-radius: 18rpx; font-size: var(--fs-btn); font-weight: 700;
+  min-height: 88rpx; line-height: 52rpx; box-sizing: border-box;
+}
+.mini-btn.ghost { background: #FFFFFF; border: 3rpx solid var(--main); color: var(--main); }
+.mini-btn.solid { background: var(--main); color: #FFFFFF; }
+
+.note-box { margin-top: 28rpx; padding-top: 24rpx; border-top: 2rpx solid var(--line); }
+.mnemonic { margin-top: 0; font-weight: 700; }
+.note-title { font-size: var(--fs-base); font-weight: 700; margin: 28rpx 0 12rpx; }
+.note-line { display: flex; align-items: flex-start; gap: 12rpx; margin-bottom: 14rpx; }
+.note-dot { color: var(--main); font-size: var(--fs-base); font-weight: 800; line-height: 1.6; }
+.note-text { flex: 1; font-size: var(--fs-sub); color: var(--ink-2); line-height: 1.8; }
+
+.all-btn { margin-top: 10rpx; }
+.footer-note { text-align: center; font-size: 26rpx; color: var(--ink-3); padding: 8rpx 30rpx 30rpx; line-height: 1.7; }

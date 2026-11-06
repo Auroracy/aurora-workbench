@@ -1,0 +1,12 @@
+.intro { background: #EAF4F3; box-shadow: none; border: 2rpx solid #CFE7E3; }
+.wcard { margin-top: 26rpx; }
+.wtag {
+  display: inline-block; font-size: var(--fs-sub); color: var(--no);
+  background: var(--no-bg); padding: 6rpx 20rpx; border-radius: 999rpx;
+}
+.wq { font-size: var(--fs-base); font-weight: 700; color: var(--ink); line-height: 1.7; margin-top: 20rpx; }
+.wline { font-size: var(--fs-sub); font-weight: 700; margin-top: 14rpx; }
+.wrong-line { color: var(--no); }
+.right-line { color: var(--ok); }
+.footer-link { text-align: center; font-size: var(--fs-sub); color: var(--ink-3); padding: 20rpx; text-decoration: underline; }
+.empty-icon { font-size: 100rpx; color: var(--ok); line-height: 1.4; margin-bottom: 16rpx; }

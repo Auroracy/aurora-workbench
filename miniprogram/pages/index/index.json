@@ -1,6 +1,4 @@
 {
-  "navigationBarTitleText": "Aurora 工作台",
-  "enablePullDownRefresh": true,
-  "backgroundTextStyle": "dark",
+  "navigationBarTitleText": "科目一 · 慢慢练",
   "usingComponents": {}
 }

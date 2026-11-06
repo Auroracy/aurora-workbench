@@ -1,9 +1,8 @@
 {
-  "description": "Aurora 工作台 · 微信小程序版",
+  "description": "科目一 · 慢慢练（50 岁+ 大字版）",
   "appid": "wxa1aa132d3b3090f3",
-  "projectname": "aurora-workbench-mini",
+  "projectname": "km1-slow-practice",
   "miniprogramRoot": "",
-  "cloudfunctionRoot": "cloudfunctions/",
   "compileType": "miniprogram",
   "libVersion": "3.16.3",
   "packOptions": {

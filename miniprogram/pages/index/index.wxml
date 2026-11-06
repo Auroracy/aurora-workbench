@@ -1,111 +1,57 @@
-<view class="page">
+<view class="pg fs-{{fontLevel}}">
 
-  <!-- ====== 今日概览 ====== -->
-  <view class="card hero">
-    <view class="hero-date">{{today}}</view>
-    <view class="hero-title">Aurora 工作台</view>
-    <view class="hero-sub small muted">微信小程序版 · Lv.{{level}} {{rankName}} · 连续 {{streak}} 天</view>
-    <view class="hero-bar"><view class="bar-fill" style="width:{{wordPct}}%"></view></view>
-    <view class="hero-tip small muted">今日单词 {{wordDone}}/10 已标记（掌握 {{wordKnown}} 个）</view>
+  <!-- 顶部：一眼看清这是什么 -->
+  <view class="hero card">
+    <view class="hero-title">科目一 · 慢慢练</view>
+    <view class="hero-sub">一天练一点，记得牢。不用赶时间，做错也不要紧。</view>
+    <view class="hero-tag">按考点反复出题 · 错了下次再来</view>
   </view>
 
-  <!-- ====== 已迁移模块 ====== -->
-  <view class="sec-title">可用模块</view>
-  <view class="card entry">
-    <view class="entry-row" bindtap="goEnglish">
-      <view class="e-ico">📖</view>
-      <view class="e-main">
-        <view class="e-name">每日英语单词</view>
-        <view class="e-desc small muted">
-          精练卡片 · 拼写验证 · 强化复习
-          <text wx:if="{{reviewTotal}}" class="e-badge">待强化 {{reviewTotal}} 词</text>
-        </view>
-      </view>
-      <view class="e-arrow">›</view>
-    </view>
-    <view class="entry-row" bindtap="goEarlyEd">
-      <view class="e-ico">👶</view>
-      <view class="e-main">
-        <view class="e-name">宝宝早教 · 课时记录</view>
-        <view class="e-desc small muted">课时打卡 · 自定义课程 · 剩余统计</view>
-      </view>
-      <view class="e-arrow">›</view>
-    </view>
-    <view class="entry-row" bindtap="goFitness">
-      <view class="e-ico">🏃</view>
-      <view class="e-main">
-        <view class="e-name">轻氧塑身日记</view>
-        <view class="e-desc small muted">体重趋势 · 16:8 断食 · 餐食与运动</view>
-      </view>
-      <view class="e-arrow">›</view>
-    </view>
-    <view class="entry-row" bindtap="goCareer">
-      <view class="e-ico">📚</view>
-      <view class="e-main">
-        <view class="e-name">事业编备考</view>
-        <view class="e-desc small muted">知识书 · 历年真题 · 错题本 · 自测（276 题）</view>
-      </view>
-      <view class="e-arrow">›</view>
-    </view>
-  </view>
-
-  <!-- ====== 待迁移 ====== -->
-  <view class="sec-title">后续迁移</view>
-  <view class="card coming">
-    <view class="entry-row" wx:for="{{coming}}" wx:key="name">
-      <view class="e-ico gray">{{item.ico}}</view>
-      <view class="e-main">
-        <view class="e-name gray">{{item.name}}</view>
-        <view class="e-desc small muted">{{item.desc}}</view>
-      </view>
-      <view class="e-tag small">待迁移</view>
-    </view>
-  </view>
-
-  <!-- ====== 联网自检 ====== -->
-  <view class="sec-title">联网自检</view>
+  <!-- 学习情况：三个大数字 -->
   <view class="card">
-    <view class="row">
-      <view class="net-head">
-        <view class="dot {{netState}}"></view>
-        <text class="small">{{netTitle}}</text>
+    <view class="card-title">我的学习情况</view>
+    <view class="stat-row">
+      <view class="stat-item">
+        <view class="stat-num">{{ov.todayTotal}}</view>
+        <view class="stat-label">今天做了</view>
       </view>
-      <text class="btn btn-sm {{netBusy ? 'btn-ghost' : 'btn-primary'}}" catchtap="checkCloud">
-        {{netBusy ? '请求中…' : '测一下'}}
-      </text>
+      <view class="stat-item">
+        <view class="stat-num">{{ov.rate}}<text class="stat-unit">%</text></view>
+        <view class="stat-label">总正确率</view>
+      </view>
+      <view class="stat-item">
+        <view class="stat-num">{{ov.mastered}}<text class="stat-unit">/{{ov.pointTotal}}</text></view>
+        <view class="stat-label">掌握考点</view>
+      </view>
     </view>
-    <view wx:if="{{netMsg}}" class="net-msg {{netState}}">{{netMsg}}</view>
-    <view wx:if="{{netRaw}}" class="net-raw">{{netRaw}}</view>
-    <view class="divider"></view>
-    <view class="imp-tip small muted">
-      走云函数 <text class="code">auroraProxy</text> 中转，个人主体也能联网。
-      若失败：先在开发者工具里右键 <text class="code">cloudfunctions/auroraProxy</text>
-      →「上传并部署（云端安装依赖）」，并确认 <text class="code">app.js</text> 已填环境 ID。
+    <view class="stat-foot">累计做了 {{ov.total}} 题 · 完成 {{ov.rounds}} 组 · 错题本 {{ov.wrongCount}} 题</view>
+  </view>
+
+  <!-- 三个大按钮：不用找，直接点 -->
+  <button class="big-btn primary" bindtap="startPractice">开始练 10 题</button>
+  <button class="big-btn outline" bindtap="startWrong">只练错题（{{ov.wrongCount}} 题）</button>
+  <button class="big-btn soft" bindtap="goPoints">按考点练 · 看口诀</button>
+
+  <!-- 字号：50 岁+ 用户最需要的开关 -->
+  <view class="card font-card">
+    <view class="card-title">字太小？点一下调大</view>
+    <view class="font-row">
+      <view class="font-btn {{fontLevel===0?'on':''}}" data-lv="0" bindtap="changeFont">标准</view>
+      <view class="font-btn {{fontLevel===1?'on':''}}" data-lv="1" bindtap="changeFont">大字</view>
+      <view class="font-btn {{fontLevel===2?'on':''}}" data-lv="2" bindtap="changeFont">超大字</view>
+    </view>
+    <view class="sub font-note">选好后，题目、选项、按钮都会一起变大。</view>
+  </view>
+
+  <!-- 最近几组练习 -->
+  <view class="card" wx:if="{{history.length}}">
+    <view class="card-title">最近练习</view>
+    <view class="hist-row" wx:for="{{history}}" wx:key="date">
+      <text class="hist-date">{{item.date}}</text>
+      <text class="hist-text">{{item.text}}</text>
     </view>
   </view>
 
-  <!-- ====== 数据迁移 ====== -->
-  <view class="sec-title">数据迁移 · 备份</view>
-  <view class="card">
-    <view class="row">
-      <text class="small muted">本地数据 {{dbBytes}} KB</text>
-      <text class="btn btn-sm btn-ghost" catchtap="exportData">导出（复制）</text>
-    </view>
-    <view class="divider"></view>
-    <view class="imp-tip small muted">
-      从网页版搬数据：在网页控制台执行 <text class="code">copy(JSON.stringify(localStorage))</text>
-      或在页面上点导出，然后把 JSON 粘贴到下面。
-    </view>
-    <textarea class="imp-input" placeholder="在此粘贴 JSON 数据" value="{{importText}}"
-              bindinput="onImportInput" maxlength="-1" auto-height="{{false}}"></textarea>
-    <view class="imp-row">
-      <view class="mode-switch">
-        <text class="mode-item {{importMode === 'merge' ? 'on' : ''}}" data-mode="merge" catchtap="switchMode">合并</text>
-        <text class="mode-item {{importMode === 'replace' ? 'on' : ''}}" data-mode="replace" catchtap="switchMode">整体替换</text>
-      </view>
-      <text class="btn btn-sm btn-primary" catchtap="doImport">导入</text>
-      <text class="btn btn-sm btn-ghost" catchtap="pasteFromClipboard">粘贴</text>
-      <text class="btn btn-sm btn-ghost" catchtap="resetData">清空</text>
-    </view>
-  </view>
+  <view class="footer-link" bindtap="clearData">清空学习记录</view>
+  <view class="footer-note">题目依据《科目一考点大字速记手册》与现行通用题库整理，仅供练习</view>
 </view>

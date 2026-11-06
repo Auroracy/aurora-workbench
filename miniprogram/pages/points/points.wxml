@@ -1,0 +1,40 @@
+<view class="pg fs-{{fontLevel}}">
+
+  <view class="card intro">
+    <view class="card-title">13 类考点 · 62 个知识点</view>
+    <view class="sub">点「看口诀」把要点读两遍，再点「练这组」。做错的考点，系统会自动多出几次题，直到记住为止。</view>
+  </view>
+
+  <view class="cat card {{expandId===item.id?'opened':''}}" wx:for="{{cats}}" wx:key="id">
+    <view class="cat-head" data-id="{{item.id}}" bindtap="toggleNote">
+      <text class="cat-no">{{item.no}}</text>
+      <view class="cat-main">
+        <view class="cat-name">{{item.name}}</view>
+        <view class="cat-sub">{{item.sub}}</view>
+      </view>
+      <text class="cat-arrow">{{expandId===item.id?'收起 ▴':'看口诀 ▾'}}</text>
+    </view>
+
+    <view class="cat-progress">
+      <view class="bar"><view class="bar-in" style="width:{{item.pct}}%"></view></view>
+      <text class="pct">掌握 {{item.mastered}}/{{item.pointTotal}}</text>
+    </view>
+    <view class="cat-meta">已练 {{item.practiced}} 次 · 错 {{item.wrong}} 次 · 本类 {{item.questionCount}} 道模拟题</view>
+
+    <view class="cat-btns">
+      <view class="mini-btn ghost" data-id="{{item.id}}" catchtap="toggleNote">看口诀</view>
+      <view class="mini-btn solid" data-cat="{{item.id}}" catchtap="practiceCat">练这组</view>
+    </view>
+
+    <view wx:if="{{expandId===item.id}}" class="note-box">
+      <view class="tip-card mnemonic"><text class="tip-label">记这一句</text>{{item.mnemonic}}</view>
+      <view class="note-title">要点（建议读出声）</view>
+      <view class="note-line" wx:for="{{item.notes}}" wx:for-item="n" wx:key="*this">
+        <text class="note-dot">·</text><text class="note-text">{{n}}</text>
+      </view>
+    </view>
+  </view>
+
+  <button class="big-btn primary all-btn" bindtap="practiceAll">13 类混合练 10 题</button>
+  <view class="footer-note">口诀与数据依据《科目一考点大字速记手册》（公安部令第 163 号口径）</view>
+</view>

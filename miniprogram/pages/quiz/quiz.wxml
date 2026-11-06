@@ -1,0 +1,77 @@
+<view class="pg fs-{{fontLevel}}">
+
+  <!-- ============ 答题中 ============ -->
+  <block wx:if="{{!finished}}">
+    <view class="qhead">
+      <view class="qhead-row">
+        <text class="qhead-title">{{title}}</text>
+        <text class="qhead-count">{{idxText}}</text>
+      </view>
+      <view class="qbar"><view class="qbar-in" style="width:{{progressPct}}%"></view></view>
+    </view>
+
+    <view class="card qcard">
+      <view class="qtag">{{q.catName}} · {{q.pointName}}</view>
+      <view class="qtype">{{q.type==='judge'?'判断题：判断下面说法对不对':'单选题：选一个正确答案'}}</view>
+      <view class="qtext">{{q.q}}</view>
+    </view>
+
+    <view class="opts {{answered?'answered':''}}">
+      <view
+        class="opt {{answered && index===q.answer?'is-right':''}} {{answered && index===picked && !correct?'is-wrong':''}}"
+        wx:for="{{opts}}" wx:key="label" data-i="{{index}}" bindtap="choose">
+        <text class="opt-label">{{item.label}}</text>
+        <text class="opt-text">{{item.text}}</text>
+        <text wx:if="{{answered && index===q.answer}}" class="opt-mark right">✓ 正确答案</text>
+        <text wx:if="{{answered && index===picked && !correct}}" class="opt-mark wrong">✕ 我选的</text>
+      </view>
+    </view>
+
+    <view wx:if="{{answered}}" class="fb {{correct?'ok':'no'}}">
+      <text class="fb-icon">{{correct?'✓':'✕'}}</text>
+      <view class="fb-main">
+        <view class="fb-title">{{correct?'答对了！':'答错了，记住这个'}}</view>
+        <view wx:if="{{!correct}}" class="fb-answer">正确答案：{{answerText}}　（你选了 {{pickedText}}）</view>
+      </view>
+    </view>
+
+    <view wx:if="{{answered}}" class="tip-card">
+      <text class="tip-label">记住这句</text>{{q.tip}}
+      <view wx:if="{{q.key && q.key!==q.tip}}" class="tip-key">考点口诀：{{q.key}}</view>
+    </view>
+
+    <button wx:if="{{answered}}" class="big-btn primary next-btn" bindtap="next">{{nextText}}</button>
+    <view wx:else class="choose-hint">点上面一个答案，选完会立刻告诉您对不对</view>
+  </block>
+
+  <!-- ============ 本组成绩 ============ -->
+  <block wx:else>
+    <view class="card result">
+      <view class="res-title">这一组做完了</view>
+      <view class="res-num">{{result.right}} / {{result.total}}</view>
+      <view class="res-rate">正确率 {{result.rate}}%</view>
+      <view class="res-msg">{{encourage}}</view>
+    </view>
+
+    <view class="card" wx:if="{{result.pointList.length}}">
+      <view class="card-title">这几个考点再看一眼</view>
+      <view class="wp" wx:for="{{result.pointList}}" wx:key="name">
+        <text class="wp-name">{{item.name}}</text>
+        <text class="wp-badge">错 {{item.wrong}} 题</text>
+      </view>
+      <view class="sub wp-note">下次练习会自动多出这些考点的题，多见几次就记住了。</view>
+    </view>
+
+    <view class="card" wx:if="{{result.catList.length}}">
+      <view class="card-title">错在哪些大类</view>
+      <view class="wp" wx:for="{{result.catList}}" wx:key="name">
+        <text class="wp-name">{{item.name}}</text>
+        <text class="wp-badge">错 {{item.wrong}} 题</text>
+      </view>
+    </view>
+
+    <button class="big-btn primary" bindtap="again">再练 10 题（错的会多出）</button>
+    <button class="big-btn outline" bindtap="goWrong">去错题本看看</button>
+    <button class="big-btn soft" bindtap="goHome">回首页</button>
+  </block>
+</view>

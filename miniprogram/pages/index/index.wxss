@@ -1,70 +1,46 @@
-.hero {
-  background: linear-gradient(135deg, #15A49B 0%, #2E86C1 100%);
-  color: #fff;
-  padding: 40rpx 32rpx 32rpx;
-}
-.hero-date { font-size: 24rpx; opacity: .85; }
-.hero-title { font-size: 44rpx; font-weight: 700; margin: 8rpx 0 6rpx; letter-spacing: 2rpx; }
-.hero-sub { opacity: .9; }
-.hero-date, .hero-sub, .hero-tip { color: rgba(255, 255, 255, .92); }
-.hero-bar {
-  height: 10rpx; border-radius: 999rpx; margin: 26rpx 0 14rpx;
-  background: rgba(255, 255, 255, .28); overflow: hidden;
-}
-.hero-bar .bar-fill { background: #fff; }
-.hero-tip { font-size: 22rpx; }
-
-.entry { padding: 0; }
-.entry-row { display: flex; align-items: center; padding: 26rpx 28rpx; gap: 20rpx; }
-.entry-row + .entry-row { border-top: 1rpx solid var(--line-soft); }
-.e-ico {
-  width: 76rpx; height: 76rpx; border-radius: 20rpx; flex: 0 0 76rpx;
-  background: var(--accent-bg); display: flex; align-items: center; justify-content: center; font-size: 36rpx;
-}
-.e-ico.gray { background: var(--input-bg); filter: grayscale(1); opacity: .6; }
-.e-main { flex: 1; min-width: 0; }
-.e-name { font-size: 29rpx; font-weight: 600; }
-.e-name.gray { color: var(--text-3); }
-.e-desc { font-size: 22rpx; margin-top: 4rpx; }
-.e-badge {
-  margin-left: 10rpx; color: var(--amber); background: var(--amber-bg);
-  padding: 2rpx 12rpx; border-radius: 999rpx; font-size: 20rpx;
-}
-.e-arrow { color: var(--text-3); font-size: 40rpx; line-height: 1; }
-.e-tag {
-  font-size: 20rpx; color: var(--text-3); background: var(--input-bg);
-  padding: 6rpx 16rpx; border-radius: 999rpx;
+.hero { background: linear-gradient(135deg, #0F766E, #147F86); border: none; }
+.hero-title { font-size: var(--fs-title); font-weight: 800; color: #FFFFFF; line-height: 1.35; }
+.hero-sub { font-size: var(--fs-sub); color: #E3F4F1; margin-top: 14rpx; line-height: 1.75; }
+.hero-tag {
+  display: inline-block; margin-top: 22rpx; padding: 8rpx 22rpx;
+  background: rgba(255,255,255,.18); color: #FFFFFF;
+  border-radius: 999rpx; font-size: var(--fs-sub);
 }
 
-/* ===== 联网自检 ===== */
-.net-head { display: flex; align-items: center; gap: 12rpx; flex: 1; min-width: 0; }
-.dot { width: 16rpx; height: 16rpx; border-radius: 50%; flex: 0 0 16rpx; background: var(--text-3); }
-.dot.run { background: var(--amber); }
-.dot.ok { background: var(--green); }
-.dot.err { background: var(--red); }
-.net-msg {
-  margin-top: 14rpx; font-size: 24rpx; line-height: 1.7;
-  background: var(--input-bg); border-radius: var(--radius-sm); padding: 16rpx 20rpx;
-}
-.net-msg.ok { background: var(--green-bg); color: #1E7A4A; }
-.net-msg.err { background: var(--red-bg); color: #A64747; }
-.net-raw {
-  margin-top: 12rpx; font-size: 20rpx; color: var(--text-3); word-break: break-all;
-  font-family: "SF Mono", Menlo, monospace; line-height: 1.6;
+.stat-row { display: flex; }
+.stat-item { flex: 1; text-align: center; padding: 12rpx 0 8rpx; }
+.stat-num { font-size: var(--fs-num); font-weight: 800; color: var(--main); line-height: 1.15; }
+.stat-unit { font-size: var(--fs-sub); font-weight: 600; color: var(--ink-2); }
+.stat-label { font-size: var(--fs-sub); color: var(--ink-2); margin-top: 10rpx; }
+.stat-foot {
+  margin-top: 22rpx; padding-top: 20rpx; border-top: 2rpx solid var(--line);
+  font-size: var(--fs-sub); color: var(--ink-3); text-align: center;
 }
 
-.imp-tip { line-height: 1.8; margin-bottom: 16rpx; }
-.code {
-  font-family: "SF Mono", Menlo, monospace; font-size: 21rpx;
-  background: var(--input-bg); padding: 2rpx 10rpx; border-radius: 8rpx; color: var(--accent-d);
+.font-card { margin-top: 8rpx; }
+.font-row { display: flex; gap: 16rpx; margin-bottom: 16rpx; }
+.font-btn {
+  flex: 1; text-align: center; padding: 20rpx 0;
+  border: 3rpx solid var(--line); border-radius: 20rpx;
+  background: #FFFFFF; color: var(--ink-2);
+  font-size: var(--fs-btn); font-weight: 700;
 }
-.imp-input {
-  width: 100%; box-sizing: border-box; height: 200rpx;
-  background: var(--input-bg); border: 1rpx solid var(--line);
-  border-radius: 18rpx; padding: 20rpx; font-size: 24rpx;
-  font-family: "SF Mono", Menlo, monospace;
+.font-btn.on { background: var(--main); border-color: var(--main); color: #FFFFFF; }
+.font-note { margin-top: 4rpx; }
+
+.hist-row {
+  display: flex; justify-content: space-between;
+  padding: 14rpx 0; border-bottom: 2rpx solid var(--line);
+  font-size: var(--fs-sub);
 }
-.imp-row { display: flex; align-items: center; gap: 12rpx; margin-top: 18rpx; flex-wrap: wrap; }
-.mode-switch { display: flex; background: var(--input-bg); border-radius: 14rpx; overflow: hidden; }
-.mode-item { font-size: 22rpx; padding: 10rpx 20rpx; color: var(--text-2); }
-.mode-item.on { background: var(--accent); color: #fff; font-weight: 600; }
+.hist-date { color: var(--ink-3); }
+.hist-text { color: var(--ink); font-weight: 600; }
+
+.footer-link {
+  text-align: center; font-size: var(--fs-sub);
+  color: var(--ink-3); padding: 16rpx; text-decoration: underline;
+}
+.footer-note {
+  text-align: center; font-size: 26rpx; color: var(--ink-3);
+  padding: 8rpx 30rpx 30rpx; line-height: 1.7;
+}
