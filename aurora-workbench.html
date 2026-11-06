@@ -35556,7 +35556,7 @@ var JAVA_LEARNED_MAX = 20;      /* 每次固定出题数 */
 var JAVA_RANDOM_MAX = 10;       /* 随机抽题数 */
 var JAVA_REVIEW_MAX = 10;       /* 重复抽查题数 */
 var JAVA_AI_BATCH = 5;          /* AI 一次编写几个考点 */
-var JAVA_ORAL_BATCH = 3;         /* 口述题每批考点数：小批并发，单批输出短、出题更快 */
+var JAVA_ORAL_BATCH = 2;         /* 口述题每批考点数：批越小输出越短，截断/空返回概率越低 */
 var JAVA_ORAL_REQ_TIMEOUT = 20000;   /* 口述题单批请求软超时（ms）：超时立即报错，不再跑第二轮 */
 var JAVA_ORAL_TOTAL_TIMEOUT = 30000; /* 整套口述题总兜底（ms） */
 var JAVA_DONE_SHOW = 5;         /* 已做题本折叠时显示条数 */
@@ -36050,6 +36050,8 @@ function javaOralSystem(){
     '6) followAnswerPoints：对 `follow` 追问的参考答案，必须列出 3~5 个关键得分点（每点一句话，按重要性排序，禁止为空数组）。\n' +
     '7) followExplanation：对追问的面试官点评（50 字以内，必须非空，点出考点依据与常见漏答）。\n' +
     '以上字段缺一不可，followAnswerPoints 至少 3 个有效要点，followExplanation 至少 10 个字。\n' +
+    '重要：必须为列出的每一个考点各输出恰好 1 道题；任何情况下都禁止返回空数组、禁止省略考点；' +
+    '即使该考点已有类似问法，也必须换一个全新考察角度（源码细节、生产事故、参数调优、横向对比等）照常出题。\n' +
     '只能依据给出的考点资料出题，不得编造资料里没有的版本号、默认值、参数与结论。\n' +
     '只输出 JSON 数组，不要任何解释文字，格式：\n' +
     '[{"pid":"考点id","question":"题干","answerPoints":["要点1","要点2","要点3"],"explanation":"点评","follow":"追问","followAnswerPoints":["追问要点1","追问要点2","追问要点3"],"followExplanation":"追问点评"}]';
@@ -36067,7 +36069,7 @@ function javaOralUserPrompt(items){
            '（概念原理 / 典型使用场景 / 源码细节 / 常见坑 / 与其他技术对比），不要重复问法。\n';
     }
     if(it.avoid && it.avoid.length){
-      s += '该考点已有的问法如下，新题的问法必须与它们明显不同：\n';
+      s += '该考点已有的问法（尽量避开，但务必仍为该考点出一道新题）：\n';
       it.avoid.forEach(function(t){ s += '  - ' + t + '\n'; });
     }
     s += '\n';
@@ -36185,7 +36187,8 @@ function javaAiWriteOralBatch(pids, opts){
   var writtenIds = opts.writtenIds || [];
   var written = 0, err = null, pass = 0, asked = 0, badResp = 0, abort = false, totalBatches = 1;
   /* 出题诊断：AI 到底返回了几道、多少被去重/校验拒掉，收尾显示给用户，方便定位 */
-  var diag = { returned:0, dup:0, bad:0, nopid:0, batches:0, written:0 };
+  var diag = { returned:0, dup:0, bad:0, nopid:0, empty:0, batches:0, written:0 };
+  var emptyPids = [];   /* 返回空的批次考点：换措辞重试一轮 */
   var oldTexts = {}, askedCount = {};
   javaOralAll().forEach(function(q){
     if(!q || !q.question) return;
@@ -36298,8 +36301,11 @@ function javaAiWriteOralBatch(pids, opts){
         added++;
       });
       if(!added && list.length) badResp++;
+      if(!list.length) diag.empty++;
       progress(added ? ('已编 ' + written + '/' + wanted)
-                     : ('第 ' + label + ' 批返回 ' + list.length + ' 道但校验未过'));
+                     : (list.length ? ('第 ' + label + ' 批返回 ' + list.length + ' 道但校验未过')
+                                    : ('第 ' + label + ' 批返回空')));
+      return { empty: !list.length, pids: items.map(function(x){ return x.pid; }) };
     };
     var failed = function(e){
       if(timer) clearTimeout(timer);
@@ -36307,6 +36313,7 @@ function javaAiWriteOralBatch(pids, opts){
       settled = true;
       progress('第 ' + label + ' 批失败');
       abortWith(e || new Error('AI 请求失败'));
+      return {};
     };
     return Promise.race([req, soft]).then(done, failed);
   }
@@ -36328,7 +36335,10 @@ function javaAiWriteOralBatch(pids, opts){
             avoidN: askedCount[pid] || 0, avoid: avoid
           };
         });
-        jobs.push(ask(items));
+        jobs.push(ask(items).then(function(res){
+          if(res && res.empty) res.pids.forEach(function(p){ if(emptyPids.indexOf(p) < 0) emptyPids.push(p); });
+          return res;
+        }));
       })(list.slice(i, i + JAVA_ORAL_BATCH));
     }
     return Promise.all(jobs);
@@ -36336,14 +36346,20 @@ function javaAiWriteOralBatch(pids, opts){
   /* 只发一轮：失败已在 abortWith 里立刻上报，不再自动跑第二轮白等 20s */
   var uniqPool = [], seenP = {};
   slots.forEach(function(p){ if(!seenP[p]){ seenP[p] = 1; uniqPool.push(p); } });
-  var maxPass = 1;
+  var maxPass = 2;
   function loop(){
     if(abort) return Promise.resolve();
     if(written >= wanted) return Promise.resolve();
     if(++pass > maxPass) return Promise.resolve();
-    var remain = wanted - written;
-    var n = pass === 1 ? uniqPool.length : Math.max(JAVA_ORAL_BATCH, remain);
-    var round = javaShuffle(uniqPool.slice(), (Date.now() + pass * 7919) % 100000).slice(0, n);
+    var round;
+    if(pass === 1){
+      round = javaShuffle(uniqPool.slice(), (Date.now() + 7919) % 100000).slice(0, uniqPool.length);
+    } else {
+      /* 只补「返回空」的考点：AI 偶发内容性空返回，换一次措辞重试；失败/超时走 abort 不进这里 */
+      var pids = emptyPids.filter(function(p){ return uniqPool.indexOf(p) >= 0; });
+      if(!pids.length) return Promise.resolve();
+      round = javaShuffle(pids, (Date.now() + pass * 7919) % 100000).slice(0, wanted - written);
+    }
     return runPass(round).then(loop);
   }
   return loop().then(function(){
@@ -36646,6 +36662,7 @@ function startJavaOralQuiz(mode){
           (diag.dup ? '：' + diag.dup + ' 道与已出题重复' : '') +
           (diag.bad ? ((diag.dup) ? '、' : '：') + diag.bad + ' 道字段不合格' : '') +
           (diag.nopid ? ((diag.dup || diag.bad) ? '、' : '：') + diag.nopid + ' 道对不上考点' : '') +
+          (diag.empty ? ((diag.dup || diag.bad || diag.nopid) ? '、' : '：') + diag.empty + ' 批返回空' : '') +
           '，' + newIds.length + ' 道入库）';
       }
       javaOralAiStatus('⚠ 本次 AI 只编出 ' + newIds.length + ' 道新题，其余用已出过的 AI 题补足' + detail + '。' +
