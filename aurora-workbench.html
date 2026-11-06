@@ -36041,6 +36041,10 @@ function javaOralUserPrompt(items){
       s += '该考点已出过 ' + it.avoidN + ' 道题，请换一个明显不同的考察角度' +
            '（概念原理 / 典型使用场景 / 源码细节 / 常见坑 / 与其他技术对比），不要重复问法。\n';
     }
+    if(it.avoid && it.avoid.length){
+      s += '该考点已有的问法如下，新题的问法必须与它们明显不同：\n';
+      it.avoid.forEach(function(t){ s += '  - ' + t + '\n'; });
+    }
     s += '\n';
   });
   return s;
@@ -36155,6 +36159,8 @@ function javaAiWriteOralBatch(pids, opts){
   if(!slots.length || !wanted) return Promise.resolve(0);
   var writtenIds = opts.writtenIds || [];
   var written = 0, err = null, pass = 0, asked = 0, badResp = 0, abort = false, totalBatches = 1;
+  /* 出题诊断：AI 到底返回了几道、多少被去重/校验拒掉，收尾显示给用户，方便定位 */
+  var diag = { returned:0, dup:0, bad:0, nopid:0, batches:0, written:0 };
   var oldTexts = {}, askedCount = {};
   javaOralAll().forEach(function(q){
     if(!q || !q.question) return;
@@ -36203,7 +36209,15 @@ function javaAiWriteOralBatch(pids, opts){
     var ex = String(o.explanation == null ? '' : o.explanation).trim();
     if(ex.length < 6) ex = '考察「' + title + '」的原理、使用场景与常见坑。';
     var q = String(o.question == null ? '' : o.question).trim();
-    if(q.length < 6) q = '请说一下「' + title + '」的原理，以及实际项目里的使用场景和注意点？';
+    if(q.length < 6){
+      var angles = [
+        '请说一下「' + title + '」的原理，以及实际项目里的使用场景和注意点？',
+        '谈谈你对「' + title + '」的理解，最好能结合一次具体实践。',
+        '「' + title + '」在什么场景下不适用？为什么？',
+        '如果让你给新人讲清楚「' + title + '」，你会重点讲哪几个点？'
+      ];
+      q = angles[Math.abs(javaHash(it.pid + '#' + shots.length + '#' + Date.now()) % angles.length)];
+    }
     return { pid: it.pid, question: q, answerPoints: pts, explanation: ex, follow: f,
              followAnswerPoints: fpts, followExplanation: fe };
   }
@@ -36230,14 +36244,16 @@ function javaAiWriteOralBatch(pids, opts){
       var map = {}; items.forEach(function(x){ map[x.pid] = x; });
       var list = Array.isArray(arr) ? arr : [];
       var added = 0;
+      diag.returned += list.length;
+      diag.batches++;
       list.forEach(function(r, ri){
         if(written >= wanted) return;
         /* pid 容错：AI 偶尔抄错或省略 pid → 按顺序回退到本批第 ri 个考点 */
         var it = map[r && r.pid] || items[ri] || null;
-        if(!it) return;
+        if(!it){ diag.nopid++; return; }
         var q = normalize(r, it);
-        if(!javaOralValid(q)) return;
-        if(oldTexts[q.question]) return;      /* 与已出过的题完全一样 → 跳过 */
+        if(!javaOralValid(q)){ diag.bad++; return; }
+        if(oldTexts[q.question]){ diag.dup++; return; }   /* 与已出过的题完全一样 → 跳过 */
         var id = newQid(it.pid, q.question);
         javaOralQ()[id] = {
           id: id, _oral: true, pid: it.pid,
@@ -36277,10 +36293,14 @@ function javaAiWriteOralBatch(pids, opts){
       (function(batch){
         var items = batch.map(function(pid){
           var it = flat[pid];
+          /* 把该考点最近 2 个已出题干直接给 AI，要求新问法明显不同 —— 对症「AI 复读旧题」 */
+          var avoid = javaOralAll().filter(function(q){ return q && q.pid === pid && q.question; })
+            .sort(function(a, b){ return (b.at || 0) - (a.at || 0); })
+            .slice(0, 2).map(function(q){ return String(q.question).slice(0, 60); });
           return {
             pid: pid, title: it.p.title, content: it.p.content,
             detail: it.p.detail || '', btitle: it.btitle || '', cname: it.cname || '',
-            avoidN: askedCount[pid] || 0
+            avoidN: askedCount[pid] || 0, avoid: avoid
           };
         });
         jobs.push(ask(items));
@@ -36303,6 +36323,8 @@ function javaAiWriteOralBatch(pids, opts){
   }
   return loop().then(function(){
     if(written) saveDb();
+    diag.written = written;
+    if(typeof opts.onDiag === 'function'){ try { opts.onDiag(diag); } catch(eD){} }
     if(written >= wanted) return written;
     if(!written && !err && badResp)
       throw new Error('AI 返回的题目字段不完整（缺答案要点或追问答案），已丢弃 ' + badResp + ' 批');
@@ -36571,7 +36593,7 @@ function startJavaOralQuiz(mode){
       if(slots.length < JAVA_RANDOM_MAX) slots.push(it.p.id);
     });
   }
-  var newIds = [], started = false, guardTimer = null, failMsg = '';
+  var newIds = [], started = false, guardTimer = null, failMsg = '', diag = null;
   var engLabel = (typeof quizAiLabel === 'function') ? quizAiLabel() : 'AI';
   javaAiBusy = true;
   javaOralAiStatus('⏳ ' + engLabel + ' 正在按' + (mode === 'learned' ? '已背考点' : '全部考点') +
@@ -36593,7 +36615,15 @@ function startJavaOralQuiz(mode){
     }
     if(!paper.length){ javaOralAiStatus('✗ ' + (failMsg || '暂时没有可用的口述题，请稍后重试'), 'error'); return; }
     if(newIds.length < JAVA_RANDOM_MAX){
-      javaOralAiStatus('⚠ 本次 AI 只编出 ' + newIds.length + ' 道新题，其余用已出过的 AI 题补足。' +
+      var detail = '';
+      if(diag && diag.returned){
+        detail = '（AI 共返回 ' + diag.returned + ' 道' +
+          (diag.dup ? '：' + diag.dup + ' 道与已出题重复' : '') +
+          (diag.bad ? ((diag.dup) ? '、' : '：') + diag.bad + ' 道字段不合格' : '') +
+          (diag.nopid ? ((diag.dup || diag.bad) ? '、' : '：') + diag.nopid + ' 道对不上考点' : '') +
+          '，' + newIds.length + ' 道入库）';
+      }
+      javaOralAiStatus('⚠ 本次 AI 只编出 ' + newIds.length + ' 道新题，其余用已出过的 AI 题补足' + detail + '。' +
         (failMsg || 'AI 没有返回足够的新题（网络超时或返回格式异常）') +
         ' 若一直如此，请到「☁ 数据同步 → AI 设置」测试智谱 Key，并确认已 Cmd+Shift+R 强刷。', 'error');
     } else {
@@ -36611,6 +36641,7 @@ function startJavaOralQuiz(mode){
         Math.min(n, totalN) + '/' + totalN + '）' + suffix, 'busy');
       toast('AI 面试官正在编新的口述题（' + Math.min(n, totalN) + '/' + totalN + '）' + suffix);
     },
+    onDiag: function(d){ diag = d; },
     onError: function(e){
       /* 失败立即收尾，不再等其它批次或总兜底，用户第一时间看到原因 */
       failMsg = javaAiErrorHint(e);
