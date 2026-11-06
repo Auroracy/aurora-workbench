@@ -16,6 +16,15 @@
   font-size: var(--fs-q); font-weight: 700; color: var(--ink);
   line-height: 1.65; margin-top: 14rpx;
 }
+.qimg {
+  display: block; width: 100%; margin-top: 24rpx;
+  border-radius: 18rpx; border: 2rpx solid var(--line); background: #FFFFFF;
+}
+.img-fallback {
+  margin-top: 16rpx; padding: 18rpx 20rpx; border-radius: 16rpx;
+  background: #FFF6E5; color: #8A6410;
+  font-size: var(--fs-sub); font-weight: 600; line-height: 1.7;
+}
 
 .opts { margin-bottom: 8rpx; }
 .opt {

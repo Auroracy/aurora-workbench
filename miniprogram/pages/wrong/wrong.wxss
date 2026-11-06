@@ -5,6 +5,10 @@
   background: var(--no-bg); padding: 6rpx 20rpx; border-radius: 999rpx;
 }
 .wq { font-size: var(--fs-base); font-weight: 700; color: var(--ink); line-height: 1.7; margin-top: 20rpx; }
+.wimg {
+  display: block; width: 100%; margin-top: 20rpx;
+  border-radius: 18rpx; border: 2rpx solid var(--line); background: #FFFFFF;
+}
 .wline { font-size: var(--fs-sub); font-weight: 700; margin-top: 14rpx; }
 .wrong-line { color: var(--no); }
 .right-line { color: var(--ok); }

@@ -14,6 +14,8 @@
       <view class="qtag">{{q.catName}} · {{q.pointName}}</view>
       <view class="qtype">{{q.type==='judge'?'判断题：判断下面说法对不对':'单选题：选一个正确答案'}}</view>
       <view class="qtext">{{q.q}}</view>
+      <image wx:if="{{q.img}}" class="qimg" src="{{q.img}}" mode="widthFix" lazy-load="true" binderror="onImgError"></image>
+      <view wx:if="{{imgError}}" class="img-fallback">图片没显示？检查网络后重进这一题，或先做下一题。</view>
     </view>
 
     <view class="opts {{answered?'answered':''}}">

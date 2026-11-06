@@ -1,8 +1,8 @@
 <view class="pg fs-{{fontLevel}}">
 
   <view class="card intro">
-    <view class="card-title">13 类考点 · 62 个知识点</view>
-    <view class="sub">点「看口诀」把要点读两遍，再点「练这组」。做错的考点，系统会自动多出几次题，直到记住为止。</view>
+    <view class="card-title">{{cats.length}} 类口诀 · {{ov.pointTotal}} 个真题考点</view>
+    <view class="sub">题目按「驾校一点通」专项练习归类。点「看口诀」把要点读两遍，再点「练这组」。做错的考点，系统会自动多出几次题，直到记住为止。</view>
   </view>
 
   <view class="cat card {{expandId===item.id?'opened':''}}" wx:for="{{cats}}" wx:key="id">
@@ -19,11 +19,11 @@
       <view class="bar"><view class="bar-in" style="width:{{item.pct}}%"></view></view>
       <text class="pct">掌握 {{item.mastered}}/{{item.pointTotal}}</text>
     </view>
-    <view class="cat-meta">已练 {{item.practiced}} 次 · 错 {{item.wrong}} 次 · 本类 {{item.questionCount}} 道模拟题</view>
+    <view class="cat-meta">已练 {{item.practiced}} 次 · 错 {{item.wrong}} 次 · 本类 {{item.questionCount}} 道真题</view>
 
     <view class="cat-btns">
       <view class="mini-btn ghost" data-id="{{item.id}}" catchtap="toggleNote">看口诀</view>
-      <view class="mini-btn solid" data-cat="{{item.id}}" catchtap="practiceCat">练这组</view>
+      <view wx:if="{{item.questionCount}}" class="mini-btn solid" data-cat="{{item.id}}" catchtap="practiceCat">练这组</view>
     </view>
 
     <view wx:if="{{expandId===item.id}}" class="note-box">
@@ -35,6 +35,6 @@
     </view>
   </view>
 
-  <button class="big-btn primary all-btn" bindtap="practiceAll">13 类混合练 10 题</button>
-  <view class="footer-note">口诀与数据依据《科目一考点大字速记手册》（公安部令第 163 号口径）</view>
+  <button class="big-btn primary all-btn" bindtap="practiceAll">全部真题混合练 10 题</button>
+  <view class="footer-note">真题整理自驾校一点通「小车科目一 · 专项练习」；口诀与要点依据《科目一考点大字速记手册》（公安部令第 163 号口径）</view>
 </view>

@@ -9,7 +9,7 @@ Page({
     paper: [], answers: [], total: 0, idx: 0,
     q: {}, opts: [], answerText: '', pickedText: '',
     idxText: '', progressPct: 0, nextText: '下一题',
-    answered: false, picked: -1, correct: false,
+    answered: false, picked: -1, correct: false, imgError: false,
     finished: false, result: {}, encourage: ''
   },
 
@@ -66,8 +66,12 @@ Page({
       idxText: '第 ' + (idx + 1) + ' / ' + this.data.total + ' 题',
       progressPct: Math.round(idx * 100 / this.data.total),
       nextText: (idx + 1 >= this.data.total) ? '看这一组的成绩' : '下一题',
-      answered: false, picked: -1, correct: false
+      answered: false, picked: -1, correct: false, imgError: false
     });
+  },
+
+  onImgError: function () {
+    this.setData({ imgError: true });
   },
 
   choose: function (e) {

@@ -1,17 +1,19 @@
-/* 考点页：13 类考点，点开看大字口诀，点「练这组」只练这一类 */
+/* 考点页：13 类口诀 + 真题专项考点，点开看大字口诀，点「练这组」只练这一类 */
 var store = require('../../utils/store.js');
 
 Page({
   data: {
     fontLevel: 1,
     cats: [],
+    ov: {},
     expandId: ''
   },
 
   onShow: function () {
     this.setData({
       fontLevel: store.getFont(),
-      cats: store.catList()
+      cats: store.catList(),
+      ov: store.overview()
     });
   },
 

@@ -53,5 +53,5 @@
   </view>
 
   <view class="footer-link" bindtap="clearData">清空学习记录</view>
-  <view class="footer-note">自编模拟题 · 知识点依据《科目一考点大字速记手册》 · 仅供练习</view>
+  <view class="footer-note">真题整理自驾校一点通「小车科目一 · 专项练习」 · 口诀依据《科目一考点大字速记手册》 · 仅供个人练习</view>
 </view>

@@ -12,6 +12,7 @@
     <view class="card wcard" wx:for="{{list}}" wx:key="id">
       <view class="wtag">{{item.catName}} · {{item.pointName}}　错 {{item.times}} 次</view>
       <view class="wq">{{item.q}}</view>
+      <image wx:if="{{item.img}}" class="wimg" src="{{item.img}}" mode="widthFix" lazy-load="true"></image>
       <view class="wline wrong-line">我选了：{{item.pickedText}}</view>
       <view class="wline right-line">正确答案：{{item.answerText}}</view>
       <view class="tip-card"><text class="tip-label">记住这句</text>{{item.tip}}</view>

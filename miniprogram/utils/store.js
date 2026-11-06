@@ -62,9 +62,13 @@ function isMastered(s) {
   var n = (s.right || 0) + (s.wrong || 0);
   return n >= 2 && s.right >= 2 && s.right / n >= 0.75;
 }
+function activePointIds() {
+  /* 只统计真正有题目的考点：纯口诀考点（没有对应真题）不该算进掌握度分母 */
+  return Object.keys(Q.BY_POINT);
+}
 function masteredCount(db) {
   var n = 0;
-  P.POINT_IDS.forEach(function (pid) { if (isMastered(pointStat(db, pid))) n++; });
+  activePointIds().forEach(function (pid) { if (isMastered(pointStat(db, pid))) n++; });
   return n;
 }
 
@@ -217,7 +221,7 @@ function overview() {
     rate: st.total ? Math.round(st.right * 100 / st.total) : 0,
     rounds: st.rounds,
     mastered: masteredCount(db),
-    pointTotal: P.POINT_IDS.length,
+    pointTotal: activePointIds().length,
     wrongCount: Object.keys(db.wrong).length,
     history: db.history.slice(0, 5)
   };
@@ -228,6 +232,7 @@ function catList() {
   return P.CATS.map(function (c) {
     var total = 0, done = 0, right = 0, wrong = 0;
     c.points.forEach(function (p) {
+      if (!Q.BY_POINT[p.id] || !Q.BY_POINT[p.id].length) return;  /* 纯口诀考点不计入掌握度 */
       var s = pointStat(db, p.id);
       total++;
       if (isMastered(s)) done++;
@@ -252,7 +257,7 @@ function wrongList() {
     if (!q) return null;
     return {
       id: id, q: q.q, pointName: q.pointName, catName: q.catName,
-      options: q.options, answer: q.answer, tip: q.tip, key: q.key,
+      options: q.options, answer: q.answer, tip: q.tip, key: q.key, img: q.img || '',
       picked: w.picked, times: w.times,
       pickedText: q.options[w.picked] || '未作答',
       answerText: q.options[q.answer]
