@@ -36346,7 +36346,7 @@ function javaAiWriteOralBatch(pids, opts){
   /* 只发一轮：失败已在 abortWith 里立刻上报，不再自动跑第二轮白等 20s */
   var uniqPool = [], seenP = {};
   slots.forEach(function(p){ if(!seenP[p]){ seenP[p] = 1; uniqPool.push(p); } });
-  var maxPass = 2;
+  var maxPass = 3;
   function loop(){
     if(abort) return Promise.resolve();
     if(written >= wanted) return Promise.resolve();
@@ -36702,7 +36702,7 @@ function startJavaOralQuiz(mode){
     batchP,
     new Promise(function(res){ guardTimer = setTimeout(res, JAVA_ORAL_TOTAL_TIMEOUT); })
   ]).then(function(){
-    if(!started){ failMsg = failMsg || 'AI 响应超过 45 秒'; startPaper(); }
+    if(!started){ failMsg = failMsg || ('AI 响应超过 ' + Math.round(JAVA_ORAL_TOTAL_TIMEOUT / 1000) + ' 秒，已有题目先开考'); startPaper(); }
   });
 }
 /* 主动放弃当前这套口述题 → 解锁，可立即重新出题 */
