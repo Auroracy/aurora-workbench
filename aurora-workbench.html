@@ -34960,7 +34960,20 @@ function callQwenChat(sysPrompt, userPrompt, model, extra){
   }).then(function(data){
     if(data.error) throw new Error(data.error.message || 'API 错误');
     var txt = data.choices && data.choices[0] && data.choices[0].message ? data.choices[0].message.content : '';
-    var arr = JSON.parse(txt);
+    /* AI 偶尔会返回 ```json 围栏 / 前后说明文字；严格 JSON.parse 会直接抛错并被上层静默吞掉，
+       表现为「题一直出不来」。这里做容错：去围栏 → 整段解析 → 退而截取数组/对象片段。 */
+    var raw = String(txt || '').trim();
+    raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
+    var arr = null;
+    try { arr = JSON.parse(raw); } catch(e0){
+      var st = raw.indexOf('['), en = raw.lastIndexOf(']');
+      if(st >= 0 && en > st){ try { arr = JSON.parse(raw.slice(st, en + 1)); } catch(e1){} }
+      if(!arr){
+        var ost = raw.indexOf('{'), oen = raw.lastIndexOf('}');
+        if(ost >= 0 && oen > ost){ try { arr = JSON.parse(raw.slice(ost, oen + 1)); } catch(e2){} }
+      }
+      if(!arr) throw new Error('AI 返回内容不是有效 JSON：' + raw.slice(0, 80));
+    }
     if(!Array.isArray(arr)) arr = [arr];
     return arr;
   });
@@ -35436,6 +35449,8 @@ var JAVA_LEARNED_MAX = 20;      /* 每次固定出题数 */
 var JAVA_RANDOM_MAX = 10;       /* 随机抽题数 */
 var JAVA_REVIEW_MAX = 10;       /* 重复抽查题数 */
 var JAVA_AI_BATCH = 5;          /* AI 一次编写几个考点 */
+var JAVA_ORAL_REQ_TIMEOUT = 25000;   /* 口述题单批请求软超时（ms）：网络挂起不让整套题卡死 */
+var JAVA_ORAL_TOTAL_TIMEOUT = 45000; /* 整套口述题总兜底（ms）：超时立刻用已编题 + 旧题开考 */
 var JAVA_DONE_SHOW = 5;         /* 已做题本折叠时显示条数 */
 var javaAiBusy = false;
 var javaQuizState = null;
@@ -35939,9 +35954,9 @@ function javaOralUserPrompt(items){
     s += '考点：' + it.title + '\n';
     s += '背诵答案：' + String(it.content || '').slice(0, 400) + '\n';
     if(it.detail) s += '详解：' + String(it.detail).slice(0, 700) + '\n';
-    if(it.avoid && it.avoid.length){
-      s += '该考点已出过的问法（请换一个不同的考察角度重新命题，题干不得与之雷同）：\n';
-      it.avoid.forEach(function(t){ s += '  - ' + t + '\n'; });
+    if(it.avoidN){
+      s += '该考点已出过 ' + it.avoidN + ' 道题，请换一个明显不同的考察角度' +
+           '（概念原理 / 典型使用场景 / 源码细节 / 常见坑 / 与其他技术对比），不要重复问法。\n';
     }
     s += '\n';
   });
@@ -36052,81 +36067,100 @@ function javaAiWriteOralBatch(pids, opts){
   opts = opts || {};
   var flat = {};
   javaFlatPoints().forEach(function(it){ flat[it.p.id] = it; });
-  /* 不再按「该考点有没有题」过滤：同一考点可以被反复出不同的题 */
   var slots = (pids || []).filter(function(pid){ return !!flat[pid]; });
   var wanted = Math.max(0, Number(opts.stopAt) || slots.length);
   if(!slots.length || !wanted) return Promise.resolve(0);
   var writtenIds = opts.writtenIds || [];
-  var written = 0, err = null, pass = 0;
-  var oldTexts = {}, avoid = {};
+  var written = 0, err = null, pass = 0, asked = 0;
+  var oldTexts = {}, askedCount = {};
   javaOralAll().forEach(function(q){
     if(!q || !q.question) return;
-    var t = String(q.question).trim();
-    oldTexts[t] = 1;
-    if(q.pid) (avoid[q.pid] = avoid[q.pid] || []).push(t.slice(0, 50));
+    oldTexts[String(q.question).trim()] = 1;
+    if(q.pid) askedCount[q.pid] = (askedCount[q.pid] || 0) + 1;
   });
+  function progress(stage){
+    if(typeof opts.onProgress === 'function') opts.onProgress(written, wanted, stage || '');
+  }
   function newQid(pid, text){
     var id = javaNewOralId(pid, text);
     while(javaOralQ()[id]) id = javaNewOralId(pid, text + Math.random());
     return id;
   }
+  /* 单批：请求一开始就上报进度；带软超时，超时返回 null 而不是抛错/无限等待。
+     口述题只依据本地考点资料，不开 enable_search —— 联网会拖慢数倍且常让返回不是纯 JSON。 */
+  function ask(items){
+    asked++;
+    var label = asked;
+    progress('第 ' + label + ' 批请求中');
+    var req = callQwenChat(javaOralSystem(), javaOralUserPrompt(items), 'qwen-plus', {});
+    var timer = null;
+    var soft = new Promise(function(res){
+      timer = setTimeout(function(){ res(null); }, JAVA_ORAL_REQ_TIMEOUT);
+    });
+    var done = function(arr){
+      if(timer) clearTimeout(timer);
+      var map = {}; items.forEach(function(x){ map[x.pid] = x; });
+      (arr || []).forEach(function(r){
+        if(written >= wanted) return;
+        var it = map[r && r.pid];
+        if(!it || !javaOralValid(r)) return;
+        var text = String(r.question).trim();
+        if(oldTexts[text]) return;      /* 与已出过的题完全一样 → 跳过 */
+        var id = newQid(r.pid, text);
+        javaOralQ()[id] = {
+          id: id, _oral: true, pid: r.pid,
+          subject: 'Java 面试', chapter: it.cname, book: it.btitle,
+          source: 'AI 模拟面试官 · 《' + it.btitle + '》',
+          question: text,
+          answerPoints: (r.answerPoints || []).map(function(o){ return String(o).trim(); }).filter(function(o){ return o; }),
+          explanation: String(r.explanation || '').trim(),
+          follow: String(r.follow || '').trim(),
+          followAnswerPoints: Array.isArray(r.followAnswerPoints) ? r.followAnswerPoints.map(function(o){ return String(o).trim(); }).filter(function(o){ return o; }) : [],
+          followExplanation: String(r.followExplanation || '').trim(),
+          at: Date.now()
+        };
+        oldTexts[text] = 1;
+        writtenIds.push(id);
+        written++;
+      });
+      progress('已编 ' + written + '/' + wanted);
+    };
+    var failed = function(e){
+      if(timer) clearTimeout(timer);
+      err = e;
+      progress('第 ' + label + ' 批失败，继续');
+    };
+    return Promise.race([req, soft]).then(done, failed);
+  }
+  /* 批次并发发起：不再一个接一个串行叠加耗时 */
   function runPass(list){
-    var chain = Promise.resolve();
+    var jobs = [];
     for(var i = 0; i < list.length; i += JAVA_AI_BATCH){
       (function(batch){
-        chain = chain.then(function(){
-          if(written >= wanted) return;
-          var items = batch.map(function(pid){
-            var it = flat[pid];
-            return {
-              pid: pid, title: it.p.title, content: it.p.content,
-              detail: it.p.detail || '', btitle: it.btitle || '', cname: it.cname || '',
-              avoid: (avoid[pid] || []).slice(-4)
-            };
-          });
-          return callQwenChat(javaOralSystem(), javaOralUserPrompt(items), 'qwen-plus', { enable_search: true })
-            .then(function(arr){
-              var map = {}; items.forEach(function(x){ map[x.pid] = x; });
-              (arr || []).forEach(function(r){
-                if(written >= wanted) return;
-                var it = map[r && r.pid];
-                if(!it || !javaOralValid(r)) return;
-                var text = String(r.question).trim();
-                if(oldTexts[text]) return;      /* 与已出过的题完全一样 → 跳过，交给下一轮换角度 */
-                var id = newQid(r.pid, text);
-                javaOralQ()[id] = {
-                  id: id, _oral: true, pid: r.pid,
-                  subject: 'Java 面试', chapter: it.cname, book: it.btitle,
-                  source: 'AI 模拟面试官 · 《' + it.btitle + '》',
-                  question: text,
-                  answerPoints: (r.answerPoints || []).map(function(o){ return String(o).trim(); }).filter(function(o){ return o; }),
-                  explanation: String(r.explanation || '').trim(),
-                  follow: String(r.follow || '').trim(),
-                  followAnswerPoints: Array.isArray(r.followAnswerPoints) ? r.followAnswerPoints.map(function(o){ return String(o).trim(); }).filter(function(o){ return o; }) : [],
-                  followExplanation: String(r.followExplanation || '').trim(),
-                  at: Date.now()
-                };
-                oldTexts[text] = 1;
-                (avoid[r.pid] = avoid[r.pid] || []).push(text.slice(0, 50));
-                writtenIds.push(id);
-                written++;
-              });
-              if(typeof opts.onProgress === 'function') opts.onProgress(written, wanted);
-            });
-        }).catch(function(e){ err = e; });
+        var items = batch.map(function(pid){
+          var it = flat[pid];
+          return {
+            pid: pid, title: it.p.title, content: it.p.content,
+            detail: it.p.detail || '', btitle: it.btitle || '', cname: it.cname || '',
+            avoidN: askedCount[pid] || 0
+          };
+        });
+        jobs.push(ask(items));
       })(list.slice(i, i + JAVA_AI_BATCH));
     }
-    return chain;
+    return Promise.all(jobs);
   }
-  /* 每一轮都只用「不重复的考点」请求，避免同一批次里重复 pid 让 AI 合并成一道题；
-     池子小于目标题数时多跑几轮，靠 avoid 提示让同一考点换角度再问 */
+  /* 每轮只用不重复 pid（同批次重复 pid 会让 AI 合并成一道题）；
+     最多 2 轮，补轮只请求还缺的题数对应的槽位，不再全量重跑 */
   var uniqPool = [], seenP = {};
   slots.forEach(function(p){ if(!seenP[p]){ seenP[p] = 1; uniqPool.push(p); } });
-  var maxPass = Math.min(8, Math.ceil(wanted / Math.max(1, uniqPool.length)) + 2);
+  var maxPass = 2;
   function loop(){
     if(written >= wanted) return Promise.resolve();
     if(++pass > maxPass) return Promise.resolve();
-    var round = javaShuffle(uniqPool.slice(), (Date.now() + pass * 7919) % 100000);
+    var remain = wanted - written;
+    var n = pass === 1 ? uniqPool.length : Math.max(JAVA_AI_BATCH, remain);
+    var round = javaShuffle(uniqPool.slice(), (Date.now() + pass * 7919) % 100000).slice(0, n);
     return runPass(round).then(loop);
   }
   return loop().then(function(){
@@ -36339,39 +36373,51 @@ function startJavaOralQuiz(mode){
     toast(mode === 'learned' ? '还没有勾「已背」的考点，先在「背诵」里标记几个吧' : '考点为空，暂时组不出题');
     return;
   }
-  /* 每次固定现编 JAVA_RANDOM_MAX 道「全新」口述题：
-     不再受「一个考点只能有一道题」限制 —— 从考点池里取 10 个槽位，池子不够就循环洗牌补足，
-     同一考点会被换角度再问；旧题全部留在题库里，不会被覆盖、刷新不丢。 */
+  /* 每次固定现编 10 道新题：池子不够就循环洗牌补足，同一考点换角度再问，旧题永不覆盖 */
   var slots = [], seed = Date.now() % 100000;
   while(slots.length < JAVA_RANDOM_MAX){
     javaShuffle(pool.slice(), (seed + slots.length * 7919) % 100000).forEach(function(it){
       if(slots.length < JAVA_RANDOM_MAX) slots.push(it.p.id);
     });
   }
-  var newIds = [];
+  var newIds = [], started = false, guardTimer = null;
   javaAiBusy = true;
   toast('AI 面试官正在编新的口述题（0/' + JAVA_RANDOM_MAX + '）…');
-  javaAiWriteOralBatch(slots, {
-    stopAt: JAVA_RANDOM_MAX,
-    writtenIds: newIds,
-    onProgress: function(n){ toast('AI 面试官正在编新的口述题（' + Math.min(n, JAVA_RANDOM_MAX) + '/' + JAVA_RANDOM_MAX + '）…'); }
-  }).then(function(){
+  var startPaper = function(reason){
+    if(started) return;
+    started = true;
     javaAiBusy = false;
+    if(guardTimer){ clearTimeout(guardTimer); guardTimer = null; }
     var bank = javaOralQ();
-    /* 组卷严格用本次现编出来的新题 qid，旧题不会混进来顶替 */
+    /* 组卷严格用本次现编出来的新题 qid，不足才用旧题补足 10 题 */
     var paper = newIds.map(function(id){ return bank[id]; }).filter(Boolean);
     if(paper.length < JAVA_RANDOM_MAX){
-      /* AI 抖动没编满 → 用旧题补足，保证一套始终 10 题 */
       var seen = {}; paper.forEach(function(q){ seen[q.id] = 1; });
       javaOralAll().forEach(function(q){
         if(paper.length < JAVA_RANDOM_MAX && q && !seen[q.id]){ paper.push(q); seen[q.id] = 1; }
       });
     }
-    if(!paper.length){ toast('AI 出题失败，请检查网络或密钥后重试'); return; }
+    if(!paper.length){ toast('暂时没有可用的口述题，请稍后重试'); return; }
+    if(reason) toast(reason);
     javaOralStartWith(paper);
-  }).catch(function(e){
-    javaAiBusy = false;
-    toast('AI 出题失败：' + (e && e.message ? e.message : '网络或密钥异常'));
+  };
+  var batchP = javaAiWriteOralBatch(slots, {
+    stopAt: JAVA_RANDOM_MAX,
+    writtenIds: newIds,
+    onProgress: function(n, totalN, stage){
+      if(stage && String(stage).indexOf('请求中') >= 0)
+        toast('AI 面试官正在编新的口述题（' + Math.min(n, totalN) + '/' + totalN + '）· ' + stage);
+      else
+        toast('AI 面试官正在编新的口述题（' + Math.min(n, totalN) + '/' + totalN + '）…');
+    }
+  }).then(function(){ startPaper(''); })
+    .catch(function(){ startPaper('AI 出题遇到网络问题，先用已有题开始面试'); });
+  /* 总兜底：AI 迟迟不返回也不能让用户干等「0/10」，超时立刻开考 */
+  Promise.race([
+    batchP,
+    new Promise(function(res){ guardTimer = setTimeout(res, JAVA_ORAL_TOTAL_TIMEOUT); })
+  ]).then(function(){
+    if(!started) startPaper('AI 出题较慢，先用已编好的题开始面试');
   });
 }
 /* 主动放弃当前这套口述题 → 解锁，可立即重新出题 */
