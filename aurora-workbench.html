@@ -35033,6 +35033,30 @@ function callQwenChat(sysPrompt, userPrompt, model, extra){
         var ost = raw.indexOf('{'), oen = raw.lastIndexOf('}');
         if(ost >= 0 && oen > ost){ try { arr = JSON.parse(raw.slice(ost, oen + 1)); } catch(e2){} }
       }
+      if(!arr){
+        /* 输出被 max_tokens 截断时 JSON 不完整（如 [{"pid":..},{"pid":..},{"pid":"xx" 后切断）：
+           逐个提取括号平衡的 {...} 对象，前面的完整题全部救回，只丢最后残缺的那道 */
+        var objs = [], depth = 0, st2 = -1, inStr = false, esc = false;
+        for(var ci = 0; ci < raw.length; ci++){
+          var ch2 = raw.charAt(ci);
+          if(inStr){
+            if(esc) esc = false;
+            else if(ch2 === '\\') esc = true;
+            else if(ch2 === '"') inStr = false;
+            continue;
+          }
+          if(ch2 === '"'){ inStr = true; continue; }
+          if(ch2 === '{'){ if(depth === 0) st2 = ci; depth++; }
+          else if(ch2 === '}'){
+            depth--;
+            if(depth === 0 && st2 >= 0){
+              try { objs.push(JSON.parse(raw.slice(st2, ci + 1))); } catch(e3){}
+              st2 = -1;
+            }
+          }
+        }
+        if(objs.length) arr = objs;
+      }
       if(!arr) throw new Error('AI 返回内容不是有效 JSON：' + raw.slice(0, 80));
     }
     if(!Array.isArray(arr)) arr = [arr];
@@ -35044,7 +35068,8 @@ function callQwenChat(sysPrompt, userPrompt, model, extra){
     var body = {
       model: eng === 'qwen' ? (model || 'qwen-plus') : (cfg.textModel || 'glm-4-flash'),
       messages: [ { role:'system', content:sysPrompt }, { role:'user', content:userPrompt } ],
-      temperature: 0.7
+      temperature: 0.7,
+      max_tokens: 4096   /* 智谱默认输出上限会截断长 JSON（症状：返回内容不是有效 JSON + 只有前半截题干），显式抬到 4096 */
     };
     /* response_format / enable_search 是百炼专有参数，其他引擎一律不带，避免 400 */
     if(eng === 'qwen'){
