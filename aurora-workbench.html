@@ -4770,7 +4770,7 @@ function showAiBalanceWarn(){
     box.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#c0392b;color:#fff;font-size:13px;line-height:1.5;padding:10px 14px;display:flex;align-items:center;gap:10px;box-shadow:0 2px 8px rgba(0,0,0,.3);';
     document.body.appendChild(box);
   }
-  box.innerHTML = '⚠ AI 视觉服务 <b>余额不足</b> 或免费额度已用完，AI 识别功能将不可用。请到对应平台（百炼 / 智谱 / DeepSeek / 火山方舟）充值，或在「☁ 数据同步」弹窗替换 API Key。' +
+  box.innerHTML = '⚠ AI 服务 <b>余额不足</b> 或免费额度已用完，AI 识别功能将不可用。请到对应平台（百炼 / 智谱 / DeepSeek / 火山方舟）充值，或在「☁ 数据同步」弹窗替换 API Key。' +
     '<a href="https://bailian.console.aliyun.com/" target="_blank" style="color:#fff;text-decoration:underline;margin-left:6px;white-space:nowrap;">去充值 ↗</a>' +
     '<button onclick="this.parentNode.remove()" style="margin-left:auto;background:rgba(255,255,255,.22);border:none;color:#fff;padding:5px 12px;border-radius:6px;cursor:pointer;white-space:nowrap;">关闭</button>';
   box.style.display = 'flex';
@@ -34570,7 +34570,7 @@ function renderCareerLearned(){
   var aiTip = document.getElementById('careerAiTip');
   if(aiTip){
     if(careerAiBusy) aiTip.textContent = '⏳ AI 正在编写真题…';
-    else if(!careerHasQwenKey()) aiTip.textContent = '未配置通义千问 Key：出题将只用题库真题 + 本地改写';
+    else if(!careerHasQwenKey()) aiTip.textContent = '未配置 AI 出题引擎 Key：出题将只用题库真题 + 本地改写';
     else {
       var m2 = careerAiQ(), done2 = 0;
       all.forEach(function(it){ if(m2[it.p.id]) done2++; });
@@ -34923,45 +34923,71 @@ function careerAiUserPrompt(items){
   return s;
 }
 /* 千问文本调用（OpenAI 兼容），extra 可带联网搜索参数；失败时按错误信息重试一次不带搜索 */
+/* ==== 出题链路专用 AI 引擎（与识图 / 新闻联播的 AI_ENGINES 设置相互独立）====
+   智谱 GLM 优先，其次 DeepSeek / 豆包。只要配置了任一非百炼引擎，出题就完全不走百炼，
+   避免百炼欠费 / 停服拖垮 Java 口述题、Java 单选题与事业编 AI 真题。
+   仅当用户「只配了百炼 Key」时才用百炼兜底（兼容老数据）。 */
+var QUIZ_ENGINE_ORDER = ['zhipu', 'deepseek', 'doubao'];
+function quizAiEngines(){
+  var conf = [];
+  try {
+    conf = (typeof configuredEngines === 'function')
+      ? configuredEngines().filter(function(e){ return e !== 'gemini'; }) : [];
+  } catch(e){ conf = []; }
+  var out = [];
+  QUIZ_ENGINE_ORDER.forEach(function(e){ if(conf.indexOf(e) >= 0) out.push(e); });
+  if(!out.length && conf.indexOf('qwen') >= 0) out.push('qwen');
+  return out;
+}
+function quizAiHasKey(){ return quizAiEngines().length > 0; }
+function quizAiLabel(){
+  var e = quizAiEngines()[0];
+  return (typeof AI_ENGINES !== 'undefined' && AI_ENGINES[e] && AI_ENGINES[e].label) || (e || '未配置');
+}
+/* 出题统一入口：保留原函数名与签名，Java / 事业编所有调用方无需改动。
+   逐个引擎尝试，失败自动切下一个；余额不足弹顶部红色横幅；返回 JSON 容错后的数组。 */
 function callQwenChat(sysPrompt, userPrompt, model, extra){
-  var key = '';
-  try { key = (typeof getQwenKey === 'function') ? getQwenKey() : (localStorage.getItem('aurora_qwen_key') || ''); } catch(e){ key = ''; }
-  if(!key) return Promise.reject(new Error('未配置通义千问 Key'));
-  var url = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
-  var body = {
-    model: model || 'qwen-plus',
-    messages: [ { role:'system', content:sysPrompt }, { role:'user', content:userPrompt } ],
-    temperature: 0.7,
-    response_format: { type: 'json_object' }
-  };
-  if(extra) Object.keys(extra).forEach(function(k){ body[k] = extra[k]; });
-  var post = function(b){
+  var engines = quizAiEngines();
+  if(!engines.length) return Promise.reject(new Error('未配置 AI 出题引擎 Key（推荐智谱 GLM）'));
+  function post(eng, b){
+    var cfg = (typeof AI_ENGINES !== 'undefined' && AI_ENGINES[eng]) || {};
+    var url = cfg.url || 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
+    var key = '';
+    try {
+      key = (typeof getEngineKey === 'function') ? getEngineKey(eng)
+          : (localStorage.getItem(cfg.keyStore || 'aurora_qwen_key') || '');
+    } catch(e){ key = ''; }
+    var timer = null;
+    var timeout = new Promise(function(_, rej){
+      timer = setTimeout(function(){ rej(new Error('请求超时（90s）')); }, 90000);
+    });
     return Promise.race([
       fetch(url, { method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer ' + key }, body:JSON.stringify(b) }),
-      new Promise(function(_, rej){ setTimeout(function(){ rej(new Error('请求超时（90s）')); }, 90000); })
-    ]);
-  };
-  return post(body).then(function(resp){
-    if(resp.ok) return resp.json();
-    return resp.text().then(function(t){
-      var msg = '';
-      try { msg = JSON.parse(t).error.message || t; } catch(e){ msg = t || ('HTTP ' + resp.status); }
-      /* 模型不支持联网搜索参数 → 去掉重试一次 */
-      if(/enable_search|web_search|search/i.test(msg) && body.enable_search){
-        delete body.enable_search;
-        if(body.web_search_options) delete body.web_search_options;
-        return post(body).then(function(r2){
-          if(r2.ok) return r2.json();
-          return r2.text().then(function(t2){ throw new Error('HTTP ' + r2.status + '：' + (t2 || '').slice(0, 120)); });
-        });
+      timeout
+    ]).then(function(resp){
+      if(timer) clearTimeout(timer);
+      if(resp.ok) return resp.json();
+      return resp.text().then(function(t){
+        if(typeof isAiBalanceError === 'function' && isAiBalanceError(t)){
+          try { showAiBalanceWarn(); } catch(e){}
+        }
+        var msg = '';
+        try { msg = JSON.parse(t).error.message || t; } catch(e2){ msg = t || ('HTTP ' + resp.status); }
+        throw new Error('HTTP ' + resp.status + '：' + String(msg).slice(0, 120));
+      });
+    }, function(e){ if(timer) clearTimeout(timer); throw e; });
+  }
+  function parse(data){
+    if(data && data.error){
+      var em = String(data.error.message || 'API 错误');
+      if(typeof isAiBalanceError === 'function' && isAiBalanceError(em)){
+        try { showAiBalanceWarn(); } catch(e){}
       }
-      throw new Error('HTTP ' + resp.status + '：' + String(msg).slice(0, 120));
-    });
-  }).then(function(data){
-    if(data.error) throw new Error(data.error.message || 'API 错误');
-    var txt = data.choices && data.choices[0] && data.choices[0].message ? data.choices[0].message.content : '';
-    /* AI 偶尔会返回 ```json 围栏 / 前后说明文字；严格 JSON.parse 会直接抛错并被上层静默吞掉，
-       表现为「题一直出不来」。这里做容错：去围栏 → 整段解析 → 退而截取数组/对象片段。 */
+      throw new Error(em);
+    }
+    var txt = data && data.choices && data.choices[0] && data.choices[0].message ? data.choices[0].message.content : '';
+    /* AI 偶尔返回 ```json 围栏 / 说明文字；严格 JSON.parse 会抛错被上层静默吞掉，
+       表现为「题一直出不来」。容错：去围栏 → 整段解析 → 截取数组 / 对象片段。 */
     var raw = String(txt || '').trim();
     raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
     var arr = null;
@@ -34976,7 +35002,29 @@ function callQwenChat(sysPrompt, userPrompt, model, extra){
     }
     if(!Array.isArray(arr)) arr = [arr];
     return arr;
-  });
+  }
+  function step(i){
+    var eng = engines[i];
+    var cfg = (typeof AI_ENGINES !== 'undefined' && AI_ENGINES[eng]) || {};
+    var body = {
+      model: eng === 'qwen' ? (model || 'qwen-plus') : (cfg.textModel || 'glm-4-flash'),
+      messages: [ { role:'system', content:sysPrompt }, { role:'user', content:userPrompt } ],
+      temperature: 0.7
+    };
+    /* response_format / enable_search 是百炼专有参数，其他引擎一律不带，避免 400 */
+    if(eng === 'qwen'){
+      body.response_format = { type:'json_object' };
+      if(extra) Object.keys(extra).forEach(function(k){ body[k] = extra[k]; });
+    }
+    return post(eng, body).then(parse).catch(function(e){
+      if(i < engines.length - 1){
+        console.log('[出题 AI] ' + eng + ' 失败：' + (e && e.message || e) + '，切换 ' + engines[i + 1]);
+        return step(i + 1);
+      }
+      throw e;
+    });
+  }
+  return step(0);
 }
 /* 给一批考点编写真题并写入缓存；返回成功写入的题数（Promise） */
 function careerAiWriteBatch(pids, opts){
@@ -35180,9 +35228,8 @@ function careerLearnedStartWith(r){
   return true;
 }
 function careerHasQwenKey(){
-  var k = '';
-  try { k = (typeof getQwenKey === 'function') ? getQwenKey() : (localStorage.getItem('aurora_qwen_key') || ''); } catch(e){ k = ''; }
-  return !!String(k).trim();
+  try { if(typeof quizAiHasKey === 'function') return quizAiHasKey(); } catch(e){}
+  try { return !!(typeof getQwenKey === 'function' ? getQwenKey() : localStorage.getItem('aurora_qwen_key')); } catch(e){ return false; }
 }
 /* 出题：题库真题 + 已缓存 AI 真题优先；不够 20 道时**自动**让 AI 现编（不用手动点按钮），
    AI 不可用（没配 Key / 请求失败）才退回本地机械改写兜底 */
@@ -35819,9 +35866,8 @@ function renderJavaRecite(){
    模块二：出题检测（AI 模拟面试官）
    ============================================================ */
 function javaHasQwenKey(){
-  var k = '';
-  try { k = (typeof getQwenKey === 'function') ? getQwenKey() : (localStorage.getItem('aurora_qwen_key') || ''); } catch(e){ k = ''; }
-  return !!k;
+  try { if(typeof quizAiHasKey === 'function') return quizAiHasKey(); } catch(e){}
+  try { return !!(typeof getQwenKey === 'function' ? getQwenKey() : localStorage.getItem('aurora_qwen_key')); } catch(e){ return false; }
 }
 function javaAiQ(){ return javaDb().genAi; }
 function javaAiCount(){ return Object.keys(javaAiQ()).length; }
@@ -36198,7 +36244,7 @@ function javaLearnedStartWith(r){
 }
 function startJavaLearnedQuiz(){
   if(!javaHasQwenKey()){
-    toast('需要先配置通义千问 Key，AI 才能为考点出题');
+    toast('需要先配置 AI 出题引擎 Key（推荐智谱 GLM）');
     return;
   }
   var items = javaLearnedItems();
@@ -36359,7 +36405,7 @@ function javaOralStartWith(paper){
   javaShowQuestion();
 }
 function startJavaOralQuiz(mode){
-  if(!javaHasQwenKey()){ toast('需要先配置通义千问 Key，AI 才能出口述题'); return; }
+  if(!javaHasQwenKey()){ toast('需要先配置 AI 出题引擎 Key（推荐智谱 GLM）'); return; }
   /* 锁：当前还有一套口述题没答完，必须先答完或「放弃这套」才能出新的 */
   var sess = javaOralSession();
   var total = javaOralSessionTotal(sess);
@@ -36775,12 +36821,12 @@ function renderJavaQuizHome(){
   var w = javaWrongCount();
   var dq = Object.keys(javaDb().doneQ).length;
   var txt = '已背 ' + learned + ' / ' + javaTotalPoints() + ' 考点 · AI 单选题 ' + ai + ' 道 · 口述题 ' + oral + ' 道 · 已做题 ' + dq + ' 道 · 收藏追问 ' + fu + ' 条 · 待复习错题 ' + w + ' 道';
-  if(!javaHasQwenKey()) txt += '（未配置通义千问 Key，AI 无法出题）';
+  if(!javaHasQwenKey()) txt += '（未配置 AI 出题引擎 Key，AI 无法出题）';
   el.textContent = txt;
   var tip = document.getElementById('javaAiTip');
   if(tip) tip.textContent = javaHasQwenKey()
-    ? '所有题目都由 AI 模拟面试官联网现编真题，没有任何本地生成题。点「按已背考点出题」会为还没出题的考点补题，够 20 道就停；像真实面试一样的口述问答在底部「口述」标签。'
-    : '提示：配置通义千问 Key 后，所有题目都将由 AI 模拟面试官联网现编。';
+    ? '所有题目都由 AI 模拟面试官现编真题，没有任何本地生成题。点「按已背考点出题」会为还没出题的考点补题，够 20 道就停；像真实面试一样的口述问答在底部「口述」标签。'
+    : '提示：配置 AI 出题引擎 Key（推荐智谱 GLM）后，所有题目都将由 AI 模拟面试官现编。';
   var sug = document.getElementById('javaQuizSuggest');
   if(sug){
     var masteredNow = javaMasteredCount();
@@ -36788,7 +36834,7 @@ function renderJavaQuizHome(){
     var newN = Math.max(3, Math.min(12, Math.ceil(remain / 16)));
     sug.textContent = javaHasQwenKey()
       ? ('今日建议：新背 ' + newN + ' 个考点 + 做 1 套自测 / 1 套口述题；还差 ' + remain + ' 个考点未掌握。')
-      : '配置通义千问 Key 后，点「🤖 一键生成」即可建好全库 AI 题。';
+      : '配置 AI 出题引擎 Key 后，点「🤖 一键生成」即可建好全库 AI 题。';
   }
   renderJavaFollowUps();
 }
@@ -36801,8 +36847,8 @@ function renderJavaOralHome(){
   el.textContent = '已背 ' + learned + ' / ' + javaTotalPoints() + ' 考点 · 口述题 ' + oral + ' 道 · 收藏追问 ' + fu + ' 条';
   var tip = document.getElementById('javaOralTip');
   if(tip) tip.textContent = javaHasQwenKey()
-    ? '口述题没有 A/B/C/D：看完题先自己说出来，再点「看参考答案」对照要点自评。面试官追问可一键收藏。每次出题都会固定现编 10 道新题（同一考点会换角度再问），旧题全部保留、刷新不丢；答完一套（或点「放弃这套」）才能再出新的。'
-    : '提示：配置通义千问 Key 后才能进行口述面试。';
+    ? '口述题没有 A/B/C/D：看完题先自己说出来，再点「看参考答案」对照要点自评。面试官追问可一键收藏。每次出题都会固定现编 10 道新题（同一考点会换角度再问），旧题全部保留、刷新不丢；答完一套（或点「放弃这套」）才能再出新的。当前出题引擎：' + (typeof quizAiLabel === 'function' ? quizAiLabel() : 'AI') + '。'
+    : '提示：配置 AI 出题引擎 Key（推荐智谱 GLM）后才能进行口述面试。';
   /* 未做完的一套 → 提示「继续」 */
   var sess = javaOralSession();
   var resume = document.getElementById('javaOralResume');
@@ -36950,7 +36996,7 @@ function javaSaveFollowUpById(qid, btn){
   }
 }
 function javaGenerateAllAi(){
-  if(!javaHasQwenKey()){ toast('需要先配置通义千问 Key，AI 才能出题'); return; }
+  if(!javaHasQwenKey()){ toast('需要先配置 AI 出题引擎 Key（推荐智谱 GLM）'); return; }
   var aiQ = javaAiQ();
   var pending = javaFlatPoints().filter(function(it){ return !aiQ[it.p.id]; }).map(function(it){ return it.p.id; });
   if(!pending.length){ toast('全部 ' + javaTotalPoints() + ' 个考点都已经有 AI 题了 🎉'); return; }
