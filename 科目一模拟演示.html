@@ -355,7 +355,7 @@ button:focus{outline:none}
       <p>题干默认 24px（可调到 28px）、选项整行可点且不低于 58px 高、答完立即显示对错与口诀、<b>不自动跳题</b>、没有倒计时、最多两层就能开始做题、三个固定底部按钮不迷路。</p>
       <button id="reset-demo">清空演示数据，从头体验</button>
     </div>
-    <p class="foot-note">题目依据《科目一考点大字速记手册》与现行通用题库整理<br>公安部令第 163 号记分口径 · 仅供练习</p>
+    <p class="foot-note">题目为自编模拟题，知识点依据《科目一考点大字速记手册》<br>公安部令第 163 号记分口径 · 未抓取驾校一点通等商业题库 · 仅供练习</p>
   </div>
 
   <div class="phone-wrap">
@@ -450,7 +450,7 @@ function homeHTML(){var o=overview();return ''+
    ['标准','大字','超大字'].map(function(t,i){return '<div class="font-btn '+(db.font===i?'on':'')+'" data-act="font" data-lv="'+i+'">'+t+'</div>'}).join('')+
  '</div><div class="sub font-note">选好后，题目、选项、按钮都会一起变大。</div></div>'+
  (o.history.length?'<div class="card"><div class="card-title">最近练习</div>'+o.history.map(function(h){return '<div class="hist-row"><span class="hist-date">'+h.date+'</span><span class="hist-text">做对 '+h.right+' / '+h.total+' 题</span></div>'}).join('')+'</div>':'')+
- '<div class="footer-note">题目依据《科目一考点大字速记手册》整理，仅供练习</div>'}
+ '<div class="footer-note">自编模拟题 · 知识点依据《科目一考点大字速记手册》 · 仅供练习</div>'}
 function pointsHTML(){var cs=catList();return '<div class="card intro"><div class="card-title">13 类考点 · 62 个知识点</div><div class="sub">点「看口诀」把要点读两遍，再点「练这组」。做错的考点，系统会自动多出几次题，直到记住为止。</div></div>'+
  cs.map(function(c){var open=state.expandId===c.id;return '<div class="cat card '+(open?'opened':'')+'">'+
   '<div class="cat-head" data-act="note" data-id="'+c.id+'"><span class="cat-no">'+c.no+'</span><div class="cat-main"><div class="cat-name">'+esc(c.name)+'</div><div class="cat-sub">'+esc(c.sub)+'</div></div><span class="cat-arrow">'+(open?'收起 ▴':'看口诀 ▾')+'</span></div>'+
